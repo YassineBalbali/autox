@@ -94,6 +94,28 @@ public class AppUser extends BaseEntity {
     protected AppUser() {
     }
 
+    /**
+     * A newly registered account. Everything a row cannot exist without is a
+     * parameter; everything else is set afterwards, so no caller can build a user
+     * that violates the table's NOT NULL constraints.
+     */
+    public static AppUser register(String email, String passwordHash, UserRole role,
+                                   String displayName, Country country, String locale) {
+        AppUser user = new AppUser();
+        user.email = email;
+        user.passwordHash = passwordHash;
+        user.role = role;
+        user.displayName = displayName;
+        user.country = country;
+        user.locale = locale;
+        user.status = UserStatus.PENDING_VERIFICATION;
+        return user;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerifiedAt != null;
+    }
+
     public String getEmail() {
         return email;
     }

@@ -2,7 +2,7 @@
 -- Multi-country from day one: every monetary and located row points back here.
 
 CREATE TABLE currency (
-    code        CHAR(3)     PRIMARY KEY,
+    code        VARCHAR(3)     PRIMARY KEY,
     minor_unit  SMALLINT    NOT NULL DEFAULT 2,
     symbol      VARCHAR(8)  NOT NULL,
     CONSTRAINT ck_currency_code      CHECK (code ~ '^[A-Z]{3}$'),
@@ -13,9 +13,9 @@ COMMENT ON COLUMN currency.minor_unit IS
     'Decimal digits in the minor unit. All amounts in this schema are stored as integers of the minor unit (EUR cents).';
 
 CREATE TABLE country (
-    code                  CHAR(2)      PRIMARY KEY,
+    code                  VARCHAR(2)      PRIMARY KEY,
     name                  VARCHAR(80)  NOT NULL,
-    default_currency_code CHAR(3)      NOT NULL REFERENCES currency (code),
+    default_currency_code VARCHAR(3)      NOT NULL REFERENCES currency (code),
     default_locale        VARCHAR(10)  NOT NULL,
     phone_prefix          VARCHAR(8)   NOT NULL,
     distance_unit         VARCHAR(8)   NOT NULL DEFAULT 'KM',
@@ -33,7 +33,7 @@ COMMENT ON COLUMN country.distance_unit IS
 -- radius search ("within 50 km of Paris") without a PostGIS dependency.
 CREATE TABLE geo_place (
     id              UUID          PRIMARY KEY,
-    country_code    CHAR(2)       NOT NULL REFERENCES country (code),
+    country_code    VARCHAR(2)       NOT NULL REFERENCES country (code),
     postal_code     VARCHAR(12)   NOT NULL,
     city            VARCHAR(120)  NOT NULL,
     city_normalized VARCHAR(120)  NOT NULL,
