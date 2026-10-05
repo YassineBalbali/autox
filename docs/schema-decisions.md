@@ -196,6 +196,16 @@ would break every range filter.
   compiles. I left it out because you asked for the schema only, and because the
   Spring Boot version should be whatever Initializr currently pins. Say the word
   and it is the next five minutes of work.
+- **`CHAR(n)` became `VARCHAR(n)` in V1, V2 and V4** (amended after the fact, see
+  below). Hibernate's `ddl-auto: validate` rejected `bpchar` against a `String`
+  field, and `char(n)` has no advantage in PostgreSQL — it only adds space
+  padding that bites on comparison. The format `CHECK` constraints already pin the
+  exact length. `refresh_token.ip_address` moved from `inet` to `VARCHAR(45)` for
+  the same reason: it is an audit field, never matched against a subnet.
+  **These edits changed migrations you had already committed.** That is safe only
+  because no environment had run them yet. From the first real deployment onwards,
+  an applied migration is immutable and a change like this needs a new `V_`
+  file — Flyway's checksum validation will refuse otherwise.
 - **Nothing is validated twice yet.** The `CHECK` constraints are the backstop;
   Bean Validation annotations on the entities would duplicate them. I would put
   validation on the request DTOs instead, when we get there.

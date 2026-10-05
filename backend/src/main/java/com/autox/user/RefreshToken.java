@@ -47,8 +47,12 @@ public class RefreshToken {
     @Column(name = "user_agent", length = 512)
     private String userAgent;
 
-    /** Mapped as text; the column is PostgreSQL {@code inet}. */
-    @Column(name = "ip_address", columnDefinition = "inet")
+    /**
+     * Plain text, wide enough for IPv6. Not PostgreSQL {@code inet}: this is an audit
+     * field that is only ever read back, never matched against a subnet, and the
+     * native type costs a custom Hibernate mapping for nothing.
+     */
+    @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
     @Column(name = "issued_at", nullable = false, updatable = false)
@@ -68,6 +72,28 @@ public class RefreshToken {
     private TokenRevocationReason revokedReason;
 
     protected RefreshToken() {
+    }
+
+    /**
+     * Issues a token row. {@code familyId} is {@code null} for a fresh login — the
+     * row then starts its own family, using its own id.
+     */
+    public static RefreshToken issue(AppUser user, String tokenHash, UUID familyId, Instant expiresAt) {
+        RefreshToken token = new RefreshToken();
+        token.id = com.autox.common.UuidV7.generate();
+        token.user = user;
+        token.tokenHash = tokenHash;
+        token.familyId = familyId != null ? familyId : token.id;
+        token.expiresAt = expiresAt;
+        token.issuedAt = Instant.now();
+        return token;
+    }
+
+    public void revoke(TokenRevocationReason reason, Instant when) {
+        if (revokedAt == null) {
+            revokedAt = when;
+            revokedReason = reason;
+        }
     }
 
     @PrePersist

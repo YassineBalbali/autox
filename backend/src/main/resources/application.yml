@@ -1,0 +1,70 @@
+# Every credential is read from the environment. There are no defaults for
+# secrets: a missing variable must fail startup, not fall back to something weak.
+spring:
+  application:
+    name: autox-backend
+
+  datasource:
+    url: ${AUTOX_DB_URL}
+    username: ${AUTOX_DB_USERNAME}
+    password: ${AUTOX_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${AUTOX_DB_POOL_SIZE:10}
+      pool-name: autox-pool
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema. Hibernate only validates that the entities match it.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: false
+
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${AUTOX_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+  forward-headers-strategy: framework
+
+autox:
+  auth:
+    # HS256 signing key, base64 or raw text, minimum 32 bytes. No default on purpose.
+    jwt-secret: ${AUTOX_JWT_SECRET}
+    issuer: ${AUTOX_JWT_ISSUER:https://api.autox.local}
+    access-token-ttl: PT15M
+    refresh-token-ttl: P90D
+    # Mobile sessions are long-lived, so a refresh token is rotated on every use
+    # and replaying a rotated one revokes its whole family.
+    rotate-refresh-tokens: true
+
+  listing:
+    # Decided with the schema; consumed when listing endpoints are built.
+    expiry-days: 60
+
+logging:
+  level:
+    root: INFO
+    com.autox: ${AUTOX_LOG_LEVEL:INFO}
+    org.flywaydb: INFO

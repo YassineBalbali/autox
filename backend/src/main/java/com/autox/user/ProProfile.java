@@ -84,6 +84,14 @@ public class ProProfile {
     protected ProProfile() {
     }
 
+    /** The dealer row that must accompany a PROFESSIONNEL account. */
+    public static ProProfile forUser(AppUser user, String companyName) {
+        ProProfile profile = new ProProfile();
+        profile.user = user;
+        profile.companyName = companyName;
+        return profile;
+    }
+
     @PrePersist
     void onPersist() {
         Instant now = Instant.now();

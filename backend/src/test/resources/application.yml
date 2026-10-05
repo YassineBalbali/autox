@@ -1,0 +1,32 @@
+# Test-only configuration. The datasource values below are placeholders: the
+# Testcontainers @ServiceConnection supplies the real ones at runtime. They exist
+# so the main profile's ${AUTOX_DB_*} placeholders have something to resolve to
+# without requiring a developer's environment to be set up to run tests.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:1/replaced-by-testcontainers
+    username: test
+    password: test
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    clean-disabled: false
+
+autox:
+  auth:
+    # Test-only signing key. Never used outside the test source set.
+    jwt-secret: test-only-signing-key-at-least-32-bytes-long-0123456789
+    issuer: https://api.autox.test
+    access-token-ttl: PT15M
+    refresh-token-ttl: P90D
+    rotate-refresh-tokens: true
+
+logging:
+  level:
+    com.autox: INFO
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    org.springframework.security: WARN

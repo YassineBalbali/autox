@@ -17,11 +17,11 @@ CREATE TABLE listing (
 
     -- Minor units of price_currency_code (EUR cents), never a float.
     price_amount       BIGINT       NOT NULL,
-    price_currency_code CHAR(3)     NOT NULL REFERENCES currency (code),
+    price_currency_code VARCHAR(3)     NOT NULL REFERENCES currency (code),
     price_negotiable   BOOLEAN      NOT NULL DEFAULT FALSE,
     vat_deductible     BOOLEAN,
 
-    country_code       CHAR(2)      NOT NULL REFERENCES country (code),
+    country_code       VARCHAR(2)      NOT NULL REFERENCES country (code),
     geo_place_id       UUID         NOT NULL REFERENCES geo_place (id),
     latitude           NUMERIC(9, 6) NOT NULL,
     longitude          NUMERIC(9, 6) NOT NULL,
@@ -191,7 +191,7 @@ CREATE TABLE listing_image (
     byte_size         BIGINT,
     width             INTEGER,
     height            INTEGER,
-    checksum_sha256   CHAR(64),
+    checksum_sha256   VARCHAR(64),
     upload_expires_at TIMESTAMPTZ,
     uploaded_at       TIMESTAMPTZ,
     created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
