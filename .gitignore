@@ -1,0 +1,97 @@
+# ---------- Java / Maven / Gradle ----------
+target/
+build/
+out/
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# ---------- Node / Angular ----------
+node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/tmp/
+frontend/out-tsc/
+frontend/bazel-out/
+.npm/
+.yarn/
+.pnp.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.stylelintcache
+coverage/
+*.lcov
+
+# ---------- Environment & secrets ----------
+# Never commit credentials: DB passwords, JWT signing keys, object-storage keys.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+application-local.yml
+application-local.yaml
+application-local.properties
+application-secrets.yml
+backend/src/main/resources/application-local.*
+
+# ---------- IDE ----------
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+# Eclipse / STS
+.classpath
+.project
+.settings/
+.apt_generated/
+.factorypath
+.springBeans
+.sts4-cache
+# VS Code — keep shared editor config, ignore personal state
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+# NetBeans
+/nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ---------- OS ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------- Local tooling / runtime ----------
+*.log
+logs/
+/data/
+docker-compose.override.yml
+.claude/settings.local.json
