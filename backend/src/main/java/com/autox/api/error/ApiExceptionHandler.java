@@ -49,7 +49,14 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     ResponseEntity<ProblemDetail> handleApiException(ApiException exception, HttpServletRequest request) {
         ProblemDetail problem = problem(exception.getStatus(), exception.getMessage(), exception.getCode(),
                 request.getRequestURI());
-        return ResponseEntity.status(exception.getStatus()).body(problem);
+
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(exception.getStatus());
+        Long retryAfter = exception.getRetryAfterSeconds();
+        if (retryAfter != null) {
+            problem.setProperty("retryAfterSeconds", retryAfter);
+            response.header(HttpHeaders.RETRY_AFTER, Long.toString(retryAfter));
+        }
+        return response.body(problem);
     }
 
     /** Bean Validation on a {@code @RequestBody}. */
@@ -103,6 +110,21 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = problem(HttpStatus.NOT_FOUND, "No endpoint matches this request.",
                 ErrorCode.NOT_FOUND, path(request));
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+    }
+
+    /**
+     * Two writers edited the same row. {@code @Version} on the entity detects it; without
+     * this mapping the loser would get a 500, when the right answer is "reload and retry".
+     */
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    ResponseEntity<ProblemDetail> handleOptimisticLock(
+            org.springframework.dao.OptimisticLockingFailureException exception, HttpServletRequest request) {
+
+        log.debug("Optimistic lock conflict on {} {}", request.getMethod(), request.getRequestURI());
+        ProblemDetail problem = problem(HttpStatus.CONFLICT,
+                "This record was changed by someone else while you were editing it. Reload and try again.",
+                ErrorCode.CONCURRENT_MODIFICATION, request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
     }
 
     /**

@@ -10,6 +10,15 @@ public final class CurrentUser {
     private CurrentUser() {
     }
 
+    /**
+     * Whether the caller is an administrator, from the token's {@code role} claim.
+     * Authorisation of whole endpoints is still Spring Security's job; this is for the
+     * narrower question of whether a caller may act on a row they do not own.
+     */
+    public static boolean isAdmin(Jwt token) {
+        return token != null && UserRole.ADMIN.name().equals(token.getClaimAsString("role"));
+    }
+
     public static UUID id(Jwt token) {
         if (token == null) {
             throw ApiException.invalidToken("Authentication is required.");

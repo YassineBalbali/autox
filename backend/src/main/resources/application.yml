@@ -41,6 +41,16 @@ spring:
     problemdetails:
       enabled: true
 
+  # One server language. Validation `message` text is developer-facing; clients render
+  # end-user text from `code` and `field`, in the user's own language.
+  web:
+    locale: en
+    locale-resolver: fixed
+
+  messages:
+    always-use-message-format: false
+    fallback-to-system-locale: false
+
 server:
   port: ${AUTOX_PORT:8080}
   error:
@@ -59,9 +69,29 @@ autox:
     # and replaying a rotated one revokes its whole family.
     rotate-refresh-tokens: true
 
+    # Progressive delay, not a hard lock: the account cap is deliberately low so
+    # deliberate failures cannot keep the real owner out.
+    login-throttle:
+      enabled: ${AUTOX_LOGIN_THROTTLE_ENABLED:true}
+      # Failures 1-4 are free; the 5th waits 30s, then 1m, 2m, 4m, 8m, capped at 15m.
+      account-threshold: 4
+      account-initial-delay: PT30S
+      account-max-delay: PT15M
+      # Per-address, catching a spray across many accounts. Higher threshold because a
+      # shared office address is legitimately noisier than one account.
+      ip-threshold: 20
+      ip-initial-delay: PT1M
+      ip-max-delay: PT30M
+      reset-after: PT24H
+
   listing:
-    # Decided with the schema; consumed when listing endpoints are built.
+    # A published listing stays live for this long, then the sweeper expires it.
+    # Renewing resets the window from the moment of renewal.
     expiry-days: 60
+    # Simultaneous ACTIVE listings. 0 = unlimited; dealers are uncapped until
+    # subscription tiers exist. Overridable per account via app_user.active_listing_limit.
+    particulier-active-limit: 5
+    professionnel-active-limit: 0
 
 logging:
   level:

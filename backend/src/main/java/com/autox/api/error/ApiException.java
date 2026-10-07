@@ -13,11 +13,17 @@ public class ApiException extends RuntimeException {
 
     private final HttpStatus status;
     private final ErrorCode code;
+    private final Long retryAfterSeconds;
 
     public ApiException(HttpStatus status, ErrorCode code, String message) {
+        this(status, code, message, null);
+    }
+
+    public ApiException(HttpStatus status, ErrorCode code, String message, Long retryAfterSeconds) {
         super(message);
         this.status = status;
         this.code = code;
+        this.retryAfterSeconds = retryAfterSeconds;
     }
 
     public HttpStatus getStatus() {
@@ -26,6 +32,11 @@ public class ApiException extends RuntimeException {
 
     public ErrorCode getCode() {
         return code;
+    }
+
+    /** Non-null only for throttled responses; drives the {@code Retry-After} header. */
+    public Long getRetryAfterSeconds() {
+        return retryAfterSeconds;
     }
 
     // --- Authentication ---------------------------------------------------
@@ -59,6 +70,19 @@ public class ApiException extends RuntimeException {
                 "Refresh token is invalid, expired or has already been used.");
     }
 
+    /**
+     * Too many recent failures for this account key or this address.
+     *
+     * <p>429 rather than a repeated 401, because a client needs to know to back off
+     * instead of retrying. It reveals nothing about whether the account exists: the
+     * counter is keyed on the submitted address whether or not one is registered.
+     */
+    public static ApiException tooManyLoginAttempts(long retryAfterSeconds) {
+        return new ApiException(HttpStatus.TOO_MANY_REQUESTS, ErrorCode.TOO_MANY_ATTEMPTS,
+                "Too many failed sign-in attempts. Try again in " + retryAfterSeconds + " seconds.",
+                retryAfterSeconds);
+    }
+
     public static ApiException invalidToken(String detail) {
         return new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_TOKEN, detail);
     }
@@ -75,6 +99,15 @@ public class ApiException extends RuntimeException {
 
     public static ApiException validationFailed(String detail) {
         return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED, detail);
+    }
+
+    /**
+     * A limit on the caller's plan is reached. 409 rather than 403: the request is
+     * well-formed and the caller is permitted in principle — the account's current state
+     * conflicts with it, and freeing a slot makes the same request succeed.
+     */
+    public static ApiException quotaExceeded(String detail) {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.ACTIVE_LISTING_LIMIT_REACHED, detail);
     }
 
     public static ApiException forbidden(String detail) {

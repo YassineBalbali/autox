@@ -23,6 +23,24 @@ autox:
     access-token-ttl: PT15M
     refresh-token-ttl: P90D
     rotate-refresh-tokens: true
+    # Same thresholds as production, but seconds instead of minutes, so escalation is
+    # observable without the suite sleeping. The policy arithmetic is asserted separately
+    # against the production numbers.
+    login-throttle:
+      enabled: true
+      account-threshold: 4
+      account-initial-delay: PT1S
+      account-max-delay: PT2S
+      ip-threshold: 20
+      ip-initial-delay: PT1S
+      ip-max-delay: PT2S
+      reset-after: PT24H
+
+  # A cap of 2 keeps the quota tests fast; the production default is 5.
+  listing:
+    expiry-days: 60
+    particulier-active-limit: 2
+    professionnel-active-limit: 0
 
 logging:
   level:

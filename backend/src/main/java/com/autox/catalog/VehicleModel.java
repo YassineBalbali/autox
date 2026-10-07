@@ -36,6 +36,15 @@ public class VehicleModel extends BaseEntity {
     protected VehicleModel() {
     }
 
+    /** Used by the catalogue import and by tests. */
+    public static VehicleModel of(VehicleMake make, String slug, String name) {
+        VehicleModel model = new VehicleModel();
+        model.make = make;
+        model.slug = slug;
+        model.name = name;
+        return model;
+    }
+
     public VehicleMake getMake() {
         return make;
     }

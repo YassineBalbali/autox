@@ -55,6 +55,7 @@ public abstract class AbstractIntegrationTest {
     @Autowired protected CountryRepository countries;
     @Autowired protected PasswordEncoder passwordEncoder;
     @Autowired protected TestDatabaseCleaner cleaner;
+    @Autowired protected org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void resetUserData() {
