@@ -313,6 +313,7 @@ public class ListingService {
     public ListingResponse publish(UUID callerId, boolean admin, UUID listingId) {
         Listing listing = loadAccessible(callerId, admin, listingId);
         requireTransition(listing, ListingStatus.ACTIVE);
+        requirePhoto(listing);
         requireQuotaAvailable(listing);
 
         Instant now = Instant.now();
@@ -426,6 +427,18 @@ public class ListingService {
         if (!current.canTransitionTo(target)) {
             throw ApiException.conflict("Cannot move a listing from " + current + " to " + target
                     + ". Allowed from " + current + ": " + current.allowedTargets() + ".");
+        }
+    }
+
+    /**
+     * A listing with no photograph is close to worthless to a buyer and drags down every
+     * search result page it appears on. Checked only at publication, so a draft can be
+     * written before the photos are ready.
+     */
+    private void requirePhoto(Listing listing) {
+        if (images.findReadyByListing(listing.getId()).isEmpty()) {
+            throw ApiException.photoRequired(
+                    "Add at least one photo before publishing. Uploads that have not been confirmed do not count.");
         }
     }
 

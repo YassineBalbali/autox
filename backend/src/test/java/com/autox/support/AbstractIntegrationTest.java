@@ -142,4 +142,26 @@ public abstract class AbstractIntegrationTest {
     protected static String uniqueEmail(String prefix) {
         return prefix + "-" + UUID.randomUUID() + "@autox.test";
     }
+
+    /**
+     * Gives a listing a confirmed photo so it can be published, without the cost of a real
+     * upload to object storage.
+     *
+     * <p>Publication only asks whether a READY image exists, so inserting the row directly is
+     * enough and keeps tests that are about the lifecycle from paying for image processing.
+     * The upload path itself is covered properly in {@code ListingImageIntegrationTest}.
+     */
+    protected void attachReadyPhoto(String listingId) {
+        UUID imageId = com.autox.common.UuidV7.generate();
+        Integer existing = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM listing_image WHERE listing_id = ?::uuid", Integer.class, listingId);
+        if (existing != null && existing > 0) {
+            return;
+        }
+        jdbcTemplate.update("""
+                INSERT INTO listing_image (id, listing_id, position, status, storage_key,
+                                           content_type, byte_size, width, height, uploaded_at)
+                VALUES (?, ?::uuid, 0, 'READY', ?, 'image/jpeg', 12345, 1600, 1200, now())
+                """, imageId, listingId, "listings/" + listingId + "/" + imageId + "/original.jpg");
+    }
 }

@@ -183,7 +183,7 @@ class ListingImageIntegrationTest extends AbstractIntegrationTest {
         uploadImage(seller, listingId, jpegOf(800, 600));
         uploadImage(seller, listingId, jpegOf(800, 600));
 
-        mockMvc.perform(get("/api/v1/listings/" + listingId)
+        mockMvc.perform(get("/api/v1/listings/mine/" + listingId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.images.length()").value(2))

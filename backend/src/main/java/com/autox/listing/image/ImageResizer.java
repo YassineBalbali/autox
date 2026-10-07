@@ -59,7 +59,7 @@ public class ImageResizer {
      */
     public Rendition render(BufferedImage source, int maxEdge, float quality) {
         BufferedImage scaled = scaleToFit(source, maxEdge);
-        return new Rendition(encodeJpeg(scaled, quality), scaled.getWidth(), scaled.getHeight());
+        return new Rendition(encode(scaled, quality), scaled.getWidth(), scaled.getHeight());
     }
 
     BufferedImage scaleToFit(BufferedImage source, int maxEdge) {
@@ -114,7 +114,12 @@ public class ImageResizer {
         return flat;
     }
 
-    private static byte[] encodeJpeg(BufferedImage image, float quality) {
+    /** Encodes at the given quality without resizing. Used for the sanitised original. */
+    public byte[] encodeJpeg(BufferedImage image, float quality) {
+        return encode(image, quality);
+    }
+
+    private static byte[] encode(BufferedImage image, float quality) {
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpeg");
         if (!writers.hasNext()) {
             throw new IllegalStateException("No JPEG writer available in this JVM");
