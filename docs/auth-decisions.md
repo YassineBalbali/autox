@@ -20,46 +20,56 @@ for validation failures, a flat `errors` array.
 
 ---
 
-## 1. There is no rate limiting, and auth endpoints need it
+## 1. Login throttling — built
 
-This is the most important gap in what I just built. `/auth/login` will accept
-unlimited attempts, so a 12-character password policy and BCrypt cost 12 are the
-only things standing between an attacker and a weak password. BCrypt makes each
-guess expensive for *us* too — a login flood is also a cheap way to saturate the
-CPU.
+Progressive delay, two scopes, state in `login_attempt_counter` (migration `V6`).
+No Redis.
 
-What it needs, in rough order of value:
+**Account scope**, keyed by SHA-256 of the submitted address: failures 1–4 are free,
+then 30s → 1m → 2m → 4m → 8m, capped at **15 minutes**. The cap is the anti-lockout
+property: an attacker failing on purpose cannot keep the real owner out for longer
+than that, and a successful sign-in clears the counter outright.
 
-1. **Per-account attempt throttling**: a counter plus a lockout window, or
-   exponential backoff. Needs a column or a small table.
-2. **Per-IP limiting** on `/auth/*`, via Bucket4j in the app or at the reverse
-   proxy / CDN. The proxy is the better place — it protects the JVM from the flood
-   rather than absorbing it.
-3. **CAPTCHA** after N failures, if abuse becomes real.
+**IP scope**, keyed by client address: 20 failures free, then 1m doubling to a 30m
+cap. Catches a spray across many accounts from one source. A success deliberately
+does **not** clear it — otherwise an attacker resets it by signing into an account
+they do own. It decays on time instead.
 
-It was not in the brief, so I did not build it. **Tell me if you want it before the
-listing endpoints, because retrofitting lockout state onto a live user table is
-more annoying than adding it now.**
+Three properties worth naming:
 
-## 2. Validation messages come back in mixed languages
+- **No enumeration.** The counter is keyed on the submitted address whether or not an
+  account exists, so a throttled response says nothing about whether it is
+  registered. There is a test for exactly this.
+- **The block precedes the password check**, so a throttled attempt costs neither a
+  BCrypt hash nor a query — which is what protects the CPU during a flood.
+- **Counters are written in their own transaction** (`REQUIRES_NEW`). A failed login
+  ends in a thrown exception; an increment sharing that transaction would be rolled
+  back and the throttle would never engage. This is the same trap that made
+  refresh-token replay detection ineffective, so there is a regression test for it.
 
-Bean Validation's built-in constraints resolve their messages from the JVM's
-locale, so on your machine the API returns a French "ne doit pas être vide" next to
-my own English "must be between 12 and 128 characters". The *shape* is consistent;
-the language is not.
+Decayed counters are swept hourly by `LoginThrottleSweeper` (a single idempotent
+`DELETE`, safe on multiple instances).
 
-Three ways out:
+**One judgement call you should check:** a throttled attempt returns **429** with
+`Retry-After`, not the generic 401. You asked for "the same generic 401 regardless of
+whether the account exists" — that holds for every *credential* failure, and 429 adds
+nothing an attacker can use, because unknown addresses are throttled identically. The
+reason to prefer 429 is that a client needs to know to back off rather than retry.
+Say so if you want 401 everywhere instead; it is a two-line change.
 
-- **A — treat messages as developer-facing** and have clients render their own text
-  from `code` and `field`. This is already how the contract is designed, and it is
-  what a multi-locale app has to do anyway.
-- **B — pin the server to English** (`spring.messages` + a fixed locale) so the API
-  is uniform and the Angular app localises everything.
-- **C — real i18n**: a `ValidationMessages_fr.properties` bundle plus
-  `Accept-Language` resolution, returning fully localised messages per request.
+Still not done, and worth considering later: throttling `/auth/register` (spam) and
+CAPTCHA after N failures. `/auth/refresh` is already protected by replay detection.
 
-I would do **A now and C later**. Currently it is accidental, which is worse than
-any of the three. **Your call.**
+## 2. Validation locale — pinned to English
+
+`ValidationConfig` installs a message interpolator that forces `Locale.ENGLISH`, and
+`spring.web.locale-resolver: fixed` stops `Accept-Language` affecting anything else.
+The contract is now explicit: **`message` is developer-facing; clients render
+end-user text from `code` and `field`**, in the user's own language.
+
+Tested by sending the same invalid payload with `Accept-Language: fr-FR` and with
+`de-DE` and asserting the two response bodies are byte-identical apart from the
+timestamp.
 
 ## 3. Credentials are checked in `AuthService`, not by an `AuthenticationManager`
 
@@ -107,10 +117,8 @@ infrastructure, and a tax on every request. I would not.
 
 ## 7. Smaller things, flagged
 
-- **`GET /api/v1/admin/users` was not on your list.** I added it so role-based
-  authorisation is exercised by something real rather than configured and
-  untested — three of the integration tests depend on it. Delete it if you would
-  rather wait for the moderation endpoints; the authz configuration stays valid.
+- **`GET /api/v1/admin/users`** — kept, at your call. Role-based authorisation is
+  exercised by something real rather than configured and untested.
 - **PATCH semantics**: `null` means "leave unchanged", `""` means "clear". The gap
   is that a client cannot distinguish "not sent" from "explicitly null" without
   `JsonNullable`, which I judged not worth the dependency. Unknown members are

@@ -88,15 +88,23 @@ public class Listing extends BaseEntity {
     @JoinColumn(name = "country_code", nullable = false)
     private Country country;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "geo_place_id", nullable = false)
+    /** Null while the gazetteer cannot resolve the seller's location; see {@link #postalCode}. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "geo_place_id")
     private GeoPlace geoPlace;
 
+    /** Free-text fallback, used only when {@link #geoPlace} is null. */
+    @Column(name = "postal_code", length = 12)
+    private String postalCode;
+
+    @Column(name = "city", length = 120)
+    private String city;
+
     /** Copied from {@link #geoPlace} on write so radius search needs no join. */
-    @Column(name = "latitude", nullable = false, precision = 9, scale = 6)
+    @Column(name = "latitude", precision = 9, scale = 6)
     private BigDecimal latitude;
 
-    @Column(name = "longitude", nullable = false, precision = 9, scale = 6)
+    @Column(name = "longitude", precision = 9, scale = 6)
     private BigDecimal longitude;
 
     /** {@code true} = expose only city, postcode and the place centroid. */
@@ -351,6 +359,22 @@ public class Listing extends BaseEntity {
 
     public void setGeoPlace(GeoPlace geoPlace) {
         this.geoPlace = geoPlace;
+    }
+
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public void setPostalCode(String postalCode) {
+        this.postalCode = postalCode;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
     }
 
     public BigDecimal getLatitude() {

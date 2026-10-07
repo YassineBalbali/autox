@@ -74,6 +74,15 @@ public class VehicleTrim extends BaseEntity {
     protected VehicleTrim() {
     }
 
+    /** Used by the catalogue import and by tests. */
+    public static VehicleTrim of(VehicleModel model, String slug, String name) {
+        VehicleTrim trim = new VehicleTrim();
+        trim.model = model;
+        trim.slug = slug;
+        trim.name = name;
+        return trim;
+    }
+
     public VehicleModel getModel() {
         return model;
     }

@@ -4,6 +4,7 @@ import com.autox.api.error.ApiException;
 import com.autox.auth.dto.AuthResponse;
 import com.autox.auth.dto.LoginRequest;
 import com.autox.auth.dto.RegisterRequest;
+import com.autox.auth.throttle.LoginThrottleService;
 import com.autox.reference.Country;
 import com.autox.reference.CountryRepository;
 import com.autox.user.AppUser;
@@ -47,19 +48,22 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AccessTokenService accessTokens;
     private final RefreshTokenService refreshTokens;
+    private final LoginThrottleService loginThrottle;
 
     public AuthService(AppUserRepository users,
                        ProProfileRepository proProfiles,
                        CountryRepository countries,
                        PasswordEncoder passwordEncoder,
                        AccessTokenService accessTokens,
-                       RefreshTokenService refreshTokens) {
+                       RefreshTokenService refreshTokens,
+                       LoginThrottleService loginThrottle) {
         this.users = users;
         this.proProfiles = proProfiles;
         this.countries = countries;
         this.passwordEncoder = passwordEncoder;
         this.accessTokens = accessTokens;
         this.refreshTokens = refreshTokens;
+        this.loginThrottle = loginThrottle;
         this.dummyHash = passwordEncoder.encode("unused-placeholder-for-constant-time-login");
     }
 
@@ -101,20 +105,29 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request, RefreshTokenService.SessionContext context) {
-        AppUser user = users.findActiveByEmail(request.email().trim()).orElse(null);
+        String email = request.email().trim();
+
+        // Before any lookup or hashing: a throttled attempt must cost us nothing.
+        loginThrottle.checkAllowed(email, context.ipAddress());
+
+        AppUser user = users.findActiveByEmail(email).orElse(null);
 
         if (user == null) {
             // Hash anyway, so timing does not reveal whether the account exists.
             passwordEncoder.matches(request.password(), dummyHash);
+            loginThrottle.recordFailure(email, context.ipAddress());
             throw ApiException.invalidCredentials();
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            loginThrottle.recordFailure(email, context.ipAddress());
             throw ApiException.invalidCredentials();
         }
 
         requireLoginAllowed(user);
 
+        // Only a genuine sign-in clears the counter.
+        loginThrottle.recordSuccess(email);
         user.setLastLoginAt(Instant.now());
 
         RefreshTokenService.SessionContext labelled = new RefreshTokenService.SessionContext(

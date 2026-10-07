@@ -23,10 +23,20 @@ public enum ErrorCode {
     /** Refresh token unknown, expired, already rotated or revoked. */
     INVALID_REFRESH_TOKEN,
 
+    /** Login throttled. Carries {@code retryAfterSeconds} and a {@code Retry-After} header. */
+    TOO_MANY_ATTEMPTS,
+
     FORBIDDEN,
     NOT_FOUND,
     METHOD_NOT_ALLOWED,
     UNSUPPORTED_MEDIA_TYPE,
     CONFLICT,
+
+    /** The seller already has as many live listings as their account allows. */
+    ACTIVE_LISTING_LIMIT_REACHED,
+
+    /** Someone else changed the record first; the client should reload and retry. */
+    CONCURRENT_MODIFICATION,
+
     INTERNAL_ERROR
 }

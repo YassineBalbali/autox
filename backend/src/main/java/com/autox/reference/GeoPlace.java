@@ -54,6 +54,31 @@ public class GeoPlace extends CreatedEntity {
     protected GeoPlace() {
     }
 
+    /**
+     * Used by the gazetteer import and by tests. {@code cityNormalized} is derived rather
+     * than passed, so the uniqueness key can never disagree with the display name.
+     */
+    public static GeoPlace of(Country country, String postalCode, String city,
+                              BigDecimal latitude, BigDecimal longitude) {
+        GeoPlace place = new GeoPlace();
+        place.country = country;
+        place.postalCode = postalCode;
+        place.city = city;
+        place.cityNormalized = normalize(city);
+        place.latitude = latitude;
+        place.longitude = longitude;
+        return place;
+    }
+
+    /** Lower-cased, accent-stripped, punctuation collapsed: "Saint-Étienne" to "saint etienne". */
+    public static String normalize(String city) {
+        String decomposed = java.text.Normalizer.normalize(city, java.text.Normalizer.Form.NFD);
+        return decomposed.replaceAll("\\p{M}+", "")
+                .toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim();
+    }
+
     public Country getCountry() {
         return country;
     }

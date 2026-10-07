@@ -31,6 +31,14 @@ public class VehicleMake extends BaseEntity {
     protected VehicleMake() {
     }
 
+    /** Used by the catalogue import and by tests; sellers never create catalogue rows. */
+    public static VehicleMake of(String slug, String name) {
+        VehicleMake make = new VehicleMake();
+        make.slug = slug;
+        make.name = name;
+        return make;
+    }
+
     public String getSlug() {
         return slug;
     }
