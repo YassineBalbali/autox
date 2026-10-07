@@ -38,5 +38,15 @@ public enum ErrorCode {
     /** Someone else changed the record first; the client should reload and retry. */
     CONCURRENT_MODIFICATION,
 
+    /** The file is not a format we can decode and resize. */
+    UNSUPPORTED_IMAGE_TYPE,
+    IMAGE_TOO_LARGE,
+    /** Below the minimum usable resolution for a vehicle photo. */
+    IMAGE_TOO_SMALL,
+    /** The listing already holds as many photos as it may. */
+    TOO_MANY_IMAGES,
+    /** Confirmation arrived but storage holds nothing at that key. */
+    UPLOAD_NOT_FOUND,
+
     INTERNAL_ERROR
 }

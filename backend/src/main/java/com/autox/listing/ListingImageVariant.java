@@ -42,6 +42,19 @@ public class ListingImageVariant extends CreatedEntity {
     protected ListingImageVariant() {
     }
 
+    /** Created by the server after an upload is confirmed, never by a client. */
+    public static ListingImageVariant of(ListingImage image, ImageVariantType variant, String storageKey,
+                                         int width, int height, long byteSize) {
+        ListingImageVariant rendition = new ListingImageVariant();
+        rendition.image = image;
+        rendition.variant = variant;
+        rendition.storageKey = storageKey;
+        rendition.width = width;
+        rendition.height = height;
+        rendition.byteSize = byteSize;
+        return rendition;
+    }
+
     public ListingImage getImage() {
         return image;
     }

@@ -20,5 +20,38 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # S3-compatible object storage for local development. The backend talks to this
+  # through the same code path it will use against a real provider — only the
+  # endpoint and credentials differ.
+  minio:
+    # Chainguard's build, not minio/minio: the official Docker Hub repository is no
+    # longer anonymously pullable, so `docker compose up` would fail for anyone
+    # without a MinIO registry login. Same server, same S3 API.
+    image: chainguard/minio:latest
+    container_name: autox-minio
+    # Runs as root because this image's non-root default user cannot write to the
+    # data directory. Acceptable for a local development container; a production
+    # deployment uses a managed provider, not this.
+    user: "0"
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-autox}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+    ports:
+      # 9000 is the S3 API, 9001 the browser console.
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - autox-miniodata:/data
+    healthcheck:
+      # This image ships `mc` but no curl or wget, so the MinIO client's own readiness
+      # probe is the only one available from inside the container.
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
 volumes:
   autox-pgdata:
+  autox-miniodata:

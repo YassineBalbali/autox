@@ -45,8 +45,35 @@ public abstract class AbstractIntegrationTest {
             .withUsername("autox")
             .withPassword("autox");
 
+    /**
+     * Real S3-compatible storage. There is no {@code @ServiceConnection} for it, so the
+     * endpoint is injected as properties below — and that is the point: the upload flow is
+     * only meaningful against something that actually enforces pre-signed URLs.
+     */
+    static final org.testcontainers.containers.MinIOContainer MINIO =
+            new org.testcontainers.containers.MinIOContainer(
+                    org.testcontainers.utility.DockerImageName.parse("chainguard/minio:latest")
+                            // The official minio/minio repository is no longer anonymously
+                            // pullable; this is the same server from a mirror that is.
+                            .asCompatibleSubstituteFor("minio/minio"))
+                    .withUserName("testaccess")
+                    .withPassword("testsecret123")
+                    // This image's default user cannot write the data directory.
+                    .withCreateContainerCmdModifier(cmd -> cmd.withUser("0"));
+
     static {
         POSTGRES.start();
+        MINIO.start();
+    }
+
+    @org.springframework.test.context.DynamicPropertySource
+    static void storageProperties(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        registry.add("autox.storage.endpoint", MINIO::getS3URL);
+        registry.add("autox.storage.access-key", MINIO::getUserName);
+        registry.add("autox.storage.secret-key", MINIO::getPassword);
+        registry.add("autox.storage.bucket", () -> "autox-test");
+        registry.add("autox.storage.path-style-access", () -> true);
+        registry.add("autox.storage.create-bucket-if-missing", () -> true);
     }
 
     @Autowired protected MockMvc mockMvc;

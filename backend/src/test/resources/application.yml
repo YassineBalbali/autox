@@ -42,6 +42,22 @@ autox:
     particulier-active-limit: 2
     professionnel-active-limit: 0
 
+  # Storage endpoint and credentials come from the MinIO container, via
+  # @DynamicPropertySource in AbstractIntegrationTest.
+  images:
+    # 3 rather than 20, so the per-listing cap can be reached in three calls.
+    max-per-listing: 3
+    max-bytes: 10485760
+    allowed-content-types:
+      - image/jpeg
+      - image/png
+    min-dimension: 400
+    variant-max-edge:
+      THUMBNAIL: 320
+      CARD: 800
+      FULL: 1600
+    jpeg-quality: 0.82
+
 logging:
   level:
     com.autox: INFO

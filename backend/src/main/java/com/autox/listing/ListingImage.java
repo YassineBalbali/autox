@@ -75,6 +75,34 @@ public class ListingImage extends CreatedEntity {
     protected ListingImage() {
     }
 
+    /**
+     * An upload slot. The row exists before the bytes do, so the id can be embedded in the
+     * storage key and the confirm call needs to carry nothing but that id.
+     */
+    public static ListingImage pending(Listing listing, short position, String storageKey,
+                                       String originalFilename, String contentType, Long declaredByteSize,
+                                       Instant uploadExpiresAt) {
+        ListingImage image = new ListingImage();
+        image.setId(com.autox.common.UuidV7.generate());
+        image.listing = listing;
+        image.position = position;
+        image.status = ImageStatus.PENDING;
+        image.storageKey = storageKey;
+        image.originalFilename = originalFilename;
+        image.contentType = contentType;
+        image.byteSize = declaredByteSize;
+        image.uploadExpiresAt = uploadExpiresAt;
+        return image;
+    }
+
+    /** Every storage key belonging to this image: the original and each rendition. */
+    public java.util.List<String> allStorageKeys() {
+        java.util.List<String> keys = new java.util.ArrayList<>(variants.size() + 1);
+        keys.add(storageKey);
+        variants.forEach(variant -> keys.add(variant.getStorageKey()));
+        return keys;
+    }
+
     public Listing getListing() {
         return listing;
     }
