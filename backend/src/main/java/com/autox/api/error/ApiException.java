@@ -139,6 +139,18 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.CONFLICT, ErrorCode.UPLOAD_NOT_FOUND, detail);
     }
 
+    /**
+     * 409: publication blocked by the listing's current state. The code is specific so the
+     * frontend can point at the photo step rather than showing a generic failure.
+     */
+    public static ApiException photoRequired(String detail) {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.PHOTO_REQUIRED, detail);
+    }
+
+    public static ApiException invalidCursor(String detail) {
+        return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_CURSOR, detail);
+    }
+
     public static ApiException forbidden(String detail) {
         return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN, detail);
     }

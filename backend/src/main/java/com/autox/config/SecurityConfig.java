@@ -56,6 +56,12 @@ public class SecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout").permitAll()
+                        // The seller's own views stay private. Declared before the public
+                        // rule below, which would otherwise match /listings/mine as an id.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/listings/mine", "/api/v1/listings/mine/**")
+                            .authenticated()
+                        // The shop window: searchable and linkable without an account.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/*").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

@@ -70,8 +70,15 @@ public class ListingController {
                 summary -> summary);
     }
 
-    @GetMapping("/{id}")
-    public ListingResponse get(@AuthenticationPrincipal Jwt token, @PathVariable UUID id) {
+    /**
+     * The seller's own view: full detail in any state, including drafts.
+     *
+     * <p>Under {@code /mine/} rather than at {@code /listings/{id}} because that path is now the
+     * public detail endpoint, and one path returning two different shapes depending on who is
+     * asking makes for a contract no typed client can rely on.
+     */
+    @GetMapping("/mine/{id}")
+    public ListingResponse getOwn(@AuthenticationPrincipal Jwt token, @PathVariable UUID id) {
         return listingService.get(CurrentUser.id(token), CurrentUser.isAdmin(token), id);
     }
 

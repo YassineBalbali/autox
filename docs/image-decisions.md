@@ -32,8 +32,15 @@ server, from a registry that serves it. Two consequences:
   a local development container, and it is not how production storage will work.
 - It ships `mc` but **no curl or wget**, so the healthcheck uses `mc ready local`.
 - `:latest` is a moving tag. Chainguard's free tier does not publish version tags, so this
-  cannot be pinned. **If you want reproducibility here, the alternatives are a MinIO
-  registry login, or LocalStack's S3 (public, Testcontainers-supported) for the same role.**
+  cannot be pinned by tag.
+
+> **⚠ To pin before anyone else works on this repo.** Your call was to accept the moving tag
+> while this is dev-only, which is right, but it means two developers can get different MinIO
+> builds and a CI run can break with no commit behind it. Two ways to fix it when that matters:
+> pin by digest (`chainguard/minio@sha256:…`, which does not move even though the tag does), or
+> swap the container for LocalStack's S3, which publishes stable version tags. Neither changes
+> a line of application code — both are an image reference in `docker-compose.yml` and in
+> `AbstractIntegrationTest`.
 
 ## 2. How the three-step handshake is made safe
 
@@ -115,14 +122,28 @@ under a client. Both behaviours are tested, including that confirmed photos are 
   listing with ten photos was one query for the images plus ten for their variants.
 - **`ObjectStorage` is five methods wide** and mentions no vendor type. One
   implementation covers MinIO, R2, Scaleway and AWS, because they share the protocol.
-- **Publishing still does not require a photo.** Now that uploads exist, this is the moment
-  that check becomes reasonable — a listing with no photos is close to worthless. It is a
-  one-line precondition in `ListingService.publish`. **Your call.**
+- **Publishing requires at least one READY photo**, at your call. A pending upload does not
+  count, and the refusal is a 409 with code `PHOTO_REQUIRED` so the frontend can send the
+  seller back to the photo step rather than showing a generic failure.
 - **No virus scanning and no image moderation.** A seller can upload anything decodable as an
   image. For a marketplace with public listings that is a real moderation surface, and it
   belongs with the admin moderation work.
-- **No EXIF stripping.** Phone photos carry GPS coordinates, and we re-encode through
-  `ImageIO`, which discards metadata as a side effect — so variants are clean, but the
-  **original is stored as uploaded, with its EXIF intact**. The original is never served by
-  the API, so this is not a leak today. It becomes one the moment anything serves originals.
-  I would strip it on confirmation; flagging rather than assuming.
+- **EXIF is stripped at confirmation, originals included**, at your call. Verified against a
+  real EXIF JPEG: a GPS string present in the uploaded file is absent from the object fetched
+  back out of storage.
+
+  The part worth knowing is **orientation**. Cameras write the sensor's pixels unrotated and
+  record "turn this 90°" as an EXIF tag, so removing the tag without acting on it lays every
+  portrait photo on its side. So the tag is read first, the rotation is applied to the pixels,
+  and only then is the metadata discarded. Which forces two paths:
+
+  - **Upright photo** — metadata segments are dropped and the compressed scan data is copied
+    verbatim. Lossless; a test asserts the last 2 KB are byte-identical to the upload.
+  - **Rotated photo** — the rotation has to be baked in, so the original is re-encoded, at
+    quality 0.95 since that copy is what any future re-processing starts from.
+
+  This cost a bug: `AffineTransformOp.filter` refuses to write a JPEG's native colour model
+  into an `INT_RGB` destination, which only showed up on the live run because every earlier
+  image test generated files with no EXIF at all, so the orientation path was never executed.
+  Now covered by `ImageMetadataIntegrationTest`, which builds a JPEG with a genuine APP1
+  segment.

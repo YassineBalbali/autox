@@ -52,6 +52,12 @@ public class ListingImageService {
 
     private static final Logger log = LoggerFactory.getLogger(ListingImageService.class);
 
+    /**
+     * Higher than the variant quality: this copy is the archive every future rendition would
+     * be derived from, so it should not accumulate compression artefacts.
+     */
+    private static final float ORIGINAL_REENCODE_QUALITY = 0.95f;
+
     private final ListingAccessGuard accessGuard;
     private final ListingImageRepository images;
     private final ObjectStorage storage;
@@ -165,6 +171,12 @@ public class ListingImageService {
             throw ApiException.unsupportedImageType(notAnImage.getMessage());
         }
 
+        // Orientation is read before anything is discarded: the tag has to be acted on, or
+        // stripping it would leave every portrait photo lying on its side.
+        int orientation = ImageMetadata.readJpegOrientation(content);
+        decoded = ImageMetadata.applyOrientation(decoded, orientation);
+        content = rewriteStoredOriginal(image, content, decoded, orientation, stored.contentType());
+
         if (Math.min(decoded.getWidth(), decoded.getHeight()) < imageProperties.minDimension()) {
             fail(image);
             storage.delete(image.getStorageKey());
@@ -187,7 +199,8 @@ public class ListingImageService {
 
         image.setWidth(decoded.getWidth());
         image.setHeight(decoded.getHeight());
-        image.setByteSize(stored.byteSize());
+        // The size and checksum of what is now stored, not of what was uploaded.
+        image.setByteSize((long) content.length);
         image.setChecksumSha256(sha256(content));
         image.setUploadedAt(Instant.now());
         image.setStatus(ImageStatus.READY);
@@ -312,6 +325,52 @@ public class ListingImageService {
     }
 
     // --- helpers ----------------------------------------------------------
+
+    /**
+     * Replaces the stored original with a copy carrying no metadata, and returns the bytes
+     * that are now in storage.
+     *
+     * <p>Two paths, and the difference matters:
+     * <ul>
+     *   <li><b>Upright already</b> — the metadata segments are removed without touching the
+     *       compressed image data. Byte-identical pixels, no generational loss.</li>
+     *   <li><b>Rotated</b> — the orientation tag is being discarded, so the rotation has to be
+     *       baked into the pixels, which means re-encoding. Done at a high quality setting,
+     *       since this copy is the one any future re-processing starts from.</li>
+     * </ul>
+     *
+     * <p>A failure here is logged and swallowed: the gallery is already correct, and keeping an
+     * original with EXIF is better than failing an upload the seller has already completed.
+     * The condition is reported so it can be found again.
+     */
+    private byte[] rewriteStoredOriginal(ListingImage image, byte[] uploaded, BufferedImage upright,
+                                         int orientation, String contentType) {
+        try {
+            byte[] sanitised;
+            String storedType;
+
+            if (orientation != ImageMetadata.ORIENTATION_NORMAL) {
+                sanitised = resizer.encodeJpeg(upright, ORIGINAL_REENCODE_QUALITY);
+                storedType = "image/jpeg";
+            } else {
+                sanitised = ImageMetadata.strip(uploaded);
+                storedType = contentType == null ? image.getContentType() : contentType;
+                if (sanitised.length == uploaded.length) {
+                    // Nothing to remove; leave the object exactly as uploaded.
+                    return uploaded;
+                }
+            }
+
+            storage.write(image.getStorageKey(), sanitised, storedType);
+            log.debug("Stored original for image {} sanitised: {} -> {} bytes (orientation {})",
+                    image.getId(), uploaded.length, sanitised.length, orientation);
+            return sanitised;
+        } catch (RuntimeException e) {
+            log.warn("Could not strip metadata from the original of image {}; it is stored as uploaded: {}",
+                    image.getId(), e.getMessage());
+            return uploaded;
+        }
+    }
 
     private void renumber(UUID listingId) {
         List<ListingImage> remaining = images.findByListing(listingId);

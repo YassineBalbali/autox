@@ -47,6 +47,11 @@ public enum ErrorCode {
     TOO_MANY_IMAGES,
     /** Confirmation arrived but storage holds nothing at that key. */
     UPLOAD_NOT_FOUND,
+    /** Publication attempted with no confirmed photo. */
+    PHOTO_REQUIRED,
+
+    /** The pagination cursor is malformed, or belongs to a different sort order. */
+    INVALID_CURSOR,
 
     INTERNAL_ERROR
 }

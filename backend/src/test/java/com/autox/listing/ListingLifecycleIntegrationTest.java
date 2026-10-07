@@ -83,6 +83,47 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
+    @Test
+    @DisplayName("publishing without a photo is refused, with a code the frontend can act on")
+    void publishRequiresAPhoto() throws Exception {
+        JsonNode seller = register(uniqueEmail("photoless"), UserRole.PARTICULIER);
+        String id = createListingWithoutPhoto(seller);
+
+        mockMvc.perform(post("/api/v1/listings/" + id + "/publish")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PHOTO_REQUIRED"));
+
+        assertThat(listings.findActiveById(UUID.fromString(id)).orElseThrow().getStatus())
+                .isEqualTo(ListingStatus.DRAFT);
+
+        // With a photo, the same call succeeds.
+        attachReadyPhoto(id);
+        mockMvc.perform(post("/api/v1/listings/" + id + "/publish")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("a pending upload does not count as a photo")
+    void pendingUploadDoesNotSatisfyThePhotoRequirement() throws Exception {
+        JsonNode seller = register(uniqueEmail("pending-only"), UserRole.PARTICULIER);
+        String id = createListingWithoutPhoto(seller);
+
+        mockMvc.perform(post("/api/v1/listings/" + id + "/images")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "filename", "later.jpg", "contentType", "image/jpeg", "byteSize", 5000))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/listings/" + id + "/publish")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PHOTO_REQUIRED"));
+    }
+
     // --- invalid transitions ----------------------------------------------
 
     @Test
@@ -284,7 +325,7 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/v1/listings/" + id + "/sold")
                 .header(HttpHeaders.AUTHORIZATION, bearer(seller))).andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/v1/listings/" + id).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+        mockMvc.perform(get("/api/v1/listings/mine/" + id).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SOLD"));
 
@@ -438,7 +479,7 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
 
         String auth = bearer(intruder);
         // 404 rather than 403 throughout: a 403 would confirm the id exists.
-        mockMvc.perform(get("/api/v1/listings/" + id).header(HttpHeaders.AUTHORIZATION, auth))
+        mockMvc.perform(get("/api/v1/listings/mine/" + id).header(HttpHeaders.AUTHORIZATION, auth))
                 .andExpect(status().isNotFound());
         mockMvc.perform(patch("/api/v1/listings/" + id)
                         .header(HttpHeaders.AUTHORIZATION, auth)
@@ -464,7 +505,7 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
         createUser(uniqueEmail("listing-admin"), UserRole.ADMIN, UserStatus.ACTIVE);
         JsonNode admin = loginAsOnlyAdmin();
 
-        mockMvc.perform(get("/api/v1/listings/" + id).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+        mockMvc.perform(get("/api/v1/listings/mine/" + id).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/v1/listings/" + id + "/publish")
                         .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
@@ -495,7 +536,17 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
 
     // --- helpers -----------------------------------------------------------
 
+    /**
+     * A listing that is ready to publish. Publication requires a confirmed photo, and these
+     * tests are about the lifecycle rather than about photos, so one is attached up front.
+     */
     private String createListing(JsonNode session) throws Exception {
+        String id = createListingWithoutPhoto(session);
+        attachReadyPhoto(id);
+        return id;
+    }
+
+    private String createListingWithoutPhoto(JsonNode session) throws Exception {
         String body = mockMvc.perform(post("/api/v1/listings")
                         .header(HttpHeaders.AUTHORIZATION, bearer(session))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -505,7 +556,9 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
         return objectMapper.readTree(body).get("id").asText();
     }
 
+    /** Publication requires a confirmed photo, so one is attached first. */
     private void publish(JsonNode session, String listingId) throws Exception {
+        attachReadyPhoto(listingId);
         mockMvc.perform(post("/api/v1/listings/" + listingId + "/publish")
                         .header(HttpHeaders.AUTHORIZATION, bearer(session)))
                 .andExpect(status().isOk());

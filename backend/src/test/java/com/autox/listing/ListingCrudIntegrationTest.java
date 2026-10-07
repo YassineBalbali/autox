@@ -361,7 +361,7 @@ class ListingCrudIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(delete("/api/v1/listings/" + id).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/v1/listings/" + id).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+        mockMvc.perform(get("/api/v1/listings/mine/" + id).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
                 .andExpect(status().isNotFound());
 
         mockMvc.perform(get("/api/v1/listings/mine").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
