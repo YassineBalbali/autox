@@ -110,6 +110,35 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.CONFLICT, ErrorCode.ACTIVE_LISTING_LIMIT_REACHED, detail);
     }
 
+    // --- Images -----------------------------------------------------------
+
+    /** 415: the format is the problem, not the request's shape. */
+    public static ApiException unsupportedImageType(String detail) {
+        return new ApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ErrorCode.UNSUPPORTED_IMAGE_TYPE, detail);
+    }
+
+    /** 413, the status whose entire purpose is this case. */
+    public static ApiException imageTooLarge(String detail) {
+        return new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, ErrorCode.IMAGE_TOO_LARGE, detail);
+    }
+
+    public static ApiException imageTooSmall(String detail) {
+        return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.IMAGE_TOO_SMALL, detail);
+    }
+
+    /** 409: a limit on current state, which deleting a photo resolves. */
+    public static ApiException tooManyImages(String detail) {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.TOO_MANY_IMAGES, detail);
+    }
+
+    /**
+     * 409 rather than 404: the image record exists, the bytes do not. A 404 would suggest the
+     * id was wrong, sending a client to re-request a slot it already has.
+     */
+    public static ApiException uploadNotFound(String detail) {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.UPLOAD_NOT_FOUND, detail);
+    }
+
     public static ApiException forbidden(String detail) {
         return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN, detail);
     }

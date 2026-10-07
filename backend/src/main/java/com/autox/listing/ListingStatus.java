@@ -18,9 +18,9 @@ import java.util.Set;
  * <pre>
  *   DRAFT ──publish──▶ ACTIVE ──unpublish──▶ PAUSED ──publish──▶ ACTIVE
  *                        │                     │
- *                        ├──▶ SOLD             └──▶ REMOVED
+ *                        ├──▶ SOLD ◀───sold────┘
  *                        ├──▶ EXPIRED ──renew──▶ ACTIVE
- *                        └──▶ REMOVED ──reinstate──▶ ACTIVE  (admin)
+ *                        └──▶ REMOVED  (terminal, see below)
  * </pre>
  */
 public enum ListingStatus {
@@ -57,8 +57,12 @@ public enum ListingStatus {
         // Sold is kept for the record, and can only be withdrawn.
         allowed.put(SOLD, EnumSet.of(REMOVED));
         allowed.put(EXPIRED, EnumSet.of(ACTIVE, REMOVED));
-        // Reinstatement after a takedown is an admin action.
-        allowed.put(REMOVED, EnumSet.of(ACTIVE));
+        // Terminal for now. Reinstatement after an admin takedown becomes legal when the
+        // moderation endpoints land, together with the split that makes it reachable:
+        // a seller delete sets deleted_at (permanent), an admin takedown sets REMOVED
+        // alone (reversible). Until then this table does not promise a move the API
+        // cannot make.
+        allowed.put(REMOVED, EnumSet.noneOf(ListingStatus.class));
 
         allowed.replaceAll((status, targets) -> Collections.unmodifiableSet(targets));
         return Collections.unmodifiableMap(allowed);

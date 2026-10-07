@@ -94,6 +94,15 @@ public class ListingController {
         return listingService.unpublish(CurrentUser.id(token), CurrentUser.isAdmin(token), id);
     }
 
+    /**
+     * ACTIVE or PAUSED to SOLD, recording the outcome. Seller only; a sold listing stays
+     * visible to its owner and drops out of public search.
+     */
+    @PostMapping("/{id}/sold")
+    public ListingResponse markSold(@AuthenticationPrincipal Jwt token, @PathVariable UUID id) {
+        return listingService.markSold(CurrentUser.id(token), CurrentUser.isAdmin(token), id);
+    }
+
     /** Extends the expiry window, and revives an expired listing. */
     @PostMapping("/{id}/renew")
     public ListingResponse renew(@AuthenticationPrincipal Jwt token, @PathVariable UUID id) {

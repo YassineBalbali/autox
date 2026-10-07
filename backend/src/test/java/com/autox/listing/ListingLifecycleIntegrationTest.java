@@ -160,9 +160,8 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
         assertThat(ListingStatus.SOLD.canTransitionTo(ListingStatus.ACTIVE)).isFalse();
         assertThat(ListingStatus.SOLD.canTransitionTo(ListingStatus.REMOVED)).isTrue();
 
-        // Reinstatement after a takedown is the one way back from REMOVED.
-        assertThat(ListingStatus.REMOVED.canTransitionTo(ListingStatus.ACTIVE)).isTrue();
-        assertThat(ListingStatus.REMOVED.canTransitionTo(ListingStatus.PAUSED)).isFalse();
+        // REMOVED is terminal until the moderation endpoints make reinstatement reachable.
+        assertThat(ListingStatus.REMOVED.allowedTargets()).isEmpty();
 
         assertThat(ListingStatus.ACTIVE.canTransitionTo(null)).isFalse();
     }
@@ -229,6 +228,101 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
                 .isEqualTo(ListingStatus.DRAFT);
         assertThat(listings.findActiveById(UUID.fromString(paused)).orElseThrow().getStatus())
                 .isEqualTo(ListingStatus.PAUSED);
+    }
+
+    // --- sold --------------------------------------------------------------
+
+    @Test
+    @DisplayName("the seller can mark a live listing sold, and sold_at is recorded")
+    void sellerCanMarkSold() throws Exception {
+        JsonNode seller = register(uniqueEmail("sold-seller"), UserRole.PARTICULIER);
+        String id = createListing(seller);
+        publish(seller, id);
+
+        mockMvc.perform(post("/api/v1/listings/" + id + "/sold")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SOLD"))
+                .andExpect(jsonPath("$.soldAt").isNotEmpty());
+
+        assertThat(listings.findActiveById(UUID.fromString(id)).orElseThrow().getSoldAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("a paused listing can also be marked sold")
+    void pausedCanBeMarkedSold() throws Exception {
+        JsonNode seller = register(uniqueEmail("sold-paused"), UserRole.PARTICULIER);
+        String id = createListing(seller);
+        publish(seller, id);
+        mockMvc.perform(post("/api/v1/listings/" + id + "/unpublish")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller))).andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/listings/" + id + "/sold")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SOLD"));
+    }
+
+    @Test
+    @DisplayName("a draft cannot be sold")
+    void draftCannotBeSold() throws Exception {
+        JsonNode seller = register(uniqueEmail("sold-draft"), UserRole.PARTICULIER);
+
+        mockMvc.perform(post("/api/v1/listings/" + createListing(seller) + "/sold")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(
+                        org.hamcrest.Matchers.containsString("Cannot move a listing from DRAFT to SOLD")));
+    }
+
+    @Test
+    @DisplayName("a sold listing stays readable by its owner and frees a quota slot")
+    void soldListingRemainsVisibleToItsOwner() throws Exception {
+        JsonNode seller = register(uniqueEmail("sold-visible"), UserRole.PARTICULIER);
+        String id = createListing(seller);
+        publish(seller, id);
+        mockMvc.perform(post("/api/v1/listings/" + id + "/sold")
+                .header(HttpHeaders.AUTHORIZATION, bearer(seller))).andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/listings/" + id).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SOLD"));
+
+        // SOLD does not occupy a slot, so the cap is free again.
+        assertThat(ListingStatus.SOLD.occupiesQuota()).isFalse();
+        for (int i = 0; i < listingProperties.particulierActiveLimit(); i++) {
+            publish(seller, createListing(seller));
+        }
+    }
+
+    @Test
+    @DisplayName("an admin cannot assert a sale on the seller's behalf")
+    void adminCannotMarkSold() throws Exception {
+        JsonNode seller = register(uniqueEmail("sold-not-admin"), UserRole.PARTICULIER);
+        String id = createListing(seller);
+        publish(seller, id);
+
+        createUser(uniqueEmail("sold-admin"), UserRole.ADMIN, UserStatus.ACTIVE);
+        JsonNode admin = loginAsOnlyAdmin();
+
+        mockMvc.perform(post("/api/v1/listings/" + id + "/sold")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+                .andExpect(jsonPath("$.detail").value("Only the seller can mark a listing as sold."));
+    }
+
+    @Test
+    @DisplayName("another seller cannot mark someone's listing sold")
+    void strangerCannotMarkSold() throws Exception {
+        JsonNode seller = register(uniqueEmail("sold-owner"), UserRole.PARTICULIER);
+        JsonNode stranger = register(uniqueEmail("sold-stranger"), UserRole.PARTICULIER);
+        String id = createListing(seller);
+        publish(seller, id);
+
+        mockMvc.perform(post("/api/v1/listings/" + id + "/sold")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(stranger)))
+                .andExpect(status().isNotFound());
     }
 
     // --- active listing cap ------------------------------------------------

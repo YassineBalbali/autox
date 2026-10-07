@@ -63,6 +63,9 @@ public class ListingService {
     private final VehicleTrimRepository trims;
     private final VehicleFeatureRepository features;
     private final ListingProperties properties;
+    private final ListingAccessGuard accessGuard;
+    private final ListingImageRepository images;
+    private final com.autox.storage.ObjectStorage storage;
 
     public ListingService(ListingRepository listings,
                           AppUserRepository users,
@@ -73,7 +76,10 @@ public class ListingService {
                           VehicleModelRepository models,
                           VehicleTrimRepository trims,
                           VehicleFeatureRepository features,
-                          ListingProperties properties) {
+                          ListingProperties properties,
+                          ListingAccessGuard accessGuard,
+                          ListingImageRepository images,
+                          com.autox.storage.ObjectStorage storage) {
         this.listings = listings;
         this.users = users;
         this.currencies = currencies;
@@ -84,13 +90,27 @@ public class ListingService {
         this.trims = trims;
         this.features = features;
         this.properties = properties;
+        this.accessGuard = accessGuard;
+        this.images = images;
+        this.storage = storage;
+    }
+
+    /**
+     * Builds the response, attaching the gallery. Every write path returns through here so a
+     * client never has to make a second call to find out what the listing now looks like.
+     */
+    private ListingResponse respond(Listing listing) {
+        List<com.autox.listing.dto.ImageResponse> gallery = images.findReadyByListing(listing.getId()).stream()
+                .map(image -> com.autox.listing.dto.ImageResponse.from(image, storage::readUrl))
+                .toList();
+        return ListingResponse.from(listing, gallery);
     }
 
     // --- reads ------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public ListingResponse get(UUID callerId, boolean admin, UUID listingId) {
-        return ListingResponse.from(loadAccessible(callerId, admin, listingId));
+        return respond(loadAccessible(callerId, admin, listingId));
     }
 
     @Transactional(readOnly = true)
@@ -155,7 +175,7 @@ public class ListingService {
 
         listings.save(listing);
         log.info("Listing {} created as DRAFT by {}", listing.getId(), callerId);
-        return ListingResponse.from(listing);
+        return respond(listing);
     }
 
     @Transactional
@@ -282,7 +302,7 @@ public class ListingService {
             replaceFeatures(listing, request.featureCodes());
         }
 
-        return ListingResponse.from(listing);
+        return respond(listing);
     }
 
     /**
@@ -303,7 +323,35 @@ public class ListingService {
         listing.setStatus(ListingStatus.ACTIVE);
 
         log.info("Listing {} published until {}", listing.getId(), listing.getExpiresAt());
-        return ListingResponse.from(listing);
+        return respond(listing);
+    }
+
+    /**
+     * Records that the vehicle sold. The seller only — an admin may remove a listing but
+     * cannot assert an outcome on someone's behalf.
+     *
+     * <p>This exists so that a sale is recorded as a sale. Without it sellers delete the
+     * listing instead, and the outcome — what actually changed hands, at what price — is
+     * exactly the data that makes price estimation possible later.
+     *
+     * <p>A sold listing stays readable by its owner and leaves public search by virtue of
+     * no longer being ACTIVE, which is the condition every search index is built on.
+     */
+    @Transactional
+    public ListingResponse markSold(UUID callerId, boolean admin, UUID listingId) {
+        Listing listing = loadAccessible(callerId, admin, listingId);
+
+        if (!listing.getSeller().getId().equals(callerId)) {
+            // The caller is an admin: they can see it, so 403 reveals nothing new.
+            throw ApiException.forbidden("Only the seller can mark a listing as sold.");
+        }
+
+        requireTransition(listing, ListingStatus.SOLD);
+        listing.setStatus(ListingStatus.SOLD);
+        listing.setSoldAt(Instant.now());
+
+        log.info("Listing {} marked sold", listing.getId());
+        return respond(listing);
     }
 
     /** Hides a live listing without ending it. Frees the seller's quota slot. */
@@ -312,7 +360,7 @@ public class ListingService {
         Listing listing = loadAccessible(callerId, admin, listingId);
         requireTransition(listing, ListingStatus.PAUSED);
         listing.setStatus(ListingStatus.PAUSED);
-        return ListingResponse.from(listing);
+        return respond(listing);
     }
 
     /**
@@ -337,7 +385,7 @@ public class ListingService {
         // Measured from now, not from the old expiry, so renewing early is not punished
         // and renewing late does not back-date the window.
         listing.setExpiresAt(Instant.now().plus(properties.expiry()));
-        return ListingResponse.from(listing);
+        return respond(listing);
     }
 
     /**
@@ -367,15 +415,7 @@ public class ListingService {
     // --- rules ------------------------------------------------------------
 
     private Listing loadAccessible(UUID callerId, boolean admin, UUID listingId) {
-        Listing listing = listings.findActiveById(listingId)
-                .orElseThrow(() -> ApiException.notFound("Listing"));
-
-        if (!admin && !listing.getSeller().getId().equals(callerId)) {
-            // Not 403: distinguishing "exists but is not yours" from "does not exist"
-            // lets anyone enumerate listing ids.
-            throw ApiException.notFound("Listing");
-        }
-        return listing;
+        return accessGuard.require(callerId, admin, listingId);
     }
 
     private void requireTransition(Listing listing, ListingStatus target) {

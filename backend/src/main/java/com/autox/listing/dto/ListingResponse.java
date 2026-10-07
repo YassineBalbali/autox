@@ -60,6 +60,9 @@ public record ListingResponse(
 
         List<String> featureCodes,
 
+        /** Ready photos in gallery order; the first is the cover. */
+        List<ImageResponse> images,
+
         long viewCount,
         Instant publishedAt,
         Instant expiresAt,
@@ -67,7 +70,7 @@ public record ListingResponse(
         Instant createdAt,
         Instant updatedAt) {
 
-    public static ListingResponse from(Listing listing) {
+    public static ListingResponse from(Listing listing, List<ImageResponse> images) {
         return new ListingResponse(
                 listing.getId(),
                 listing.getSeller().getId(),
@@ -96,6 +99,7 @@ public record ListingResponse(
                 listing.getEmissionClass(),
                 listing.getVin(),
                 listing.getFeatures().stream().map(VehicleFeature::getCode).sorted().toList(),
+                images == null ? List.of() : images,
                 listing.getViewCount(),
                 listing.getPublishedAt(),
                 listing.getExpiresAt(),
