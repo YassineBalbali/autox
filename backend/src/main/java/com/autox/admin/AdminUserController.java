@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Guarded twice on purpose: by path in {@code SecurityConfig} and by
  * {@code @PreAuthorize} here, so moving the controller cannot silently unguard it.
  */
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Admin", description = "Moderation. Requires the ADMIN role.")
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/v1/admin/users")
 @Validated
@@ -38,6 +40,13 @@ public class AdminUserController {
         this.users = users;
     }
 
+    /**
+     * Accounts, newest first, optionally filtered by role. Paginated by page number rather
+     * than by cursor: this is an operator tool over a slowly growing table, where jumping to
+     * a page is worth more than the consistency a cursor gives.
+     *
+     * <p>Closed accounts are excluded. Password hashes are never included.
+     */
     @GetMapping
     @Transactional(readOnly = true)
     public PageResponse<UserSummary> list(

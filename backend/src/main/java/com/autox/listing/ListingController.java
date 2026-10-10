@@ -35,6 +35,8 @@ import org.springframework.web.bind.annotation.RestController;
  * because that is what makes the transition rules unbypassable: there is no request shape
  * that can set a status directly.
  */
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Listings (seller)", description = "Creating and managing your own listings. Requires authentication.")
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/v1/listings")
 @Validated
@@ -82,6 +84,13 @@ public class ListingController {
         return listingService.get(CurrentUser.id(token), CurrentUser.isAdmin(token), id);
     }
 
+    /**
+     * Partial update of a listing the caller owns. Only the fields present in the body change.
+     *
+     * <p>{@code status} is not among them: state changes go through their own endpoints, which
+     * is what makes the transition rules unbypassable. Editing an ACTIVE listing is allowed and
+     * keeps it live.
+     */
     @PatchMapping("/{id}")
     public ListingResponse update(@AuthenticationPrincipal Jwt token,
                                   @PathVariable UUID id,

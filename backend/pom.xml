@@ -20,6 +20,8 @@
     <properties>
         <java.version>21</java.version>
         <awssdk.version>2.55.12</awssdk.version>
+        <springdoc.version>2.8.9</springdoc.version>
+        <therapi.version>0.15.0</therapi.version>
     </properties>
 
     <dependencyManagement>
@@ -70,6 +72,24 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>apache-client</artifactId>
+        </dependency>
+
+        <!-- OpenAPI, generated from the controllers and bean-validation annotations rather
+             than hand-written, so the spec cannot drift from the code it describes. Serves
+             /v3/api-docs and a Swagger UI at /swagger-ui.html. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+        <!-- Makes the Javadoc already on the controllers and DTOs readable at runtime, so
+             springdoc uses it for summaries and schema descriptions. The alternative is a
+             second copy of every explanation inside @Operation and @Schema annotations,
+             which is exactly the kind of duplication that goes stale. -->
+        <dependency>
+            <groupId>com.github.therapi</groupId>
+            <artifactId>therapi-runtime-javadoc</artifactId>
+            <version>${therapi.version}</version>
         </dependency>
 
         <dependency>
@@ -125,6 +145,21 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Records the Javadoc into the class files for therapi to read back. Without
+                 this processor the dependency above is inert and the spec loses its prose. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.github.therapi</groupId>
+                            <artifactId>therapi-runtime-javadoc-scribe</artifactId>
+                            <version>${therapi.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
             </plugin>
         </plugins>
     </build>

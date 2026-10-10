@@ -161,21 +161,17 @@ exposed; only `countryCode` is. `currency.symbol` is never exposed either.
 and `Accept-Language` is ignored. A test asserts two requests differing only in
 `Accept-Language` return byte-identical bodies.
 
-### One gap the frontend will hit
+### One gap the frontend would have hit — now closed
 
-**Nothing exposes the valid values of those enums, or the equipment vocabulary.** Angular can
-hardcode the fuel types, but the ~34 feature codes and their categories live in the database,
-and hardcoding those in the frontend guarantees they drift. A small set of reference endpoints
-would fix it:
+**Nothing exposed the valid values of those enums, or the equipment vocabulary**, so Angular
+would have had to hardcode both. The ~34 feature codes live in the database and a migration can
+add one, which means a hardcoded copy drifts *silently* — the new equipment simply never
+appears in the form.
 
-```
-GET /api/v1/reference/features      → code, category, displayOrder  (+ the seeded labels)
-GET /api/v1/reference/countries     → enabled markets
-GET /api/v1/reference/enums         → the constant lists, for dropdowns
-```
-
-Not in this task's scope. It belongs with the frontend work, and it is the one thing the
-Angular app cannot build without either an endpoint or duplicated constants.
+Built in the following task as five reference endpoints under `/api/v1/reference`, with a test
+that reflects over every request and response type and fails if an enum reachable from one is
+not published. See **`docs/reference-decisions.md`**, including why the enums endpoint returns
+values and not labels.
 
 ---
 
@@ -198,6 +194,8 @@ Angular app cannot build without either an endpoint or duplicated constants.
   but cannot match anything until listings carry coordinates, which needs the gazetteer. It is
   wired so that the day the data lands, radius search is a query-parameter change in the
   frontend.
-- **No rate limiting on the public endpoints.** They are unauthenticated and cheap to call in a
-  loop, which makes them the easiest scraping target in the product. The throttle table from
-  the auth work could be reused per IP, but a reverse proxy or CDN is the better place.
+- **Rate limiting on the public endpoints** was missing here and was added in the following
+  task, reusing the login throttle's counter table per IP — `V10` generalises it rather than
+  adding a second mechanism. Still true that a reverse proxy or CDN is the better place for it,
+  and still true that the single-address key is weak against IPv6; both are written up in
+  `docs/reference-decisions.md` and `docs/weaknesses.md`.

@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  * answers 404, including a listing the caller happens to own — the seller's own view of it
  * lives under {@code /api/v1/listings/mine/{id}}.
  */
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Listings (public)", description = "The buyer-facing shop window. No authentication.")
 @RestController
 @RequestMapping("/api/v1/listings")
 @Validated
@@ -35,7 +36,7 @@ public class PublicListingController {
     }
 
     /**
-     * Search.
+     * Search the live listings. Every filter is optional; no filters means everything visible.
      *
      * <p>Paginated by cursor, not by page number: {@code nextCursor} from one response is
      * {@code cursor} in the next. There is no page number and no total, because offset paging
@@ -51,6 +52,15 @@ public class PublicListingController {
         return searchService.search(criteria, sort, cursor, size);
     }
 
+    /**
+     * One listing, as a buyer sees it: full description, equipment codes and the image gallery
+     * in order, each image with its three size variants.
+     *
+     * <p>404 unless the listing is ACTIVE, not rejected, not soft-deleted and not past its
+     * expiry — including when the caller happens to be its owner, who reads it at
+     * {@code /api/v1/listings/mine/{id}} instead. The VIN, the seller's email and the exact
+     * coordinates are not part of this response.
+     */
     @GetMapping("/{id}")
     public PublicListingDetail detail(@PathVariable UUID id) {
         return searchService.detail(id);

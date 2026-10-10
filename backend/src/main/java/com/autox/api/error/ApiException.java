@@ -83,6 +83,16 @@ public class ApiException extends RuntimeException {
                 retryAfterSeconds);
     }
 
+    /**
+     * Too many public read requests from one address. 429 with {@code Retry-After}, so a
+     * well-behaved client backs off for exactly as long as it needs to rather than hammering.
+     */
+    public static ApiException rateLimited(long retryAfterSeconds) {
+        return new ApiException(HttpStatus.TOO_MANY_REQUESTS, ErrorCode.RATE_LIMITED,
+                "Too many requests. Try again in " + retryAfterSeconds + " seconds.",
+                retryAfterSeconds);
+    }
+
     public static ApiException invalidToken(String detail) {
         return new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_TOKEN, detail);
     }
