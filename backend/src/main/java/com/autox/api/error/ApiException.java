@@ -93,6 +93,22 @@ public class ApiException extends RuntimeException {
                 retryAfterSeconds);
     }
 
+    public static ApiException currentPasswordIncorrect() {
+        return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.CURRENT_PASSWORD_INCORRECT,
+                "The current password is incorrect.");
+    }
+
+    /**
+     * One answer for every way a reset token can fail — unknown, expired, spent, or
+     * superseded by a newer request. Distinguishing them would tell someone holding a
+     * stolen link which of those it was, and there is nothing a legitimate user does
+     * differently in any of the four cases: ask for a new link.
+     */
+    public static ApiException invalidResetToken() {
+        return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_RESET_TOKEN,
+                "This password reset link is no longer valid. Request a new one.");
+    }
+
     public static ApiException invalidToken(String detail) {
         return new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_TOKEN, detail);
     }

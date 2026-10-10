@@ -78,18 +78,21 @@ the note that nothing blocks them, and where each one attaches.
 | **Messaging** (buyer ↔ seller) | A listing has a stable id and an owner; a conversation table references both. Listings are soft-deleted, so a thread never dangles. Needs its own decisions: notifications, abuse reporting, whether contact details are hidden until contact is made. |
 | **Favourites / saved searches** | A favourite is a user–listing pair. A saved search is this API's own query string, which is already a stable, documented contract — that is worth more than it sounds. |
 | **Subscriptions and payments** | `pro_profile` exists; `app_user.active_listing_limit` already overrides the per-role cap per account, which is the hook a paid tier needs. `professionnel-active-limit: 0` means uncapped today, so introducing tiers is a configuration change plus billing, not a rework. |
-| **AI assistant, price estimation, price history, AutoX Score** | All read-only consumers of listing data. Python/FastAPI alongside, reading the same database or a feed from it. Listing history is **not** currently retained in a form these could learn from — see below. |
+| **AI assistant, price estimation, AutoX Score** | All read-only consumers of listing data. Python/FastAPI alongside, reading the same database or a feed from it. The data they need is now being retained — see below. |
 | **Seller verification, vehicle inspection** | `app_user` carries `email_verified` and `phone_verified` flags, unused. `pro_profile` has the company fields. |
 | **Elasticsearch** | Search is one `ListingSearchRepository`, behind one service. It is SQL today because keyset pagination over an index is genuinely fast and a second datastore is a replication problem. Swap it when relevance ranking, typo tolerance or faceted counts become requirements — all three are reasons PostgreSQL stops being enough, and none is an MVP need. |
 
-**One thing worth flagging about the deferred ML work.** `sold_at` is recorded, which is the
-valuable signal — what sold, at what asking price, after how long. But a listing's price is
-**mutated in place**: a seller dropping from €19,000 to €17,500 leaves no record that the first
-price existed. Price history is the main input to a price-estimation model, and every day
-without it is data that cannot be recovered later. A `listing_price_history` row written on
-change is a small table and a trigger or a service-layer append. **It is cheap now and
-impossible retroactively** — worth deciding on before the frontend starts creating real
-listings.
+**The data the deferred ML work needs is now being retained.** `sold_at` records the valuable
+signal — what sold, at what asking price, after how long — and as of `V11`
+`listing_price_history` records the rest of it: the price a listing opened at, and every
+change after it. That gap was flagged here as *"cheap now and impossible retroactively"*,
+which is why it was closed before the frontend started creating real listings rather than
+left on this list.
+
+It is deliberately **not exposed by any endpoint**. It is an input to a model, not a feature;
+turning it into one is a product decision. Draft edits before first publication are not
+recorded, because a seller typing three numbers into a form is not a market signal — the
+reasoning is in `docs/account-and-correctness-decisions.md`.
 
 ---
 
@@ -117,17 +120,21 @@ listings that is the gap with real legal exposure, not merely a missing feature.
 Endpoints needed: approve, reject with a reason, take down, reinstate, and a moderation queue
 (cursor-paginated, like search).
 
-### Account lifecycle
+### Account lifecycle — mostly built
 
-| Missing | Consequence |
+| Was missing | Now |
 |---|---|
-| **Password change** | A signed-in user cannot change their own password. |
-| **Password reset** | A user who forgets it cannot recover the account at all. |
-| **Email verification sending** | `email_verified` exists and is never set true. Addresses are unverified, so a seller may be unreachable. |
-| **Session list / sign out everywhere** | `refresh_token` records device label, user agent and IP per session, and family revocation works. Nothing exposes it, so a user who loses a phone cannot end that session. |
+| **Password change** | **Built.** `POST /api/v1/me/password`. Requires the current password; replaces every session and returns a new token pair. |
+| **Password reset** | **Built.** `POST /api/v1/auth/password/forgot` and `/password/reset`. Single-use token, 30-minute TTL, generic response either way. |
+| **Session list / revoke** | **Built.** `GET /api/v1/me/sessions` and `DELETE /api/v1/me/sessions/{id}`. There is no separate "sign out everywhere" — changing the password does it. |
+| **Email verification sending** | **Still missing.** `email_verified` exists and is never set true, so addresses are unverified and a seller may be unreachable. A reset deliberately does not set it either: verification is a flow that does not exist, and inventing half of it inside the password form is how two half-flows end up disagreeing. |
 
-All four need transactional email, which is one provider decision plus a template — the
-reason they are grouped rather than done piecemeal.
+What is left is **a real mail provider**. `EmailSender` is an interface with a logging
+implementation that prints the message — including the reset link — to the console. That makes
+the flow walkable in development and is a credential leak in production; it warns at every
+startup. Add a bean conditional on `autox.mail.provider` and set the property. Email
+templating and localisation go with it: the recipient's locale already travels on every
+`EmailMessage`, and the bodies are English.
 
 ### Content safety on uploads
 
@@ -144,10 +151,14 @@ equal quality — a dependency and a decision, not a line of config.
 
 ### Operational gaps
 
-- **No health or readiness endpoint.** `spring-boot-starter-actuator` is not a dependency.
-  Nothing can tell a load balancer whether this instance is serving.
+- ~~**No health or readiness endpoint.**~~ **Built.** `/actuator/health` plus separate
+  `/liveness` and `/readiness` probes, public, status only. Object storage is deliberately not
+  a health signal: an S3 outage should degrade image upload, not empty the load balancer.
 - **No metrics.** No request rates, no latency percentiles, no visibility into how often the
-  rate limiter or the login throttle fires in production.
+  rate limiter or the login throttle fires in production. The actuator dependency is now
+  present, so this is configuration plus a scrape target — but `management.endpoints.web.exposure.include`
+  is an allow-list of `health` on purpose, and widening it is a decision about what an
+  anonymous caller may see.
 - **No structured logging.** Plain text, so logs are greppable but not queryable, and there is
   no request correlation id except on 500s (`incidentId`).
 - **No CI.** The tests exist and pass; nothing runs them automatically on a push.
@@ -164,8 +175,8 @@ equal quality — a dependency and a decision, not a line of config.
 Nothing below is blocking. Each is a judgement call worth making deliberately rather than by
 default.
 
-1. **Price history** — see the ML note above. The only item here that gets *more* expensive
-   with every day of delay.
+1. ~~**Price history.**~~ **Decided and built** — it was the only item here that got more
+   expensive with every day of delay, which is why it went first. `V11`.
 2. **Total result count.** Search returns no total, because counting an arbitrary filter
    combination is a second full pass on every page. If the design calls for *"1 234 résultats"*
    the answer is a cached approximate count or a search engine, not `COUNT(*)` on the hot path.
@@ -176,9 +187,18 @@ default.
    exchange-rate source.
 4. **Where rate limiting ultimately belongs.** The per-IP limit is in the application and costs
    one database upsert per public read. Fine at MVP volume; a reverse proxy or CDN is the right
-   long-term home. See `docs/reference-decisions.md`.
+   long-term home. The key is now the IPv6 /64 rather than the full address, which closes the
+   worst hole, but `X-Forwarded-For` is still trusted — so a deployment without a proxy that
+   overwrites it has no effective limit at all. See `docs/reference-decisions.md`.
 5. **Enum display labels.** The API publishes enum *values* at `/api/v1/reference/enums` and no
    labels, so the set cannot drift but the French text lives in the Angular translation files.
    The alternative — a translation table per enum, as `vehicle_feature_translation` does for
    equipment — moves that text into a database that is not where anyone wants to edit copy.
    Revisit only if a third client appears, or if non-developers need to change the wording.
+   **Decided:** values server-side, labels in Angular. No translation tables for enums.
+6. **Whether `src/test/resources/application.yml` should be renamed.** It is
+   `application.yml` on the test classpath, so it **replaces** the production file rather than
+   merging with it, and every setting the tests depend on has to be duplicated there — which
+   also means the production file has never been exercised by the suite. Renaming it to
+   `application-test.yml` would make the two merge, and would silently change what 215
+   existing tests run against, so it is not a change to make in passing.

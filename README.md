@@ -3,9 +3,9 @@
 A vehicle marketplace — buying and selling cars — built for the French market first and
 multi-country from the data model up. Competitors are La Centrale, Leboncoin and Mobile.de.
 
-**This repository currently contains the backend only.** The MVP API is complete: accounts,
-listings, photos, public search and the reference vocabularies. The Angular frontend is the
-next piece of work and has not started.
+**This repository currently contains the backend only.** The MVP API is complete: accounts
+with the full password and session lifecycle, listings, photos, public search and the
+reference vocabularies. The Angular frontend is the next piece of work and has not started.
 
 | | |
 |---|---|
@@ -76,6 +76,9 @@ holds a credential.
 ### Check it came up
 
 ```bash
+curl http://localhost:8080/actuator/health
+# {"status":"UP","groups":["liveness","readiness"]}
+
 curl http://localhost:8080/api/v1/reference/countries
 # [{"code":"FR","name":"France","defaultLocale":"fr-FR", ... "currencyMinorUnit":2}]
 ```
@@ -95,7 +98,7 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn test                 # 167 tests, needs Docker running
+mvn test                 # 215 tests, needs Docker running
 ```
 
 Every test is an integration test against a real PostgreSQL and a real S3-compatible store
@@ -114,8 +117,12 @@ Served by the running application:
 | **OpenAPI JSON** | `/v3/api-docs` |
 | **OpenAPI YAML** | `/v3/api-docs.yaml` |
 | **Swagger UI** | `/swagger-ui.html` |
+| **Health** | `/actuator/health`, plus `/actuator/health/liveness` and `/readiness` |
 
-All three are public, because a closed specification on a public API protects nothing. The
+All four are public — the specification because a closed one on a public API protects
+nothing, and health because a load balancer has no account. Health returns a status and
+nothing else, and **it is the only actuator endpoint exposed**: `env`, `configprops`,
+`beans`, `metrics`, `loggers` and `heapdump` are all off, and a test asserts it. The
 document is generated from the controllers and their validation annotations, so it cannot drift
 from the code; the prose comes from the Javadoc already on those methods rather than from a
 second copy inside annotations. A test asserts every mapped endpoint appears in it.
@@ -155,6 +162,28 @@ Then `Authorization: Bearer <accessToken>`.
 Roles: **PARTICULIER** (private seller, free, capped at 5 live listings), **PROFESSIONNEL**
 (dealer, uncapped until subscription tiers exist), **ADMIN**.
 
+### Password and session management
+
+```
+POST   /api/v1/auth/password/forgot  →  202, always, whether or not the address is registered
+POST   /api/v1/auth/password/reset   →  204; single-use token, 30-minute window
+POST   /api/v1/me/password           →  a NEW token pair (see below)
+GET    /api/v1/me/sessions           →  the account's live sessions
+DELETE /api/v1/me/sessions/{id}      →  204; ends that one
+```
+
+Two things a client has to get right:
+
+- **`POST /me/password` ends every session, including the caller's own,** and returns a fresh
+  token pair. Store it: the refresh token the client arrived with no longer works. The server
+  cannot spare "this session" — an access token carries no reference to the refresh family it
+  was issued with.
+- **A reset also ends every session**, so the user signs in again on every device.
+
+**There is no mail provider configured.** `autox.mail.provider=log` writes the email — reset
+link included — to the application log, which is how the flow is usable locally and is a
+credential leak anywhere else. Production needs an `EmailSender` bean and the property set.
+
 ---
 
 ## Environment variables
@@ -186,6 +215,15 @@ Secrets have no defaults, on purpose. Everything else does.
 One interface, five methods, no vendor type: MinIO, Cloudflare R2, Scaleway, Backblaze B2 and
 AWS S3 all speak this protocol, so the provider is configuration rather than code.
 
+### Transactional email
+
+| Variable | Default | Notes |
+|---|---|---|
+| `AUTOX_MAIL_PROVIDER` | `log` | **`log` writes the message to the application log instead of sending it.** That makes the password reset flow walkable locally — the link is in the console — and is a credential leak in production, since anyone who can read the log can take over any account. It warns at every startup. A real provider is an `EmailSender` bean conditional on its own value here. |
+| `AUTOX_MAIL_FROM` | `no-reply@autox.local` | Unused by the logging sender; required by every real one. |
+| `AUTOX_MAIL_FROM_NAME` | `AutoX` | |
+| `AUTOX_PASSWORD_RESET_URL` | `http://localhost:4200/reset-password` | The frontend page that takes the token; the email links to it with `?token=…`. The API cannot guess it — the web app is deployed separately. |
+
 ### Optional
 
 | Variable | Default | Notes |
@@ -211,6 +249,11 @@ the application sees the real client address. **That is only safe if the proxy i
 overwrite the header**: a caller that can set it freely can forge the key the rate limiter
 and the login throttle count against, and sidestep both. Terminate at a proxy you control.
 
+Both throttles key IPv6 on the **/64 prefix**, not the full address — a single connection is
+routinely handed a /64, so keying on the address means an IPv6 caller is never limited at
+all. IPv4 is keyed on the address itself. The full address is still recorded per session for
+the user's own session list; masking applies only to the throttle key.
+
 ---
 
 ## Repository map
@@ -220,15 +263,18 @@ backend/
   src/main/java/com/autox/
     api/          error contract: ApiException, ErrorCode, RFC 9457 handler
     auth/         register, login, refresh, logout; login throttling
-    user/         accounts, profiles, refresh tokens
-    listing/      the seller's listings; state machine; photos (listing/image)
+      password/     change, forgotten-password reset
+    user/         accounts, profiles, refresh tokens, the session list
+    listing/      the seller's listings; state machine; price history; photos (listing/image)
     search/       public search and detail; keyset cursors
     reference/    countries and currencies; the reference endpoints
     catalog/      vehicle make/model/trim, equipment vocabulary
-    throttle/     the shared counter: login throttling and the public rate limit
+    throttle/     the shared counter: login, reset requests, the public rate limit
+    scheduling/   one-instance-at-a-time coordination for the sweepers
+    mail/         the EmailSender interface and its logging stand-in
     storage/      the ObjectStorage interface and its S3 implementation
     config/       security, JWT, MVC, OpenAPI
-  src/main/resources/db/migration/   V1 … V10, Flyway owns the schema
+  src/main/resources/db/migration/   V1 … V12, Flyway owns the schema
   src/test/java/com/autox/           integration tests, Testcontainers
 
 docs/            why things are the way they are — read these before changing them
@@ -247,6 +293,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/image-decisions.md` | The upload handshake, variants, EXIF |
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
+| `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
 
 ---
 
@@ -262,4 +309,11 @@ docs/            why things are the way they are — read these before changing 
 - **A state change recorded before a thrown exception needs its own transaction.** This has
   bitten three times — refresh-token replay, login throttling, image failures — and each fix
   is a named component using `REQUIRES_NEW`. Spring's self-invocation is not proxied, so the
-  separate bean is not optional.
+  separate bean is not optional. The newer throttles avoid the trap by *shape* instead:
+  the service returns a decision and the caller throws, so there is no exception inside the
+  transaction that did the writing.
+- **The test configuration replaces the production configuration, it does not merge with
+  it.** `src/test/resources/application.yml` shadows the main `application.yml` on the
+  classpath. Anything the tests need from production config has to be repeated there — which
+  also means a test asserting configuration-driven behaviour may be asserting a framework
+  default. See the note at the end of `docs/account-and-correctness-decisions.md`.

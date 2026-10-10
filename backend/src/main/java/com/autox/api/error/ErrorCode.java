@@ -23,6 +23,18 @@ public enum ErrorCode {
     /** Refresh token unknown, expired, already rotated or revoked. */
     INVALID_REFRESH_TOKEN,
 
+    /**
+     * The {@code currentPassword} sent to the change-password endpoint is wrong.
+     *
+     * <p>400 and its own code rather than 401 {@link #INVALID_CREDENTIALS}: the caller's
+     * access token is perfectly valid, and a 401 would send a client off to refresh it and
+     * retry instead of telling the user they mistyped.
+     */
+    CURRENT_PASSWORD_INCORRECT,
+
+    /** Reset token unknown, expired, already used, or replaced by a newer request. */
+    INVALID_RESET_TOKEN,
+
     /** Login throttled. Carries {@code retryAfterSeconds} and a {@code Retry-After} header. */
     TOO_MANY_ATTEMPTS,
 
