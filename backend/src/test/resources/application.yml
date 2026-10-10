@@ -36,6 +36,16 @@ autox:
       ip-max-delay: PT2S
       reset-after: PT24H
 
+  # Off by default across the suite. Every test shares one client address (MockMvc always
+  # reports 127.0.0.1), so a suite-wide limit would couple unrelated test classes to each
+  # other's request counts. PublicRateLimitIntegrationTest switches it on for itself.
+  public-api:
+    rate-limit:
+      enabled: false
+      requests-per-window: 300
+      window: PT1M
+      block-for: PT1M
+
   # A cap of 2 keeps the quota tests fast; the production default is 5.
   listing:
     expiry-days: 60

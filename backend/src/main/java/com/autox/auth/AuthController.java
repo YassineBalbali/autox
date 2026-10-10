@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Authentication endpoints. Everything here is callable without credentials, and
  * everything returns the same token shape, so a mobile client has one code path.
  */
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Authentication", description = "Register, sign in, rotate tokens, sign out. No credentials needed to call these.")
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -27,6 +28,13 @@ public class AuthController {
         this.authService = authService;
     }
 
+    /**
+     * Creates an account and signs it in, returning the same token pair as login — so a
+     * client never has to follow registration with a second call.
+     *
+     * <p>{@code role} chooses PARTICULIER or PROFESSIONNEL; a professional must also send
+     * {@code companyName}. ADMIN cannot be self-assigned.
+     */
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request,
                                                  HttpServletRequest http) {
@@ -34,6 +42,14 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    /**
+     * Exchanges credentials for a short-lived access token and a long-lived refresh token.
+     *
+     * <p>A wrong password and an unknown address both answer 401 {@code INVALID_CREDENTIALS},
+     * deliberately indistinguishable. Repeated failures answer 429 {@code TOO_MANY_ATTEMPTS}
+     * with {@code Retry-After}; the delay is progressive and capped, so failing on purpose
+     * cannot lock the real owner out.
+     */
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         return authService.login(request, sessionContext(http, request.deviceLabel()));

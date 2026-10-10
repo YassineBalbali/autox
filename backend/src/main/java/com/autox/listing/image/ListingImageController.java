@@ -29,6 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
  * application's threads and memory entirely, and means a phone on a slow connection is
  * talking to storage rather than holding one of our request threads open for a minute.
  */
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Listing photos", description = "The three-step direct-to-storage upload, plus gallery order. Requires authentication.")
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/v1/listings/{listingId}/images")
 public class ListingImageController {

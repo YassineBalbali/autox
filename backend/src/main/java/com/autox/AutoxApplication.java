@@ -5,6 +5,7 @@ import com.autox.config.AuthProperties;
 import com.autox.listing.ListingProperties;
 import com.autox.listing.image.ImageProperties;
 import com.autox.storage.StorageProperties;
+import com.autox.throttle.PublicRateLimitProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -17,7 +18,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         LoginThrottleProperties.class,
         ListingProperties.class,
         StorageProperties.class,
-        ImageProperties.class})
+        ImageProperties.class,
+        PublicRateLimitProperties.class})
 public class AutoxApplication {
 
     public static void main(String[] args) {

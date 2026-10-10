@@ -10,4 +10,7 @@ public interface VehicleModelRepository extends JpaRepository<VehicleModel, UUID
 
     @Query("select m from VehicleModel m where m.id = :id and m.active = true")
     Optional<VehicleModel> findActiveById(@Param("id") UUID id);
+
+    @Query("select m from VehicleModel m where m.make.id = :makeId and m.active = true order by m.name")
+    java.util.List<VehicleModel> findActiveByMake(@Param("makeId") UUID makeId);
 }

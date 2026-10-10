@@ -1,6 +1,8 @@
 package com.autox.auth.throttle;
 
 import com.autox.api.error.ApiException;
+import com.autox.throttle.ThrottleCounters;
+import com.autox.throttle.ThrottleScope;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -39,10 +41,10 @@ public class LoginThrottleService {
 
     private static final Logger log = LoggerFactory.getLogger(LoginThrottleService.class);
 
-    private final LoginAttemptCounters counters;
+    private final ThrottleCounters counters;
     private final LoginThrottleProperties properties;
 
-    public LoginThrottleService(LoginAttemptCounters counters, LoginThrottleProperties properties) {
+    public LoginThrottleService(ThrottleCounters counters, LoginThrottleProperties properties) {
         this.counters = counters;
         this.properties = properties;
     }
@@ -73,11 +75,12 @@ public class LoginThrottleService {
         Instant now = Instant.now();
         Instant staleBefore = now.minus(properties.resetAfter());
 
-        int accountFailures = counters.recordFailure(ThrottleScope.ACCOUNT, accountKey(email), now, staleBefore);
+        int accountFailures =
+                counters.recordEvent(ThrottleScope.ACCOUNT, accountKey(email), now, staleBefore).eventCount();
         applyDelay(ThrottleScope.ACCOUNT, accountKey(email), properties.accountDelayFor(accountFailures), now);
 
         if (ipAddress != null) {
-            int ipFailures = counters.recordFailure(ThrottleScope.IP, ipAddress, now, staleBefore);
+            int ipFailures = counters.recordEvent(ThrottleScope.IP, ipAddress, now, staleBefore).eventCount();
             Duration ipDelay = properties.ipDelayFor(ipFailures);
             applyDelay(ThrottleScope.IP, ipAddress, ipDelay, now);
             if (!ipDelay.isZero()) {
@@ -105,7 +108,7 @@ public class LoginThrottleService {
     }
 
     private void requireNotBlocked(ThrottleScope scope, String key, Instant now) {
-        Optional<LoginAttemptCounters.Counter> counter = counters.find(scope, key);
+        Optional<ThrottleCounters.Counter> counter = counters.find(scope, key);
         if (counter.isEmpty()) {
             return;
         }

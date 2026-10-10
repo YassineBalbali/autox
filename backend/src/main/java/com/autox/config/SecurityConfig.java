@@ -62,6 +62,16 @@ public class SecurityConfig {
                             .authenticated()
                         // The shop window: searchable and linkable without an account.
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/*").permitAll()
+                        // Vocabularies a client needs before it can render a login form, let
+                        // alone a search form. Public for the same reason the search is.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/reference/**").permitAll()
+                        // The API's own description. Public because a closed spec on a public
+                        // API protects nothing: the endpoints are discoverable by using them.
+                        // "/v3/api-docs/**" does not cover "/v3/api-docs.yaml" — the YAML form is
+                        // a sibling path, not a child, and was a 401 until a live check caught it.
+                        .requestMatchers(HttpMethod.GET,
+                                "/v3/api-docs", "/v3/api-docs.yaml", "/v3/api-docs/**",
+                                "/swagger-ui.html", "/swagger-ui/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

@@ -6,9 +6,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.autox.auth.throttle.LoginAttemptCounters;
+import com.autox.throttle.ThrottleCounters;
 import com.autox.auth.throttle.LoginThrottleProperties;
-import com.autox.auth.throttle.ThrottleScope;
+import com.autox.throttle.ThrottleScope;
 import com.autox.support.AbstractIntegrationTest;
 import com.autox.user.UserRole;
 import java.time.Duration;
@@ -30,7 +30,7 @@ import org.springframework.test.web.servlet.ResultActions;
 class LoginThrottleIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired LoginThrottleProperties throttleProperties;
-    @Autowired LoginAttemptCounters counters;
+    @Autowired ThrottleCounters counters;
 
     @Test
     @DisplayName("failures below the threshold are not throttled")
@@ -132,7 +132,7 @@ class LoginThrottleIntegrationTest extends AbstractIntegrationTest {
         // A login failure ends in an exception; if the increment shared that
         // transaction it would be rolled back and throttling would never engage.
         assertThat(countersFor(email)).isPresent()
-                .get().extracting(LoginAttemptCounters.Counter::failureCount).isEqualTo(1);
+                .get().extracting(ThrottleCounters.Counter::eventCount).isEqualTo(1);
     }
 
     @Test
@@ -179,7 +179,7 @@ class LoginThrottleIntegrationTest extends AbstractIntegrationTest {
         failLogin(email).andExpect(status().isUnauthorized());
 
         Integer clearTextRows = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM login_attempt_counter WHERE scope_key = ?", Integer.class, email);
+                "SELECT count(*) FROM throttle_counter WHERE scope_key = ?", Integer.class, email);
         assertThat(clearTextRows).isZero();
         assertThat(countersFor(email)).isPresent();
     }
@@ -208,7 +208,7 @@ class LoginThrottleIntegrationTest extends AbstractIntegrationTest {
                         Map.of("email", email, "password", "definitely-the-wrong-password"))));
     }
 
-    private java.util.Optional<LoginAttemptCounters.Counter> countersFor(String email) {
+    private java.util.Optional<ThrottleCounters.Counter> countersFor(String email) {
         return counters.find(ThrottleScope.ACCOUNT, accountKeyOf(email));
     }
 

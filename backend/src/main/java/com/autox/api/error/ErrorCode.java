@@ -26,6 +26,14 @@ public enum ErrorCode {
     /** Login throttled. Carries {@code retryAfterSeconds} and a {@code Retry-After} header. */
     TOO_MANY_ATTEMPTS,
 
+    /**
+     * Too many requests to a public read endpoint from one address. Distinct from
+     * {@link #TOO_MANY_ATTEMPTS} because the remedies differ: that one means "your password
+     * is wrong, stop guessing", this one means "slow down". Also carries
+     * {@code retryAfterSeconds}.
+     */
+    RATE_LIMITED,
+
     FORBIDDEN,
     NOT_FOUND,
     METHOD_NOT_ALLOWED,

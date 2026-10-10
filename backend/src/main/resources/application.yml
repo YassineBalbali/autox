@@ -84,6 +84,16 @@ autox:
       ip-max-delay: PT30M
       reset-after: PT24H
 
+  public-api:
+    # Per-IP limit on the unauthenticated GETs (search, listing detail, reference).
+    # Sized to be invisible to a real visitor: 300 a minute is five a second sustained,
+    # where a fast browsing session is nearer one. Exceeding it is a scraper.
+    rate-limit:
+      enabled: ${AUTOX_PUBLIC_RATE_LIMIT_ENABLED:true}
+      requests-per-window: ${AUTOX_PUBLIC_RATE_LIMIT_REQUESTS:300}
+      window: PT1M
+      block-for: PT1M
+
   listing:
     # A published listing stays live for this long, then the sweeper expires it.
     # Renewing resets the window from the moment of renewal.
