@@ -8,5 +8,11 @@ public enum TokenRevocationReason {
     REUSE_DETECTED,
     PASSWORD_CHANGED,
     ADMIN_REVOKED,
-    EXPIRED
+    EXPIRED,
+    /**
+     * Ended by the account owner from their own session list. Distinct from
+     * {@link #LOGOUT}, which is the device signing itself out — here the device was never
+     * asked, and the trail should say so.
+     */
+    USER_REVOKED
 }

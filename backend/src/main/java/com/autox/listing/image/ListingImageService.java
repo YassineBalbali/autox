@@ -14,12 +14,9 @@ import com.autox.listing.dto.ImageUploadTicket;
 import com.autox.storage.ObjectStorage;
 import com.autox.storage.StorageProperties;
 import java.awt.image.BufferedImage;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -201,7 +198,7 @@ public class ListingImageService {
         image.setHeight(decoded.getHeight());
         // The size and checksum of what is now stored, not of what was uploaded.
         image.setByteSize((long) content.length);
-        image.setChecksumSha256(sha256(content));
+        image.setChecksumSha256(com.autox.common.Sha256.hex(content));
         image.setUploadedAt(Instant.now());
         image.setStatus(ImageStatus.READY);
 
@@ -422,14 +419,6 @@ public class ListingImageService {
     private static String sanitizeFilename(String filename) {
         String trimmed = filename.trim().replaceAll("[\\p{Cntrl}/\\\\]", "_");
         return trimmed.length() <= 255 ? trimmed : trimmed.substring(trimmed.length() - 255);
-    }
-
-    private static String sha256(byte[] content) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
-        } catch (NoSuchAlgorithmException impossible) {
-            throw new IllegalStateException("SHA-256 is required by the JDK", impossible);
-        }
     }
 
     private static String megabytes(long bytes) {

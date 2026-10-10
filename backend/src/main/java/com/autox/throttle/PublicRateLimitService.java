@@ -43,22 +43,28 @@ public class PublicRateLimitService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Decision record(String ipAddress) {
-        if (!properties.enabled() || ipAddress == null || ipAddress.isBlank()) {
+        if (!properties.enabled()) {
+            return Decision.ALLOWED;
+        }
+        // A whole IPv6 /64 is one caller. See ClientAddress for why the full address is
+        // the wrong key — it is the difference between limiting a scraper and not.
+        String key = ClientAddress.throttleKey(ipAddress);
+        if (key == null) {
             return Decision.ALLOWED;
         }
 
         Instant now = Instant.now();
         ThrottleCounters.Counter counter =
-                counters.recordEvent(ThrottleScope.PUBLIC_READ, ipAddress, now, now.minus(properties.window()));
+                counters.recordEvent(ThrottleScope.PUBLIC_READ, key, now, now.minus(properties.window()));
 
         if (counter.isBlockedAt(now)) {
             return refuse(now, counter.blockedUntil());
         }
         if (counter.eventCount() > properties.requestsPerWindow()) {
             Instant blockedUntil = now.plus(properties.blockFor());
-            counters.applyBlock(ThrottleScope.PUBLIC_READ, ipAddress, blockedUntil);
+            counters.applyBlock(ThrottleScope.PUBLIC_READ, key, blockedUntil);
             log.warn("Rate limiting public reads from {} after {} requests in {}s",
-                    ipAddress, counter.eventCount(), properties.window().toSeconds());
+                    key, counter.eventCount(), properties.window().toSeconds());
             return refuse(now, blockedUntil);
         }
         return Decision.ALLOWED;

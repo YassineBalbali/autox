@@ -92,6 +92,14 @@
             <version>${therapi.version}</version>
         </dependency>
 
+        <!-- Health endpoint only: something has to be able to tell a load balancer whether
+             an instance is serving. Everything else actuator offers is switched off in
+             configuration rather than left exposed. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>

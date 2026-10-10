@@ -7,6 +7,14 @@ Things already catalogued as deliberately deferred are in `docs/deferred.md` and
 repeated here, with one exception: moderation, because calling it "deferred scope" undersells
 what its absence means.
 
+> **Updated after the session that followed.** Five of the ten below were acted on, and the
+> entries are marked **FIXED** or **PARTLY FIXED** in place rather than deleted — what was
+> wrong and why is worth more than a shorter document. In short: the account lifecycle (3),
+> the quota race (6), the sweeper coordination (7) and the IPv6 rate-limit key (9) are
+> closed, and a health endpoint closed part of (4). Items **1, 2, 5 and 8 stand unchanged**,
+> and 1 and 2 are still the two that carry legal exposure. See
+> `docs/account-and-correctness-decisions.md`.
+
 ---
 
 ## 1. There is no way to take a listing down
@@ -35,30 +43,41 @@ absent entirely.
 
 This and the point above are the same project and should be built together.
 
-## 3. A user who forgets their password is permanently locked out
+## 3. A user who forgets their password is permanently locked out — FIXED
 
-There is no password reset, and no password change for a signed-in user either. There is also
-no way to list or revoke sessions, so a user who loses a phone cannot end that session — even
-though `refresh_token` records the device label, user agent and IP for exactly that purpose,
-and family revocation already works.
+*Was:* no password reset, no password change, and no way to list or revoke sessions, so a
+user who lost a phone could not end that session — even though `refresh_token` recorded the
+device label, user agent and IP for exactly that purpose. **Registration was the only account
+operation that worked.** Called a defect rather than a deferral at the time, and treated as
+one.
 
-Every one of these needs transactional email, which is one provider decision away. But as it
-stands the account lifecycle is a dead end: **registration is the only account operation that
-works.** For a product about to acquire real users, that is not a deferral, it is a defect.
+*Now:* change password (requires the current one, replaces every session), forgotten-password
+reset by emailed single-use token, and a session list with per-session revocation. 22 tests.
 
-## 4. The backend is operationally blind
+**One gap remains, and it is a deployment step rather than a defect:** there is no real mail
+provider. `EmailSender` has a logging implementation that prints the reset link to the
+console, which is how the flow is usable in development and is a **credential leak in
+production** — anyone who can read the log can take over any account. It warns at every
+startup. A provider is one bean and one property.
 
-- No health or readiness endpoint — `actuator` is not even a dependency, so nothing can tell a
-  load balancer whether an instance is serving.
-- No metrics. No request rate, no latency percentiles, no count of how often the rate limiter
-  or login throttle fires.
-- Plain-text logs, and no request correlation id except on 500s.
-- No CI. The 167 tests pass; nothing runs them on a push.
+Also still missing: email verification is never *sent* (the column and the status exist, and
+nothing populates them), and there is no "sign out everywhere" button — though changing the
+password does exactly that.
 
-Each is individually small. Together they mean that **if this were deployed tomorrow, the first
-indication of a problem would be a user complaining.** `actuator` plus a `/health` probe is
-twenty minutes and should probably happen before the frontend, because the frontend will want
-something to point a dev proxy at.
+## 4. The backend is operationally blind — PARTLY FIXED
+
+- ~~No health or readiness endpoint.~~ **Fixed:** `/actuator/health`, plus separate
+  `/liveness` and `/readiness` probes, public, status only, with everything else actuator
+  offers shut off and a test asserting so.
+- **No metrics.** No request rate, no latency percentiles, no count of how often the rate
+  limiter or login throttle fires. The actuator dependency is now present, so this is a
+  configuration change and a scrape target away — but it is not done.
+- **Plain-text logs**, and no request correlation id except on 500s.
+- **No CI.** The 215 tests pass; nothing runs them on a push. This is now the largest
+  remaining piece of the item: a suite nobody runs automatically is a suite that rots.
+
+Still true that **if this were deployed tomorrow, the second indication of a problem would be
+a user complaining** — the first is now a load balancer noticing.
 
 ## 5. Login is a CPU exhaustion vector
 
@@ -76,31 +95,29 @@ cost weakens every stored password. The right fixes are elsewhere: a proof-of-wo
 on repeated failures, and rate limiting at the proxy. Worth being aware of rather than
 surprised by.
 
-## 6. The active-listing quota has a race
+## 6. The active-listing quota has a race — FIXED
 
-`requireQuotaAvailable` counts the seller's active listings and then publishes, in one
-transaction at READ COMMITTED. Two concurrent publish requests from the same seller both read
-`active = 4` against a limit of 5, both pass the check, and both commit — leaving six.
+*Was:* `requireQuotaAvailable` counted the seller's active listings and then published, at
+READ COMMITTED. Two concurrent publications from one seller both read `active = 4` against a
+limit of 5, both passed, and both committed — leaving six.
 
-Impact is small: a private seller gets one extra free listing, and it takes deliberately
-concurrent requests. But it is a real correctness bug, it is in the code that enforces the only
-monetisable limit in the product, and it will matter more once paid tiers exist. The fix is a
-`SELECT … FOR UPDATE` on the seller row before counting, or an advisory lock keyed on the
-seller id. Cheap; not done.
+*Now:* a row lock on the seller is taken before the count, so the pair is atomic for that
+seller. The test was validated against the unfixed code: with the lock removed, four
+simultaneous publications all succeed against a cap of two.
 
-## 7. Three scheduled jobs with no coordination between instances
+**It remains the only concurrency test in the suite** — see item 8.
 
-`ListingExpirySweeper` (10 min), `ListingImageSweeper` (15 min) and `LoginThrottleSweeper`
-(hourly) are plain `@Scheduled` methods. **Every instance runs all of them.**
+## 7. Three scheduled jobs with no coordination between instances — FIXED
 
-The throttle sweeper is a single idempotent DELETE and is genuinely safe. The other two are
-not obviously so: the image sweeper deletes rows *and* storage objects, and two instances
-racing on the same expired upload will duplicate the work at best.
+*Was:* `ListingExpirySweeper` (10 min), `ListingImageSweeper` (15 min) and
+`LoginThrottleSweeper` (hourly) were plain `@Scheduled` methods, so **every instance ran all
+of them**. The image sweeper deletes storage objects as well as rows.
 
-Nothing is wrong today because there is one instance. But "scale out the API" is a change that
-looks harmless and is not, and there is currently nothing in the code to stop it going wrong.
-Needs leader election, a locking library such as ShedLock, or moving the sweepers out of the
-API process entirely.
+*Now:* all three run under a PostgreSQL session-level advisory lock via
+`ScheduledTaskCoordinator`. A second instance skips the run rather than queueing to repeat
+it, and an instance that crashes mid-sweep releases the lock when its socket closes.
+`LoginThrottleSweeper` became `AuthMaintenanceSweeper` and now also purges the two tables
+nothing was purging — expired refresh tokens and spent reset tokens.
 
 ## 8. Search is correct but has only been proven at 20,000 rows
 
@@ -117,20 +134,25 @@ What has *not* been established:
   filter, of 20,000). A direct consequence of the deferred catalogue, and it resolves itself
   when the frontend sends `makeId` — but if free-text search gets real traffic first, this is
   the first thing to hurt.
-- **No concurrency testing at all.** Every test is sequential. Nothing is known about behaviour
-  under parallel load, which is also how item 6 above went unnoticed.
+- **Almost no concurrency testing.** One test now covers the quota race; everything else is
+  sequential. Nothing is known about behaviour under parallel load, which is how item 6 went
+  unnoticed in the first place.
 
-## 9. Rate limiting is weaker than it looks against a determined scraper
+## 9. Rate limiting is weaker than it looks against a determined scraper — PARTLY FIXED
 
-Detail in `docs/reference-decisions.md`, but the summary belongs here:
+Detail in `docs/reference-decisions.md` and
+`docs/account-and-correctness-decisions.md`, but the summary belongs here:
 
-- The key is a **single IP address**, so a scraper on IPv6 rotates addresses within its own /64
-  and is never limited. This was visible in the live test, where the key recorded was
-  `0:0:0:0:0:0:0:1` rather than `127.0.0.1`.
-- It trusts `X-Forwarded-For`, so without a proxy that overwrites the header, a caller forges
-  the key and sidesteps both this and the login throttle.
-- It costs one database write per public read — fine now, and the wrong place for this at
-  volume.
+- ~~The key is a single IP address, so a scraper on IPv6 rotates within its own /64 and is
+  never limited.~~ **Fixed:** IPv6 is keyed on the /64 prefix, for the public rate limit and
+  the login throttle both. Verified live — the recorded key is now
+  `0:0:0:0:0:0:0:0/64`.
+- **It still trusts `X-Forwarded-For`**, so without a proxy that overwrites the header a
+  caller forges the key and sidesteps both this and the login throttle. The README says so
+  under "Deploying behind a proxy"; it is a deployment requirement, not something the
+  application can fix on its own.
+- **It still costs one database write per public read** — fine now, and the wrong place for
+  this at volume.
 
 It raises the cost of casual scraping, which is worth having. It is not a defence against
 someone who wants the data.
@@ -146,8 +168,10 @@ someone who wants the data.
 - **Accents are not normalised in location matching**, so "Saint-Étienne" and "Saint-Etienne"
   are different places. `GeoPlace.normalize` exists and is unreachable until the gazetteer
   lands.
-- **Price is mutated in place with no history.** Not a defect in anything that exists, but it
-  is the one gap that gets *more* expensive every day — see `docs/deferred.md`.
+- ~~**Price is mutated in place with no history.**~~ **Fixed** — it was the one gap that got
+  more expensive every day, so it went first. `listing_price_history` records the opening
+  price at publication and every change after it. Not exposed by any endpoint; it exists as
+  the input to price estimation.
 
 ---
 
@@ -166,7 +190,7 @@ Stated for balance, and because knowing what not to re-examine is useful.
 - **Schema integrity.** Flyway owns it, Hibernate validates against it and refuses to start on
   drift. The XOR constraints, composite foreign keys and deferred unique constraints do real
   work that application code would otherwise have to be trusted to do.
-- **The test suite.** 167 integration tests against real PostgreSQL and real S3-compatible
+- **The test suite.** 215 integration tests against real PostgreSQL and real S3-compatible
   storage. No mocked authentication, no mocked SQL, no in-memory database pretending to be
   Postgres. Several real bugs were found by tests that a mock would have passed — the EXIF
   orientation failure most recently, which 132 tests had missed because every generated test

@@ -26,7 +26,13 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  */
 class OpenApiDocumentIntegrationTest extends AbstractIntegrationTest {
 
+    /**
+     * By name, not by type. Actuator contributes a second {@code RequestMappingHandlerMapping}
+     * for its own endpoints, so an unqualified injection became ambiguous the moment the
+     * health endpoint was added — and actuator's endpoints are not part of the API anyway.
+     */
     @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("requestMappingHandlerMapping")
     RequestMappingHandlerMapping handlerMapping;
 
     @Test

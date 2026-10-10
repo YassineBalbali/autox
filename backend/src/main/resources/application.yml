@@ -84,6 +84,27 @@ autox:
       ip-max-delay: PT30M
       reset-after: PT24H
 
+    # A reset link is a bearer credential sitting in an inbox, so it is short-lived and
+    # single-use. Both caps exist because the caller need not own the address they submit:
+    # one stops the endpoint being used to bury someone's inbox, the other bounds a sweep
+    # across many addresses.
+    password-reset:
+      ttl: PT30M
+      max-requests-per-window: 3
+      max-requests-per-address-per-window: 20
+      window: PT1H
+
+  mail:
+    # `log` writes the message to the application log instead of sending it. That makes the
+    # reset flow walkable in development and is a credential leak in production: a real
+    # provider adds a value here and an EmailSender bean conditional on it.
+    provider: ${AUTOX_MAIL_PROVIDER:log}
+    from-address: ${AUTOX_MAIL_FROM:no-reply@autox.local}
+    from-name: ${AUTOX_MAIL_FROM_NAME:AutoX}
+    # The frontend page that takes the token, which the email links to with ?token=…
+    # The API cannot guess it: the web app is deployed separately.
+    password-reset-url: ${AUTOX_PASSWORD_RESET_URL:http://localhost:4200/reset-password}
+
   public-api:
     # Per-IP limit on the unauthenticated GETs (search, listing detail, reference).
     # Sized to be invisible to a real visitor: 300 a minute is five a second sustained,
@@ -132,6 +153,39 @@ autox:
       CARD: 800
       FULL: 1600
     jpeg-quality: 0.82
+
+# Health only, and only a status. Everything actuator can expose about an instance —
+# environment, configuration properties, bean graph, heap dumps, log levels — is either
+# a credential or a map of the system, so the exposure list is an allow-list of one.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+      # Not under /api, so it is never caught by the API's CORS, rate limit or auth rules.
+      base-path: /actuator
+  endpoint:
+    health:
+      # No component breakdown, no database vendor, no disk figures: a load balancer needs
+      # UP or DOWN, and anything more tells an anonymous caller about the deployment.
+      show-details: never
+      show-components: never
+      # Registers the livenessState and readinessState indicators the groups below use.
+      probes:
+        enabled: true
+      # Two signals, not one. Liveness answers "is this process alive" — a load balancer
+      # that restarts an instance merely waiting on the database makes an outage worse.
+      # Readiness answers "can it serve", which here means it can reach PostgreSQL.
+      #
+      # Object storage is deliberately absent from both. Authentication, listings and
+      # search do not need it, so an S3 outage should degrade image upload rather than
+      # take every instance out of rotation — the same call StorageReadinessCheck makes
+      # by logging instead of failing startup.
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
 
 logging:
   level:

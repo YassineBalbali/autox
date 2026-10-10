@@ -6,13 +6,9 @@ import com.autox.user.AppUser;
 import com.autox.user.RefreshToken;
 import com.autox.user.RefreshTokenRepository;
 import com.autox.user.TokenRevocationReason;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.HexFormat;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,9 +105,45 @@ public class RefreshTokenService {
                 refreshTokens.revokeFamily(token.getFamilyId(), TokenRevocationReason.LOGOUT, Instant.now()));
     }
 
+    /** Ends every session for an account. Returns how many were live. */
     @Transactional
-    public void revokeAllSessions(java.util.UUID userId, TokenRevocationReason reason) {
-        refreshTokens.revokeAllForUser(userId, reason, Instant.now());
+    public int revokeAllSessions(java.util.UUID userId, TokenRevocationReason reason) {
+        return refreshTokens.revokeAllForUser(userId, reason, Instant.now());
+    }
+
+    /** Housekeeping: drops token rows whose expiry is long past. */
+    @Transactional
+    public int purgeExpiredBefore(Instant before) {
+        return refreshTokens.deleteExpiredBefore(before);
+    }
+
+    /**
+     * The account's live sessions, newest first — one row per rotation family, because
+     * rotation revokes the predecessor and so a family has exactly one usable token.
+     */
+    @Transactional(readOnly = true)
+    public java.util.List<RefreshToken> activeSessions(java.util.UUID userId) {
+        return refreshTokens.findActiveByUser(userId, Instant.now());
+    }
+
+    /**
+     * Ends one session the user picked out of their own list.
+     *
+     * <p>Keyed on the family rather than the token row: that is what a user thinks of as "a
+     * session", it survives every rotation, and it is therefore the only id stable enough to
+     * put in a response and accept back. The user id is part of the statement, so one
+     * account cannot end another's session by guessing a family id.
+     *
+     * @throws ApiException 404 if the family is not a live session of this account
+     */
+    @Transactional
+    public void revokeOwnSession(java.util.UUID userId, java.util.UUID familyId) {
+        int revoked = refreshTokens.revokeFamilyForUser(familyId, userId,
+                TokenRevocationReason.USER_REVOKED, Instant.now());
+        if (revoked == 0) {
+            throw ApiException.notFound("Session");
+        }
+        log.info("User {} ended session {}", userId, familyId);
     }
 
     private IssuedToken persist(AppUser user, java.util.UUID familyId, SessionContext context) {
@@ -134,12 +166,7 @@ public class RefreshTokenService {
     }
 
     static String sha256(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException impossible) {
-            throw new IllegalStateException("SHA-256 is required by the JDK", impossible);
-        }
+        return com.autox.common.Sha256.hex(value);
     }
 
     private static String truncate(String value) {

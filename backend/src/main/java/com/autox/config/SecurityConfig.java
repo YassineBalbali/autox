@@ -55,7 +55,14 @@ public class SecurityConfig {
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout").permitAll()
+                                "/api/v1/auth/logout",
+                                // Recovering an account is for the people who cannot sign in.
+                                "/api/v1/auth/password/forgot",
+                                "/api/v1/auth/password/reset").permitAll()
+                        // Liveness and readiness for a load balancer, which has no account.
+                        // Only `health` is exposed, and it is configured to return a status
+                        // and nothing else — see `management.*` in application.yml.
+                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         // The seller's own views stay private. Declared before the public
                         // rule below, which would otherwise match /listings/mine as an id.
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/mine", "/api/v1/listings/mine/**")

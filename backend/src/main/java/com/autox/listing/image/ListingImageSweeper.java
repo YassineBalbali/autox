@@ -1,5 +1,6 @@
 package com.autox.listing.image;
 
+import com.autox.scheduling.ScheduledTaskCoordinator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,21 +23,30 @@ public class ListingImageSweeper {
     private static final Logger log = LoggerFactory.getLogger(ListingImageSweeper.class);
 
     private final ListingImageService imageService;
+    private final ScheduledTaskCoordinator coordinator;
 
-    public ListingImageSweeper(ListingImageService imageService) {
+    public ListingImageSweeper(ListingImageService imageService, ScheduledTaskCoordinator coordinator) {
         this.imageService = imageService;
+        this.coordinator = coordinator;
     }
 
+    /**
+     * One instance at a time. This sweep deletes objects from storage as well as rows, so
+     * two instances running it together would race on the same abandoned upload — the one
+     * place among the scheduled jobs where duplicated work is not merely wasteful.
+     */
     @Scheduled(fixedDelayString = "PT15M", initialDelayString = "PT2M")
     public void purgeAbandonedUploads() {
-        try {
-            int removed = imageService.purgeAbandonedUploads();
-            if (removed > 0) {
-                log.info("Removed {} abandoned upload slot(s)", removed);
+        coordinator.runExclusively("listing-image-cleanup", () -> {
+            try {
+                int removed = imageService.purgeAbandonedUploads();
+                if (removed > 0) {
+                    log.info("Removed {} abandoned upload slot(s)", removed);
+                }
+            } catch (RuntimeException e) {
+                // A storage outage must not kill the scheduler thread; the next run retries.
+                log.error("Abandoned-upload sweep failed: {}", e.getMessage());
             }
-        } catch (RuntimeException e) {
-            // A storage outage must not kill the scheduler thread; the next run retries.
-            log.error("Abandoned-upload sweep failed: {}", e.getMessage());
-        }
+        });
     }
 }

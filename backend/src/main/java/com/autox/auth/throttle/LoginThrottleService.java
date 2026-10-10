@@ -1,14 +1,12 @@
 package com.autox.auth.throttle;
 
 import com.autox.api.error.ApiException;
+import com.autox.common.Sha256;
+import com.autox.throttle.ClientAddress;
 import com.autox.throttle.ThrottleCounters;
 import com.autox.throttle.ThrottleScope;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -62,8 +60,9 @@ public class LoginThrottleService {
         }
         Instant now = Instant.now();
         requireNotBlocked(ThrottleScope.ACCOUNT, accountKey(email), now);
-        if (ipAddress != null) {
-            requireNotBlocked(ThrottleScope.IP, ipAddress, now);
+        String addressKey = ClientAddress.throttleKey(ipAddress);
+        if (addressKey != null) {
+            requireNotBlocked(ThrottleScope.IP, addressKey, now);
         }
     }
 
@@ -79,13 +78,17 @@ public class LoginThrottleService {
                 counters.recordEvent(ThrottleScope.ACCOUNT, accountKey(email), now, staleBefore).eventCount();
         applyDelay(ThrottleScope.ACCOUNT, accountKey(email), properties.accountDelayFor(accountFailures), now);
 
-        if (ipAddress != null) {
-            int ipFailures = counters.recordEvent(ThrottleScope.IP, ipAddress, now, staleBefore).eventCount();
+        // Keyed on the /64 for IPv6, so a spray that walks its own subnet still counts as
+        // one source. The full address is kept on refresh_token for the session list; this
+        // is only the throttle's key.
+        String addressKey = ClientAddress.throttleKey(ipAddress);
+        if (addressKey != null) {
+            int ipFailures = counters.recordEvent(ThrottleScope.IP, addressKey, now, staleBefore).eventCount();
             Duration ipDelay = properties.ipDelayFor(ipFailures);
-            applyDelay(ThrottleScope.IP, ipAddress, ipDelay, now);
+            applyDelay(ThrottleScope.IP, addressKey, ipDelay, now);
             if (!ipDelay.isZero()) {
                 log.warn("Throttling login attempts from {} after {} failures (wait {}s)",
-                        ipAddress, ipFailures, ipDelay.toSeconds());
+                        addressKey, ipFailures, ipDelay.toSeconds());
             }
         }
     }
@@ -131,12 +134,6 @@ public class LoginThrottleService {
      * addresses with no account.
      */
     private static String accountKey(String email) {
-        String normalized = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(normalized.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException impossible) {
-            throw new IllegalStateException("SHA-256 is required by the JDK", impossible);
-        }
+        return Sha256.hex(email == null ? "" : email.trim().toLowerCase(Locale.ROOT));
     }
 }

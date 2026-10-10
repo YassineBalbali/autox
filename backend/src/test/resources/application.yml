@@ -1,4 +1,9 @@
-# Test-only configuration. The datasource values below are placeholders: the
+# Test-only configuration. This file is `application.yml` on the test classpath, which
+# comes before the main one, so it does not merge with it — it REPLACES it. Anything the
+# tests need from the production configuration has to be repeated here, which is why the
+# datasource placeholders and the management block below exist.
+#
+# The datasource values below are placeholders: the
 # Testcontainers @ServiceConnection supplies the real ones at runtime. They exist
 # so the main profile's ${AUTOX_DB_*} placeholders have something to resolve to
 # without requiring a developer's environment to be set up to run tests.
@@ -36,6 +41,18 @@ autox:
       ip-max-delay: PT2S
       reset-after: PT24H
 
+    # Production policy as-is. Expiry is tested by ageing expires_at with SQL rather than
+    # by shortening the TTL and sleeping — the same approach the rate-limit tests take.
+    password-reset:
+      ttl: PT30M
+      max-requests-per-window: 3
+      max-requests-per-address-per-window: 20
+      window: PT1H
+
+  mail:
+    provider: log
+    password-reset-url: https://autox.test/reset-password
+
   # Off by default across the suite. Every test shares one client address (MockMvc always
   # reports 127.0.0.1), so a suite-wide limit would couple unrelated test classes to each
   # other's request counts. PublicRateLimitIntegrationTest switches it on for itself.
@@ -67,6 +84,27 @@ autox:
       CARD: 800
       FULL: 1600
     jpeg-quality: 0.82
+
+# Must mirror the production block: HealthEndpointIntegrationTest asserts both the shape
+# of the response and that nothing else is exposed, and would otherwise be asserting
+# actuator's defaults rather than this application's configuration.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
 
 logging:
   level:

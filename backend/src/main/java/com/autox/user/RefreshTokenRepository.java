@@ -27,6 +27,38 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
                      @Param("reason") TokenRevocationReason reason,
                      @Param("now") Instant now);
 
+    /**
+     * One row per live session: rotation revokes the predecessor, so a family contributes
+     * exactly one. Bounded by how many devices one person signs in from, which is why this
+     * is the one list endpoint with no page parameter.
+     */
+    @Query("""
+            select t from RefreshToken t
+             where t.user.id = :userId
+               and t.revokedAt is null
+               and t.expiresAt > :now
+             order by t.issuedAt desc
+            """)
+    java.util.List<RefreshToken> findActiveByUser(@Param("userId") UUID userId, @Param("now") Instant now);
+
+    /**
+     * Revokes a family, but only if it belongs to this user. The ownership check is in the
+     * statement rather than in a read beforehand, so there is no window between the two and
+     * a mismatch simply updates nothing.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update RefreshToken t
+               set t.revokedAt = :now, t.revokedReason = :reason
+             where t.familyId = :familyId
+               and t.user.id = :userId
+               and t.revokedAt is null
+            """)
+    int revokeFamilyForUser(@Param("familyId") UUID familyId,
+                            @Param("userId") UUID userId,
+                            @Param("reason") TokenRevocationReason reason,
+                            @Param("now") Instant now);
+
     /** Used when a password changes or an admin locks an account. */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

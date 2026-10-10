@@ -23,8 +23,8 @@ public class TestDatabaseCleaner {
     public void truncateTransactionalTables() {
         jdbcTemplate.execute("""
                 TRUNCATE TABLE moderation_action, listing_feature, listing_image_variant,
-                               listing_image, listing, refresh_token, throttle_counter,
-                               pro_profile, app_user
+                               listing_image, listing_price_history, listing, refresh_token,
+                               password_reset_token, throttle_counter, pro_profile, app_user
                 RESTART IDENTITY CASCADE
                 """);
     }

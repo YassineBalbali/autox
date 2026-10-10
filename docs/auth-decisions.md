@@ -47,8 +47,15 @@ Three properties worth naming:
   back and the throttle would never engage. This is the same trap that made
   refresh-token replay detection ineffective, so there is a regression test for it.
 
-Decayed counters are swept hourly by `LoginThrottleSweeper` (a single idempotent
-`DELETE`, safe on multiple instances).
+Decayed counters are swept hourly by `AuthMaintenanceSweeper` (renamed from
+`LoginThrottleSweeper` once it took on expired refresh tokens and spent password reset
+tokens too). Each statement is a single idempotent `DELETE` and would survive running
+twice; it is coordinated across instances anyway, because "this one is safe" is a property
+that quietly stops being true — see `docs/account-and-correctness-decisions.md`.
+
+The IP scope keys IPv6 on the **/64 prefix** rather than the full address: a caller handed
+a /64 can otherwise pick a fresh address per attempt and never be counted. `ClientAddress`
+holds that logic and the reasoning.
 
 **One judgement call you should check:** a throttled attempt returns **429** with
 `Retry-After`, not the generic 401. You asked for "the same generic 401 regardless of
@@ -107,12 +114,14 @@ infrastructure, and a tax on every request. I would not.
   token; nothing sets it yet. Needs an email provider and a `GET /auth/verify`
   endpoint. The decision we made — publishing requires a verified email — is
   enforced when listings are built.
-- **Password change and password reset.** Both need to revoke every other session
-  (`revokeAllForUser` with `PASSWORD_CHANGED` is already there for it), and reset
-  needs email. Not in the brief; say when.
-- **Session list / "sign out everywhere".** `refresh_token` records device label,
-  user agent and IP for exactly this screen, and `revokeAllSessions` exists.
-  No endpoint exposes it yet.
+- ~~**Password change and password reset.**~~ **Built later** — `POST /api/v1/me/password`
+  and the `/auth/password/forgot` + `/reset` pair, both revoking every session via
+  `PASSWORD_CHANGED`. What is still absent is a real mail provider: `EmailSender` has a
+  logging implementation only. See `docs/account-and-correctness-decisions.md`.
+- ~~**Session list / "sign out everywhere".**~~ **Built later** as
+  `GET`/`DELETE /api/v1/me/sessions`, keyed on the rotation family rather than the token
+  row. There is no separate "sign out everywhere": changing the password does it, and the
+  session list makes one-at-a-time revocation the normal path.
 - **Email change.** Has to re-verify, so it is its own endpoint, not a `PATCH /me` field.
 
 ## 7. Smaller things, flagged

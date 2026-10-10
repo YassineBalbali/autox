@@ -1,5 +1,6 @@
 package com.autox.listing;
 
+import com.autox.scheduling.ScheduledTaskCoordinator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,21 +20,25 @@ public class ListingExpirySweeper {
     private static final Logger log = LoggerFactory.getLogger(ListingExpirySweeper.class);
 
     private final ListingService listingService;
+    private final ScheduledTaskCoordinator coordinator;
 
-    public ListingExpirySweeper(ListingService listingService) {
+    public ListingExpirySweeper(ListingService listingService, ScheduledTaskCoordinator coordinator) {
         this.listingService = listingService;
+        this.coordinator = coordinator;
     }
 
     /**
-     * Every ten minutes. A listing may therefore stay visible a few minutes past its
-     * expiry, which is the right trade: nobody is harmed, and a sweep this cheap does not
-     * justify running every second.
+     * Every ten minutes, on one instance at a time. A listing may therefore stay visible a
+     * few minutes past its expiry, which is the right trade: nobody is harmed, and a sweep
+     * this cheap does not justify running every second.
      */
     @Scheduled(fixedDelayString = "PT10M", initialDelayString = "PT1M")
     public void expireDueListings() {
-        int expired = listingService.expireDueListings();
-        if (expired > 0) {
-            log.info("Expired {} listing(s) past their expiry date", expired);
-        }
+        coordinator.runExclusively("listing-expiry", () -> {
+            int expired = listingService.expireDueListings();
+            if (expired > 0) {
+                log.info("Expired {} listing(s) past their expiry date", expired);
+            }
+        });
     }
 }

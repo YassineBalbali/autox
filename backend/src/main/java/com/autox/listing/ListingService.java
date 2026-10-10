@@ -54,6 +54,7 @@ public class ListingService {
     private static final Logger log = LoggerFactory.getLogger(ListingService.class);
 
     private final ListingRepository listings;
+    private final ListingPriceHistoryRepository priceHistory;
     private final AppUserRepository users;
     private final CurrencyRepository currencies;
     private final CountryRepository countries;
@@ -68,6 +69,7 @@ public class ListingService {
     private final com.autox.storage.ObjectStorage storage;
 
     public ListingService(ListingRepository listings,
+                          ListingPriceHistoryRepository priceHistory,
                           AppUserRepository users,
                           CurrencyRepository currencies,
                           CountryRepository countries,
@@ -81,6 +83,7 @@ public class ListingService {
                           ListingImageRepository images,
                           com.autox.storage.ObjectStorage storage) {
         this.listings = listings;
+        this.priceHistory = priceHistory;
         this.users = users;
         this.currencies = currencies;
         this.countries = countries;
@@ -186,6 +189,11 @@ public class ListingService {
             throw ApiException.conflict("A listing in state " + listing.getStatus()
                     + " can no longer be edited.");
         }
+
+        // Read before anything is written: the price history needs what the listing was
+        // asking a moment ago, and by the end of this method that value is gone.
+        long priceBefore = listing.getPriceAmount();
+        Currency currencyBefore = listing.getPriceCurrency();
 
         if (request.title() != null) {
             listing.setTitle(request.title().trim());
@@ -302,6 +310,7 @@ public class ListingService {
             replaceFeatures(listing, request.featureCodes());
         }
 
+        recordPriceChange(listing, priceBefore, currencyBefore);
         return respond(listing);
     }
 
@@ -317,11 +326,17 @@ public class ListingService {
         requireQuotaAvailable(listing);
 
         Instant now = Instant.now();
-        if (listing.getPublishedAt() == null) {
+        boolean firstPublication = listing.getPublishedAt() == null;
+        if (firstPublication) {
             listing.setPublishedAt(now);
         }
         listing.setExpiresAt(now.plus(properties.expiry()));
         listing.setStatus(ListingStatus.ACTIVE);
+
+        if (firstPublication) {
+            // The price the market first saw. Everything before this was a draft.
+            priceHistory.save(ListingPriceHistory.of(listing, PriceChangeReason.INITIAL));
+        }
 
         log.info("Listing {} published until {}", listing.getId(), listing.getExpiresAt());
         return respond(listing);
@@ -445,6 +460,16 @@ public class ListingService {
     /**
      * The cap a private individual is held to, as the brief requires. Zero means
      * unlimited; a per-account override on the user wins over the role default.
+     *
+     * <p>Counting and then publishing is not safe on its own. At READ COMMITTED two
+     * concurrent publications by the same seller both read one below the limit, both pass,
+     * and both commit — which is how a cap of five becomes six. A row lock on the seller
+     * makes the check and the write atomic <em>for that seller</em>: the second request
+     * waits here, and then counts the listing the first one created.
+     *
+     * <p>Locking the seller rather than taking a table lock or raising the isolation level
+     * keeps the contention where it belongs. Two different sellers never wait for each
+     * other, and one seller publishing twice at once is not a case worth optimising.
      */
     private void requireQuotaAvailable(Listing listing) {
         AppUser seller = listing.getSeller();
@@ -453,6 +478,7 @@ public class ListingService {
             return;
         }
 
+        users.lockForQuotaCheck(seller.getId());
         long active = listings.countActiveBySeller(seller.getId());
         // The listing being published is not ACTIVE yet, so it is not in that count.
         if (active >= limit) {
@@ -460,6 +486,31 @@ public class ListingService {
                     "You already have " + active + " active listings, which is the maximum of " + limit
                             + " for this account. Pause or remove one first.");
         }
+    }
+
+    /**
+     * Appends to the price series, if the price actually moved.
+     *
+     * <p>Only for a listing that has been published. Changing the price of a draft is
+     * composition, not a market signal: nobody saw the old number, and recording it would
+     * fill the series that price estimation will learn from with noise.
+     *
+     * <p>A currency change counts, because an amount without its currency says nothing.
+     */
+    private void recordPriceChange(Listing listing, long previousAmount, Currency previousCurrency) {
+        if (listing.getPublishedAt() == null) {
+            return;
+        }
+        boolean moved = listing.getPriceAmount() != previousAmount
+                || !listing.getPriceCurrency().getCode().equals(previousCurrency.getCode());
+        if (!moved) {
+            return;
+        }
+
+        priceHistory.save(ListingPriceHistory.of(listing, PriceChangeReason.SELLER_EDIT));
+        log.info("Listing {} price changed from {} {} to {} {}", listing.getId(),
+                previousAmount, previousCurrency.getCode(),
+                listing.getPriceAmount(), listing.getPriceCurrency().getCode());
     }
 
     private int effectiveLimit(AppUser seller) {
