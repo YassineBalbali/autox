@@ -72,9 +72,10 @@ password does exactly that.
 - **No metrics.** No request rate, no latency percentiles, no count of how often the rate
   limiter or login throttle fires. The actuator dependency is now present, so this is a
   configuration change and a scrape target away — but it is not done.
-- **Plain-text logs**, and no request correlation id except on 500s.
-- **No CI.** The 215 tests pass; nothing runs them on a push. This is now the largest
-  remaining piece of the item: a suite nobody runs automatically is a suite that rots.
+- **Plain-text logs**, and no request correlation id except on 500s. This is now the largest
+  remaining piece of the item.
+- ~~**No CI.**~~ **Fixed:** `.github/workflows/backend.yml` runs `clean verify` — the full
+  228-test suite plus packaging — on every push and on pull requests into `main`.
 
 Still true that **if this were deployed tomorrow, the second indication of a problem would be
 a user complaining** — the first is now a load balancer noticing.
@@ -190,7 +191,7 @@ Stated for balance, and because knowing what not to re-examine is useful.
 - **Schema integrity.** Flyway owns it, Hibernate validates against it and refuses to start on
   drift. The XOR constraints, composite foreign keys and deferred unique constraints do real
   work that application code would otherwise have to be trusted to do.
-- **The test suite.** 215 integration tests against real PostgreSQL and real S3-compatible
+- **The test suite.** 228 integration tests against real PostgreSQL and real S3-compatible
   storage. No mocked authentication, no mocked SQL, no in-memory database pretending to be
   Postgres. Several real bugs were found by tests that a mock would have passed — the EXIF
   orientation failure most recently, which 132 tests had missed because every generated test

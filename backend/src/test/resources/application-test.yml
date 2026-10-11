@@ -1,0 +1,70 @@
+# Test profile. Activated by @ActiveProfiles("test") in AbstractIntegrationTest.
+#
+# This file LAYERS ON TOP of the production application.yml: Spring loads the main file
+# first and this one over it, key by key. So the suite now runs against the real
+# configuration, and everything below is a deliberate deviation from it. Nothing here
+# should restate a production value — a duplicate that silently stops matching is exactly
+# what this arrangement exists to prevent.
+#
+# It used to be called application.yml, which put it earlier on the classpath and made it
+# REPLACE the production file rather than extend it. See docs/test-config-decisions.md for
+# what that was hiding.
+
+spring:
+  # Literals, not the production ${AUTOX_DB_*} placeholders, which have no defaults and
+  # would fail to bind. Testcontainers' @ServiceConnection supplies the real connection at
+  # runtime and takes precedence over all of these; they exist only so the context can
+  # start without a developer's environment being set up.
+  datasource:
+    url: jdbc:postgresql://localhost:1/replaced-by-testcontainers
+    username: test
+    password: test
+
+  flyway:
+    # So a test can reset the schema if it ever needs to. Never enabled in production.
+    clean-disabled: false
+
+autox:
+  auth:
+    # Required: production has no default for this, deliberately. Test-only key, and never
+    # used outside the test source set.
+    jwt-secret: test-only-signing-key-at-least-32-bytes-long-0123456789
+    issuer: https://api.autox.test
+
+    # Seconds instead of minutes, so escalation is observable without the suite sleeping.
+    # Only the delays deviate — the thresholds are production's, and the policy arithmetic
+    # is asserted separately against the production numbers.
+    login-throttle:
+      account-initial-delay: PT1S
+      account-max-delay: PT2S
+      ip-initial-delay: PT1S
+      ip-max-delay: PT2S
+
+  mail:
+    # Pinned rather than inherited: production reads ${AUTOX_MAIL_PROVIDER:log}, and a
+    # developer who has that variable set for their own reasons should not change what the
+    # suite tests. AccountOperationsIntegrationTest overrides this with a recording sender.
+    provider: log
+    # A recognisable value, asserted on in the reset-email test.
+    password-reset-url: https://autox.test/reset-password
+
+  public-api:
+    rate-limit:
+      # Off by default across the suite. Every test shares one client address, so a
+      # suite-wide limit would couple unrelated test classes to each other's request
+      # counts. PublicRateLimitIntegrationTest switches it on for itself.
+      enabled: false
+
+  listing:
+    # 2 rather than 5, so the quota tests reach the cap in two calls.
+    particulier-active-limit: 2
+
+  images:
+    # 3 rather than 20, so the per-listing cap can be reached in three calls.
+    max-per-listing: 3
+
+logging:
+  level:
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    org.springframework.security: WARN
