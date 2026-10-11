@@ -8,6 +8,7 @@ import com.autox.listing.EmissionClass;
 import com.autox.listing.ExteriorColor;
 import com.autox.listing.InteriorMaterial;
 import com.autox.listing.VehicleCondition;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -95,26 +96,31 @@ public record CreateListingRequest(
 
         Set<@NotBlank @Size(max = 60) String> featureCodes) {
 
+    @Schema(hidden = true)
     @AssertTrue(message = "supply exactly one of makeId or makeText")
     public boolean isMakeIdentifiedOnce() {
         return (makeId != null) != (makeText != null && !makeText.isBlank());
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "supply exactly one of modelId or modelText")
     public boolean isModelIdentifiedOnce() {
         return (modelId != null) != (modelText != null && !modelText.isBlank());
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "modelId is required when makeId is given, and vice versa")
     public boolean isCatalogueReferenceComplete() {
         return (makeId == null) == (modelId == null);
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "trimId requires modelId")
     public boolean isTrimConsistent() {
         return trimId == null || modelId != null;
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "supply either geoPlaceId, or postalCode with city and countryCode")
     public boolean isLocationIdentified() {
         boolean byReference = geoPlaceId != null;

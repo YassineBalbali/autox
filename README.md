@@ -3,24 +3,28 @@
 A vehicle marketplace — buying and selling cars — built for the French market first and
 multi-country from the data model up. Competitors are La Centrale, Leboncoin and Mobile.de.
 
-**This repository currently contains the backend only.** The MVP API is complete: accounts
-with the full password and session lifecycle, listings, photos, public search and the
-reference vocabularies. The Angular frontend is the next piece of work and has not started.
+**The backend MVP is complete** — accounts with the full password and session lifecycle,
+listings, photos, public search and the reference vocabularies. **The frontend has its
+scaffold and API layer** and no screens yet: the generated client, the auth plumbing, error
+translation and the design tokens are in place, and the first screen is the next piece of
+work.
 
 | | |
 |---|---|
 | **Backend** | Java 21, Spring Boot 3.5, PostgreSQL 16, Flyway, S3-compatible object storage |
-| **Frontend** | Angular (standalone components, mobile-first) — not started |
+| **Frontend** | Angular 22, standalone, zoneless, Vitest; API client generated from the OpenAPI spec |
 | **Layout** | `backend/` and `frontend/` at the repository root |
 
 ---
 
 ## The two things to know before reading the code
 
-**It is headless and API-first.** Every rule lives in the backend. The web app will be a pure
-API consumer, and a native mobile app will later call the *same* endpoints — so no endpoint
+**It is headless and API-first.** Every rule lives in the backend. The web app is a pure API
+consumer, and a native mobile app will later call the *same* endpoints — so no endpoint
 assumes a browser, a cookie or a session. The contract is the OpenAPI document the application
-serves, not anything the frontend happens to do.
+serves, not anything the frontend happens to do: the frontend's TypeScript models and HTTP
+clients are **generated** from that document, and a backend test fails if the committed copy
+falls behind.
 
 **It is multi-country from day one.** Country, currency and locale are in the schema now, not
 bolted on later. Prices are integers in the currency's minor unit with an ISO 4217 code beside
@@ -33,8 +37,11 @@ enabled today.
 
 ### You need
 
-- **JDK 21** — `java -version` should say 21
+- **JDK 21** — `java -version` should say 21. Needed by the frontend too: the API client
+  generator runs on the JVM.
 - **Maven 3.9+** — or use the wrapper if one is added later
+- **Node 24.15+** (or 22.22.3+, or 26+) — what Angular 22 accepts; `frontend/package.json`
+  records it in `engines`
 - **Docker** with Compose — for PostgreSQL, object storage, and the integration tests
 
 ### Four steps
@@ -49,6 +56,19 @@ docker compose up -d     # PostgreSQL on 5433, MinIO on 9000/9001
 cd backend
 mvn spring-boot:run      # http://localhost:8080
 ```
+
+Then the frontend, in a second terminal:
+
+```bash
+cd frontend
+npm ci
+npm start                # http://localhost:4200
+```
+
+`npm start` regenerates the API client from `frontend/openapi.json` before it serves, so
+there is no generation step to remember. The dev server talks to the API at the URL in
+`src/environments/environment.development.ts` — port **8081** by default, matching
+`AUTOX_PORT` in `.env`; keep the two in step.
 
 Flyway applies the migrations on first boot — there is no schema step to run by hand, and
 nothing to create but the database the container already creates. Hibernate runs with
@@ -98,7 +118,7 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 228 tests, needs Docker running
+mvn clean verify         # 231 tests, needs Docker running
 ```
 
 Every test is an integration test against a real PostgreSQL and a real S3-compatible store
@@ -114,12 +134,23 @@ happens, with the remedy in the message.
 
 ### CI
 
-`.github/workflows/backend.yml` runs the same `clean verify` on **every push**, on every
-branch, and on pull requests into `main`. GitHub's Ubuntu runners have a Docker daemon, so
-Testcontainers needs no extra setup and no secrets are involved — the test profile supplies
-its own signing key and the containers supply the rest. On failure the Surefire XML reports
-are uploaded as an artifact, because the console log alone does not tell you which assertion
-broke.
+Two workflows, both on **every push** to every branch and on pull requests into `main`,
+each filtered to the paths that can change its result.
+
+| Workflow | Watches | Runs |
+|---|---|---|
+| `.github/workflows/backend.yml` | `backend/**`, `frontend/openapi.json`, itself | `mvn -B clean verify` |
+| `.github/workflows/frontend.yml` | `frontend/**`, itself | `npm ci`, generate, lint, build, test |
+
+GitHub's Ubuntu runners have a Docker daemon, so Testcontainers needs no extra setup, and
+no secrets are involved — the test profile supplies its own signing key and the containers
+supply the rest. On failure the Surefire XML reports are uploaded as an artifact, because
+the console log alone does not tell you which assertion broke.
+
+**`frontend/openapi.json` is in the *backend* job's paths on purpose.** That file is the API
+contract, and `OpenApiSnapshotTest` compares it against the document the application
+actually serves — so a snapshot refreshed without the backend change behind it, or a backend
+change whose snapshot was not refreshed, fails there.
 
 ---
 
@@ -293,7 +324,19 @@ backend/
   src/test/java/com/autox/           integration tests, Testcontainers
   src/test/resources/application-test.yml   the test profile: deviations only
 
-.github/workflows/backend.yml   CI: clean verify on every push
+frontend/
+  openapi.json                  the committed API contract — the client is generated from it
+  scripts/fetch-openapi.mjs     refreshes it from a running backend
+  src/environments/             apiBaseUrl, per build configuration
+  src/styles/                   design tokens and mobile-first base styles
+  src/app/core/
+    api/generated/              GENERATED, gitignored — never edited, never committed
+    api/index.ts                the only import path the app uses for API types
+    auth/                       token store, session state, 401 interceptor, role guards
+    errors/                     API code + field -> French, exhaustive against the spec
+
+.github/workflows/backend.yml    CI: clean verify, on backend/** and openapi.json
+.github/workflows/frontend.yml   CI: install, lint, build, test, on frontend/**
 
 docs/            why things are the way they are — read these before changing them
 ```
@@ -312,7 +355,8 @@ docs/            why things are the way they are — read these before changing 
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
-| `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflow |
+| `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |
+| `docs/frontend-decisions.md` | The generated API client, the single in-flight refresh, token storage, guards, error translation, design tokens |
 
 ---
 
@@ -331,6 +375,14 @@ docs/            why things are the way they are — read these before changing 
   separate bean is not optional. The newer throttles avoid the trap by *shape* instead:
   the service returns a decision and the caller throws, so there is no exception inside the
   transaction that did the writing.
+- **The frontend never hand-writes an API type.** Models, enums and HTTP clients are
+  generated from `frontend/openapi.json` on every build. If the application needs a type
+  the API does not describe, that is a gap in the OpenAPI document to fix on the backend —
+  which is how three real contract bugs were found. See `docs/frontend-decisions.md`.
+- **The API's `detail` and `message` are never shown to a user.** They are untranslated
+  developer text whose wording is not a contract. French comes from a table keyed on the
+  stable `code`, typed `Record<ErrorCode, string>` so a new backend code breaks the
+  frontend build until someone writes the French.
 - **The test profile layers over the production configuration; it does not replace it.**
   `application-test.yml` holds only deliberate deviations, each with its reason, and nothing
   that merely restates a production value — a duplicate that silently stops matching is what

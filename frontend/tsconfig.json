@@ -1,0 +1,40 @@
+/* Base TypeScript configuration.
+   `strict` is set explicitly rather than relied on. It is the single most valuable
+   compiler setting in a codebase whose generated models mark every response field
+   optional, and leaving it to a tooling default is leaving it to the next upgrade.
+
+   noUnusedLocals and noUnusedParameters are deliberately NOT set here. The compiler
+   applies them to everything it compiles, and the generated API client emits unused
+   imports — so they would fail the build over code nobody wrote and nobody can fix.
+   The same check runs in ESLint instead (@typescript-eslint/no-unused-vars), which is
+   scoped to the hand-written source. */
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "strict": true
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
+    }
+  ]
+}

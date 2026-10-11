@@ -4,12 +4,26 @@ name: backend
 # standing between a change and production, so it runs on all of them rather than on a
 # curated list of branches somebody has to remember to update.
 #
-# No path filter yet: `backend/` is the whole repository. When `frontend/` lands, add one
-# here so an Angular-only change stops paying for 228 backend tests.
+# Path-filtered now that frontend/ exists: an Angular-only change should not pay for 231
+# backend tests and five minutes of containers. Two of the paths are deliberately not
+# under backend/:
+#
+#   frontend/openapi.json — the committed API contract the frontend generates its client
+#     from. OpenApiSnapshotTest compares it against the live document, so a snapshot
+#     refreshed without the backend change behind it has to fail here.
+#   this workflow file    — so a change to the job that runs the tests is itself tested.
 on:
   push:
+    paths:
+      - 'backend/**'
+      - 'frontend/openapi.json'
+      - '.github/workflows/backend.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/openapi.json'
+      - '.github/workflows/backend.yml'
 
 # A second push to the same branch makes the first run's answer irrelevant. Cancelling it
 # keeps the queue honest about what is actually being tested.
@@ -46,7 +60,7 @@ jobs:
       # Not a setup step — an assertion. Every test in this suite talks to a real
       # PostgreSQL and a real S3-compatible store through Testcontainers, so a runner
       # without a working Docker daemon cannot run any of them. Checking here fails with
-      # the actual reason instead of 228 identical ExceptionInInitializerErrors.
+      # the actual reason instead of 231 identical ExceptionInInitializerErrors.
       - name: Check Docker is available
         run: docker info --format 'Docker {{.ServerVersion}}'
 

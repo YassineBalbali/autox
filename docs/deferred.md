@@ -202,3 +202,19 @@ default.
    the test profile layered over it. Nothing broke, but the suite had not been reaching
    `open-in-view: false`, `forward-headers-strategy`, Jackson's null handling or Hibernate's
    UTC time zone. Written up in `docs/test-config-decisions.md`.
+
+---
+
+## Frontend gaps opened by the scaffold
+
+The first frontend session built the API layer and the plumbing; these were created or
+surfaced by it and are not done.
+
+| Gap | Why it matters |
+|---|---|
+| **No Content-Security-Policy** | The `localStorage` token decision rests on there being one. The refresh token is a 90-day credential readable by any script on the origin, so XSS is a durable account takeover. It belongs in the edge/proxy configuration, not in the bundle. |
+| **Validation failures carry no machine-readable constraint** | The API returns `{field, message}` where `message` is untranslated developer text whose wording is explicitly not a contract — so a client can neither show it nor match on it, and knows only *which* field is wrong, never *why*. A `constraint` code per violation (`{field: "email", constraint: "EMAIL"}`) would let the client say exactly what is wrong in French. Worth doing when the forms are built. |
+| **`ImageVariantType` is not in the spec** | It is a map key in `ImageResponse.variants`, and no generator can constrain object keys to an enum, so `variants` is `{ [key: string]: VariantView }`. The clean fix is a response-shape change — `variants` as a list of `{type, url, width, height}` — which is a decision for when the gallery is built. |
+| **No global error UI** | `ErrorMessageService` produces the French sentence; nothing displays it yet. A toast or an inline banner is a screen decision. |
+| **No HTTP retry or offline queue** | The client distinguishes a transport failure from a server error and says so, and does nothing else about it. |
+| **No path filter on a docs-only change** | Both CI workflows are path-filtered to their own trees, so a change to `docs/` or the root `README.md` runs neither job. That is intended, but it means a repository-wide required status check would never be satisfied by such a push if branch protection is added later. |

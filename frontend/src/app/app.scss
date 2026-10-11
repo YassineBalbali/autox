@@ -1,0 +1,34 @@
+// The skip link: off-screen until focused, then pinned to the top-left where a keyboard
+// user expects it. Styled here rather than in the global sheet because it is this
+// component's markup.
+.skip-link {
+  position: absolute;
+  left: var(--s-2);
+  // Just off the top of the viewport, not display:none — a hidden element cannot be
+  // focused, which would make the link useless to the only people who need it.
+  top: -4rem;
+  z-index: 100;
+  padding: var(--s-2) var(--s-3);
+  background: var(--c-surface);
+  color: var(--c-accent);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  transition: top 120ms ease-out;
+
+  &:focus-visible {
+    top: var(--s-2);
+  }
+}
+
+main {
+  // Vertical breathing room that holds at 375px. Screens add their own internal spacing.
+  padding-block: var(--s-5);
+
+  // The outlet target is focusable so the skip link can move focus to it, but it should
+  // never draw a ring of its own.
+  &:focus {
+    outline: none;
+  }
+}

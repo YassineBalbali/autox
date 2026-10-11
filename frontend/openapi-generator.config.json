@@ -1,0 +1,45 @@
+{
+  "$comment": [
+    "typescript-angular generator options. Every model, enum and API service under",
+    "src/app/core/api/generated is produced from openapi.json by `npm run api:generate`,",
+    "which runs automatically before build, serve, test and lint. Nothing in that directory",
+    "is edited or committed.",
+    "",
+    "ngVersion drives which Angular idioms the output uses: inject() over constructor",
+    "injection, HttpClient over the removed HttpClientModule, and standalone-friendly",
+    "providers. It must track the Angular version in package.json."
+  ],
+
+  "ngVersion": "22.2.2",
+  "npmName": "@autox/api-client",
+
+  "$comment-providedInRoot": [
+    "Services are @Injectable({providedIn: 'root'}) so a component can inject",
+    "ListingsService directly. The alternative is an NgModule to import, which this app",
+    "does not have — it is standalone throughout."
+  ],
+  "providedInRoot": true,
+
+  "$comment-useSingleRequestParameter": [
+    "One object argument per operation instead of positional parameters. The public search",
+    "takes around twenty optional filters; as positional arguments that is a call site",
+    "nobody can read and a silent break the first time the backend adds a filter in the",
+    "middle of the list."
+  ],
+  "useSingleRequestParameter": true,
+
+  "$comment-stringEnums": [
+    "Real TypeScript string enums, so a value can be referenced as ErrorCode.RATE_LIMITED",
+    "and a Record<ErrorCode, string> is exhaustive — which is what makes the French message",
+    "table fail to compile when the backend adds a code. 'original' naming keeps the",
+    "SCREAMING_SNAKE member names the API actually sends, rather than PascalCasing them",
+    "into something that no longer matches the wire."
+  ],
+  "stringEnums": true,
+  "enumPropertyNaming": "original",
+
+  "fileNaming": "kebab-case",
+  "supportsES6": true,
+  "withInterfaces": false,
+  "taggedUnions": false
+}

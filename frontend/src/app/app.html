@@ -1,0 +1,12 @@
+<!-- The application shell. Deliberately almost empty: this task built the API layer and
+     the plumbing, and a header with navigation is a screen decision that belongs with the
+     screens.
+
+     The skip link is here from the start because it is the one piece of markup that is
+     painful to add retrospectively — it has to be the first focusable element on the page,
+     which means it has to be in the shell and not in a feature. -->
+<a class="skip-link" href="#contenu" i18n="@@skipToContent">Aller au contenu</a>
+
+<main id="contenu" class="page" tabindex="-1">
+  <router-outlet />
+</main>

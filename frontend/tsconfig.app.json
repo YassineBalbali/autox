@@ -1,0 +1,16 @@
+/* Application compilation. The @angular/localize types declare the global `$localize`,
+   so template i18n can grow into $localize in TypeScript without a compiler error. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [
+      "@angular/localize"
+    ]
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts"
+  ]
+}

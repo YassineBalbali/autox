@@ -39,7 +39,8 @@ The startup warning saying so — *"spring.jpa.open-in-view is enabled by defaul
 database queries may be performed during view rendering"* — was in the output of every single
 test run.
 
-**Outcome: no bug was hiding behind it.** All 228 tests pass with it correctly disabled. The
+**Outcome: no bug was hiding behind it.** All 228 tests passed with it correctly disabled at
+the time of the change (231 now). The
 DTOs map eagerly in the service layer, and `ListingService.respond` and the search projections
 were already built that way. So this was a real hole in the suite's reach rather than a real
 defect in the application — but it was luck that it was empty, not design, and it is now
@@ -174,7 +175,8 @@ Four choices worth naming:
   says "tests failed" and nothing more.
 
 There is no path filter yet, because `backend/` is the whole repository. When `frontend/`
-lands, add one so an Angular-only change does not pay for 228 backend tests.
+has landed, so both workflows are now path-filtered — an Angular-only change does not pay
+for 231 backend tests. See docs/frontend-decisions.md.
 
 The workflow is checked with [actionlint](https://github.com/rhysd/actionlint), which
 validates the Actions schema rather than just the YAML:

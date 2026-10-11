@@ -23,6 +23,18 @@ public class OpenApiConfig {
     @Bean
     OpenAPI autoxOpenApi(@Value("${AUTOX_JWT_ISSUER:https://api.autox.local}") String issuer) {
         return new OpenAPI()
+                // One relative server, pinned. Left alone, springdoc derives this from the
+                // host and port of whoever fetched the document, so the same application
+                // describes itself differently to a developer on :8081, to a test through
+                // MockMvc, and to a browser behind a proxy — and the committed snapshot the
+                // frontend generates from would never match any of them.
+                //
+                // "/" is also the honest answer: the API is deployed same-origin with the
+                // web app behind one proxy, and a client that needs something else sets its
+                // own base path.
+                .servers(java.util.List.of(new io.swagger.v3.oas.models.servers.Server()
+                        .url("/")
+                        .description("Same origin as the caller")))
                 .info(new Info()
                         .title("AutoX API")
                         .version("0.1.0")
@@ -65,5 +77,63 @@ public class OpenApiConfig {
                                         minutes); exchange the refresh token at \
                                         `POST /api/v1/auth/refresh` when it expires. Issuer: \
                                         """ + issuer)));
+    }
+
+    /**
+     * Declares the error body on every operation.
+     *
+     * <p>Errors are built at runtime as {@code ProblemDetail} with members attached
+     * dynamically, which no schema generator can see — so before this, the document
+     * described 33 operations and none of their failures, and a generated client had no
+     * error type and no {@code ErrorCode}. The one contract every client depends on most
+     * was the one thing it had to hand-write.
+     *
+     * <p>A customizer rather than an annotation per operation: the error shape is uniform
+     * across the whole API by design, and 33 copies of the same {@code @ApiResponse} would
+     * be 33 places for it to fall out of step.
+     *
+     * <p>The response code is {@code default}, meaning "any status not listed above". That
+     * is accurate — the same body comes back for 400, 401, 403, 404, 409, 413, 415, 429 and
+     * 500 — and it keeps the document honest instead of enumerating per-operation status
+     * lists that would be guesses.
+     */
+    @Bean
+    org.springdoc.core.customizers.OpenApiCustomizer errorResponseCustomizer() {
+        return openApi -> {
+            io.swagger.v3.oas.models.media.Schema<?> errorSchema =
+                    new io.swagger.v3.oas.models.media.Schema<>().$ref("#/components/schemas/ApiError");
+
+            io.swagger.v3.oas.models.responses.ApiResponse errorResponse =
+                    new io.swagger.v3.oas.models.responses.ApiResponse()
+                            .description("Error. RFC 9457 problem+json; branch on `code`.")
+                            .content(new io.swagger.v3.oas.models.media.Content()
+                                    .addMediaType("application/problem+json",
+                                            new io.swagger.v3.oas.models.media.MediaType().schema(errorSchema)));
+
+            openApi.getPaths().values().forEach(path ->
+                    path.readOperations().forEach(operation -> {
+                        if (operation.getResponses() == null) {
+                            operation.setResponses(new io.swagger.v3.oas.models.responses.ApiResponses());
+                        }
+                        operation.getResponses().addApiResponse("default", errorResponse);
+                    }));
+        };
+    }
+
+    /**
+     * Pulls {@code ApiError} and its nested {@code FieldError} into the components section.
+     *
+     * <p>The customizer above only writes a {@code $ref}; nothing in any controller
+     * signature mentions the type, so springdoc would never resolve it and the reference
+     * would dangle — which a client generator reports as a broken document rather than
+     * silently ignoring. Declaring it here is what makes the reference resolvable.
+     */
+    @Bean
+    org.springdoc.core.customizers.OpenApiCustomizer errorSchemaCustomizer() {
+        return openApi -> {
+            var resolved = io.swagger.v3.core.converter.ModelConverters.getInstance()
+                    .readAll(com.autox.api.error.ApiErrorResponse.class);
+            resolved.forEach((name, schema) -> openApi.getComponents().addSchemas(name, schema));
+        };
     }
 }

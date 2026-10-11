@@ -1,6 +1,7 @@
 package com.autox.auth.dto;
 
 import com.autox.user.UserRole;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -48,11 +49,13 @@ public record RegisterRequest(
         /** Required when {@code role} is PROFESSIONNEL, ignored otherwise. */
         @Size(max = 160) String companyName) {
 
+    @Schema(hidden = true)
     @AssertTrue(message = "companyName is required when registering as PROFESSIONNEL")
     public boolean isCompanyNamePresentForPro() {
         return role != UserRole.PROFESSIONNEL || (companyName != null && !companyName.isBlank());
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "role must be PARTICULIER or PROFESSIONNEL")
     public boolean isSelfAssignableRole() {
         return role != UserRole.ADMIN;

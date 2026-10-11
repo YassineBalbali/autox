@@ -1,0 +1,107 @@
+// Design tokens.
+//
+// CSS custom properties rather than Sass variables, deliberately: they are readable from
+// the browser at runtime, overridable per-component and per-media-query, and a future dark
+// theme is a second :root block rather than a second build. Sass is used only for the
+// nesting and partials.
+//
+// The scales are small on purpose. A marketplace needs about six text sizes and about seven
+// spacing steps; offering twenty of each guarantees that two screens built a month apart
+// will not line up.
+
+:root {
+  // ---- colour ------------------------------------------------------------
+  //
+  // Neutral-heavy by intent. A listing page is photographs of cars; the interface around
+  // them should recede. One accent carries actions, one carries danger, and nothing else
+  // competes with the content.
+
+  --c-ink: #14181f; // primary text
+  --c-ink-soft: #4a5260; // secondary text, labels
+  --c-ink-faint: #767f8c; // captions, placeholders, disabled
+  --c-line: #e2e6ec; // borders, dividers
+  --c-line-strong: #c7ced8; // input borders, focused dividers
+  --c-surface: #ffffff; // cards, inputs, sheets
+  --c-surface-sunk: #f5f7fa; // page background behind cards
+
+  --c-accent: #1b5fd9; // links, primary actions
+  --c-accent-ink: #ffffff; // text on accent
+  --c-accent-soft: #e8f0fd; // accent-tinted backgrounds
+  --c-accent-strong: #14489f; // hover, active
+
+  --c-danger: #b4232b; // destructive actions, validation errors
+  --c-danger-soft: #fdecec;
+  --c-success: #1c6e45; // confirmations
+  --c-success-soft: #e7f4ec;
+  --c-warn: #8a5a08;
+  --c-warn-soft: #fdf3e2;
+
+  // Focus ring. Separate from the accent so it can stay visible against accent fills.
+  --c-focus: #1b5fd9;
+
+  // ---- spacing -----------------------------------------------------------
+  //
+  // A 4px base, doubling loosely. Named by size rather than by use, because a token called
+  // --space-card-padding only ever fits the first card anyone builds.
+
+  --s-1: 0.25rem; //  4px
+  --s-2: 0.5rem; //  8px
+  --s-3: 0.75rem; // 12px
+  --s-4: 1rem; // 16px  — the default gap
+  --s-5: 1.5rem; // 24px
+  --s-6: 2rem; // 32px
+  --s-7: 3rem; // 48px
+
+  // The page gutter. 16px at 375px leaves 343px of content, which is the narrowest the
+  // layout is ever allowed to get.
+  --gutter: var(--s-4);
+
+  // ---- type --------------------------------------------------------------
+  //
+  // System font stack: no webfont to download, and the result already looks native on each
+  // platform. A brand face can be added later as one token change.
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  // A ~1.2 scale from a 16px base. 16px is the smallest size iOS will not zoom a form
+  // field for, which is why --t-body is not 15px however tempting that looks.
+  --t-xs: 0.75rem; // 12px — legal text, metadata
+  --t-sm: 0.875rem; // 14px — labels, captions
+  --t-body: 1rem; // 16px — body, and every input
+  --t-lg: 1.125rem; // 18px — card titles
+  --t-xl: 1.5rem; // 24px — page titles
+  --t-2xl: 1.875rem; // 30px — the one hero size
+
+  --lh-tight: 1.2; // headings
+  --lh-body: 1.55; // paragraphs
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+
+  // ---- shape and depth ---------------------------------------------------
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgb(20 24 31 / 8%);
+  --shadow-md: 0 2px 8px rgb(20 24 31 / 10%);
+
+  // ---- layout ------------------------------------------------------------
+  // Reading measure for text, and the widest the app ever gets.
+  --w-prose: 36rem;
+  --w-page: 75rem;
+
+  // Minimum touch target. 44px is Apple's figure and the one that matters on a phone.
+  --tap: 44px;
+}
+
+// Breakpoints cannot be CSS custom properties — @media cannot read them — so these are the
+// one place Sass variables are the right tool. Mobile-first: every query is min-width, and
+// the base styles are the phone styles.
+$bp-sm: 480px; // large phone
+$bp-md: 768px; // tablet, two-column cards
+$bp-lg: 1024px; // desktop, sidebar filters
+$bp-xl: 1280px;

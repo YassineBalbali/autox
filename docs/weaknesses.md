@@ -191,7 +191,7 @@ Stated for balance, and because knowing what not to re-examine is useful.
 - **Schema integrity.** Flyway owns it, Hibernate validates against it and refuses to start on
   drift. The XOR constraints, composite foreign keys and deferred unique constraints do real
   work that application code would otherwise have to be trusted to do.
-- **The test suite.** 228 integration tests against real PostgreSQL and real S3-compatible
+- **The test suite.** 231 integration tests against real PostgreSQL and real S3-compatible
   storage. No mocked authentication, no mocked SQL, no in-memory database pretending to be
   Postgres. Several real bugs were found by tests that a mock would have passed — the EXIF
   orientation failure most recently, which 132 tests had missed because every generated test
