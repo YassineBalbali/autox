@@ -98,13 +98,28 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn test                 # 215 tests, needs Docker running
+mvn clean verify         # 228 tests, needs Docker running
 ```
 
 Every test is an integration test against a real PostgreSQL and a real S3-compatible store
 in Testcontainers. Nothing about authentication, storage or SQL is mocked: a passing test
 exercises the code path a phone would. The containers start once and are shared, so the suite
 pays that cost a single time (expect roughly five minutes in total).
+
+**Use `clean`.** The tests run against the production `application.yml` with
+`application-test.yml` layered on top, and Maven does not remove resources that have been
+renamed — so an incremental build can keep loading a stale copy and run the whole suite
+against the wrong configuration. `ConfigurationLayeringIntegrationTest` fails loudly if that
+happens, with the remedy in the message.
+
+### CI
+
+`.github/workflows/backend.yml` runs the same `clean verify` on **every push**, on every
+branch, and on pull requests into `main`. GitHub's Ubuntu runners have a Docker daemon, so
+Testcontainers needs no extra setup and no secrets are involved — the test profile supplies
+its own signing key and the containers supply the rest. On failure the Surefire XML reports
+are uploaded as an artifact, because the console log alone does not tell you which assertion
+broke.
 
 ---
 
@@ -276,6 +291,9 @@ backend/
     config/       security, JWT, MVC, OpenAPI
   src/main/resources/db/migration/   V1 … V12, Flyway owns the schema
   src/test/java/com/autox/           integration tests, Testcontainers
+  src/test/resources/application-test.yml   the test profile: deviations only
+
+.github/workflows/backend.yml   CI: clean verify on every push
 
 docs/            why things are the way they are — read these before changing them
 ```
@@ -294,6 +312,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
+| `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflow |
 
 ---
 
@@ -312,8 +331,10 @@ docs/            why things are the way they are — read these before changing 
   separate bean is not optional. The newer throttles avoid the trap by *shape* instead:
   the service returns a decision and the caller throws, so there is no exception inside the
   transaction that did the writing.
-- **The test configuration replaces the production configuration, it does not merge with
-  it.** `src/test/resources/application.yml` shadows the main `application.yml` on the
-  classpath. Anything the tests need from production config has to be repeated there — which
-  also means a test asserting configuration-driven behaviour may be asserting a framework
-  default. See the note at the end of `docs/account-and-correctness-decisions.md`.
+- **The test profile layers over the production configuration; it does not replace it.**
+  `application-test.yml` holds only deliberate deviations, each with its reason, and nothing
+  that merely restates a production value — a duplicate that silently stops matching is what
+  that file used to be full of. It was once named `application.yml`, which shadowed the
+  production file entirely and meant a test asserting configuration-driven behaviour could be
+  asserting a framework default. `ConfigurationLayeringIntegrationTest` now guards both
+  directions. See `docs/test-config-decisions.md`.

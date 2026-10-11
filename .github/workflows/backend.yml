@@ -1,0 +1,72 @@
+name: backend
+
+# Every push, on every branch, plus pull requests into main. The suite is the only thing
+# standing between a change and production, so it runs on all of them rather than on a
+# curated list of branches somebody has to remember to update.
+#
+# No path filter yet: `backend/` is the whole repository. When `frontend/` lands, add one
+# here so an Angular-only change stops paying for 228 backend tests.
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+# A second push to the same branch makes the first run's answer irrelevant. Cancelling it
+# keeps the queue honest about what is actually being tested.
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: build and test
+    runs-on: ubuntu-latest
+    # The suite starts real containers; it takes minutes, not seconds. The cap is here so a
+    # stuck image pull fails in half an hour instead of holding a runner for six.
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          # Keyed on the pom by the action itself, so a dependency change invalidates it.
+          cache: maven
+
+      # Not a setup step — an assertion. Every test in this suite talks to a real
+      # PostgreSQL and a real S3-compatible store through Testcontainers, so a runner
+      # without a working Docker daemon cannot run any of them. Checking here fails with
+      # the actual reason instead of 228 identical ExceptionInInitializerErrors.
+      - name: Check Docker is available
+        run: docker info --format 'Docker {{.ServerVersion}}'
+
+      # clean, deliberately: maven copies resources without removing ones that have been
+      # renamed, so an incremental build can keep loading a stale application.yml and run
+      # the whole suite against the wrong configuration. That exact thing happened in
+      # development — see docs/test-config-decisions.md.
+      #
+      # `verify` rather than `test`: it also packages the application, so a build that
+      # cannot produce a runnable jar fails here rather than at deploy time.
+      - name: Build and test
+        run: mvn -B --no-transfer-progress clean verify
+
+      # Surefire's XML is the only place the actual assertion failure is written down. The
+      # log above is truncated and interleaved; without this a red run says "tests failed"
+      # and nothing else.
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports/
+          retention-days: 14

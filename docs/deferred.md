@@ -161,7 +161,8 @@ equal quality — a dependency and a decision, not a line of config.
   anonymous caller may see.
 - **No structured logging.** Plain text, so logs are greppable but not queryable, and there is
   no request correlation id except on 500s (`incidentId`).
-- **No CI.** The tests exist and pass; nothing runs them automatically on a push.
+- ~~**No CI.**~~ **Built.** `.github/workflows/backend.yml` runs `clean verify` on every push
+  and on pull requests into `main`. See `docs/test-config-decisions.md`.
 - **The MinIO dev image is an unpinned moving tag.** `chainguard/minio:latest`, because
   `minio/minio` is no longer anonymously pullable and Chainguard's free tier publishes no
   version tags. Two developers can get different builds and CI can break with no commit behind
@@ -196,9 +197,8 @@ default.
    equipment — moves that text into a database that is not where anyone wants to edit copy.
    Revisit only if a third client appears, or if non-developers need to change the wording.
    **Decided:** values server-side, labels in Angular. No translation tables for enums.
-6. **Whether `src/test/resources/application.yml` should be renamed.** It is
-   `application.yml` on the test classpath, so it **replaces** the production file rather than
-   merging with it, and every setting the tests depend on has to be duplicated there — which
-   also means the production file has never been exercised by the suite. Renaming it to
-   `application-test.yml` would make the two merge, and would silently change what 215
-   existing tests run against, so it is not a change to make in passing.
+6. ~~**Whether `src/test/resources/application.yml` should be renamed.**~~ **Done.** It is
+   now `application-test.yml`, so the suite runs against the production configuration with
+   the test profile layered over it. Nothing broke, but the suite had not been reaching
+   `open-in-view: false`, `forward-headers-strategy`, Jackson's null handling or Hibernate's
+   UTC time zone. Written up in `docs/test-config-decisions.md`.
