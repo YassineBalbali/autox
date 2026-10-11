@@ -1,0 +1,53 @@
+{
+  "name": "frontend",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "//api": "The API client is generated, never hand-written. api:generate runs from the committed openapi.json snapshot and is wired as a pre-step on every command that compiles TypeScript, so a fresh clone cannot build against a missing or stale client. api:fetch refreshes the snapshot from a running backend; the backend's OpenApiSnapshotTest fails if the committed one falls behind.",
+    "api:generate": "openapi-generator-cli generate -i openapi.json -g typescript-angular -o src/app/core/api/generated -c openapi-generator.config.json",
+    "api:fetch": "node scripts/fetch-openapi.mjs",
+    "prestart": "npm run api:generate",
+    "start": "ng serve",
+    "prebuild": "npm run api:generate",
+    "build": "ng build",
+    "prewatch": "npm run api:generate",
+    "watch": "ng build --watch --configuration development",
+    "pretest": "npm run api:generate",
+    "test": "ng test",
+    "prelint": "npm run api:generate",
+    "lint": "ng lint",
+    "//i18n": "French is the source locale, so there is nothing to translate yet. This extracts the i18n-marked strings for the day a second locale is added.",
+    "i18n:extract": "ng extract-i18n --output-path src/locale --out-file messages.xlf"
+  },
+  "private": true,
+  "packageManager": "npm@11.19.0",
+  "dependencies": {
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/forms": "^22.2.0",
+    "@angular/localize": "^22.2.2",
+    "@angular/platform-browser": "^22.2.0",
+    "@angular/router": "^22.2.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.2.2",
+    "@angular/cli": "^22.2.2",
+    "@angular/compiler-cli": "^22.2.0",
+    "@eslint/js": "^10.0.1",
+    "@openapitools/openapi-generator-cli": "^2.41.0",
+    "angular-eslint": "22.6.0",
+    "eslint": "^10.12.0",
+    "jsdom": "^30.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "8.71.0",
+    "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0",
+    "npm": ">=10"
+  }
+}

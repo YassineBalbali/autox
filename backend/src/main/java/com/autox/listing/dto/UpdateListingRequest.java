@@ -8,6 +8,7 @@ import com.autox.listing.EmissionClass;
 import com.autox.listing.ExteriorColor;
 import com.autox.listing.InteriorMaterial;
 import com.autox.listing.VehicleCondition;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -89,21 +90,25 @@ public record UpdateListingRequest(
         /** Replaces the whole set when present. An empty set clears every feature. */
         Set<@NotBlank @Size(max = 60) String> featureCodes) {
 
+    @Schema(hidden = true)
     @AssertTrue(message = "supply makeId or makeText, not both")
     public boolean isMakeUnambiguous() {
         return makeId == null || makeText == null || makeText.isBlank();
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "supply modelId or modelText, not both")
     public boolean isModelUnambiguous() {
         return modelId == null || modelText == null || modelText.isBlank();
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "trimId requires a model to be identified by catalogue id")
     public boolean isTrimConsistent() {
         return trimId == null || modelId != null;
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "supply geoPlaceId, or postalCode with city, not both")
     public boolean isLocationUnambiguous() {
         boolean byText = (postalCode != null && !postalCode.isBlank()) || (city != null && !city.isBlank());

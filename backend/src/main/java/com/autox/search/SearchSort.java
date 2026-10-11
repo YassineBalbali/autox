@@ -1,5 +1,7 @@
 package com.autox.search;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * The orderings public search supports.
  *
@@ -8,6 +10,7 @@ package com.autox.search;
  * two listings at the same price would have an undefined relative order, and a cursor sitting
  * between them would either skip or repeat rows.
  */
+@Schema(enumAsRef = true)
 public enum SearchSort {
 
     /** Default. Uses ix_listing_live_published (published_at DESC, id DESC). */

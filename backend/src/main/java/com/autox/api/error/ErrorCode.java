@@ -1,5 +1,7 @@
 package com.autox.api.error;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Stable, machine-readable error identifiers returned as the {@code code} member of
  * every error response.
@@ -8,6 +10,7 @@ package com.autox.api.error;
  * HTTP status alone — a phone app needs to tell "wrong password" apart from
  * "account suspended", and both are 401.
  */
+@Schema(enumAsRef = true)
 public enum ErrorCode {
 
     VALIDATION_FAILED,

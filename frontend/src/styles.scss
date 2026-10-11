@@ -1,0 +1,5 @@
+// Global stylesheet. Two partials and nothing else: tokens declare the vocabulary, base
+// applies it to bare HTML. Components bring their own styles and reference only tokens, so
+// a colour or a spacing step is changed in one place.
+@use 'styles/tokens';
+@use 'styles/base';

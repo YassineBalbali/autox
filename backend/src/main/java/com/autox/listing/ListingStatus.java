@@ -1,5 +1,6 @@
 package com.autox.listing;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -23,6 +24,7 @@ import java.util.Set;
  *                        └──▶ REMOVED  (terminal, see below)
  * </pre>
  */
+@Schema(enumAsRef = true)
 public enum ListingStatus {
 
     DRAFT,

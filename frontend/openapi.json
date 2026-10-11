@@ -1,0 +1,3676 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AutoX API",
+    "description": "Vehicle marketplace API. Headless and API-first: this document is the whole contract, and the Angular web app and a future native mobile app consume exactly these endpoints.\n\n**Conventions that apply everywhere:**\n\n* **Money** is an integer in the currency's minor unit, with an ISO 4217 code beside it. `priceAmount: 1850000, priceCurrencyCode: \"EUR\"` is €18,500.00. The scale comes from `GET /api/v1/reference/countries`.\n* **Distance** is always kilometres on the wire, whatever a market displays.\n* **Errors** are RFC 9457 `application/problem+json` with a stable `code`. Branch on `code`, never on `detail` — `detail` is English developer text and is not translated. Validation failures add a flat `errors` array of `{field, message}`.\n* **Enums** serialise as their constant name. The full set a client may receive is at `GET /api/v1/reference/enums`; display labels are the client's own responsibility.\n* **List endpoints are cursor-paginated.** Pass the previous response's `nextCursor` back as `cursor`. There are no page numbers and no total count.\n* **Images are never uploaded through this API.** Request a slot, PUT the bytes straight to object storage with the pre-signed URL, then confirm.\n",
+    "contact": {
+      "name": "AutoX"
+    },
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Same origin as the caller"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Listing photos",
+      "description": "The three-step direct-to-storage upload, plus gallery order. Requires authentication."
+    },
+    {
+      "name": "Listings (seller)",
+      "description": "Creating and managing your own listings. Requires authentication."
+    },
+    {
+      "name": "Admin",
+      "description": "Moderation. Requires the ADMIN role."
+    },
+    {
+      "name": "Listings (public)",
+      "description": "The buyer-facing shop window. No authentication."
+    },
+    {
+      "name": "Profile",
+      "description": "The signed-in account. Requires authentication."
+    },
+    {
+      "name": "Reference",
+      "description": "Enum values, equipment vocabulary and the vehicle catalogue"
+    },
+    {
+      "name": "Authentication",
+      "description": "Register, sign in, rotate tokens, sign out. No credentials needed to call these."
+    },
+    {
+      "name": "Sessions",
+      "description": "List and end the signed-in account's own sessions. Requires authentication."
+    }
+  ],
+  "paths": {
+    "/api/v1/listings/{listingId}/images/order": {
+      "put": {
+        "tags": [
+          "Listing photos"
+        ],
+        "summary": "Replaces the gallery order.",
+        "description": "Replaces the gallery order. The body must list every confirmed photo exactly once.",
+        "operationId": "reorder",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderImagesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImageResponse"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/password": {
+      "post": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Changes the password",
+        "description": "Changes the password. Requires the current one, even though the request is already\n authenticated: a valid token may be a stolen one, and taking over the account\n permanently is the most valuable thing that can be done with it.\n\n <p><b>Returns a new token pair, and invalidates every existing session including the\n caller's.</b> The client must store the tokens from this response; the refresh token\n it arrived with no longer works. An access token carries no reference to the session\n it was issued with, so \"all sessions but this one\" is not something the server can\n express — replacing the lot is the version of that guarantee it can actually keep.",
+        "operationId": "changePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings": {
+      "get": {
+        "tags": [
+          "Listings (public)"
+        ],
+        "summary": "Search the live listings",
+        "description": "Search the live listings. Every filter is optional; no filters means everything visible.\n\n <p>Paginated by cursor, not by page number: <code>nextCursor</code> from one response is\n <code>cursor</code> in the next. There is no page number and no total, because offset paging\n over a table being written to skips and repeats rows, and a count costs a second scan.",
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "criteria",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ListingSearchCriteria"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SearchSort",
+              "default": "NEWEST"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 24,
+              "maximum": 60,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagePublicListingSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "Creates a DRAFT.",
+        "description": "Creates a DRAFT. Publication is a separate, explicit call.",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateListingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/{listingId}/images": {
+      "get": {
+        "tags": [
+          "Listing photos"
+        ],
+        "summary": "Every photo, pending ones included, so a client can show upload progress.",
+        "description": "Every photo, pending ones included, so a client can show upload progress.",
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImageResponse"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Listing photos"
+        ],
+        "summary": "Step 1: reserve a slot and get a pre-signed upload URL.",
+        "description": "Step 1: reserve a slot and get a pre-signed upload URL.",
+        "operationId": "requestUpload",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageUploadTicket"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/{listingId}/images/{imageId}/confirm": {
+      "post": {
+        "tags": [
+          "Listing photos"
+        ],
+        "summary": "Step 3, after the client has PUT the bytes to storage.",
+        "description": "Step 3, after the client has PUT the bytes to storage. Idempotent.",
+        "operationId": "confirmUpload",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "imageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/{id}/unpublish": {
+      "post": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "ACTIVE to PAUSED.",
+        "description": "ACTIVE to PAUSED. Keeps the listing and its photos, frees the quota slot.",
+        "operationId": "unpublish",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/{id}/sold": {
+      "post": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "ACTIVE or PAUSED to SOLD, recording the outcome.",
+        "description": "ACTIVE or PAUSED to SOLD, recording the outcome. Seller only; a sold listing stays\n visible to its owner and drops out of public search.",
+        "operationId": "markSold",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/{id}/renew": {
+      "post": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "Extends the expiry window, and revives an expired listing.",
+        "description": "Extends the expiry window, and revives an expired listing.",
+        "operationId": "renew",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/{id}/publish": {
+      "post": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "DRAFT, PAUSED or EXPIRED to ACTIVE.",
+        "description": "DRAFT, PAUSED or EXPIRED to ACTIVE. Checks the active-listing cap.",
+        "operationId": "publish",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Creates an account and signs it in, returning the same token pair as login — so a\n client never has to follow registration with a second call",
+        "description": "Creates an account and signs it in, returning the same token pair as login — so a\n client never has to follow registration with a second call.\n\n <p><code>role</code> chooses PARTICULIER or PROFESSIONNEL; a professional must also send\n <code>companyName</code>. ADMIN cannot be self-assigned.",
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Exchanges a refresh token for a new pair.",
+        "description": "Exchanges a refresh token for a new pair. The old refresh token is invalid\n afterwards — clients must store the one returned here.",
+        "operationId": "refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password/reset": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Sets a new password using the token from a reset link",
+        "description": "Sets a new password using the token from a reset link.\n\n <p>The link works once and only for a short window. Every way it can fail — unknown,\n expired, already spent, replaced by a newer request — answers 400\n <code>INVALID_RESET_TOKEN</code>, because a legitimate user does the same thing in all\n four cases: ask for a new link.\n\n <p>A successful reset ends every session on every device. The user signs in again.",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password/forgot": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Asks for a password reset link, which is emailed to the address if it belongs to an\n account that can use one",
+        "description": "Asks for a password reset link, which is emailed to the address if it belongs to an\n account that can use one.\n\n <p>Always 202, and always the same body, whether or not the address is registered:\n anything else would turn this into a way to find out who has an account here. The\n caller therefore cannot tell from the response that anything was sent. Repeated\n requests answer 429 <code>RATE_LIMITED</code> — the address does not have to be one the\n caller owns, so the endpoint is capped both per account and per caller.",
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Ends this device's session.",
+        "description": "Ends this device's session. Idempotent: an unknown token still returns 204.",
+        "operationId": "logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Exchanges credentials for a short-lived access token and a long-lived refresh token",
+        "description": "Exchanges credentials for a short-lived access token and a long-lived refresh token.\n\n <p>A wrong password and an unknown address both answer 401 <code>INVALID_CREDENTIALS</code>,\n deliberately indistinguishable. Repeated failures answer 429 <code>TOO_MANY_ATTEMPTS</code>\n with <code>Retry-After</code>; the delay is progressive and capped, so failing on purpose\n cannot lock the real owner out.",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "The signed-in account: contact details, role, country, locale and — for a\n PROFESSIONNEL — the company profile.",
+        "description": "The signed-in account: contact details, role, country, locale and — for a\n PROFESSIONNEL — the company profile. Never another user's; the id comes from the\n token, not from the request.",
+        "operationId": "getOwnProfile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Partial update: only the fields present in the body are changed.",
+        "description": "Partial update: only the fields present in the body are changed. Email and role are\n not editable here — changing an address needs to prove control of the new one, and\n changing a role is a commercial decision, not a profile edit. The password has its\n own endpoint below.",
+        "operationId": "updateOwnProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/{id}": {
+      "get": {
+        "tags": [
+          "Listings (public)"
+        ],
+        "summary": "One listing, as a buyer sees it: full description, equipment codes and the image gallery\n in order, each image with its three size variants",
+        "description": "One listing, as a buyer sees it: full description, equipment codes and the image gallery\n in order, each image with its three size variants.\n\n <p>404 unless the listing is ACTIVE, not rejected, not soft-deleted and not past its\n expiry — including when the caller happens to be its owner, who reads it at\n <code>/api/v1/listings/mine/{id</code>} instead. The VIN, the seller's email and the exact\n coordinates are not part of this response.",
+        "operationId": "detail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicListingDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "Soft delete: the row stays for the audit trail but disappears from every read.",
+        "description": "Soft delete: the row stays for the audit trail but disappears from every read.",
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "Partial update of a listing the caller owns",
+        "description": "Partial update of a listing the caller owns. Only the fields present in the body change.\n\n <p><code>status</code> is not among them: state changes go through their own endpoints, which\n is what makes the transition rules unbypassable. Editing an ACTIVE listing is allowed and\n keeps it live.",
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateListingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/reference/makes": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "Vehicle manufacturers",
+        "description": "Vehicle manufacturers.\n\n <p>Empty until the catalogue is seeded; listings identify their vehicle by free text in\n the meantime, and the search endpoint accepts a name as well as an id for that reason.",
+        "operationId": "makes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Make"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reference/makes/{makeId}/models": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "The model lines of one manufacturer.",
+        "description": "The model lines of one manufacturer. 404 if the make is unknown.",
+        "operationId": "models",
+        "parameters": [
+          {
+            "name": "makeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Model"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reference/features": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "The equipment vocabulary: code, category and display order, with the seeded labels.",
+        "description": "The equipment vocabulary: code, category and display order, with the seeded labels.",
+        "operationId": "features",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Feature"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reference/enums": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "Every enum value the API may return or accept, keyed by type name",
+        "description": "Every enum value the API may return or accept, keyed by type name.\n\n <p>Values only. Display labels belong in the client's own translation files; what a\n client must not duplicate is the <em>set</em> of constants.",
+        "operationId": "enums",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Enums"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reference/countries": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "The open markets: default locale, currency and the currency's minor-unit scale, which a\n client needs in order to render the integer prices this API returns.",
+        "description": "The open markets: default locale, currency and the currency's minor-unit scale, which a\n client needs in order to render the integer prices this API returns.",
+        "operationId": "countries",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Country"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/sessions": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Every live session, newest first",
+        "description": "Every live session, newest first.\n\n <p>Not paginated, and the one list endpoint in the API that is not. The bound is how\n many devices one person signs in from, which is single digits: a page parameter here\n would be ceremony around a list that cannot grow.\n\n <p>The response cannot say which entry is the caller's own. An access token carries\n no reference to the refresh family it was issued with, so a client that wants to mark\n one as \"this device\" should match on the <code>deviceLabel</code> it chose at sign-in.",
+        "operationId": "listOwnSessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionResponse"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/mine": {
+      "get": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "The seller's own listings, in every state.",
+        "description": "The seller's own listings, in every state. Paginated; there is no unbounded form.",
+        "operationId": "listOwn",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ListingStatus"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseListingSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/mine/{id}": {
+      "get": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "The seller's own view: full detail in any state, including drafts",
+        "description": "The seller's own view: full detail in any state, including drafts.\n\n <p>Under <code>/mine/</code> rather than at <code>/listings/{id</code>} because that path is now the\n public detail endpoint, and one path returning two different shapes depending on who is\n asking makes for a contract no typed client can rely on.",
+        "operationId": "getOwn",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Accounts, newest first, optionally filtered by role",
+        "description": "Accounts, newest first, optionally filtered by role. Paginated by page number rather\n than by cursor: this is an operator tool over a slowly growing table, where jumping to\n a page is worth more than the consistency a cursor gives.\n\n <p>Closed accounts are excluded. Password hashes are never included.",
+        "operationId": "list_1",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/UserRole"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseUserSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/sessions/{sessionId}": {
+      "delete": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Ends one session",
+        "description": "Ends one session. The device holding it can no longer refresh, and its access token\n stops working when it expires — within fifteen minutes, which is the cost of a\n stateless API and the reason that lifetime is short.\n\n <p>A session belonging to someone else, or one already ended, answers 404: there is\n nothing to be learned here by guessing identifiers.",
+        "operationId": "revokeOwnSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/{listingId}/images/{imageId}": {
+      "delete": {
+        "tags": [
+          "Listing photos"
+        ],
+        "summary": "Removes the photo, its variants and the stored objects, and closes the ordering gap.",
+        "description": "Removes the photo, its variants and the stored objects, and closes the ordering gap.",
+        "operationId": "delete_1",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "imageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ReorderImagesRequest": {
+        "type": "object",
+        "description": "The gallery's new order, front to back. Position 0 is the cover photo.\n\n <p>Must be a complete permutation of the listing's ready images — a partial list is\n rejected rather than interpreted, because \"move this one to the front\" and \"these are the\n only ones I know about\" are indistinguishable otherwise, and guessing wrong silently\n reorders someone's gallery.",
+        "properties": {
+          "imageIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "imageIds"
+        ]
+      },
+      "ImageResponse": {
+        "type": "object",
+        "description": "One photo as the API exposes it: an id, its place in the gallery, and a URL per variant.\n\n <p>Storage keys are not exposed. A client that knew them could construct URLs we did not\n issue, and changing bucket layout would then be a breaking API change.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImageStatus"
+          },
+          "width": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "byteSize": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "variants": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/VariantView"
+            }
+          }
+        }
+      },
+      "ImageStatus": {
+        "type": "string",
+        "description": "Mirrors ck_listing_image_status.",
+        "enum": [
+          "PENDING",
+          "READY",
+          "FAILED"
+        ]
+      },
+      "VariantView": {
+        "type": "object",
+        "description": "Dimensions travel with the URL so a client can reserve layout space before loading.",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "byteSize": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "description": "Password change for a signed-in account.",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "proof that the caller is the owner and not the holder of a stolen\n                        access token",
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "same single rule as registration: length, no composition theatre",
+            "maxLength": 128,
+            "minLength": 12
+          },
+          "deviceLabel": {
+            "type": "string",
+            "description": "label for the session this call establishes, since the change ends\n                        every existing one. Omitted, the new session is simply unlabelled.",
+            "maxLength": 120,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "AuthResponse": {
+        "type": "object",
+        "description": "What login and refresh return.\n\n <p><code>expiresInSeconds</code> is included alongside the absolute instant so a client\n with a skewed clock can still schedule its refresh correctly.",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "tokenType": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "accessTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "refreshTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserSummary"
+          }
+        }
+      },
+      "UserRole": {
+        "type": "string",
+        "description": "Mirrors ck_app_user_role.",
+        "enum": [
+          "PARTICULIER",
+          "PROFESSIONNEL",
+          "ADMIN"
+        ]
+      },
+      "UserStatus": {
+        "type": "string",
+        "description": "Mirrors ck_app_user_status.",
+        "enum": [
+          "PENDING_VERIFICATION",
+          "ACTIVE",
+          "SUSPENDED",
+          "DELETED"
+        ]
+      },
+      "UserSummary": {
+        "type": "object",
+        "description": "The compact user shape embedded in auth responses.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          }
+        }
+      },
+      "BodyType": {
+        "type": "string",
+        "description": "Mirrors ck_listing_body_type / ck_vehicle_trim_body_type.",
+        "enum": [
+          "HATCHBACK",
+          "SEDAN",
+          "ESTATE",
+          "SUV",
+          "COUPE",
+          "CONVERTIBLE",
+          "MPV",
+          "PICKUP",
+          "VAN",
+          "OTHER"
+        ]
+      },
+      "CreateListingRequest": {
+        "type": "object",
+        "description": "A new listing. Created as a DRAFT; nothing here publishes it.\n\n <p>Two either/or rules are enforced before the request reaches the service, mirroring\n the database's own constraints:\n <ul>\n   <li><b>Vehicle</b>: each of make and model is given either as a catalogue id or as\n       text, never both and never neither. A trim requires a model.</li>\n   <li><b>Location</b>: either a gazetteer place id, or postal code plus city as text\n       while the gazetteer is unavailable.</li>\n </ul>\n Numeric bounds repeat the table's CHECK constraints so a bad value is a 400 with a\n field name rather than a 500 from the driver.",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 140,
+            "minLength": 0
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 0
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "maximum": 1000000000,
+            "minimum": 0
+          },
+          "currencyCode": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Z]{3}$"
+          },
+          "priceNegotiable": {
+            "type": "boolean"
+          },
+          "vatDeductible": {
+            "type": "boolean"
+          },
+          "geoPlaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "postalCode": {
+            "type": "string",
+            "maxLength": 12,
+            "minLength": 0
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "countryCode": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2}$"
+          },
+          "hideExactLocation": {
+            "type": "boolean"
+          },
+          "makeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trimId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "makeText": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "modelText": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "versionText": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 0
+          },
+          "firstRegistrationYear": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1900
+          },
+          "firstRegistrationMonth": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 12,
+            "minimum": 1
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 3000000,
+            "minimum": 0
+          },
+          "fuelType": {
+            "$ref": "#/components/schemas/FuelType"
+          },
+          "gearbox": {
+            "$ref": "#/components/schemas/Gearbox"
+          },
+          "bodyType": {
+            "$ref": "#/components/schemas/BodyType"
+          },
+          "drivetrain": {
+            "$ref": "#/components/schemas/Drivetrain"
+          },
+          "powerHp": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2000,
+            "minimum": 1
+          },
+          "powerKw": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1500,
+            "minimum": 1
+          },
+          "engineDisplacementCc": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 10000,
+            "minimum": 50
+          },
+          "doors": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 7,
+            "minimum": 1
+          },
+          "seats": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 9,
+            "minimum": 1
+          },
+          "condition": {
+            "$ref": "#/components/schemas/VehicleCondition"
+          },
+          "exteriorColor": {
+            "$ref": "#/components/schemas/ExteriorColor"
+          },
+          "colorText": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 0
+          },
+          "metallicPaint": {
+            "type": "boolean"
+          },
+          "interiorMaterial": {
+            "$ref": "#/components/schemas/InteriorMaterial"
+          },
+          "ownerCount": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 50,
+            "minimum": 0
+          },
+          "serviceHistory": {
+            "type": "boolean"
+          },
+          "warrantyMonths": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 120,
+            "minimum": 0
+          },
+          "technicalInspectionValidUntil": {
+            "type": "string",
+            "format": "date"
+          },
+          "co2EmissionsGKm": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1000,
+            "minimum": 0
+          },
+          "emissionClass": {
+            "$ref": "#/components/schemas/EmissionClass"
+          },
+          "vin": {
+            "type": "string",
+            "pattern": "^[A-HJ-NPR-Z0-9]{17}$"
+          },
+          "featureCodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60,
+              "minLength": 0
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "currencyCode",
+          "firstRegistrationYear",
+          "fuelType",
+          "gearbox",
+          "mileageKm",
+          "priceAmount",
+          "title"
+        ]
+      },
+      "Drivetrain": {
+        "type": "string",
+        "description": "Mirrors ck_listing_drivetrain / ck_vehicle_trim_drivetrain.",
+        "enum": [
+          "FWD",
+          "RWD",
+          "AWD"
+        ]
+      },
+      "EmissionClass": {
+        "type": "string",
+        "description": "Mirrors ck_listing_emission_class. Drives low-emission-zone filters in FR/DE.",
+        "enum": [
+          "EURO_1",
+          "EURO_2",
+          "EURO_3",
+          "EURO_4",
+          "EURO_5",
+          "EURO_6",
+          "EURO_6D",
+          "EURO_7",
+          "OTHER"
+        ]
+      },
+      "ExteriorColor": {
+        "type": "string",
+        "description": "Searchable colour family. Mirrors ck_listing_exterior_color.\n The manufacturer's own colour name goes in <code>Listing.colorText</code>.",
+        "enum": [
+          "BLACK",
+          "WHITE",
+          "GREY",
+          "SILVER",
+          "BLUE",
+          "RED",
+          "GREEN",
+          "BROWN",
+          "BEIGE",
+          "YELLOW",
+          "ORANGE",
+          "PURPLE",
+          "GOLD",
+          "OTHER"
+        ]
+      },
+      "FuelType": {
+        "type": "string",
+        "description": "Mirrors ck_listing_fuel_type / ck_vehicle_trim_fuel_type.",
+        "enum": [
+          "PETROL",
+          "DIESEL",
+          "HYBRID_PETROL",
+          "HYBRID_DIESEL",
+          "PLUGIN_HYBRID",
+          "ELECTRIC",
+          "LPG",
+          "CNG",
+          "HYDROGEN",
+          "ETHANOL",
+          "OTHER"
+        ]
+      },
+      "Gearbox": {
+        "type": "string",
+        "description": "Mirrors ck_listing_gearbox / ck_vehicle_trim_gearbox.",
+        "enum": [
+          "MANUAL",
+          "AUTOMATIC",
+          "SEMI_AUTOMATIC"
+        ]
+      },
+      "InteriorMaterial": {
+        "type": "string",
+        "description": "Mirrors ck_listing_interior_material.",
+        "enum": [
+          "CLOTH",
+          "LEATHER",
+          "PART_LEATHER",
+          "ALCANTARA",
+          "VELOUR",
+          "OTHER"
+        ]
+      },
+      "VehicleCondition": {
+        "type": "string",
+        "description": "Mirrors ck_listing_condition.",
+        "enum": [
+          "NEW",
+          "USED",
+          "DAMAGED"
+        ]
+      },
+      "ListingResponse": {
+        "type": "object",
+        "description": "The owner's view of a listing. Includes the states and timestamps a seller needs to\n understand what will happen next, and <code>allowedTransitions</code> so a client can\n render exactly the buttons that will work rather than guessing the state machine.\n\n <p>The public buyer-facing shape will be narrower — no VIN, no moderation detail — and\n arrives with search.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sellerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ListingStatus"
+          },
+          "moderationStatus": {
+            "$ref": "#/components/schemas/ModerationStatus"
+          },
+          "allowedTransitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingStatus"
+            },
+            "uniqueItems": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "priceNegotiable": {
+            "type": "boolean"
+          },
+          "vatDeductible": {
+            "type": "boolean"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationView"
+          },
+          "vehicle": {
+            "$ref": "#/components/schemas/VehicleView"
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/VehicleCondition"
+          },
+          "exteriorColor": {
+            "$ref": "#/components/schemas/ExteriorColor"
+          },
+          "colorText": {
+            "type": "string"
+          },
+          "metallicPaint": {
+            "type": "boolean"
+          },
+          "interiorMaterial": {
+            "$ref": "#/components/schemas/InteriorMaterial"
+          },
+          "ownerCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "serviceHistory": {
+            "type": "boolean"
+          },
+          "warrantyMonths": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "technicalInspectionValidUntil": {
+            "type": "string",
+            "format": "date"
+          },
+          "co2EmissionsGKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "emissionClass": {
+            "$ref": "#/components/schemas/EmissionClass"
+          },
+          "vin": {
+            "type": "string"
+          },
+          "featureCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageResponse"
+            }
+          },
+          "viewCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "soldAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ListingStatus": {
+        "type": "string",
+        "description": "Seller-facing lifecycle, and the authority on which moves between states are legal.\n Mirrors ck_listing_status.\n\n <p>The transition table lives here rather than in the service so there is exactly one\n definition of what is allowed, and an illegal move is rejected rather than quietly\n applied. Transitions are about the shape of the lifecycle only — who may make a move,\n and whether a quota permits it, are separate questions answered by the service.\n\n <pre>\n   DRAFT ──publish──▶ ACTIVE ──unpublish──▶ PAUSED ──publish──▶ ACTIVE\n                        │                     │\n                        ├──▶ SOLD ◀───sold────┘\n                        ├──▶ EXPIRED ──renew──▶ ACTIVE\n                        └──▶ REMOVED  (terminal, see below)\n </pre>",
+        "enum": [
+          "DRAFT",
+          "PENDING_REVIEW",
+          "ACTIVE",
+          "PAUSED",
+          "SOLD",
+          "EXPIRED",
+          "REMOVED"
+        ]
+      },
+      "LocationView": {
+        "type": "object",
+        "description": "<code>resolved</code> is false while the location is still unmatched free text.",
+        "properties": {
+          "geoPlaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "hideExactLocation": {
+            "type": "boolean"
+          },
+          "resolved": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ModerationStatus": {
+        "type": "string",
+        "description": "Admin verdict, independent of {@link ListingStatus ListingStatus}. Mirrors ck_listing_moderation_status.",
+        "enum": [
+          "NOT_REVIEWED",
+          "APPROVED",
+          "REJECTED"
+        ]
+      },
+      "VehicleView": {
+        "type": "object",
+        "description": "<code>fromCatalogue</code> is false when the vehicle is identified by free text.",
+        "properties": {
+          "makeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "make": {
+            "type": "string"
+          },
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "model": {
+            "type": "string"
+          },
+          "trimId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trim": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "fromCatalogue": {
+            "type": "boolean"
+          },
+          "firstRegistrationYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firstRegistrationMonth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fuelType": {
+            "$ref": "#/components/schemas/FuelType"
+          },
+          "gearbox": {
+            "$ref": "#/components/schemas/Gearbox"
+          },
+          "bodyType": {
+            "$ref": "#/components/schemas/BodyType"
+          },
+          "drivetrain": {
+            "$ref": "#/components/schemas/Drivetrain"
+          },
+          "powerHp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "powerKw": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "engineDisplacementCc": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "doors": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seats": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ImageUploadRequest": {
+        "type": "object",
+        "description": "Asks for a pre-signed upload URL.\n\n <p>The declared size is not a courtesy: it is signed into the URL, so storage rejects an\n upload of any other length. That is what stops a client from announcing a 2 MB photo and\n then pushing 2 GB through a URL we handed it.",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "contentType": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "byteSize": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "byteSize",
+          "contentType",
+          "filename"
+        ]
+      },
+      "ImageUploadTicket": {
+        "type": "object",
+        "description": "Everything a client needs to upload one photo, and nothing about our storage layout.\n\n <p>The client PUTs the bytes to <code>uploadUrl</code> with exactly <code>requiredHeaders</code>,\n then calls the confirm endpoint with <code>imageId</code>. The bytes never touch the API.",
+        "properties": {
+          "imageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadUrl": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "requiredHeaders": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmPath": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "description": "Registration payload.\n\n <p><code>role</code> accepts PARTICULIER or PROFESSIONNEL only — ADMIN is created out\n of band and can never be self-assigned through this endpoint.",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 12
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "firstName": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "lastName": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^\\+[1-9][0-9]{6,18}$"
+          },
+          "countryCode": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z]{2}$"
+          },
+          "locale": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+          },
+          "companyName": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "countryCode",
+          "displayName",
+          "email",
+          "password",
+          "role"
+        ]
+      },
+      "RefreshRequest": {
+        "type": "object",
+        "description": "The refresh token travels in the body, not in a cookie: a native app has no\n cookie jar, and the same contract has to serve both clients.",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "description": "Spends a reset link.",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "the value from the emailed link's <code>token</code> parameter",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "same length rule as registration",
+            "maxLength": 128,
+            "minLength": 12
+          }
+        },
+        "required": [
+          "newPassword",
+          "token"
+        ]
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "description": "Asks for a reset link.\n\n <p>The address is validated for shape only. Whether it belongs to an account is not\n reported back, by design — see <code>PasswordResetService</code>.",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "deviceLabel": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "ProProfileUpdate": {
+        "type": "object",
+        "properties": {
+          "companyName": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "legalForm": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 0
+          },
+          "registrationNumber": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 0
+          },
+          "vatNumber": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 0
+          },
+          "websiteUrl": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "addressLine1": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 0
+          },
+          "addressLine2": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 0
+          },
+          "contactPhone": {
+            "type": "string",
+            "pattern": "^(\\+[1-9][0-9]{6,18})?$"
+          }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "description": "Partial profile update. A <code>null</code> member means \"leave unchanged\"; a blank\n string clears an optional field.\n\n <p>Email and password are deliberately absent. Changing an email has to\n re-trigger verification, and changing a password has to revoke every other\n session — both are their own endpoints, not a field in a profile PATCH.",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "firstName": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "lastName": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^(\\+[1-9][0-9]{6,18})?$"
+          },
+          "locale": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+          },
+          "preferredCurrencyCode": {
+            "type": "string",
+            "pattern": "^([A-Z]{3})?$"
+          },
+          "professional": {
+            "$ref": "#/components/schemas/ProProfileUpdate"
+          }
+        }
+      },
+      "ProProfileView": {
+        "type": "object",
+        "description": "Present only for PROFESSIONNEL accounts.",
+        "properties": {
+          "companyName": {
+            "type": "string"
+          },
+          "legalForm": {
+            "type": "string"
+          },
+          "registrationNumber": {
+            "type": "string"
+          },
+          "vatNumber": {
+            "type": "string"
+          },
+          "websiteUrl": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "addressLine1": {
+            "type": "string"
+          },
+          "addressLine2": {
+            "type": "string"
+          },
+          "contactPhone": {
+            "type": "string"
+          }
+        }
+      },
+      "UserProfileResponse": {
+        "type": "object",
+        "description": "The full own-profile view. The password hash and the internal version counter are\n not represented here at all, so they cannot leak by accident.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "phoneVerified": {
+            "type": "boolean"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "preferredCurrencyCode": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastLoginAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "professional": {
+            "$ref": "#/components/schemas/ProProfileView"
+          }
+        }
+      },
+      "UpdateListingRequest": {
+        "type": "object",
+        "description": "Partial update. <code>null</code> means \"leave unchanged\".\n\n <p>Status is not a field here: moving between states goes through the publish,\n unpublish, renew and delete endpoints, which is what makes the transition rules\n impossible to bypass. Nor is the seller — a listing never changes hands.\n\n <p>Vehicle and location identification may be switched between catalogue reference and\n free text, but only coherently: supplying a <code>makeId</code> clears <code>makeText</code> and\n the reverse, and supplying both is rejected.",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 140,
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 0
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "maximum": 1000000000,
+            "minimum": 0
+          },
+          "currencyCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "priceNegotiable": {
+            "type": "boolean"
+          },
+          "vatDeductible": {
+            "type": "boolean"
+          },
+          "geoPlaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "postalCode": {
+            "type": "string",
+            "maxLength": 12,
+            "minLength": 0
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "countryCode": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2}$"
+          },
+          "hideExactLocation": {
+            "type": "boolean"
+          },
+          "makeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trimId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "makeText": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "modelText": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "versionText": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 0
+          },
+          "firstRegistrationYear": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1900
+          },
+          "firstRegistrationMonth": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 12,
+            "minimum": 1
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 3000000,
+            "minimum": 0
+          },
+          "fuelType": {
+            "$ref": "#/components/schemas/FuelType"
+          },
+          "gearbox": {
+            "$ref": "#/components/schemas/Gearbox"
+          },
+          "bodyType": {
+            "$ref": "#/components/schemas/BodyType"
+          },
+          "drivetrain": {
+            "$ref": "#/components/schemas/Drivetrain"
+          },
+          "powerHp": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2000,
+            "minimum": 1
+          },
+          "powerKw": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1500,
+            "minimum": 1
+          },
+          "engineDisplacementCc": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 10000,
+            "minimum": 50
+          },
+          "doors": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 7,
+            "minimum": 1
+          },
+          "seats": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 9,
+            "minimum": 1
+          },
+          "condition": {
+            "$ref": "#/components/schemas/VehicleCondition"
+          },
+          "exteriorColor": {
+            "$ref": "#/components/schemas/ExteriorColor"
+          },
+          "colorText": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 0
+          },
+          "metallicPaint": {
+            "type": "boolean"
+          },
+          "interiorMaterial": {
+            "$ref": "#/components/schemas/InteriorMaterial"
+          },
+          "ownerCount": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 50,
+            "minimum": 0
+          },
+          "serviceHistory": {
+            "type": "boolean"
+          },
+          "warrantyMonths": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 120,
+            "minimum": 0
+          },
+          "technicalInspectionValidUntil": {
+            "type": "string",
+            "format": "date"
+          },
+          "co2EmissionsGKm": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1000,
+            "minimum": 0
+          },
+          "emissionClass": {
+            "$ref": "#/components/schemas/EmissionClass"
+          },
+          "vin": {
+            "type": "string",
+            "pattern": "^([A-HJ-NPR-Z0-9]{17})?$"
+          },
+          "featureCodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60,
+              "minLength": 0
+            },
+            "uniqueItems": true
+          }
+        }
+      },
+      "Make": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "popular": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Model": {
+        "type": "object",
+        "description": "<code>yearFrom</code>/<code>yearTo</code> bound the year filter; null means unknown or current.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "yearFrom": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "yearTo": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "Feature": {
+        "type": "object",
+        "description": "One item of equipment.\n\n <p><code>code</code> is the identity and the only thing other endpoints exchange.\n <code>labels</code> is keyed by BCP 47 tag — <code>fr-FR</code> and <code>en</code> are seeded. A\n client that wants a locale with no row falls back to the language-only tag, then to\n <code>en</code>, then to the code; the endpoint returns what exists rather than guessing.",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/FeatureCategory"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "FeatureCategory": {
+        "type": "string",
+        "description": "Mirrors ck_vehicle_feature_category. Groups equipment in the listing form and detail page.",
+        "enum": [
+          "COMFORT",
+          "SAFETY",
+          "MULTIMEDIA",
+          "ASSISTANCE",
+          "EXTERIOR",
+          "INTERIOR",
+          "OTHER"
+        ]
+      },
+      "Enums": {
+        "type": "object",
+        "description": "Every enum a client has to map, keyed by the name the API documents it under.\n\n <p>The values, not the labels. Display text belongs in the frontend's own translation\n files — there is no translation table for enums and inventing one would put French\n strings in a database that is never the right place to edit them. What the frontend\n cannot safely duplicate is the <em>set</em> of constants, and that is what this returns:\n a value appearing here that the frontend has no translation for is a visible gap, where\n a hardcoded list silently omits it.",
+        "properties": {
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "Country": {
+        "type": "object",
+        "description": "An open market.\n\n <p>No localised country name: <code>code</code> is an ISO 3166-1 alpha-2 value, and a browser\n renders it in the user's own language with <code>Intl.DisplayNames</code> better than a seeded\n string could. <code>name</code> is the endonym, for logs and admin screens.\n\n <p><code>currencyMinorUnit</code> is the one field a price-rendering client cannot do without:\n every amount in this API is an integer of the minor unit, and dividing by the wrong power\n of ten is off by a hundred.",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "defaultLocale": {
+            "type": "string"
+          },
+          "phonePrefix": {
+            "type": "string"
+          },
+          "distanceUnit": {
+            "$ref": "#/components/schemas/DistanceUnit"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "currencyMinorUnit": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DistanceUnit": {
+        "type": "string",
+        "description": "Mirrors ck_country_distance_unit. Presentation only.",
+        "enum": [
+          "KM",
+          "MILE"
+        ]
+      },
+      "SessionResponse": {
+        "type": "object",
+        "description": "One live session of the signed-in account.\n\n <p><code>id</code> is the rotation family, not the token row. A session's token is replaced on\n every refresh, so the row id would change under the client between two reads of the list;\n the family is stable for the life of the session and is what the revoke endpoint takes.\n\n <p>Nothing here is a credential. The token itself is not in the database in a usable form\n at all, let alone in this response.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "the session identifier, to pass to <code>DELETE /me/sessions/{id</code>}"
+          },
+          "deviceLabel": {
+            "type": "string",
+            "description": "what the client called itself at sign-in; <code>null</code> if it said nothing"
+          },
+          "userAgent": {
+            "type": "string",
+            "description": "raw User-Agent header, for a client that wants to name the device itself"
+          },
+          "ipAddress": {
+            "type": "string",
+            "description": "where the session was created from, so an unexpected one is noticeable"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "when the session began"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "when it last refreshed; <code>null</code> if it never has"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "when it dies on its own"
+          }
+        }
+      },
+      "ListingSearchCriteria": {
+        "type": "object",
+        "description": "Everything a buyer can filter on. Every field is optional; an empty criteria object means\n \"all visible listings\".\n\n <p>Make and model can each be given two ways, and both are needed:\n <ul>\n   <li><code>makeId</code> matches the catalogue exactly — precise, and what the frontend's\n       dropdown will send once the catalogue exists.</li>\n   <li><code>make</code> matches the displayed name, catalogue row <em>or</em> free text. Until the\n       catalogue is seeded, every listing identifies its vehicle by text, so an id-only\n       filter would match nothing at all.</li>\n </ul>",
+        "properties": {
+          "makeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "make": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "yearFrom": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1900
+          },
+          "yearTo": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1900
+          },
+          "priceMin": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "priceMax": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "mileageMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "mileageMax": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 3000000,
+            "minimum": 0
+          },
+          "fuelType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FuelType"
+            }
+          },
+          "gearbox": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Gearbox"
+            }
+          },
+          "bodyType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BodyType"
+            }
+          },
+          "drivetrain": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Drivetrain"
+            }
+          },
+          "condition": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VehicleCondition"
+            }
+          },
+          "countryCode": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2}$"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "latMin": {
+            "type": "number"
+          },
+          "latMax": {
+            "type": "number"
+          },
+          "lonMin": {
+            "type": "number"
+          },
+          "lonMax": {
+            "type": "number"
+          }
+        }
+      },
+      "SearchSort": {
+        "type": "string",
+        "description": "The orderings public search supports.\n\n <p>Each one is a keyset sort, so each needs a column that is non-null on every visible\n listing, plus <code>id</code> as a tie-breaker to make the order total. Without the tie-breaker\n two listings at the same price would have an undefined relative order, and a cursor sitting\n between them would either skip or repeat rows.",
+        "enum": [
+          "NEWEST",
+          "PRICE_ASC",
+          "PRICE_DESC",
+          "MILEAGE_ASC"
+        ]
+      },
+      "CursorPagePublicListingSummary": {
+        "type": "object",
+        "description": "A page of search results.\n\n <p>No total count, deliberately. Counting the matches for an arbitrary filter combination\n means a second full scan of the result set on every page, which costs more than the page\n itself and grows with the catalogue. Infinite scroll — which is what a phone does — needs\n <code>nextCursor</code> and nothing else.\n\n <p>When a result count does become a product requirement, the answer is a cached approximate\n count per filter combination, or Elasticsearch, not a <code>COUNT(*)</code> on the hot path.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicListingSummary"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SearchSort"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ImageVariantView": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PublicListingSummary": {
+        "type": "object",
+        "description": "One result card.\n\n <p>Every enumerated value is the stable code, never a display string: <code>&quot;DIESEL&quot;</code>, not\n \"Diesel\" and certainly not \"Gazole\". The French frontend maps codes to French; nothing here\n assumes a language.\n\n <p>No seller contact details, no VIN, no moderation state. A search result is public, and a\n scraper gets exactly what a buyer's screen shows.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "priceNegotiable": {
+            "type": "boolean"
+          },
+          "make": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "firstRegistrationYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firstRegistrationMonth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fuelType": {
+            "type": "string"
+          },
+          "gearbox": {
+            "type": "string"
+          },
+          "bodyType": {
+            "type": "string"
+          },
+          "drivetrain": {
+            "type": "string"
+          },
+          "powerHp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "seller": {
+            "$ref": "#/components/schemas/SellerCard"
+          },
+          "coverImage": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ImageVariantView"
+            }
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SellerCard": {
+        "type": "object",
+        "description": "What a buyer sees about who is selling: a name and whether it is a trade seller.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicListingDetail": {
+        "type": "object",
+        "description": "The buyer-facing detail page.\n\n <p>Narrower than the seller's own view of the same listing. Absent on purpose: the VIN\n (identifies the vehicle and indirectly its owner), the moderation state (an internal\n matter), the exact coordinates, and anything about the seller beyond a display name.\n\n <p>As in the summary, every enumerated value is a stable code and every feature is a code.\n There is no human-readable label anywhere in this response.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "priceNegotiable": {
+            "type": "boolean"
+          },
+          "vatDeductible": {
+            "type": "boolean"
+          },
+          "vehicle": {
+            "$ref": "#/components/schemas/VehicleView"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationView"
+          },
+          "seller": {
+            "$ref": "#/components/schemas/SellerView"
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "exteriorColor": {
+            "type": "string"
+          },
+          "colorText": {
+            "type": "string"
+          },
+          "metallicPaint": {
+            "type": "boolean"
+          },
+          "interiorMaterial": {
+            "type": "string"
+          },
+          "ownerCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "serviceHistory": {
+            "type": "boolean"
+          },
+          "warrantyMonths": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "technicalInspectionValidUntil": {
+            "type": "string",
+            "format": "date"
+          },
+          "co2EmissionsGKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "emissionClass": {
+            "type": "string"
+          },
+          "featureCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageResponse"
+            }
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SellerView": {
+        "type": "object",
+        "description": "<code>role</code> tells a buyer whether this is a dealer or a private sale. Nothing more.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "memberSince": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ListingSummary": {
+        "type": "object",
+        "description": "The row shape for a seller's listing list. Narrow on purpose: a dashboard with fifty\n rows should not carry fifty VINs and fifty descriptions over a mobile connection.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ListingStatus"
+          },
+          "moderationStatus": {
+            "$ref": "#/components/schemas/ModerationStatus"
+          },
+          "title": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "make": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "firstRegistrationYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "city": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PageResponseListingSummary": {
+        "type": "object",
+        "description": "The envelope every list endpoint returns.\n\n <p>Spring's own <code>Page</code> serialises its internal structure, which would tie the\n public contract to a Spring Data version. This is our shape, and it is the only\n one a mobile client has to understand.\n\n <p>Offset paging is correct for admin tables. Public search will use a keyset\n cursor instead — same envelope, with a <code>nextCursor</code> added — because offset\n paging skips and repeats rows while listings are being inserted underneath.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingSummary"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageResponseUserSummary": {
+        "type": "object",
+        "description": "The envelope every list endpoint returns.\n\n <p>Spring's own <code>Page</code> serialises its internal structure, which would tie the\n public contract to a Spring Data version. This is our shape, and it is the only\n one a mobile client has to understand.\n\n <p>Offset paging is correct for admin tables. Public search will use a keyset\n cursor instead — same envelope, with a <code>nextCursor</code> added — because offset\n paging skips and repeats rows while listings are being inserted underneath.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserSummary"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiError": {
+        "description": "RFC 9457 problem+json, extended with a stable `code`. Branch on `code`, never on `detail` — `detail` is untranslated developer text.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "example": "Bad Request"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "example": 400
+          },
+          "detail": {
+            "type": "string",
+            "example": "Request validation failed."
+          },
+          "instance": {
+            "type": "string",
+            "example": "/api/v1/auth/register"
+          },
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "retryAfterSeconds": {
+            "type": "integer",
+            "format": "int64",
+            "example": 61
+          },
+          "incidentId": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "VALIDATION_FAILED",
+          "MALFORMED_REQUEST",
+          "EMAIL_ALREADY_REGISTERED",
+          "INVALID_CREDENTIALS",
+          "ACCOUNT_SUSPENDED",
+          "ACCOUNT_CLOSED",
+          "INVALID_TOKEN",
+          "INVALID_REFRESH_TOKEN",
+          "CURRENT_PASSWORD_INCORRECT",
+          "INVALID_RESET_TOKEN",
+          "TOO_MANY_ATTEMPTS",
+          "RATE_LIMITED",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "METHOD_NOT_ALLOWED",
+          "UNSUPPORTED_MEDIA_TYPE",
+          "CONFLICT",
+          "ACTIVE_LISTING_LIMIT_REACHED",
+          "CONCURRENT_MODIFICATION",
+          "UNSUPPORTED_IMAGE_TYPE",
+          "IMAGE_TOO_LARGE",
+          "IMAGE_TOO_SMALL",
+          "TOO_MANY_IMAGES",
+          "UPLOAD_NOT_FOUND",
+          "PHOTO_REQUIRED",
+          "INVALID_CURSOR",
+          "INTERNAL_ERROR"
+        ]
+      },
+      "FieldError": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "email"
+          },
+          "message": {
+            "type": "string",
+            "example": "must be a well-formed email address"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "description": "Access token from `POST /api/v1/auth/login`, sent as `Authorization: Bearer <token>`. Short-lived (15 minutes); exchange the refresh token at `POST /api/v1/auth/refresh` when it expires. Issuer: https://api.autox.local",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
