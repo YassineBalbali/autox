@@ -6,9 +6,12 @@ import { Observable, catchError, combineLatest, distinctUntilChanged, map, of, s
 import { PublicListingSummary, ResultCount, SearchSort } from '../../core/api';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
 import { formatIntegerFr } from '../../shared/format/number';
+import { ListingCard } from '../../shared/listing/listing-card';
 import { ListingRow } from '../../shared/listing/listing-row';
 import { Alert } from '../../shared/ui/alert';
+import { ActiveFilters } from './active-filters';
 import { FUEL_LABELS, GEARBOX_LABELS, SORT_OPTIONS, labelOf } from './labels.fr';
+import { SearchBar } from './search-bar';
 import { SearchFilters } from './search-filters';
 import {
   ResolvedVehicle,
@@ -20,6 +23,8 @@ import {
   withoutFilters,
 } from './search-query';
 import { SearchResultsStore } from './search-results.store';
+import { ResultsView, ViewPreference } from './view-preference';
+import { ViewToggle } from './view-toggle';
 
 /**
  * The currency the price filter is expressed in.
@@ -46,13 +51,18 @@ const PRICE_FILTER_CURRENCY = 'EUR';
  * a link reproduces the search exactly, the back button steps back through the filters,
  * and the sidebar cannot show one thing while the list shows another.
  *
+ * <p>Three controls feed that loop, each suited to a different moment. The search bar
+ * composes a search and applies it on submit; the sidebar refines the list and applies
+ * each change at once; the chips between them show what is applied and remove it. All
+ * three only ever navigate.
+ *
  * <p>The cursor is deliberately <em>not</em> in the URL. "Voir plus" extends the list in
  * place; putting the cursor in the address would make a shared link open on page three of
  * a list whose first two pages the recipient never saw.
  */
 @Component({
   selector: 'app-search-page',
-  imports: [SearchFilters, ListingRow, Alert],
+  imports: [SearchBar, ActiveFilters, SearchFilters, ViewToggle, ListingRow, ListingCard, Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [SearchResultsStore],
   templateUrl: './search-page.html',
@@ -63,6 +73,13 @@ export class SearchPage {
   private readonly router = inject(Router);
   private readonly reference = inject(ReferenceStore);
   protected readonly results = inject(SearchResultsStore);
+  private readonly preference = inject(ViewPreference);
+
+  /**
+   * List or grid. A per-visitor preference rather than part of the search, so it comes
+   * from {@link ViewPreference} and not from the URL: see that class for why.
+   */
+  protected readonly view = this.preference.view;
 
   protected readonly sortOptions = SORT_OPTIONS;
   /** Placeholder rows shown while the first page loads — about one screenful. */
@@ -116,6 +133,10 @@ export class SearchPage {
 
   protected clearFilters(): void {
     this.navigate(withoutFilters(this.query()));
+  }
+
+  protected setView(view: ResultsView): void {
+    this.preference.set(view);
   }
 
   protected setSort(event: Event): void {

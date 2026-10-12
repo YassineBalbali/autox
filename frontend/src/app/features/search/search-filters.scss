@@ -52,17 +52,6 @@
   }
 }
 
-.filters__reset {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--c-accent);
-  font-size: var(--t-xs);
-  font-weight: var(--fw-semibold);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 .filters__group {
   display: flex;
   flex-direction: column;
@@ -87,17 +76,6 @@
     font-size: var(--t-sm);
     font-weight: var(--fw-bold);
     color: var(--c-ink);
-  }
-}
-
-.filters__label {
-  font-size: var(--t-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--c-ink-soft);
-
-  // Space above the second label in a group, not above the first.
-  .input + & {
-    margin-top: var(--s-1);
   }
 }
 

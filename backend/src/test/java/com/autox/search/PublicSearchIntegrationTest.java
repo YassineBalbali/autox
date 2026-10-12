@@ -385,6 +385,110 @@ class PublicSearchIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.condition").value("USED"));
     }
 
+    // --- free text --------------------------------------------------------
+
+    @Test
+    @DisplayName("free text matches the title, the make, the model and the version")
+    void freeTextSearchesFourFields() throws Exception {
+        JsonNode seller = register(uniqueEmail("q-fields"), UserRole.PROFESSIONNEL);
+        publishedListing(seller, Map.of("title", "Belle occasion à saisir", "makeText", "Peugeot",
+                "modelText", "308", "versionText", "BlueHDi 130 Allure"));
+        publishedListing(seller, Map.of("title", "Citadine économique", "makeText", "Renault",
+                "modelText", "Clio", "versionText", "TCe 90"));
+
+        // Each of the four, and none of them is the title of the first listing.
+        for (String term : List.of("saisir", "peugeot", "308", "bluehdi")) {
+            mockMvc.perform(get("/api/v1/listings").param("q", term))
+                    .andExpect(jsonPath("$.items.length()").value(1))
+                    .andExpect(jsonPath("$.items[0].title").value("Belle occasion à saisir"));
+        }
+        mockMvc.perform(get("/api/v1/listings").param("q", "tesla"))
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("every word has to match, so a second word narrows the search")
+    void freeTextRequiresEveryWord() throws Exception {
+        JsonNode seller = register(uniqueEmail("q-words"), UserRole.PROFESSIONNEL);
+        publishedListing(seller, Map.of("title", "Golf diesel", "makeText", "Volkswagen",
+                "modelText", "Golf", "versionText", "2.0 TDI 150"));
+        publishedListing(seller, Map.of("title", "Golf essence", "makeText", "Volkswagen",
+                "modelText", "Golf", "versionText", "1.5 TSI 130"));
+        publishedListing(seller, Map.of("title", "Passat diesel", "makeText", "Volkswagen",
+                "modelText", "Passat", "versionText", "2.0 TDI 150"));
+
+        mockMvc.perform(get("/api/v1/listings").param("q", "golf"))
+                .andExpect(jsonPath("$.items.length()").value(2));
+        // "Any word" would return all three here, and typing more would find more.
+        mockMvc.perform(get("/api/v1/listings").param("q", "golf tdi"))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].title").value("Golf diesel"));
+        // Words in different fields, in any order, with stray spacing.
+        mockMvc.perform(get("/api/v1/listings").param("q", "  TDI   volkswagen  golf "))
+                .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("LIKE wildcards in the text are matched literally, not as wildcards")
+    void freeTextEscapesWildcards() throws Exception {
+        JsonNode seller = register(uniqueEmail("q-escape"), UserRole.PROFESSIONNEL);
+        publishedListing(seller, Map.of("title", "Remise 100% garantie"));
+        publishedListing(seller, Map.of("title", "Kilométrage 1000 km"));
+        publishedListing(seller, Map.of("title", "Modele_special"));
+
+        // Unescaped, "%" matches everything and "100%" matches "1000 km".
+        mockMvc.perform(get("/api/v1/listings").param("q", "%"))
+                .andExpect(jsonPath("$.items.length()").value(1));
+        mockMvc.perform(get("/api/v1/listings").param("q", "100%"))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].title").value("Remise 100% garantie"));
+        // "_" means "any one character" to LIKE; here it must mean an underscore.
+        mockMvc.perform(get("/api/v1/listings").param("q", "modele_special"))
+                .andExpect(jsonPath("$.items.length()").value(1));
+        mockMvc.perform(get("/api/v1/listings").param("q", "modele-special"))
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("free text is bound as a parameter — an injection attempt is just a string")
+    void freeTextIsNotInterpolated() throws Exception {
+        JsonNode seller = register(uniqueEmail("q-inject"), UserRole.PROFESSIONNEL);
+        publishedListing(seller, "Une annonce");
+
+        mockMvc.perform(get("/api/v1/listings").param("q", "'; DROP TABLE listing; --"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+        mockMvc.perform(get("/api/v1/listings"))
+                .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("free text combines with the other filters, and the count agrees")
+    void freeTextCombinesAndIsCounted() throws Exception {
+        JsonNode seller = register(uniqueEmail("q-combine"), UserRole.PROFESSIONNEL);
+        publishedListing(seller, Map.of("title", "Golf diesel", "fuelType", "DIESEL"));
+        publishedListing(seller, Map.of("title", "Golf essence", "fuelType", "PETROL"));
+
+        mockMvc.perform(get("/api/v1/listings").param("q", "golf").param("fuelType", "DIESEL"))
+                .andExpect(jsonPath("$.items.length()").value(1));
+        mockMvc.perform(get("/api/v1/listings/count").param("q", "golf"))
+                .andExpect(jsonPath("$.count").value(2));
+        mockMvc.perform(get("/api/v1/listings/count").param("q", "golf").param("fuelType", "DIESEL"))
+                .andExpect(jsonPath("$.count").value(1));
+    }
+
+    @Test
+    @DisplayName("a blank query is no filter, and an over-long one is refused")
+    void freeTextBounds() throws Exception {
+        JsonNode seller = register(uniqueEmail("q-bounds"), UserRole.PROFESSIONNEL);
+        publishedListing(seller, "Une annonce");
+
+        mockMvc.perform(get("/api/v1/listings").param("q", "   "))
+                .andExpect(jsonPath("$.items.length()").value(1));
+        mockMvc.perform(get("/api/v1/listings").param("q", "x".repeat(121)))
+                .andExpect(status().isBadRequest());
+    }
+
     // --- count ------------------------------------------------------------
 
     @Test

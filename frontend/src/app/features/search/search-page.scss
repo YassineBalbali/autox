@@ -1,8 +1,15 @@
 @use '../../../styles/tokens' as t;
 
+// The page: search bar, applied filters, then filters beside results.
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
 // Filters beside results from the large breakpoint up; stacked below it. Same grid, and
 // the same minmax(0, 1fr) for the same reason, as the account section.
-.search {
+.search__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--s-3);
@@ -42,6 +49,56 @@
   font-weight: var(--fw-bold);
   line-height: var(--lh-snug);
   font-variant-numeric: tabular-nums;
+}
+
+.search__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-4);
+}
+
+// ---- the grid view --------------------------------------------------------
+//
+// Three across at the width this is designed for. Explicit column counts rather than
+// auto-fill: "three columns at 1440" is a decision, and auto-fill would make it an
+// accident of the container width and the gap.
+
+.search__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: t.$bp-sm) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: t.$bp-xl) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.skeleton-card {
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.skeleton-card__photo {
+  aspect-ratio: 4 / 3;
+  background: var(--c-line);
+}
+
+.skeleton-card__lines {
+  padding: var(--s-2) var(--s-3) var(--s-5);
+
+  .skeleton__price {
+    width: 40%;
+  }
 }
 
 .search__sort {

@@ -78,12 +78,20 @@ class DemoData {
     private final String photoDirectory;
     private final TransactionTemplate transactions;
 
+    /**
+     * How many of the demo listings to create. All of them, unless told otherwise: every
+     * listing is a real image upload with three resizes, so a test that only needs "some
+     * listings" asks for a dozen instead of waiting for sixty.
+     */
+    private final int limit;
+
     DemoData(DemoLedger ledger, AppUserRepository users, ProProfileRepository proProfiles,
              CountryRepository countries, VehicleMakeRepository makes, VehicleModelRepository models,
              ListingService listings, ListingImageService imageService, ListingImageRepository images,
              ImageResizer resizer, ObjectStorage storage, PasswordEncoder passwordEncoder,
              JdbcTemplate jdbc, PlatformTransactionManager transactionManager,
-             @Value("${autox.demo.photo-dir:}") String photoDirectory) {
+             @Value("${autox.demo.photo-dir:}") String photoDirectory,
+             @Value("${autox.demo.listings:60}") int limit) {
         this.ledger = ledger;
         this.users = users;
         this.proProfiles = proProfiles;
@@ -98,6 +106,7 @@ class DemoData {
         this.passwordEncoder = passwordEncoder;
         this.jdbc = jdbc;
         this.photoDirectory = photoDirectory;
+        this.limit = limit;
         this.transactions = new TransactionTemplate(transactionManager);
     }
 
@@ -122,7 +131,8 @@ class DemoData {
         Map<String, UUID[]> catalogue = seedCatalogue();
 
         int created = 0;
-        for (DemoCatalogue.Vehicle vehicle : DemoCatalogue.VEHICLES) {
+        List<DemoCatalogue.Vehicle> vehicles = DemoCatalogue.vehicles();
+        for (DemoCatalogue.Vehicle vehicle : vehicles.subList(0, Math.min(limit, vehicles.size()))) {
             seedListing(vehicle, sellerIds.get(vehicle.sellerKey()),
                     catalogue.get(vehicle.makeSlug() + "/" + vehicle.modelSlug()));
             created++;

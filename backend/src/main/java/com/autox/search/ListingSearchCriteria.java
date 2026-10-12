@@ -58,7 +58,20 @@ public record ListingSearchCriteria(
         BigDecimal latMin,
         BigDecimal latMax,
         BigDecimal lonMin,
-        BigDecimal lonMax) {
+        BigDecimal lonMax,
+
+        /**
+         * Free text, as typed into a search box: "golf tdi", "clio automatique".
+         *
+         * <p>Split on whitespace; a listing matches when <em>every</em> word appears in its
+         * title, make, model or version, case-insensitively. All words rather than any,
+         * because a second word is a buyer narrowing the search — "golf tdi" returning
+         * every Golf and every TDI would make typing more return more.
+         *
+         * <p>Last in the record on purpose: it was added after the others, and appending
+         * keeps every existing positional construction compiling.
+         */
+        @Size(max = 120) String q) {
 
     public boolean hasBoundingBox() {
         return latMin != null && latMax != null && lonMin != null && lonMax != null;

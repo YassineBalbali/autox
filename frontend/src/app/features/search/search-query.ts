@@ -23,6 +23,8 @@ import {
  * {@link toCriteria}.
  */
 export interface SearchQuery {
+  /** Free text from the search box: every word must match the title, make, model or version. */
+  readonly text: string | null;
   /** A catalogue slug when the make is known, otherwise the text the user typed. */
   readonly make: string | null;
   readonly model: string | null;
@@ -43,6 +45,7 @@ export interface SearchQuery {
 export const DEFAULT_SORT = SearchSort.NEWEST;
 
 export const EMPTY_QUERY: SearchQuery = {
+  text: null,
   make: null,
   model: null,
   yearMin: null,
@@ -66,6 +69,9 @@ export const EMPTY_QUERY: SearchQuery = {
  * that uses it. Add, do not rename.
  */
 export const PARAM = {
+  // The one key that is not French: `q` is what every search box on the web calls it,
+  // and it is what a person editing the URL by hand will try first.
+  text: 'q',
   make: 'marque',
   model: 'modele',
   yearMin: 'annee_min',
@@ -95,6 +101,8 @@ const YEAR_RANGE = [1900, 2100] as const;
 const MAX_PRICE = 10_000_000;
 const MAX_MILEAGE = 3_000_000;
 const MAX_TEXT = 80;
+/** `ListingSearchCriteria.q` is `@Size(max = 120)`. */
+const MAX_QUERY = 120;
 
 /**
  * Reads a search out of the query string.
@@ -123,6 +131,7 @@ export function parseQuery(params: ParamMap): SearchQuery {
   const make = text(params.get(PARAM.make));
 
   return {
+    text: text(params.get(PARAM.text), MAX_QUERY),
     make,
     // A model means nothing without its make, and keeping one would send the API a
     // filter the sidebar cannot show.
@@ -158,6 +167,7 @@ export function toQueryParams(query: SearchQuery): Params {
     }
   };
 
+  put(PARAM.text, query.text);
   put(PARAM.make, query.make);
   put(PARAM.model, query.make ? query.model : null);
   put(PARAM.yearMin, query.yearMin);
@@ -202,6 +212,7 @@ export function toCriteria(
   const hasPrice = query.priceMin !== null || query.priceMax !== null;
 
   return compact({
+    q: query.text ?? undefined,
     makeId: vehicle.makeId,
     make: vehicle.makeText,
     modelId: vehicle.modelId,
@@ -227,6 +238,7 @@ export function toCriteria(
 /** How many filters are set — the number on the "Filtres" button. Sort is not a filter. */
 export function activeFilterCount(query: SearchQuery): number {
   return [
+    query.text,
     query.make,
     query.model,
     query.yearMin ?? query.yearMax,
@@ -262,9 +274,10 @@ function ordered(min: number | null, max: number | null): [number | null, number
   return min !== null && max !== null && min > max ? [max, min] : [min, max];
 }
 
-function text(raw: string | null): string | null {
-  const value = raw?.trim() ?? '';
-  return value.length > 0 ? value.slice(0, MAX_TEXT) : null;
+function text(raw: string | null, max = MAX_TEXT): string | null {
+  // Runs of whitespace collapsed, so "golf   tdi" and "golf tdi" are one URL.
+  const value = raw?.trim().replace(/\s+/g, ' ') ?? '';
+  return value.length > 0 ? value.slice(0, max) : null;
 }
 
 /** `plugin-hybrid,diesel` to `[DIESEL, PLUGIN_HYBRID]`: known values only, once each. */

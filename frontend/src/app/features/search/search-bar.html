@@ -1,0 +1,81 @@
+<form class="bar" role="search" aria-label="Rechercher un véhicule" i18n-aria-label="@@barLabel" (submit)="submit($event)">
+  <div class="bar__field bar__field--wide">
+    <label class="bar__label" for="b-q" i18n="@@barText">Recherche</label>
+    <input
+      class="input"
+      id="b-q"
+      type="search"
+      autocomplete="off"
+      maxlength="120"
+      placeholder="Marque, modèle, version… ex. Golf TDI"
+      i18n-placeholder="@@barTextPlaceholder"
+      [value]="draft().text"
+      (input)="set('text', $event)"
+    />
+  </div>
+
+  <div class="bar__field">
+    <label class="bar__label" for="b-marque" i18n="@@filterMake">Marque</label>
+    @if (makeIsFreeText()) {
+      <input class="input" id="b-marque" type="text" autocomplete="off"
+        [value]="draft().make" (input)="set('make', $event)" />
+    } @else {
+      <select class="input" id="b-marque" [disabled]="makes() === null" (change)="set('make', $event)">
+        <option value="" [selected]="!draft().make" i18n="@@filterAnyMake">Toutes les marques</option>
+        @for (make of makes() ?? []; track make.id) {
+          <option [value]="make.slug" [selected]="make.slug === draft().make">{{ make.name }}</option>
+        }
+        @if (draft().make && !draftMake() && makes() !== null) {
+          <!-- A make from the URL that is not in the catalogue. Shown, so the filter being
+               applied is visible in the field that controls it. -->
+          <option [value]="draft().make" selected>{{ draft().make }}</option>
+        }
+      </select>
+    }
+  </div>
+
+  <div class="bar__field">
+    <label class="bar__label" for="b-modele" i18n="@@filterModel">Modèle</label>
+    @if (draft().make && !draftMake()) {
+      <input class="input" id="b-modele" type="text" autocomplete="off"
+        [value]="draft().model" (input)="set('model', $event)" />
+    } @else {
+      <select class="input" id="b-modele" [disabled]="!draftMake()" (change)="set('model', $event)">
+        <option value="" [selected]="!draft().model">
+          @if (draftMake()) {
+            <ng-container i18n="@@filterAnyModel">Tous les modèles</ng-container>
+          } @else {
+            <ng-container i18n="@@filterModelNeedsMake">Choisissez une marque</ng-container>
+          }
+        </option>
+        @for (model of models(); track model.id) {
+          <option [value]="model.slug" [selected]="model.slug === draft().model">{{ model.name }}</option>
+        }
+      </select>
+    }
+  </div>
+
+  <div class="bar__field bar__field--narrow">
+    <label class="bar__label" for="b-prix" i18n="@@barPriceMax">Prix max (€)</label>
+    <input class="input" id="b-prix" type="text" inputmode="numeric" autocomplete="off"
+      placeholder="Ex. 15000" i18n-placeholder="@@barPricePlaceholder"
+      [value]="draft().priceMax" (input)="set('priceMax', $event)" />
+  </div>
+
+  <div class="bar__field bar__field--narrow">
+    <label class="bar__label" for="b-annee" i18n="@@barYearMin">Année min.</label>
+    <select class="input" id="b-annee" (change)="set('yearMin', $event)">
+      <option value="" [selected]="!draft().yearMin" i18n="@@barAnyYear">Toutes</option>
+      @for (year of years; track year) {
+        <option [value]="year" [selected]="'' + year === draft().yearMin">{{ year }}</option>
+      }
+      @if (draft().yearMin && +draft().yearMin < years[years.length - 1]) {
+        <!-- Older than the list goes — set from the sidebar or a link. -->
+        <option [value]="draft().yearMin" selected>{{ draft().yearMin }}</option>
+      }
+    </select>
+  </div>
+
+  <!-- The one filled button on the screen. -->
+  <button class="btn btn--primary bar__submit" type="submit" i18n="@@barSubmit">Rechercher</button>
+</form>

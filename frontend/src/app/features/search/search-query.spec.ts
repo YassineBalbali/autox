@@ -30,6 +30,7 @@ describe('parseQuery', () => {
   it('reads every filter', () => {
     expect(
       parse({
+        q: 'golf tdi',
         marque: 'peugeot',
         modele: '308',
         annee_min: '2018',
@@ -46,6 +47,7 @@ describe('parseQuery', () => {
         tri: 'prix-croissant',
       }),
     ).toEqual<SearchQuery>({
+      text: 'golf tdi',
       make: 'peugeot',
       model: '308',
       yearMin: 2018,
@@ -108,6 +110,25 @@ describe('parseQuery', () => {
     });
   });
 
+  describe('free text', () => {
+    it('collapses stray whitespace, so one search is one URL', () => {
+      expect(parse({ q: '  golf    tdi ' }).text).toBe('golf tdi');
+    });
+
+    it('caps the text at the length the API accepts', () => {
+      // ListingSearchCriteria.q is @Size(max = 120). Longer and the API answers 400 —
+      // for a link somebody merely pasted.
+      expect(parse({ q: 'x'.repeat(500) }).text).toHaveLength(120);
+    });
+
+    it('passes characters that mean something to SQL or HTML through as plain text', () => {
+      // Not this layer's job to escape: the API binds the value and Angular escapes what
+      // it renders. What matters here is that nothing is dropped or mangled on the way.
+      const hostile = "100% <b>d'occasion</b>_";
+      expect(parse({ q: hostile }).text).toBe(hostile);
+    });
+  });
+
   it('puts a reversed range the right way round', () => {
     // Somebody typed the maximum in the minimum box. Returning nothing would be correct
     // and useless; the intent is obvious.
@@ -146,6 +167,7 @@ describe('toQueryParams', () => {
 
   it('survives a round trip', () => {
     const query: SearchQuery = {
+      text: 'tdi 150',
       make: 'volkswagen',
       model: 'golf',
       yearMin: 2019,
@@ -211,6 +233,10 @@ describe('toCriteria', () => {
     ).toEqual({ make: 'Peugeot' });
   });
 
+  it('sends the free text as q', () => {
+    expect(eur({ ...EMPTY_QUERY, text: 'golf tdi' })).toEqual({ q: 'golf tdi' });
+  });
+
   it('passes the enum filters through as lists', () => {
     expect(
       eur({ ...EMPTY_QUERY, fuel: [FuelType.ELECTRIC], body: [BodyType.SUV, BodyType.ESTATE] }),
@@ -231,6 +257,10 @@ describe('activeFilterCount', () => {
 
   it('does not count the sort order, which is not a filter', () => {
     expect(activeFilterCount({ ...EMPTY_QUERY, sort: SearchSort.PRICE_ASC })).toBe(0);
+  });
+
+  it('counts the free text', () => {
+    expect(activeFilterCount({ ...EMPTY_QUERY, text: 'golf' })).toBe(1);
   });
 
   it('counts a lower bound of zero', () => {

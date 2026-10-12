@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, map, of, startWith, switchMap } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
 
-import { BodyType, FuelType, Gearbox, Make, Model, VehicleCondition } from '../../core/api';
+import { BodyType, FuelType, Gearbox, VehicleCondition } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
 import { FilterChip } from '../../shared/ui/filter-chip';
 import {
@@ -32,9 +32,12 @@ type RangeKey = 'yearMin' | 'yearMax' | 'priceMin' | 'priceMax' | 'mileageMin' |
  * sidebar cannot disagree with the results beside it, and the back button undoes a filter
  * without this component knowing it happened.
  *
- * <p>The options come from the reference endpoints — makes, the models of the chosen
- * make, and the values of each enum — not from lists written here. What is written here
- * is only the French for them.
+ * <p>Make and model are not here: they are in the search bar above, where a search is
+ * composed, and one control per filter is the rule. What is here refines a list that is
+ * already on screen — ranges, the enum filters, and where.
+ *
+ * <p>The enum options come from the reference endpoint, not from lists written here.
+ * What is written here is only the French for them.
  *
  * <p>Text and number fields report on `change`, which fires when the field is left or
  * Enter is pressed, not on every keystroke: typing "15000" would otherwise be five
@@ -54,56 +57,15 @@ export class SearchFilters {
 
   /** The fields of the query to replace. */
   readonly changed = output<Partial<SearchQuery>>();
-  readonly cleared = output<void>();
 
   /** Below the breakpoint the sidebar is collapsed behind a button; this is that state. */
   protected readonly open = signal(false);
 
   protected readonly activeCount = computed(() => activeFilterCount(this.query()));
 
-  /** `null` while loading; an empty array when the catalogue is empty or unreachable. */
-  protected readonly makes = toSignal(
-    this.reference.makes().pipe(
-      map((makes) => makes.filter(hasSlug)),
-      catchError(() => of([] as SluggedMake[])),
-    ),
-    { initialValue: null },
-  );
-
   private readonly enums = toSignal(
     this.reference.enums().pipe(catchError(() => of({} as Record<string, string[]>))),
     { initialValue: {} as Record<string, string[]> },
-  );
-
-  /** The catalogue entry for the make in the query, if it is one. */
-  protected readonly selectedMake = computed(
-    () => this.makes()?.find((make) => make.slug === this.query().make) ?? null,
-  );
-
-  /**
-   * True when the make filter should be a free-text field rather than a list.
-   *
-   * <p>The catalogue can legitimately be empty — it is a dataset loaded separately from
-   * the code — and listings created before it exists identify their make by text. A
-   * dropdown with no options would make the most-used filter unusable in exactly that
-   * state, so the field degrades to typing the name, which the API matches as text.
-   */
-  protected readonly makeIsFreeText = computed(() => this.makes()?.length === 0);
-
-  /** The models of the selected make. Empty until a catalogue make is chosen. */
-  protected readonly models = toSignal(
-    toObservable(this.selectedMake).pipe(
-      switchMap((make) =>
-        make
-          ? this.reference.models(make.id).pipe(
-              map((models) => models.filter(hasSlug)),
-              catchError(() => of([] as SluggedModel[])),
-              startWith([] as SluggedModel[]),
-            )
-          : of([] as SluggedModel[]),
-      ),
-    ),
-    { initialValue: [] as SluggedModel[] },
   );
 
   protected readonly groups = computed<ChoiceGroup[]>(() => {
@@ -130,16 +92,6 @@ export class SearchFilters {
     this.changed.emit({ [key]: next } as Partial<SearchQuery>);
   }
 
-  protected setMake(event: Event): void {
-    // Changing the make always clears the model: a model belongs to one make, and
-    // "Peugeot" with the model still set to "Clio" is a search that can match nothing.
-    this.changed.emit({ make: textOf(event), model: null });
-  }
-
-  protected setModel(event: Event): void {
-    this.changed.emit({ model: textOf(event) });
-  }
-
   protected setLocation(event: Event): void {
     this.changed.emit({ location: textOf(event) });
   }
@@ -155,15 +107,6 @@ export class SearchFilters {
     }
     this.changed.emit({ [key]: value } as Partial<SearchQuery>);
   }
-}
-
-type SluggedMake = Make & { id: string; slug: string };
-type SluggedModel = Model & { id: string; slug: string };
-
-function hasSlug<T extends { id?: string; slug?: string }>(
-  entry: T,
-): entry is T & { id: string; slug: string } {
-  return !!entry.id && !!entry.slug;
 }
 
 function textOf(event: Event): string | null {

@@ -24,68 +24,7 @@
 >
   <div class="filters__head">
     <h2 i18n="@@filtersTitle">Filtres</h2>
-    @if (activeCount() > 0) {
-      <button class="filters__reset" type="button" (click)="cleared.emit()" i18n="@@filtersReset">
-        Tout effacer
-      </button>
-    }
   </div>
-
-  <!-- ============================================================ vehicle -->
-  <fieldset class="filters__group">
-    <legend i18n="@@filterVehicle">Véhicule</legend>
-
-    <label class="filters__label" for="f-marque" i18n="@@filterMake">Marque</label>
-    @if (makeIsFreeText()) {
-      <input
-        class="input"
-        id="f-marque"
-        type="text"
-        autocomplete="off"
-        placeholder="Ex. Peugeot"
-        i18n-placeholder="@@filterMakePlaceholder"
-        [value]="query().make ?? ''"
-        (change)="setMake($event)"
-      />
-    } @else {
-      <select class="input" id="f-marque" [disabled]="makes() === null" (change)="setMake($event)">
-        <option value="" [selected]="!query().make" i18n="@@filterAnyMake">Toutes les marques</option>
-        @for (make of makes() ?? []; track make.id) {
-          <option [value]="make.slug" [selected]="make.slug === query().make">{{ make.name }}</option>
-        }
-        @if (query().make && !selectedMake() && makes() !== null) {
-          <!-- A make from the URL that is not in the catalogue: free text from an old
-               link. Shown, so the filter that is being applied is visible and removable. -->
-          <option [value]="query().make" selected>{{ query().make }}</option>
-        }
-      </select>
-    }
-
-    <label class="filters__label" for="f-modele" i18n="@@filterModel">Modèle</label>
-    @if (query().make && !selectedMake()) {
-      <input
-        class="input"
-        id="f-modele"
-        type="text"
-        autocomplete="off"
-        [value]="query().model ?? ''"
-        (change)="setModel($event)"
-      />
-    } @else {
-      <select class="input" id="f-modele" [disabled]="!selectedMake()" (change)="setModel($event)">
-        <option value="" [selected]="!query().model">
-          @if (selectedMake()) {
-            <ng-container i18n="@@filterAnyModel">Tous les modèles</ng-container>
-          } @else {
-            <ng-container i18n="@@filterModelNeedsMake">Choisissez une marque</ng-container>
-          }
-        </option>
-        @for (model of models(); track model.id) {
-          <option [value]="model.slug" [selected]="model.slug === query().model">{{ model.name }}</option>
-        }
-      </select>
-    }
-  </fieldset>
 
   <!-- ============================================================= ranges -->
   <fieldset class="filters__group">
