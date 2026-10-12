@@ -44,36 +44,87 @@ enabled today.
   records it in `engines`
 - **Docker** with Compose — for PostgreSQL, object storage, and the integration tests
 
-### Four steps
+### The start sequence
+
+Four commands, from a clean checkout, in a clean terminal. **Nothing to export.**
 
 ```bash
 git clone <this repository>
 cd autox
 
-cp .env.example .env     # then edit it: see below
-docker compose up -d     # PostgreSQL on 5433, MinIO on 9000/9001
+cp .env.example .env     # 1. then fill in the two blanks it leaves — see below
+docker compose up -d     # 2. PostgreSQL on 5433, MinIO on 9000/9001
 
 cd backend
-mvn spring-boot:run      # http://localhost:8080
+mvn spring-boot:run      # 3. the API, on AUTOX_PORT (8080 unless .env says otherwise)
 ```
 
-Then the frontend, in a second terminal:
-
 ```bash
-cd frontend
+cd frontend              # 4. in a second terminal
 npm ci
 npm start                # http://localhost:4200
 ```
 
-`npm start` regenerates the API client from `frontend/openapi.json` before it serves, so
-there is no generation step to remember. The dev server talks to the API at the URL in
-`src/environments/environment.development.ts` — port **8081** by default, matching
-`AUTOX_PORT` in `.env`; keep the two in step.
+**`.env` is read by both docker compose and the application.** Compose reads it natively;
+the application reads it at startup through `DotenvEnvironmentPostProcessor`. That is the
+whole reason there is nothing to export: before it existed, `mvn spring-boot:run` inherited
+none of the file and died on an unconfigured datasource, a hundred and fifty stack frames
+deep, in a message that named neither the file nor the variable.
+
+Precedence is the part worth knowing:
+
+```
+system properties  >  real environment variables  >  .env  >  application.yml defaults
+```
+
+A real environment variable always wins, so `.env` changes nothing about CI, containers or
+production — in those places the file does not exist and the loader is a no-op. And because
+`.env` sits above `application.yml`, it behaves like the export it replaces rather than like
+a weaker kind of default. Set `AUTOX_PORT=8099` in your shell and it beats the `.env` value;
+that is intentional and tested.
+
+Two syntax rules differ from docker compose, and `.env.example` repeats them: whole-line
+`#` comments only (a `#` inside a value is part of the value), and no `${VAR}` interpolation.
+Avoid `${` inside a password specifically — Spring resolves placeholders inside every
+property value, so such a password is unusable.
 
 Flyway applies the migrations on first boot — there is no schema step to run by hand, and
-nothing to create but the database the container already creates. Hibernate runs with
-`ddl-auto: validate`: it checks the entities against the migrated schema and refuses to start
-if they disagree, so a drifting entity fails fast instead of silently.
+nothing to create but the database the container already makes. Hibernate runs with
+`ddl-auto: validate`: it checks the entities against the migrated schema and refuses to
+start on drift, so a stale entity fails fast rather than silently.
+
+`npm start` regenerates the API client from `frontend/openapi.json` before serving, so there
+is no generation step to remember either. The dev server calls the API at the URL in
+`src/environments/environment.development.ts` — port **8081** by default, matching
+`AUTOX_PORT` in `.env.example`; keep the two in step.
+
+### If it will not start
+
+The application refuses to start when configuration is missing, and says what is missing by
+name:
+
+```
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+The application is not configured.
+
+    AUTOX_JWT_SECRET  is set but empty
+                      needs an HS256 signing key of at least 32 bytes — generate one with
+                      `openssl rand -base64 48`
+                      (sets autox.auth.jwt-secret)
+
+Action:
+
+Edit the .env at the repository root and give the settings above a value, then start again.
+```
+
+`is set but empty` is the common one: `.env.example` ships `AUTOX_JWT_SECRET=` blank
+deliberately, so a straight copy leaves it that way. If no `.env` was found at all the
+message lists the paths it looked in and tells you to create one.
 
 ### Editing `.env`
 
@@ -89,15 +140,25 @@ openssl rand -base64 48
 AUTOX_JWT_SECRET=...
 ```
 
-There is deliberately **no default for either secret**. A missing one fails startup rather
-than falling back to something weak, and `.env` is gitignored — nothing in version control
+There is deliberately **no default for either secret**, nor for the two object-storage keys.
+A default password is a password in version control, and one that works locally is one that
+reaches a server eventually — so a missing credential fails startup, naming the variable,
+instead of falling back to something weak. `.env` is gitignored; nothing in version control
 holds a credential.
+
+The non-secret coordinates *do* have defaults that match docker-compose — `AUTOX_DB_URL`
+and `AUTOX_DB_USERNAME` — so the only lines that genuinely need your attention are the
+ones above.
 
 ### Check it came up
 
 ```bash
 curl http://localhost:8080/actuator/health
 # {"status":"UP","groups":["liveness","readiness"]}
+#
+# For a second or two after the log says "Started AutoxApplication" this answers
+# OUT_OF_SERVICE: readiness flips to accepting traffic on ApplicationReadyEvent, which
+# fires just after. That is the probe working, not a fault.
 
 curl http://localhost:8080/api/v1/reference/countries
 # [{"code":"FR","name":"France","defaultLocale":"fr-FR", ... "currencyMinorUnit":2}]
@@ -320,6 +381,7 @@ backend/
     mail/         the EmailSender interface and its logging stand-in
     storage/      the ObjectStorage interface and its S3 implementation
     config/       security, JWT, MVC, OpenAPI
+      env/          .env loading, and the fail-fast check that names a missing variable
   src/main/resources/db/migration/   V1 … V12, Flyway owns the schema
   src/test/java/com/autox/           integration tests, Testcontainers
   src/test/resources/application-test.yml   the test profile: deviations only
@@ -364,7 +426,13 @@ docs/            why things are the way they are — read these before changing 
 
 - **Flyway owns the schema.** Never edit an applied migration; add one. Hibernate validates
   and does not create.
-- **Secrets come from the environment.** No credential is committed, and none has a fallback.
+- **Secrets come from the environment.** No credential is committed, and none has a
+  fallback — a default password is a password in version control. Non-secret coordinates do
+  carry local defaults, so a stock docker-compose stack starts with nothing exported.
+- **A missing setting fails startup naming the variable.** Not with a Hikari assertion a
+  hundred frames deep. `RequiredConfigurationEnvironmentPostProcessor` plus a
+  `FailureAnalyzer` turn it into Boot's failure report; the check is on the Spring property
+  rather than the variable, so it is correct under test too.
 - **Query plans are measured, not assumed.** `SearchQueryPlanTest` asserts the plans at
   20,000 rows. Measuring found four real index defects that reading the DDL had not.
 - **Tests use real infrastructure.** If something can only be tested against a mock, that is

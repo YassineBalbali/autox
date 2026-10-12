@@ -1,0 +1,16 @@
+# Registration for the two startup hooks in com.autox.config.env.
+#
+# spring.factories, not a META-INF/spring/*.imports file: the .imports mechanism is
+# ImportCandidates, which Spring Boot uses for @AutoConfiguration only. EnvironmentPostProcessor
+# and FailureAnalyzer are both loaded through SpringFactoriesLoader, which reads this file and
+# nothing else. Registering them in an .imports file is silently ignored — no warning, no error,
+# the hooks simply never run, which cost a debugging round here.
+#
+# Each post-processor declares its own getOrder(): the dotenv loader runs just before
+# application.yml is read, the configuration check runs after everything.
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.autox.config.env.DotenvEnvironmentPostProcessor,\
+com.autox.config.env.RequiredConfigurationEnvironmentPostProcessor
+
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+com.autox.config.env.MissingConfigurationFailureAnalyzer
