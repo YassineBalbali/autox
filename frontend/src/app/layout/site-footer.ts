@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
+import { Logo } from '../shared/brand/logo';
+
 /**
  * The footer.
  *
@@ -15,10 +17,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
  */
 @Component({
   selector: 'app-site-footer',
+  imports: [Logo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page footer__inner">
-      <p class="footer__brand">AutoX</p>
+      <app-logo class="footer__logo" />
       <p class="footer__note" i18n="@@footerNote">
         Annonces de véhicules d’occasion en France.
       </p>
@@ -30,43 +33,42 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 
     :host {
       display: block;
-      margin-top: var(--s-7);
+      margin-top: var(--s-6);
       background: var(--c-surface);
-      border-top: 1px solid var(--c-line);
+      border-top: var(--border);
     }
 
     .footer__inner {
       display: flex;
       flex-direction: column;
       gap: var(--s-1);
-      padding-block: var(--s-5);
+      padding-block: var(--s-3);
 
-      // One line on a desktop width, with the copyright pushed to the far edge so it lines
-      // up with the account menu directly above it.
+      // One line on a desktop width, with the copyright against the right edge of the
+      // container, under the account menu.
       @media (min-width: t.$bp-md) {
         flex-direction: row;
-        align-items: baseline;
+        align-items: center;
         gap: var(--s-4);
       }
     }
 
-    .footer__brand {
-      font-weight: var(--fw-bold);
-      color: var(--c-ink);
+    // Smaller than in the header: here the mark signs the page off, it does not lead it.
+    .footer__logo {
+      --logo-h: 14px;
     }
 
     .footer__note {
       flex: 1;
-      // Overrides the global reading measure on p. Capped at 36rem the note cannot expand,
-      // so flex:1 does nothing and the copyright ends up stranded in the middle of the
-      // footer instead of against the right edge of the container.
+      // Overrides the global reading measure on p, which would stop it expanding and
+      // strand the copyright mid-footer.
       max-width: none;
-      font-size: var(--t-sm);
+      font-size: var(--t-xs);
       color: var(--c-ink-soft);
     }
 
     .footer__legal {
-      font-size: var(--t-sm);
+      font-size: var(--t-xs);
       color: var(--c-ink-faint);
     }
   `,

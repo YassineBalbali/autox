@@ -49,7 +49,10 @@ describe('SiteHeader', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter([]),
+        // Signing out navigates to the sign-in page, so the test router needs that route:
+        // without it the navigation rejects after the test has finished, which Vitest
+        // reports as an unhandled error and CI treats as a failure.
+        provideRouter([{ path: 'connexion', children: [] }]),
         { provide: BASE_PATH, useValue: BASE },
         { provide: TOKEN_STORE, useValue: new InMemoryTokenStore(signedIn ? SESSION : null) },
       ],
@@ -78,7 +81,10 @@ describe('SiteHeader', () => {
     await render(false);
 
     const brand = query('.header__brand') as HTMLAnchorElement;
-    expect(brand.textContent?.trim()).toBe('AutoX');
+    // The mark is artwork now, not text, so its name has to come from somewhere a screen
+    // reader can find it: the SVG's own label, and the link's.
+    expect(brand.querySelector('svg[aria-label="AutoX"]')).not.toBeNull();
+    expect(brand.getAttribute('aria-label')).toContain('AutoX');
     expect(brand.getAttribute('href')).toBe('/');
   });
 

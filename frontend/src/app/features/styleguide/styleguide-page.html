@@ -1,0 +1,201 @@
+<div class="stack stack--loose">
+  <header>
+    <h1 class="page-title">Guide de style</h1>
+    <p class="lede">
+      Les jetons et les composants partagés, tels que l’application les utilise. Page de
+      référence interne.
+    </p>
+  </header>
+
+  <!-- ================================================================= logo -->
+  <section class="stack">
+    <h2 class="sg-h">Logo</h2>
+    <div class="panel sg-logos">
+      <app-logo class="sg-logo--lg" />
+      <app-logo />
+      <app-logo class="sg-logo--sm" />
+      <img class="sg-logo-file" src="autox-wordmark.svg" alt="AutoX — fichier SVG" />
+    </div>
+    <p class="meta">
+      Les trois premiers sont le composant <code>app-logo</code>, dessiné avec
+      <code>--c-navy</code> et <code>--c-accent</code>. Le dernier est le fichier
+      <code>public/autox-wordmark.svg</code> : même tracé, mêmes couleurs.
+    </p>
+  </section>
+
+  <!-- =============================================================== colour -->
+  <section class="stack">
+    <h2 class="sg-h">Couleurs</h2>
+
+    @for (group of [
+      { name: 'Marque et accent', items: brand },
+      { name: 'Neutres', items: neutrals },
+      { name: 'États', items: status }
+    ]; track group.name) {
+      <h3 class="sg-sub">{{ group.name }}</h3>
+      <ul class="sg-swatches">
+        @for (swatch of group.items; track swatch.token) {
+          <li class="sg-swatch">
+            <span class="sg-swatch__chip" [style.background]="'var(' + swatch.token + ')'"></span>
+            <code class="sg-swatch__token">{{ swatch.token }}</code>
+            <span class="meta">{{ swatch.use }}</span>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <!-- ================================================================= type -->
+  <section class="stack">
+    <h2 class="sg-h">Typographie — Barlow Semi Condensed</h2>
+    <ul class="rows">
+      @for (step of typeScale; track step.token) {
+        <li class="row">
+          <code class="sg-type__token">{{ step.token }} · {{ step.px }}px</code>
+          <span class="row__main" [style.font-size]="'var(' + step.token + ')'" style="line-height: 1.15">
+            Peugeot 308 · 18 990 €
+          </span>
+          <span class="meta row__aside">{{ step.use }}</span>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <!-- ============================================================== spacing -->
+  <section class="stack">
+    <h2 class="sg-h">Espacements</h2>
+    <ul class="sg-spacing">
+      @for (step of spacing; track step.token) {
+        <li>
+          <span class="sg-spacing__bar" [style.width]="'var(' + step.token + ')'"></span>
+          <code>{{ step.token }}</code>
+          <span class="meta">{{ step.px }}px</span>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <!-- ====================================================== price and specs -->
+  <section class="stack">
+    <h2 class="sg-h">Prix, caractéristiques, ligne d’annonce</h2>
+    <p class="meta">Véhicules fictifs, pour montrer une liste à densité réelle.</p>
+
+    <div class="sg-filters">
+      @for (filter of filters(); track filter.label) {
+        <app-filter-chip
+          [active]="filter.active"
+          [count]="filter.count"
+          (toggled)="toggle(filter.label, $event)"
+        >
+          {{ filter.label }}
+        </app-filter-chip>
+      }
+    </div>
+
+    <ul class="rows">
+      @for (car of samples; track car.title) {
+        <li class="row">
+          <div class="sg-thumb" aria-hidden="true"></div>
+          <div class="row__main">
+            <div class="sg-title">
+              <h3 class="row__title">{{ car.title }}</h3>
+              @if (car.pro) {
+                <span class="tag">Pro</span>
+              }
+            </div>
+            <p class="sg-version">{{ car.version }}</p>
+            <app-spec-line
+              [year]="car.year"
+              [mileage]="car.mileage"
+              [fuel]="car.fuel"
+              [gearbox]="car.gearbox"
+              [powerHp]="car.powerHp"
+            />
+            <p class="meta">{{ car.place }}</p>
+          </div>
+          <div class="row__aside">
+            <app-price [amountMinor]="car.priceMinor" />
+          </div>
+        </li>
+      }
+    </ul>
+
+    <div class="panel sg-detail">
+      <div>
+        <h3 class="row__title">Sur une annonce</h3>
+        <app-spec-line [year]="2021" [mileage]="62400" fuel="Diesel" gearbox="Manuelle" [powerHp]="130" />
+      </div>
+      <app-price [amountMinor]="1899000" size="detail" />
+    </div>
+  </section>
+
+  <!-- ============================================================== buttons -->
+  <section class="stack">
+    <h2 class="sg-h">Boutons et étiquettes</h2>
+    <div class="panel sg-inline">
+      <button class="btn btn--primary" type="button">Contacter le vendeur</button>
+      <button class="btn btn--quiet" type="button">Enregistrer</button>
+      <button class="btn btn--danger" type="button">Supprimer</button>
+      <button class="btn btn--primary" type="button" disabled>Envoi…</button>
+      <button class="btn btn--quiet btn--sm" type="button">Petit</button>
+      <span class="tag">Pro</span>
+      <span class="tag tag--accent">Cet appareil</span>
+    </div>
+  </section>
+
+  <!-- ================================================================ forms -->
+  <section class="stack">
+    <h2 class="sg-h">Formulaires</h2>
+    <div class="sg-two">
+      <div class="panel">
+        <div class="panel__head"><h2>En lignes (.form--rows)</h2></div>
+        <form class="stack form--rows">
+          <app-text-field label="Raison sociale" [control]="name" />
+          <app-text-field
+            label="Adresse e-mail"
+            type="email"
+            hint="Nous ne la communiquons à personne."
+            [control]="email"
+          />
+          <div class="form-actions">
+            <button class="btn btn--primary" type="button">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2>Empilé (par défaut)</h2></div>
+        <form class="stack">
+          <app-text-field label="Raison sociale" [control]="name" />
+          <app-text-field label="Adresse e-mail" type="email" [control]="email" />
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================== alerts -->
+  <section class="stack">
+    <h2 class="sg-h">Messages</h2>
+    <app-alert kind="error">Adresse e-mail ou mot de passe incorrect.</app-alert>
+    <app-alert kind="success">Vos informations ont été enregistrées.</app-alert>
+    <app-alert kind="info">Changer de mot de passe ferme toutes vos sessions.</app-alert>
+  </section>
+
+  <!-- ============================================================== readout -->
+  <section class="stack">
+    <h2 class="sg-h">Panneau et liste en lecture seule</h2>
+    <div class="panel stack">
+      <div class="panel__head"><h2>Identité</h2></div>
+      <dl class="readout">
+        <div>
+          <dt class="readout__term">Adresse e-mail</dt>
+          <dd class="readout__value">contact&#64;garage-bellevue.example</dd>
+        </div>
+        <div>
+          <dt class="readout__term">Type de compte</dt>
+          <dd class="readout__value">Professionnel</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+</div>

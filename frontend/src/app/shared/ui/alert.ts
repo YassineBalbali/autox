@@ -24,14 +24,18 @@ export type AlertKind = 'error' | 'success' | 'info';
     </div>
   `,
   styles: `
+    // A tinted strip with a heavy rule on its leading edge. The rule carries the kind; the
+    // tint is faint enough that three of these on a page do not turn it into a quilt.
     .alert {
       display: flex;
-      flex-direction: column;
-      gap: var(--s-1);
-      padding: var(--s-3);
+      flex-wrap: wrap;
+      gap: 0 var(--s-2);
+      padding: var(--s-2) var(--s-3);
       border: 1px solid;
-      border-radius: var(--r-md);
+      border-left-width: 3px;
+      border-radius: var(--r-sm);
       font-size: var(--t-sm);
+      line-height: var(--lh-snug);
     }
 
     .alert__prefix {
@@ -50,10 +54,12 @@ export type AlertKind = 'error' | 'success' | 'info';
       color: var(--c-success);
     }
 
+    // Neutral, not accent: blue is for prices and actions, and a note is neither.
     .alert--info {
-      background: var(--c-accent-soft);
-      border-color: var(--c-accent);
-      color: var(--c-accent-strong);
+      background: var(--c-surface-sunk);
+      border-color: var(--c-line-strong);
+      border-left-color: var(--c-navy);
+      color: var(--c-ink-soft);
     }
   `,
 })

@@ -58,13 +58,16 @@ src/app/
     ui/            Flash messages between screens
   layout/          Site header, footer, primary navigation
   shared/          Reusable pieces with no feature knowledge
+    brand/         The wordmark
     forms/         Validation rules + text, the field component, submit state
+    listing/       Price and spec line
     format/        Dates
     ui/            Alert
   features/
     auth/          Sign in, register, forgot, reset
     account/       Layout + sidebar, profile, company, password, sessions
     errors/        Access refused
+    styleguide/    The design reference page
 src/styles/        Tokens, base, controls
 ```
 
@@ -116,6 +119,44 @@ its screens as children: one sidebar, one `authGuard`, one load of the profile.
 **Checking for horizontal overflow:** compare against the width you asked for, not
 `window.innerWidth`. Under mobile emulation Chrome widens the layout viewport to fit
 overflowing content, so `scrollWidth - innerWidth` reads 0 on a page that is too wide.
+
+## Design system
+
+Dense, information-first car-classifieds styling: compact rows, small type for specs,
+borders and dividers instead of shadows, nearly square corners. The live reference is
+`/guide-de-style` — every token and shared component, rendered from the real ones.
+
+- **Tokens** live in `src/styles/_tokens.scss` and nowhere else. No component file
+  contains a colour or a font size that is not a custom property.
+- **`--c-accent` is the logo's blue.** It is used for exactly three things: prices, the
+  primary button, and active filter states. Informational messages are neutral, not blue.
+- **The wordmark** is `app-logo` inside the app (drawn in the tokens) and
+  `public/autox-wordmark.svg` outside it. `wordmark.spec.ts` fails if the file's two
+  fills stop matching `--c-navy` and `--c-accent`, or if the artwork diverges.
+- **Font**: Barlow Semi Condensed (SIL OFL), self-hosted through `@fontsource` — four
+  weights, listed in `angular.json`. No font CDN is contacted.
+- **Every price** goes through `app-price`; in a list it sits in `.row__aside`, which is
+  what keeps it at the same x on every row. **Every spec line** goes through
+  `app-spec-line`, in a fixed order.
+- **Grouped numbers** go through `shared/format/number.ts`. `Intl` separates thousands
+  with a narrow no-break space this font draws at near-zero width; unpatched, "18 990 €"
+  renders as "18990 €".
+- **Controls are 34px** with a mouse and 44px on a coarse pointer (`--h-control`).
+
+| Shared piece | Where | For |
+| --- | --- | --- |
+| `app-logo` | `shared/brand` | The wordmark |
+| `app-price` | `shared/listing` | Any price |
+| `app-spec-line` | `shared/listing` | année · km · carburant · boîte · puissance |
+| `app-filter-chip` | `shared/ui` | An on/off filter |
+| `app-alert` | `shared/ui` | Error, success, note |
+| `app-text-field` | `shared/forms` | A labelled input with its message |
+| `.panel`, `.panel__head` | `_controls.scss` | A bordered surface and its title bar |
+| `.rows`, `.row`, `.row__main`, `.row__aside` | `_controls.scss` | Any list |
+| `.readout` | `_controls.scss` | Read-only label/value rows |
+| `.form--rows`, `.form-actions` | `_controls.scss` | Label-beside-field forms |
+| `.btn` + `--primary` `--quiet` `--danger` `--sm` `--block` | `_controls.scss` | Buttons |
+| `.tag`, `.tag--accent` | `_controls.scss` | A short label on a row |
 
 ## Tests
 

@@ -4,7 +4,7 @@
 .choice {
   display: flex;
   flex-direction: column;
-  gap: var(--s-2);
+  gap: var(--s-1);
   margin: 0;
   padding: 0;
   border: 0;
@@ -16,9 +16,8 @@
   gap: var(--s-3);
   // The whole card is the target, not just the dot. At 375px a 12px radio is a miss
   // waiting to happen, and the label is already associated with the input.
-  min-height: var(--tap);
-  padding: var(--s-3);
-  border: 1px solid var(--c-line-strong);
+  padding: var(--s-2) var(--s-3);
+  border: var(--border);
   border-radius: var(--r-md);
   cursor: pointer;
 
@@ -52,7 +51,7 @@
 }
 
 .choice__title {
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
 }
 
 .choice__note {

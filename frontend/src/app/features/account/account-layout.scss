@@ -1,22 +1,19 @@
 @use '../../../styles/tokens' as t;
 
-// Sidebar beside content from the large breakpoint up; stacked below it. The sidebar is a
-// fixed column rather than a fraction, because a nav of five short French labels does not
-// want to grow with the window — the content does.
+// Sidebar beside content from the large breakpoint up; stacked below it.
 .account {
   display: grid;
   // <b>minmax(0, 1fr), not the default auto.</b> An auto grid column is sized by its
-  // widest item, and the sidebar below the breakpoint is a nowrap row of five labels
-  // about 550px across — so the column, and with it the content beside it, grew past a
-  // 375px viewport. `overflow-x: auto` on the nav does not prevent that: the item still
-  // reports its max-content width to the grid. Pinning the minimum to 0 lets the column
-  // be as narrow as the viewport and leaves the nav to scroll inside it.
+  // widest item, and below the breakpoint the sidebar is a nowrap row of five labels —
+  // so the column, and the content with it, grew past a narrow viewport. `overflow-x:
+  // auto` on the nav does not prevent that: the item still reports its max-content width
+  // to the grid. Pinning the minimum to 0 lets the nav scroll inside the column instead.
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--s-5);
+  gap: var(--s-4);
 
   @media (min-width: t.$bp-lg) {
-    grid-template-columns: 14rem minmax(0, 1fr);
-    gap: var(--s-6);
+    grid-template-columns: var(--w-sidebar) minmax(0, 1fr);
+    gap: var(--s-5);
     align-items: start;
   }
 }
@@ -26,79 +23,97 @@
   min-width: 0;
 
   @media (min-width: t.$bp-lg) {
-    // Follows the page down a long form, which is the point of having it on desktop. The
-    // offset clears the header, which is not sticky but is in the way at scroll-top.
     position: sticky;
-    top: var(--s-5);
+    top: var(--s-4);
   }
 }
 
 .account__side-title {
-  // Hidden on desktop, where the sidebar is obviously the account menu and the page title
-  // says so anyway. Kept for the stacked layout, where the list would otherwise be a run
-  // of links above the content with nothing introducing them.
-  margin-bottom: var(--s-2);
-  font-size: var(--t-sm);
-  font-weight: var(--fw-medium);
+  margin-bottom: var(--s-1);
+  font-size: var(--t-2xs);
+  font-weight: var(--fw-bold);
   color: var(--c-ink-faint);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 
   @media (min-width: t.$bp-lg) {
-    display: none;
+    // On desktop it heads the bordered list, as that block's own title row.
+    margin: 0;
+    padding: var(--s-2) var(--s-3);
+    background: var(--c-surface-sunk);
+    border: var(--border);
+    border-bottom: 0;
+    border-radius: var(--r-md) var(--r-md) 0 0;
   }
 }
 
 .account__content {
-  // The readable column. Capped so a panel of four facts does not become a 1000px band of
-  // whitespace with a value stranded at each end.
   max-width: var(--w-content);
   min-width: 0;
 }
 
 // ---- the sidebar list -----------------------------------------------------
+//
+// One bordered block of rows with hairlines between — the same construction as every
+// other list in the application, rather than a set of floating pills.
 
 .account-nav {
   display: flex;
-  // Horizontal and scrollable when stacked: five labels fit across a tablet, and on a
-  // phone they scroll rather than pushing the content a screen and a half down the page.
+  // A scrolling row when stacked; a column of rows on desktop.
   flex-direction: row;
   overflow-x: auto;
-  gap: var(--s-1);
   margin: 0;
-  padding: 0 0 var(--s-2);
+  padding: 0;
   list-style: none;
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
 
   @media (min-width: t.$bp-lg) {
     flex-direction: column;
     overflow: visible;
-    padding-bottom: 0;
+    border-radius: 0 0 var(--r-md) var(--r-md);
+  }
+}
+
+.account-nav li + li {
+  border-left: var(--divider);
+
+  @media (min-width: t.$bp-lg) {
+    border-left: 0;
+    border-top: var(--divider);
   }
 }
 
 .account-nav__link {
   display: flex;
   align-items: center;
-  min-height: var(--tap);
-  padding: var(--s-2) var(--s-3);
-  border-radius: var(--r-md);
-  color: var(--c-ink-soft);
-  font-weight: var(--fw-medium);
+  height: var(--h-control);
+  padding: 0 var(--s-3);
+  color: var(--c-ink);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
   text-decoration: none;
   white-space: nowrap;
 
   &:hover {
-    background: var(--c-surface);
+    background: var(--c-surface-sunk);
     color: var(--c-ink);
   }
 }
 
+// The same active idiom as a filter chip — accent text on the accent tint — plus a bar on
+// the leading edge, so the state does not rest on colour alone.
 .account-nav__link--active {
   background: var(--c-accent-soft);
-  color: var(--c-accent-strong);
+  color: var(--c-accent);
+  box-shadow: inset 0 -3px 0 var(--c-accent);
 
-  // Not colour alone: the active entry carries a bar as well, so it is identifiable
-  // without relying on a blue that some readers will not distinguish from the rest.
+  &:hover {
+    background: var(--c-accent-soft);
+    color: var(--c-accent);
+  }
+
   @media (min-width: t.$bp-lg) {
     box-shadow: inset 3px 0 0 var(--c-accent);
   }

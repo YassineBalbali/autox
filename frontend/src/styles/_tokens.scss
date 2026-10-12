@@ -1,137 +1,166 @@
-// Design tokens.
+// Design tokens — the whole visual vocabulary of AutoX, in one file.
 //
-// CSS custom properties rather than Sass variables, deliberately: they are readable from
-// the browser at runtime, overridable per-component and per-media-query, and a future dark
-// theme is a second :root block rather than a second build. Sass is used only for the
-// nesting and partials.
+// The register is a car-classifieds one: dense and information-first. A results page is a
+// comparison tool, and what a buyer wants from it is many vehicles visible at once with
+// the price and five facts legible for each. So the scales here are tight — small type for
+// specifications, compact rows, short controls — and decoration is nearly absent: borders
+// and dividers, square-ish corners, no drop shadows on content.
 //
-// The scales are small on purpose. A marketplace needs about six text sizes and about seven
-// spacing steps; offering twenty of each guarantees that two screens built a month apart
-// will not line up.
+// CSS custom properties rather than Sass variables, deliberately: they are readable at
+// runtime, overridable per component and per media query, and a second theme is a second
+// :root block rather than a second build. Sass is used only for nesting, partials and the
+// breakpoints, which @media cannot read from a custom property.
 
 :root {
-  // ---- colour ------------------------------------------------------------
+  // ---- brand -------------------------------------------------------------
   //
-  // Neutral-heavy by intent. A listing page is photographs of cars; the interface around
-  // them should recede. One accent carries actions, one carries danger, and nothing else
-  // competes with the content.
+  // Two colours, and they are the wordmark's: "Auto" in navy, "X" in blue. Everything
+  // else in the interface is a neutral.
+  //
+  // <b>--c-accent is the logo's blue, defined here and nowhere else.</b> Prices, primary
+  // buttons and active filter states all read it, so the mark and the interface cannot
+  // drift apart. The one copy outside CSS is the fill in public/autox-wordmark.svg — a
+  // static file cannot read a custom property — and wordmark.spec.ts fails if that copy
+  // stops matching.
 
-  --c-ink: #14181f; // primary text
-  --c-ink-soft: #4a5260; // secondary text, labels
-  --c-ink-faint: #767f8c; // captions, placeholders, disabled
-  --c-line: #e2e6ec; // borders, dividers
-  --c-line-strong: #c7ced8; // input borders, focused dividers
-  --c-surface: #ffffff; // cards, inputs, sheets
-  --c-surface-sunk: #f5f7fa; // page background behind cards
+  --c-navy: #0b1f3a;
+  --c-accent: #0057ff;
 
-  --c-accent: #1b5fd9; // links, primary actions
-  --c-accent-ink: #ffffff; // text on accent
-  --c-accent-soft: #e8f0fd; // accent-tinted backgrounds
-  --c-accent-strong: #14489f; // hover, active
+  // ---- the accent, derived ----------------------------------------------
+  --c-accent-ink: #ffffff; // text on an accent fill
+  --c-accent-strong: #0043c7; // hover and pressed
+  --c-accent-soft: #e8efff; // tint behind an active filter or a selected row
 
-  --c-danger: #b4232b; // destructive actions, validation errors
-  --c-danger-soft: #fdecec;
-  --c-success: #1c6e45; // confirmations
-  --c-success-soft: #e7f4ec;
+  // ---- neutrals ----------------------------------------------------------
+  //
+  // A grey-white page with white surfaces on it. The page is the grey so that a list of
+  // white rows separates from its background by tone alone, with a hairline doing the
+  // rest — no shadow needed.
+
+  --c-page: #f2f3f5; // behind everything
+  --c-surface: #ffffff; // panels, rows, inputs
+  --c-surface-sunk: #f7f8fa; // table heads, hover, disabled fields
+
+  --c-ink: #0b1f3a; // primary text — the navy, so type and mark agree
+  --c-ink-soft: #46546a; // labels, secondary text
+  --c-ink-faint: #647082; // captions, units, placeholders (4.5:1 on the page grey)
+
+  --c-line: #dde1e7; // dividers between rows
+  --c-line-strong: #b8c0cc; // panel and input borders
+
+  // ---- status ------------------------------------------------------------
+  // Never the accent. Blue means "price" and "act"; it must not also mean "information".
+  --c-danger: #c0262d;
+  --c-danger-soft: #fdeded;
+  --c-success: #177245;
+  --c-success-soft: #e8f5ee;
   --c-warn: #8a5a08;
-  --c-warn-soft: #fdf3e2;
+  --c-warn-soft: #fdf4e3;
 
-  // Focus ring. Separate from the accent so it can stay visible against accent fills.
-  --c-focus: #1b5fd9;
+  --c-focus: #0057ff;
 
   // ---- spacing -----------------------------------------------------------
   //
-  // A 4px base, doubling loosely. Named by size rather than by use, because a token called
-  // --space-card-padding only ever fits the first card anyone builds.
+  // A 4px base. Named by size rather than by use. The steps most of the interface lives
+  // on are 2 and 3 — 8 and 12px — which is what makes it dense; 5 and above are for
+  // separating sections, not for padding things.
 
+  --s-0: 0.125rem; //  2px — between a label and its value
   --s-1: 0.25rem; //  4px
-  --s-2: 0.5rem; //  8px
-  --s-3: 0.75rem; // 12px
-  --s-4: 1rem; // 16px  — the default gap
-  --s-5: 1.5rem; // 24px
+  --s-2: 0.5rem; //  8px — the default gap inside a row
+  --s-3: 0.75rem; // 12px — panel padding, the gap between fields
+  --s-4: 1rem; // 16px — between panels
+  --s-5: 1.5rem; // 24px — between sections
   --s-6: 2rem; // 32px
   --s-7: 3rem; // 48px
 
-  // The page gutter. 16px is the phone value — 343px of content at 375px, the narrowest
-  // the layout is ever allowed to get. It widens on larger screens, below.
   --gutter: var(--s-4);
 
   // ---- type --------------------------------------------------------------
   //
-  // System font stack: no webfont to download, and the result already looks native on each
-  // platform. A brand face can be added later as one token change.
+  // Barlow Semi Condensed, self-hosted. A condensed face is the point: it fits a spec
+  // line and a price on one row where a regular-width sans wraps, and it keeps digits
+  // narrow enough for a column of prices to scan. The system stack behind it is the
+  // fallback while the file loads and the font if it never does.
   --font-sans:
-    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    'Barlow Semi Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, -apple-system,
+    'Segoe UI', Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 
-  // A ~1.2 scale from a 16px base. 16px is the smallest size iOS will not zoom a form
-  // field for, which is why --t-body is not 15px however tempting that looks.
-  --t-xs: 0.75rem; // 12px — legal text, metadata
-  --t-sm: 0.875rem; // 14px — labels, captions
-  --t-body: 1rem; // 16px — body, and every input
-  --t-lg: 1.125rem; // 18px — card titles
-  --t-xl: 1.5rem; // 24px — page titles
-  --t-2xl: 1.875rem; // 30px — the one hero size
+  // Eight sizes, small at the bottom. Body is 15px — condensed type reads smaller than
+  // its size, so 14 was a strain and 16 wasted the density the face buys.
+  --t-2xs: 0.6875rem; // 11px — units, legal, table heads
+  --t-xs: 0.75rem; // 12px — captions, tags
+  --t-sm: 0.8125rem; // 13px — spec lines, labels, secondary text
+  --t-body: 0.9375rem; // 15px — body and controls
+  --t-md: 1.0625rem; // 17px — row and panel titles
+  --t-lg: 1.25rem; // 20px — section titles, the price in a list
+  --t-xl: 1.625rem; // 26px — page titles
+  --t-2xl: 2rem; // 32px — the price on a listing
 
-  --lh-tight: 1.2; // headings
-  --lh-body: 1.55; // paragraphs
+  --lh-tight: 1.15; // headings, prices
+  --lh-snug: 1.3; // rows, spec lines
+  --lh-body: 1.45; // paragraphs
 
+  // Four weights, and four font files: every weight here is one that is actually loaded.
+  // There is no 500 — the browser would silently substitute 400 for it.
   --fw-regular: 400;
-  --fw-medium: 500;
+  --fw-semibold: 600;
   --fw-bold: 700;
+  --fw-heavy: 800; // the wordmark's weight; in the UI, prices only
 
-  // ---- shape and depth ---------------------------------------------------
-  --r-sm: 4px;
-  --r-md: 8px;
-  --r-lg: 14px;
-  --r-pill: 999px;
+  // ---- shape -------------------------------------------------------------
+  //
+  // Nearly square. A large radius reads as friendly and soft, which is the SaaS register
+  // this is deliberately not; 2–3px takes the harshness off a corner and no more.
+  --r-sm: 2px; // tags, chips
+  --r-md: 3px; // inputs, buttons, panels
 
-  --shadow-sm: 0 1px 2px rgb(20 24 31 / 8%);
-  --shadow-md: 0 2px 8px rgb(20 24 31 / 10%);
+  // One shadow, for things that float above the page — a dropdown, the skip link.
+  // Content never casts one: rows and panels are separated by borders.
+  --shadow-overlay: 0 4px 16px rgb(11 31 58 / 14%);
+
+  --border: 1px solid var(--c-line-strong);
+  --divider: 1px solid var(--c-line);
 
   // ---- layout ------------------------------------------------------------
-  // Reading measure for text, and the widest the app ever gets.
-  --w-prose: 36rem;
+  --w-prose: 38rem; // reading measure for running text
+  --w-page: 77.5rem; // 1240px — the one container: header, pages, footer
+  --w-content: 52rem; // a page beside the account sidebar
+  --w-form: 24rem; // a form with nothing beside it — sign in, register
+  --w-field: 22rem; // the widest any input is allowed to be
+  --w-label: 11rem; // the label column, where a form lays out in rows
+  --w-sidebar: 13rem;
 
-  // The one container width, shared by the header, every page and the footer. 1200px
-  // inside a 1440px window leaves a margin either side rather than running edge to edge,
-  // which is what every marketplace this competes with does and what stops a row of
-  // filters turning into a horizon.
-  --w-page: 75rem;
+  // Control height. 34px is the classifieds-desktop convention — a filter bar of 44px
+  // controls shows half as many filters. A finger is not a cursor, though, so a coarse
+  // pointer gets the 44px target back, below.
+  --h-control: 34px;
+  --h-header: 56px;
 
-  // The account section beside its sidebar. Wide enough for a panel of facts, not so wide
-  // that a list of them becomes a spreadsheet.
-  --w-content: 48rem;
-
-  // A form column with nothing beside it — the sign-in and registration screens.
-  --w-form: 28rem;
-
-  // <b>The widest an input is ever allowed to be.</b> A text field stretched across a
-  // desktop container is unreadable and unanswerable: the eye loses the line between the
-  // label and the value, and a 900px box invites a sentence where a surname belongs. The
-  // field keeps its measure even where the panel around it does not.
-  --w-field: 26rem;
-
-  // Minimum touch target. 44px is Apple's figure and the one that matters on a phone.
-  --tap: 44px;
-
-  // Height of the site header, so anything that needs to sit below it can say so.
-  --h-header: 64px;
+  // The logo's box, reserved in the header so nothing moves when it paints. Height is
+  // the cap height of the letters; the width follows from the artwork's own ratio.
+  --logo-h: 22px;
 }
 
-// More room to breathe once there is room to breathe. Only the gutter changes: the scales
-// above are sized in rem and hold at every width.
-@media (min-width: 768px) {
+// A touch screen keeps touch-sized targets. Keyed on the pointer rather than on width,
+// because a narrow desktop window is still driven by a mouse and a wide tablet is not.
+@media (pointer: coarse) {
   :root {
-    --gutter: var(--s-5);
-    --h-header: 72px;
+    --h-control: 44px;
   }
 }
 
-// Breakpoints cannot be CSS custom properties — @media cannot read them — so these are the
-// one place Sass variables are the right tool. Mobile-first: every query is min-width, and
-// the base styles are the phone styles.
-$bp-sm: 480px; // large phone
-$bp-md: 768px; // tablet, two-column cards
-$bp-lg: 1024px; // desktop, sidebar filters
+@media (min-width: 768px) {
+  :root {
+    --gutter: var(--s-5);
+  }
+}
+
+// Breakpoints. Sass variables because @media cannot read a custom property. Every query in
+// the codebase is min-width: the base rules are the narrow layout and wider screens add
+// to them, which is what lets the eventual mobile pass refine rather than rewrite.
+$bp-sm: 480px;
+$bp-md: 768px;
+$bp-lg: 1024px;
 $bp-xl: 1280px;
