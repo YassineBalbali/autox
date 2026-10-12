@@ -1,5 +1,8 @@
 <div class="page header__inner">
-  <a class="header__brand" routerLink="/" i18n="@@brandHome">AutoX</a>
+  <!-- The logo carries its own accessible name; the link adds where it goes. -->
+  <a class="header__brand" routerLink="/" aria-label="AutoX — accueil" i18n-aria-label="@@brandHome">
+    <app-logo />
+  </a>
 
   @if (navItems.length) {
     <nav class="header__nav" aria-label="Navigation principale" i18n-aria-label="@@navPrimaryLabel">
@@ -68,7 +71,7 @@
   } @else {
     <div class="header__auth">
       <a class="header__signin" routerLink="/connexion" i18n="@@headerSignIn">Se connecter</a>
-      <a class="btn btn--primary header__cta" routerLink="/inscription" i18n="@@headerRegister">
+      <a class="btn btn--primary btn--sm header__cta" routerLink="/inscription" i18n="@@headerRegister">
         Créer un compte
       </a>
     </div>

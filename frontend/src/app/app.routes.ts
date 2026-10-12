@@ -90,6 +90,18 @@ export const routes: Routes = [
     ],
   },
 
+  // ---- internal -----------------------------------------------------------
+
+  {
+    // The design reference: every token and shared component, rendered. Public and
+    // harmless — it shows nothing but the look of the site — and lazy, so it costs a
+    // visitor nothing. Not linked from anywhere.
+    path: 'guide-de-style',
+    title: 'Guide de style · AutoX',
+    loadComponent: () =>
+      import('./features/styleguide/styleguide-page').then((m) => m.StyleguidePage),
+  },
+
   // ---- outcomes -----------------------------------------------------------
 
   {

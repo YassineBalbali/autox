@@ -15,9 +15,9 @@
   } @else if (profile(); as me) {
     <!-- id: the sidebar's "Identité" entry anchors here. -->
     <section class="panel stack" id="identite">
-      <h2 i18n="@@profileIdentity">Identité</h2>
+      <div class="panel__head"><h2 i18n="@@profileIdentity">Identité</h2></div>
 
-      <dl class="readout readout--grid">
+      <dl class="readout">
         <div>
           <dt class="readout__term" i18n="@@fieldEmail">Adresse e-mail</dt>
           <dd class="readout__value">{{ me.email }}</dd>
@@ -41,8 +41,8 @@
     </section>
 
     <section class="panel" id="mes-informations">
-      <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <h2 i18n="@@profileDetails">Mes informations</h2>
+      <form class="stack form--rows" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="panel__head"><h2 i18n="@@profileDetails">Mes informations</h2></div>
 
         @if (state.message()) {
           <app-alert kind="error">{{ state.message() }}</app-alert>

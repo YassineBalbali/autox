@@ -1,0 +1,147 @@
+// Layout for the reference page only. Nothing here is part of the design system — these
+// are the shelves the system is displayed on, and they are prefixed sg- so that nobody
+// mistakes one for a shared class.
+
+@use '../../../styles/tokens' as t;
+
+code {
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--c-ink-soft);
+}
+
+.sg-h {
+  padding-bottom: var(--s-1);
+  border-bottom: 2px solid var(--c-navy);
+  font-size: var(--t-lg);
+}
+
+.sg-sub {
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sg-logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-6);
+  padding-block: var(--s-4);
+}
+
+.sg-logo--lg {
+  --logo-h: 44px;
+}
+
+.sg-logo--sm {
+  --logo-h: 14px;
+}
+
+.sg-logo-file {
+  height: 22px;
+  width: auto;
+}
+
+.sg-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-swatch {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  column-gap: var(--s-2);
+  align-items: center;
+  padding: var(--s-1);
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
+}
+
+.sg-swatch__chip {
+  grid-row: span 2;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: var(--divider);
+  border-radius: var(--r-sm);
+}
+
+.sg-type__token {
+  flex: 0 0 9rem;
+}
+
+.sg-spacing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: 3.5rem 4rem auto;
+    align-items: center;
+    justify-content: start;
+    column-gap: var(--s-2);
+  }
+}
+
+.sg-spacing__bar {
+  height: var(--s-3);
+  background: var(--c-navy);
+}
+
+.sg-filters,
+.sg-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+// Stands in for a photograph, at the ratio a list thumbnail will have.
+.sg-thumb {
+  flex: 0 0 auto;
+  width: 7rem;
+  aspect-ratio: 4 / 3;
+  background: var(--c-surface-sunk);
+  border: var(--divider);
+  border-radius: var(--r-sm);
+}
+
+.sg-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.sg-version {
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+  line-height: var(--lh-snug);
+}
+
+.sg-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.sg-two {
+  display: grid;
+  gap: var(--s-4);
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: 3fr 2fr;
+    align-items: start;
+  }
+}

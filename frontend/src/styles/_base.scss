@@ -1,5 +1,5 @@
-// Base styles. Mobile-first: everything here is the 375px layout, and wider screens add
-// to it rather than correcting it.
+// Base styles: the tokens applied to bare HTML. Every rule here is the narrow layout;
+// wider screens add to it.
 
 *,
 *::before,
@@ -15,13 +15,14 @@ html {
 
 body {
   margin: 0;
-  background: var(--c-surface-sunk);
+  background: var(--c-page);
   color: var(--c-ink);
   font-family: var(--font-sans);
   font-size: var(--t-body);
   line-height: var(--lh-body);
-  // Stops a long unbroken string — a VIN, a pasted URL — from widening the page at 375px.
+  // Stops a long unbroken string — a VIN, a pasted URL — from widening the page.
   overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
 }
 
 // Headings carry no margin of their own; spacing belongs to the layout that places them.
@@ -32,13 +33,16 @@ h4 {
   margin: 0;
   font-weight: var(--fw-bold);
   line-height: var(--lh-tight);
+  // Condensed bold sets tight on its own; a hair of negative tracking at display sizes
+  // stops a page title looking spaced-out next to the wordmark.
+  letter-spacing: -0.005em;
 }
 
 h1 {
   font-size: var(--t-xl);
 }
 h2 {
-  font-size: var(--t-lg);
+  font-size: var(--t-md);
 }
 h3 {
   font-size: var(--t-body);
@@ -68,15 +72,12 @@ video {
   height: auto;
 }
 
-// Form controls inherit the type stack instead of the browser's. font-size must stay at
-// 16px or larger: iOS Safari zooms the viewport when a smaller field is focused, and the
-// user is then left on a page they have to pinch back out of.
+// Form controls inherit the type stack instead of the browser's.
 button,
 input,
 select,
 textarea {
   font: inherit;
-  font-size: var(--t-body);
   color: inherit;
 }
 
@@ -84,20 +85,11 @@ button {
   cursor: pointer;
 }
 
-// Every interactive element is at least a 44px target. Declared once here rather than
-// per-component, because the one that gets missed is always the small icon button.
-button,
-[role='button'],
-a.button,
-input[type='submit'] {
-  min-height: var(--tap);
-}
-
 // A visible focus ring, on keyboard focus only. Never removed: it is the only way a
 // keyboard or switch-control user can tell where they are.
 :focus-visible {
   outline: 2px solid var(--c-focus);
-  outline-offset: 2px;
+  outline-offset: 1px;
   border-radius: var(--r-sm);
 }
 
@@ -117,7 +109,7 @@ input[type='submit'] {
 
 // The application is a column: header, content that grows, footer. Declared on app-root
 // because that is body's only child — without it a short page leaves the footer floating
-// halfway up a desktop window, which is the single most obvious sign of a missing shell.
+// halfway up a desktop window.
 app-root {
   display: flex;
   flex-direction: column;
@@ -128,11 +120,7 @@ app-root {
 
 // <b>The one container.</b> Horizontal padding plus a maximum width, used by the header,
 // by main, and by the footer — so the wordmark, the page title and the copyright all sit
-// on the same two vertical lines. Anything that wants to break out of it says so
-// explicitly rather than by not opting in.
-//
-// The gutter is on the container rather than on the body so that a full-bleed photo
-// gallery can still escape it.
+// on the same two vertical lines.
 .page {
   width: 100%;
   max-width: var(--w-page);
@@ -140,11 +128,20 @@ app-root {
   padding-inline: var(--gutter);
 }
 
-// Vertical rhythm as a stack, so no component needs a bottom margin of its own.
+// Vertical rhythm as a stack, so no component needs a bottom margin of its own. The
+// default step is 12px; --tight and --loose are the only two variations.
 .stack {
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
+  gap: var(--s-3);
+}
+
+.stack--tight {
+  gap: var(--s-1);
+}
+
+.stack--loose {
+  gap: var(--s-5);
 }
 
 // Content hidden from sight but available to a screen reader.
@@ -158,4 +155,9 @@ app-root {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+// Figures that line up in a column: prices, mileages, dates.
+.num {
+  font-variant-numeric: tabular-nums;
 }

@@ -11,6 +11,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { routes } from '../app.routes';
 import { AuthService } from '../core/auth/auth.service';
+import { Logo } from '../shared/brand/logo';
 import { availableNav } from './primary-nav';
 
 /**
@@ -29,7 +30,7 @@ import { availableNav } from './primary-nav';
  */
 @Component({
   selector: 'app-site-header',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, Logo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './site-header.html',
   styleUrl: './site-header.scss',

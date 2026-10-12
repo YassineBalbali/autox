@@ -11,9 +11,10 @@
   padding: var(--s-2) var(--s-3);
   background: var(--c-surface);
   color: var(--c-accent);
+  border: var(--border);
   border-radius: var(--r-md);
-  box-shadow: var(--shadow-md);
-  font-weight: var(--fw-medium);
+  box-shadow: var(--shadow-overlay);
+  font-weight: var(--fw-semibold);
   text-decoration: none;
   transition: top 120ms ease-out;
 

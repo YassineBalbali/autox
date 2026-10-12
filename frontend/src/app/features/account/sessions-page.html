@@ -19,75 +19,68 @@
       <app-alert kind="error">{{ actionFailure() }}</app-alert>
     }
 
-    <ul class="session-list">
+    <!-- One bordered block of rows, not a stack of cards: the facts for each session run
+         inline on a single line and the action sits in the same place at the right of
+         every row, so six sessions fit where two cards did. -->
+    <ul class="rows">
       @for (session of sessions; track session.id) {
-        <li class="panel session">
-          <div class="session__head">
-            <h2 class="session__label">{{ session.label }}</h2>
-            @if (session.isThisDevice) {
-              <span class="session__badge" i18n="@@sessionThisDevice">Cet appareil</span>
+        <li class="row session">
+          <div class="row__main">
+            <div class="session__head">
+              <h2 class="row__title">{{ session.label }}</h2>
+              @if (session.isThisDevice) {
+                <span class="tag tag--accent session__badge" i18n="@@sessionThisDevice">
+                  Cet appareil
+                </span>
+              }
+            </div>
+
+            <ul class="session__facts">
+              @if (session.lastUsedAt) {
+                <li><span i18n="@@sessionLastUsed">Dernière activité</span> {{ session.lastUsedAt }}</li>
+              }
+              @if (session.createdAt) {
+                <li><span i18n="@@sessionCreated">Connexion le</span> {{ session.createdAt }}</li>
+              }
+              @if (session.ipAddress) {
+                <li><span i18n="@@sessionAddress">IP</span> {{ session.ipAddress }}</li>
+              }
+              @if (session.expiresAt) {
+                <li><span i18n="@@sessionExpires">Expire le</span> {{ session.expiresAt }}</li>
+              }
+            </ul>
+
+            @if (session.userAgent) {
+              <!-- The raw User-Agent, folded away. It is the only thing that distinguishes
+                   two sessions carrying the same label, so it has to be available. -->
+              <details class="session__agent">
+                <summary class="meta" i18n="@@sessionTechnicalDetail">Détail technique</summary>
+                <p class="meta session__ua">{{ session.userAgent }}</p>
+              </details>
             }
           </div>
 
-          <dl class="readout session__facts">
-            @if (session.lastUsedAt) {
-              <div>
-                <dt class="readout__term" i18n="@@sessionLastUsed">Dernière activité</dt>
-                <dd class="readout__value">{{ session.lastUsedAt }}</dd>
-              </div>
-            }
-            @if (session.createdAt) {
-              <div>
-                <dt class="readout__term" i18n="@@sessionCreated">Connexion le</dt>
-                <dd class="readout__value">{{ session.createdAt }}</dd>
-              </div>
-            }
-            @if (session.ipAddress) {
-              <div>
-                <dt class="readout__term" i18n="@@sessionAddress">Adresse IP</dt>
-                <dd class="readout__value">{{ session.ipAddress }}</dd>
-              </div>
-            }
-            @if (session.expiresAt) {
-              <div>
-                <dt class="readout__term" i18n="@@sessionExpires">Expire le</dt>
-                <dd class="readout__value">{{ session.expiresAt }}</dd>
-              </div>
-            }
-          </dl>
-
-          @if (session.userAgent) {
-            <!-- The raw User-Agent, folded away. It is the only thing that distinguishes two
-                 sessions carrying the same label, so it has to be available — and it is
-                 unreadable enough that it should not be the first thing on the row. -->
-            <details class="session__agent">
-              <summary class="meta" i18n="@@sessionTechnicalDetail">Détail technique</summary>
-              <p class="meta session__ua">{{ session.userAgent }}</p>
-            </details>
-          }
-
-          <button
-            class="btn btn--danger session__revoke"
-            type="button"
-            [disabled]="revoking() === session.id"
-            (click)="revoke(session)"
-          >
-            @if (revoking() === session.id) {
-              <ng-container i18n="@@sessionRevoking">Fermeture…</ng-container>
-            } @else if (session.isThisDevice) {
-              <ng-container i18n="@@sessionRevokeThis">
-                Fermer — vous serez déconnecté
-              </ng-container>
-            } @else {
-              <ng-container i18n="@@sessionRevoke">Fermer cette session</ng-container>
-            }
-          </button>
+          <div class="row__aside">
+            <button
+              class="btn btn--danger btn--sm"
+              type="button"
+              [disabled]="revoking() === session.id"
+              (click)="revoke(session)"
+            >
+              @if (revoking() === session.id) {
+                <ng-container i18n="@@sessionRevoking">Fermeture…</ng-container>
+              } @else if (session.isThisDevice) {
+                <ng-container i18n="@@sessionRevokeThis">
+                  Fermer — vous serez déconnecté
+                </ng-container>
+              } @else {
+                <ng-container i18n="@@sessionRevoke">Fermer cette session</ng-container>
+              }
+            </button>
+          </div>
         </li>
       } @empty {
-        <!-- Only reachable if every session expired between signing in and loading this
-             page, which is to say almost never — but an empty list with no text reads as a
-             broken screen. -->
-        <li class="panel meta" i18n="@@sessionsEmpty">Aucune session active.</li>
+        <li class="row meta" i18n="@@sessionsEmpty">Aucune session active.</li>
       }
     </ul>
 

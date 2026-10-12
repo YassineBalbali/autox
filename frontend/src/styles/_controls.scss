@@ -1,66 +1,69 @@
-// Form and action vocabulary.
+// Shared classes: panels, forms, buttons, tags and the read-only lists.
 //
-// Global rather than per-component, which is a deliberate exception to "components bring
-// their own styles". An input, a button and a card look the same on every screen or the
-// product looks unfinished, and six auth forms each carrying their own copy of the same
-// 40 lines is how that divergence starts. Everything here references tokens only.
-//
-// Mobile-first throughout: these are the 375px styles, and nothing below needs a media
-// query to be usable at that width.
+// Global rather than per-component, deliberately. An input, a button and a panel look the
+// same on every screen or the product looks unfinished, and these are the pieces every
+// screen is assembled from. Everything here references tokens only — there is not a
+// colour or a pixel size in this file that is not a custom property.
 
 @use 'tokens' as t;
 
-// ---- the page card --------------------------------------------------------
+// ---- panels ---------------------------------------------------------------
 //
-// Auth screens are a single column of fields on a white panel. On a phone the panel is
-// the page; from the small breakpoint up it becomes a centred card with a visible edge.
+// A white surface with a hairline border. No shadow and nearly no radius: on a grey page
+// the tone change already separates it, and a results page of forty shadowed cards is
+// forty things competing with the photographs.
 
 .panel {
   background: var(--c-surface);
-  padding: var(--s-5) var(--s-4);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
+  border: var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s-3) var(--s-4);
+}
 
-  @media (min-width: t.$bp-sm) {
-    padding: var(--s-6);
+// The title row of a panel: a heading, a rule under it, optionally something on the right.
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin: calc(var(--s-3) * -1) calc(var(--s-4) * -1) 0;
+  padding: var(--s-2) var(--s-4);
+  border-bottom: var(--divider);
+  background: var(--c-surface-sunk);
+  border-radius: var(--r-md) var(--r-md) 0 0;
+
+  h2 {
+    font-size: var(--t-sm);
+    font-weight: var(--fw-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--c-ink-soft);
   }
 }
 
-// A form with nothing beside it — sign in, register, the password screens. Centred in the
-// container, which is right when the column is the whole page and wrong inside the account
-// layout, where the content sits next to a sidebar and belongs against it.
+// ---- forms ----------------------------------------------------------------
+
+// A form with nothing beside it — sign in, register. Centred in the container.
 .form-column {
   width: 100%;
   max-width: var(--w-form);
   margin-inline: auto;
 }
 
-// Where a form's own buttons go. Left-aligned and natural width: a submit button spanning
-// a 768px content column reads as a page-level action rather than as this form's, and a
-// full-width button is a phone convention that looks unfinished on a desktop panel.
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-3);
-  padding-top: var(--s-1);
-}
-
-// ---- fields ---------------------------------------------------------------
-
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  gap: var(--s-0);
 }
 
 .field__label {
   font-size: var(--t-sm);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
   color: var(--c-ink-soft);
 }
 
-// "optionnel" next to a label. Marking the optional fields rather than the required ones:
-// on these forms most fields are required, so asterisks everywhere carry no information.
+// "optionnel" next to a label. The optional fields are marked rather than the required
+// ones: most fields are required, so asterisks everywhere would carry no information.
 .field__optional {
   font-weight: var(--fw-regular);
   color: var(--c-ink-faint);
@@ -68,21 +71,35 @@
 
 .input {
   width: 100%;
-
-  // <b>The measure cap.</b> A text field stretched across a desktop panel is both
-  // unreadable and unanswerable: the eye loses the line from the label to the value, and a
-  // 700px box invites a sentence where a surname belongs. Declared once here rather than
-  // per screen, so no form can forget it.
+  // <b>The measure cap.</b> A text field stretched across a desktop panel is unreadable
+  // and unanswerable. Declared once here so no form can forget it.
   max-width: var(--w-field);
-  // 44px of target, and the 16px font-size from _base.scss that stops iOS zooming.
-  min-height: var(--tap);
-  padding: var(--s-2) var(--s-3);
+  height: var(--h-control);
+  padding: 0 var(--s-2);
   background: var(--c-surface);
-  border: 1px solid var(--c-line-strong);
+  border: var(--border);
   border-radius: var(--r-md);
+  // 16px below the medium breakpoint: iOS Safari zooms the viewport when a smaller field
+  // takes focus. A phone only has to not break for now, and this is the difference.
+  font-size: 1rem;
+
+  @media (min-width: t.$bp-md) {
+    font-size: var(--t-body);
+  }
 
   &::placeholder {
     color: var(--c-ink-faint);
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--c-ink-faint);
+  }
+
+  // The focus state is the border itself turning accent, plus the global ring. A filled
+  // glow would be the decoration this style avoids.
+  &:focus-visible {
+    border-color: var(--c-accent);
+    outline-offset: 0;
   }
 
   &:disabled {
@@ -90,27 +107,75 @@
     color: var(--c-ink-faint);
   }
 
-  // The invalid state is carried by aria-invalid rather than by a class, so the visual
-  // and the accessible state cannot drift apart — there is only one source for both.
+  // Carried by aria-invalid rather than a class, so the visual and the accessible state
+  // have one source and cannot drift apart.
   &[aria-invalid='true'] {
     border-color: var(--c-danger);
   }
 }
 
 textarea.input {
-  min-height: 6rem;
+  height: auto;
+  min-height: 5.5rem;
+  padding-block: var(--s-2);
   resize: vertical;
+  line-height: var(--lh-snug);
 }
 
 .field__hint {
-  font-size: var(--t-sm);
+  font-size: var(--t-xs);
   color: var(--c-ink-faint);
+  line-height: var(--lh-snug);
 }
 
 .field__error {
-  font-size: var(--t-sm);
-  font-weight: var(--fw-medium);
+  font-size: var(--t-xs);
+  font-weight: var(--fw-semibold);
   color: var(--c-danger);
+  line-height: var(--lh-snug);
+}
+
+// <b>Label beside field, from the medium breakpoint up.</b> A settings form of nine
+// stacked fields is nine label lines of pure height; in rows the same form is half as
+// tall and every label sits on one scan line down the left. Opt-in per form, because a
+// narrow sign-in column has no room for a label column.
+.form--rows {
+  @media (min-width: t.$bp-md) {
+    .field {
+      display: grid;
+      grid-template-columns: var(--w-label) minmax(0, var(--w-field));
+      column-gap: var(--s-4);
+      row-gap: var(--s-0);
+      align-items: start;
+    }
+
+    .field__label {
+      // Centred on the control's height, not on the whole cell, so the label stays level
+      // with its input when a hint or an error adds lines underneath.
+      min-height: var(--h-control);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      column-gap: var(--s-1);
+    }
+
+    // Everything that is not the label goes in the field column, under the input.
+    .field > :not(.field__label) {
+      grid-column: 2;
+    }
+
+    .form-actions {
+      padding-left: calc(var(--w-label) + var(--s-4));
+    }
+  }
+}
+
+// Where a form's buttons go: left-aligned, natural width.
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  padding-top: var(--s-1);
 }
 
 // ---- buttons --------------------------------------------------------------
@@ -120,19 +185,21 @@ textarea.input {
   align-items: center;
   justify-content: center;
   gap: var(--s-2);
-  min-height: var(--tap);
-  padding: var(--s-2) var(--s-5);
+  height: var(--h-control);
+  padding: 0 var(--s-4);
   border: 1px solid transparent;
   border-radius: var(--r-md);
   background: none;
-  font-weight: var(--fw-medium);
+  font-size: var(--t-body);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
   text-align: center;
   text-decoration: none;
+  white-space: nowrap;
 
   &:disabled {
-    // Not opacity: a translucent label over a coloured fill fails contrast. An explicit
-    // pair of colours stays readable, which matters because a disabled submit button is
-    // the state a user stares at while a request is in flight.
+    // An explicit pair of colours rather than opacity: a translucent label over a fill
+    // fails contrast, and a disabled submit is what a user stares at during a request.
     background: var(--c-line);
     border-color: var(--c-line);
     color: var(--c-ink-faint);
@@ -140,69 +207,125 @@ textarea.input {
   }
 }
 
+// The one filled button. Accent — the logo's blue — and used once per view: if two
+// things on a screen are primary, neither is.
 .btn--primary {
   background: var(--c-accent);
   color: var(--c-accent-ink);
 
   &:hover:not(:disabled) {
     background: var(--c-accent-strong);
+    color: var(--c-accent-ink);
   }
 }
 
 .btn--quiet {
+  background: var(--c-surface);
   border-color: var(--c-line-strong);
   color: var(--c-ink);
 
   &:hover:not(:disabled) {
+    border-color: var(--c-ink-faint);
     background: var(--c-surface-sunk);
+    color: var(--c-ink);
   }
 }
 
 .btn--danger {
-  border-color: var(--c-danger);
+  background: var(--c-surface);
+  border-color: var(--c-line-strong);
   color: var(--c-danger);
 
   &:hover:not(:disabled) {
+    border-color: var(--c-danger);
     background: var(--c-danger-soft);
   }
 }
 
-// Full width on a phone, where a button sharing a row with nothing should fill the thumb
-// zone; natural width from the small breakpoint up.
-.btn--block {
-  width: 100%;
-
-  @media (min-width: t.$bp-sm) {
-    width: auto;
-  }
+// For a button inside a row, where the standard height would set the row's height.
+.btn--sm {
+  height: calc(var(--h-control) - 6px);
+  padding-inline: var(--s-3);
+  font-size: var(--t-sm);
 }
 
-// ---- small pieces ---------------------------------------------------------
+// Fills its container. For a form that is itself a narrow column.
+.btn--block {
+  width: 100%;
+}
+
+// ---- tags -----------------------------------------------------------------
+//
+// A short label on a row: "Pro", "Cet appareil". Rectangular and outlined — a pill with a
+// fill is a button-shaped thing that is not a button.
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 var(--s-1);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-ink-soft);
+  font-size: var(--t-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tag--accent {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+// ---- text -----------------------------------------------------------------
 
 .page-title {
-  margin-bottom: var(--s-2);
+  margin-bottom: var(--s-1);
 }
 
 .lede {
   color: var(--c-ink-soft);
+  font-size: var(--t-sm);
 }
 
 .meta {
-  font-size: var(--t-sm);
+  font-size: var(--t-xs);
   color: var(--c-ink-faint);
+  line-height: var(--lh-snug);
 }
 
-// A definition list used as a read-only field list: label above value, which is the only
-// layout that survives 375px with a long email address in it.
+// ---- read-only rows -------------------------------------------------------
+//
+// A definition list as compact label/value rows with a divider between: the densest
+// honest way to show a handful of facts. Stacked on a narrow screen, where a long email
+// address needs the full width.
+
 .readout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
   margin: 0;
+}
+
+.readout > div {
+  padding: var(--s-2) 0;
+  border-bottom: var(--divider);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  @media (min-width: t.$bp-md) {
+    display: grid;
+    grid-template-columns: var(--w-label) minmax(0, 1fr);
+    column-gap: var(--s-4);
+    align-items: baseline;
+  }
 }
 
 .readout__term {
   font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
   color: var(--c-ink-soft);
 }
 
@@ -210,12 +333,49 @@ textarea.input {
   margin: 0;
 }
 
-// The same list, in columns once there is room. For a short run of label/value pairs —
-// three facts stacked down a 768px panel is a lot of vertical travel for very little.
-.readout--grid {
-  @media (min-width: 768px) {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-    gap: var(--s-4);
+// ---- row lists ------------------------------------------------------------
+//
+// The pattern every list in a classifieds site reduces to: one bordered block, rows
+// separated by hairlines, the main content on the left and the action — or the price —
+// pinned to the right edge in the same place on every row.
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-4);
+  padding: var(--s-2) var(--s-4);
+  border-bottom: var(--divider);
+
+  &:last-child {
+    border-bottom: 0;
   }
+}
+
+.row__main {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.row__title {
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+}
+
+// The right-hand slot. Does not shrink and does not wrap, so whatever goes in it — a
+// price, a button — sits at the same x on every row of the list.
+.row__aside {
+  flex: 0 0 auto;
+  margin-left: auto;
+  text-align: right;
 }

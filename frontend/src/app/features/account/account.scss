@@ -1,78 +1,50 @@
-// Styles shared by the account screens, which is now only the sessions list — the account
-// menu moved into the layout's sidebar when the section gained one, and the shared panel
-// and form classes live in styles/_controls.scss where every screen can reach them.
-
-// ---- the sessions list ----------------------------------------------------
-
-.session-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.session {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
-  // Keeps a card readable beside the sidebar rather than letting four short facts spread
-  // across the full content column.
-  align-items: flex-start;
-}
+// The sessions list. Everything structural — the bordered block, the rows, the right-hand
+// slot — is the shared .rows pattern from styles/_controls.scss; this is only what is
+// particular to a session.
 
 .session__head {
   display: flex;
-  align-items: baseline;
-  // Wraps rather than shrinking the badge: a long device label and the badge on one line
-  // at 375px would otherwise squeeze "Cet appareil" onto three lines of its own.
+  align-items: center;
   flex-wrap: wrap;
   gap: var(--s-2);
 }
 
-.session__label {
-  font-size: var(--t-body);
-}
+// The facts as one inline run with middle dots, the same idiom as a vehicle's spec line.
+.session__facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin: var(--s-0) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--c-ink);
+  font-size: var(--t-sm);
+  line-height: var(--lh-snug);
+  font-variant-numeric: tabular-nums;
 
-.session__badge {
-  padding: 2px var(--s-2);
-  border-radius: var(--r-pill);
-  background: var(--c-accent-soft);
-  color: var(--c-accent-strong);
-  font-size: var(--t-xs);
-  font-weight: var(--fw-medium);
-  white-space: nowrap;
+  li {
+    white-space: nowrap;
+  }
+
+  li + li::before {
+    content: '·';
+    margin-inline: var(--s-1);
+    color: var(--c-ink-faint);
+  }
+
+  // The label of each fact, quieter than its value.
+  span {
+    color: var(--c-ink-faint);
+  }
 }
 
 .session__agent summary {
-  // The default marker alignment puts the triangle on the text baseline; this keeps the
-  // whole row a comfortable target without turning it into a button.
-  min-height: var(--s-6);
-  display: flex;
-  align-items: center;
+  display: inline-block;
   cursor: pointer;
 }
 
 .session__ua {
-  // A User-Agent string is one unbroken token long enough to widen the page on a phone.
+  // A User-Agent string is one unbroken token long enough to widen the page.
   overflow-wrap: anywhere;
   font-family: var(--font-mono);
-  font-size: var(--t-xs);
-}
-
-.session__revoke {
-  // Natural width, at the foot of its own card. Full-width was the phone treatment; in a
-  // desktop column it made every card end in a red band.
-  align-self: flex-start;
-}
-
-.session__facts {
-  width: 100%;
-
-  @media (min-width: 768px) {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-    gap: var(--s-3) var(--s-4);
-  }
+  font-size: var(--t-2xs);
 }
