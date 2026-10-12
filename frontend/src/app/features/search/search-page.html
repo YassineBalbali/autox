@@ -1,0 +1,123 @@
+<div class="search">
+  <app-search-filters
+    class="search__filters"
+    [query]="query()"
+    (changed)="applyFilters($event)"
+    (cleared)="clearFilters()"
+  />
+
+  <section class="search__results" aria-labelledby="titre-resultats">
+    <header class="search__head">
+      <div>
+        <h1 id="titre-resultats" class="search__title" i18n="@@searchTitle">Voitures d’occasion</h1>
+        <!-- Polite: read out when a filter changes the figure, without interrupting. -->
+        <p class="search__count" aria-live="polite">
+          @if (countText()) {
+            {{ countText() }}
+          } @else if (results.status() === 'loading') {
+            <ng-container i18n="@@searchCounting">Recherche en cours…</ng-container>
+          }
+        </p>
+      </div>
+
+      <div class="search__sort">
+        <label for="tri" i18n="@@searchSortLabel">Trier par</label>
+        <select class="input" id="tri" (change)="setSort($event)">
+          @for (option of sortOptions; track option.value) {
+            <option [value]="option.value" [selected]="option.value === query().sort">
+              {{ option.label }}
+            </option>
+          }
+        </select>
+      </div>
+    </header>
+
+    @switch (results.status()) {
+      @case ('loading') {
+        <!-- Rows of the real height, so the list does not jump when the results land. -->
+        <ul class="rows" aria-busy="true" aria-label="Chargement des annonces" i18n-aria-label="@@searchLoading">
+          @for (row of skeletons; track row) {
+            <li class="search__row skeleton" aria-hidden="true">
+              <div class="skeleton__photo"></div>
+              <div class="skeleton__lines">
+                <span class="skeleton__line skeleton__line--title"></span>
+                <span class="skeleton__line"></span>
+                <span class="skeleton__line skeleton__line--short"></span>
+              </div>
+              <span class="skeleton__line skeleton__price"></span>
+            </li>
+          }
+        </ul>
+      }
+
+      @case ('error') {
+        <div class="panel stack">
+          <app-alert kind="error">{{ results.error() }}</app-alert>
+          <div class="form-actions">
+            <button class="btn btn--quiet" type="button" (click)="results.retry()" i18n="@@retry">
+              Réessayer
+            </button>
+          </div>
+        </div>
+      }
+
+      @case ('ready') {
+        @if (results.items().length === 0) {
+          <div class="panel search__empty">
+            <h2 i18n="@@searchEmptyTitle">Aucune annonce ne correspond à votre recherche</h2>
+            @if (hasFilters()) {
+              <p class="lede" i18n="@@searchEmptyHint">
+                Élargissez la fourchette de prix ou de kilométrage, ou retirez un filtre.
+              </p>
+              <div class="form-actions">
+                <button class="btn btn--primary" type="button" (click)="clearFilters()" i18n="@@searchEmptyReset">
+                  Effacer tous les filtres
+                </button>
+              </div>
+            } @else {
+              <p class="lede" i18n="@@searchEmptyNoListings">
+                Aucune annonce n’est en ligne pour le moment.
+              </p>
+            }
+          </div>
+        } @else {
+          <ul class="rows">
+            @for (listing of results.items(); track listing.id; let index = $index) {
+              <li class="search__row">
+                <app-listing-row
+                  [listing]="listing"
+                  [minorUnit]="minorUnitOf(listing)"
+                  [fuelLabel]="fuelLabel(listing)"
+                  [gearboxLabel]="gearboxLabel(listing)"
+                  [eager]="index < 4"
+                />
+              </li>
+            }
+          </ul>
+
+          <div class="search__more">
+            @if (results.loadMoreError()) {
+              <app-alert kind="error">{{ results.loadMoreError() }}</app-alert>
+            }
+            @if (results.hasMore()) {
+              <button
+                class="btn btn--quiet"
+                type="button"
+                [disabled]="results.loadingMore()"
+                (click)="results.loadMore()"
+              >
+                @if (results.loadingMore()) {
+                  <ng-container i18n="@@searchLoadingMore">Chargement…</ng-container>
+                } @else {
+                  <ng-container i18n="@@searchMore">Voir plus d’annonces</ng-container>
+                }
+              </button>
+            } @else {
+              <p class="meta" i18n="@@searchEnd">Vous avez vu toutes les annonces.</p>
+            }
+          </div>
+        }
+      }
+    }
+  </section>
+</div>

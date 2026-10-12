@@ -1,0 +1,145 @@
+@use '../../../styles/tokens' as t;
+
+// Filters beside results from the large breakpoint up; stacked below it. Same grid, and
+// the same minmax(0, 1fr) for the same reason, as the account section.
+.search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-3);
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: 16rem minmax(0, 1fr);
+    gap: var(--s-5);
+    align-items: start;
+  }
+}
+
+.search__results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.search__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-4);
+}
+
+.search__title {
+  font-size: var(--t-xl);
+}
+
+// The count, directly under the title. Bold and dark: after the price it is the number a
+// buyer looks at most — it is how they know whether a filter helped.
+.search__count {
+  // Reserves its line, so the heading does not jump when the figure arrives.
+  min-height: 1.3em;
+  font-size: var(--t-body);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-snug);
+  font-variant-numeric: tabular-nums;
+}
+
+.search__sort {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+
+  label {
+    font-size: var(--t-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--c-ink-soft);
+    white-space: nowrap;
+  }
+
+  .input {
+    width: auto;
+    min-width: 13rem;
+  }
+}
+
+// A row of the shared .rows list. The padding belongs to app-listing-row, so the divider
+// from .rows runs edge to edge.
+.search__row {
+  border-bottom: var(--divider);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:hover {
+    background: var(--c-surface-sunk);
+  }
+}
+
+.search__empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-block: var(--s-5);
+}
+
+.search__more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+// ---- loading placeholders -------------------------------------------------
+//
+// Flat grey blocks in the shape of a row. No shimmer: an animated gradient across six
+// rows is the single most decorative thing a page can do, and it says nothing a still
+// block does not.
+
+.skeleton {
+  display: grid;
+  // The same columns and padding as app-listing-row, so nothing moves on arrival.
+  grid-template-columns: 9rem minmax(0, 1fr) 7.5rem;
+  gap: var(--s-3);
+  align-items: start;
+  padding: var(--s-2) var(--s-3);
+
+  &:hover {
+    background: none;
+  }
+}
+
+.skeleton__photo {
+  aspect-ratio: 4 / 3;
+  background: var(--c-line);
+  border-radius: var(--r-sm);
+}
+
+.skeleton__lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-top: var(--s-1);
+}
+
+.skeleton__line {
+  display: block;
+  height: 0.75rem;
+  width: 55%;
+  background: var(--c-line);
+  border-radius: var(--r-sm);
+}
+
+.skeleton__line--title {
+  height: 1rem;
+  width: 75%;
+}
+
+.skeleton__line--short {
+  width: 30%;
+}
+
+.skeleton__price {
+  height: 1.25rem;
+  width: 100%;
+}

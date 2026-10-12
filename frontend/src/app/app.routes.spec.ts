@@ -96,10 +96,22 @@ describe('routes', () => {
     }
   });
 
-  it('sends an unknown path somewhere real rather than rendering an empty shell', () => {
+  it('sends an unknown path home rather than rendering an empty shell', () => {
+    // Home, not the account: the account is guarded, so a visitor who mistyped an address
+    // would be bounced on to the sign-in page for it.
     const wildcard = routes.at(-1);
     expect(wildcard?.path).toBe('**');
-    expect(wildcard?.redirectTo).toBe(ACCOUNT_ROUTE);
+    expect(wildcard?.redirectTo).toBe('/');
+  });
+
+  it('serves the search as the home page, publicly', () => {
+    const home = top('');
+    expect(home.loadComponent).toBeTypeOf('function');
+    expect(home.redirectTo).toBeUndefined();
+    // The shop window has to be reachable without an account, and crawlable.
+    expect(home.canActivate).toBeUndefined();
+    // Without this an empty path would also prefix-match every other URL.
+    expect(home.pathMatch).toBe('full');
   });
 
   it('titles every screen, since the tab is how a user finds it again', () => {

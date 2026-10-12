@@ -15,10 +15,22 @@ import { UserRole } from './core/api';
  * page — has to match `autox.mail.password-reset-url` on the backend exactly, since that is
  * what the emailed link points at.
  *
- * <p>No listing or search screens yet, so there is no `''` route: the redirect target is
- * the account, which is where both guards lead and the only place there is to be.
+ * <p>The home page is the search. A marketplace has no better thing to show a visitor
+ * than what is for sale, and a landing page in front of it is a click nobody asked for.
  */
 export const routes: Routes = [
+  // ---- the shop window ----------------------------------------------------
+
+  {
+    // Filters, sort order and nothing else live in this route's query string — see
+    // features/search/search-query.ts for the parameter names, which are a contract once
+    // a link has been shared.
+    path: '',
+    pathMatch: 'full',
+    title: 'Voitures d’occasion · AutoX',
+    loadComponent: () => import('./features/search/search-page').then((m) => m.SearchPage),
+  },
+
   // ---- public -------------------------------------------------------------
 
   {
@@ -110,17 +122,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/errors/forbidden-page').then((m) => m.ForbiddenPage),
   },
 
-  {
-    path: '',
-    pathMatch: 'full',
-    redirectTo: '/mon-compte',
-  },
-
   // A wildcard rather than nothing: an unknown path with no route renders an empty shell,
-  // which looks like a broken application rather than a wrong address. Sent to the account,
-  // whose guard then sends an anonymous visitor to sign in.
+  // which looks like a broken application rather than a wrong address. Sent home, which is
+  // public — the account would bounce an anonymous visitor on to the sign-in page for
+  // having mistyped a URL.
   {
     path: '**',
-    redirectTo: '/mon-compte',
+    redirectTo: '/',
   },
 ];

@@ -163,7 +163,7 @@
           "Listings (public)"
         ],
         "summary": "Search the live listings",
-        "description": "Search the live listings. Every filter is optional; no filters means everything visible.\n\n <p>Paginated by cursor, not by page number: <code>nextCursor</code> from one response is\n <code>cursor</code> in the next. There is no page number and no total, because offset paging\n over a table being written to skips and repeats rows, and a count costs a second scan.",
+        "description": "Search the live listings. Every filter is optional; no filters means everything visible.\n\n <p>Paginated by cursor, not by page number: <code>nextCursor</code> from one response is\n <code>cursor</code> in the next. There is no page number, because offset paging over a table\n being written to skips and repeats rows. The number of matches is a separate call,\n <code>GET /api/v1/listings/count</code>, so that no page pays for it.",
         "operationId": "search",
         "parameters": [
           {
@@ -1419,6 +1419,48 @@
             "bearerAuth": []
           }
         ]
+      }
+    },
+    "/api/v1/listings/count": {
+      "get": {
+        "tags": [
+          "Listings (public)"
+        ],
+        "summary": "How many listings match the same filters <code>GET /api/v1/listings</code> takes",
+        "description": "How many listings match the same filters <code>GET /api/v1/listings</code> takes.\n\n <p>Exact up to 10 000; beyond that <code>capped</code> is true and <code>count</code> is the\n cap, to be shown as \"more than 10 000\". The bound keeps the cost constant however\n large the catalogue grows. Call it once when the filters change — not per page —\n and do not make the result list wait for it.",
+        "operationId": "count",
+        "parameters": [
+          {
+            "name": "criteria",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ListingSearchCriteria"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultCount"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/admin/users": {
@@ -3201,7 +3243,7 @@
       },
       "CursorPagePublicListingSummary": {
         "type": "object",
-        "description": "A page of search results.\n\n <p>No total count, deliberately. Counting the matches for an arbitrary filter combination\n means a second full scan of the result set on every page, which costs more than the page\n itself and grows with the catalogue. Infinite scroll — which is what a phone does — needs\n <code>nextCursor</code> and nothing else.\n\n <p>When a result count does become a product requirement, the answer is a cached approximate\n count per filter combination, or Elasticsearch, not a <code>COUNT(*)</code> on the hot path.",
+        "description": "A page of search results.\n\n <p>No total count on the page, deliberately. Counting the matches for an arbitrary filter\n combination on every page would cost more than the page itself. The count is its own\n endpoint — <code>GET /api/v1/listings/count</code>, see {@link ResultCount ResultCount} — asked once per\n filter change and bounded by a cap, so it is off the pagination path entirely.",
         "properties": {
           "items": {
             "type": "array",
@@ -3543,6 +3585,21 @@
           },
           "hasNext": {
             "type": "boolean"
+          }
+        }
+      },
+      "ResultCount": {
+        "type": "object",
+        "description": "How many listings match a search.",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "the number of matches, never more than the cap"
+          },
+          "capped": {
+            "type": "boolean",
+            "description": "<code>true</code> when there are more matches than <code>count</code> — the client\n               shows \"more than <code>count</code>\" rather than the figure itself"
           }
         }
       },

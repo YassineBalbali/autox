@@ -98,6 +98,39 @@ public class ListingSearchRepository {
         return jdbc.query(sql.toString(), parameters, ListingSearchRepository::mapRow);
     }
 
+    /**
+     * How many listings match, counted no further than {@code cap + 1}.
+     *
+     * <p>The bound is the point. An unbounded {@code COUNT(*)} over an arbitrary filter
+     * combination scans every matching row, so its cost grows with the catalogue and the
+     * broadest searches — no filters at all — are the most expensive. Counting inside a
+     * {@code LIMIT} stops the scan at the cap: the work is bounded by a constant however
+     * large the table becomes, and a buyer is no worse off being told "more than 10 000"
+     * than "37 412".
+     *
+     * <p>One past the cap is fetched so the caller can tell "exactly the cap" from "more".
+     * The seller join is omitted — nothing filters on it — but the catalogue and place
+     * joins stay, because the make, model and location filters read through them.
+     */
+    public int countUpTo(ListingSearchCriteria criteria, int cap) {
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        StringBuilder sql = new StringBuilder("""
+                SELECT count(*) FROM (
+                    SELECT 1
+                      FROM listing l
+                      LEFT JOIN vehicle_make mk  ON mk.id = l.make_id
+                      LEFT JOIN vehicle_model mo ON mo.id = l.model_id
+                      LEFT JOIN geo_place gp     ON gp.id = l.geo_place_id
+                     WHERE""").append(' ').append(VISIBLE);
+
+        appendFilters(criteria, sql, parameters);
+        sql.append(" LIMIT :limit) bounded");
+        parameters.addValue("limit", cap + 1);
+
+        Integer count = jdbc.queryForObject(sql.toString(), parameters, Integer.class);
+        return count == null ? 0 : count;
+    }
+
     /** The statement the search would run, for diagnostics and plan checks. */
     public String explain(ListingSearchCriteria criteria, SearchSort sort, SearchCursor cursor, int limit) {
         MapSqlParameterSource parameters = new MapSqlParameterSource();

@@ -3,21 +3,22 @@ import { Routes } from '@angular/router';
 /** An entry in the header's primary navigation. */
 export interface NavItem {
   readonly label: string;
-  /** Top-level route path, without a leading slash — matched against the route table. */
+  /**
+   * Top-level route path, without a leading slash — matched against the route table.
+   * The empty string is the home page.
+   */
   readonly path: string;
 }
 
 /**
  * The marketplace's primary navigation, declared in one place.
  *
- * <p>Both destinations are the ones a vehicle marketplace is built around, and neither
- * screen exists yet. They are declared anyway because the header is being built now and
- * the shape of it depends on them — a header designed around a wordmark and an account
- * menu is a different header from one with navigation in the middle, and discovering that
- * when search lands means doing it twice.
+ * <p>The two destinations a vehicle marketplace is built around. Buying is the search,
+ * which is the home page; selling has no screen yet, and is declared anyway so that it
+ * appears the day its route does, with no change here.
  */
 export const PRIMARY_NAV: readonly NavItem[] = [
-  { label: 'Acheter', path: 'annonces' },
+  { label: 'Acheter', path: '' },
   { label: 'Vendre', path: 'vendre' },
 ];
 
@@ -33,8 +34,12 @@ export const PRIMARY_NAV: readonly NavItem[] = [
 export function availableNav(routes: Routes, items = PRIMARY_NAV): readonly NavItem[] {
   const declared = new Set(
     routes
+      // A route that renders something. A redirect is not a destination, and the wildcard
+      // matches every path there is — counting either would make every entry look live.
+      .filter((route) => route.path !== '**' && !route.redirectTo)
+      .filter((route) => route.loadComponent || route.component || route.children)
       .map((route) => route.path)
-      .filter((path): path is string => typeof path === 'string' && path !== '' && path !== '**'),
+      .filter((path): path is string => typeof path === 'string'),
   );
   return items.filter((item) => declared.has(item.path));
 }

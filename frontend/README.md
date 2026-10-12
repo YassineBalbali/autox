@@ -55,6 +55,7 @@ src/app/
     api/           BASE_PATH wiring, and the generated client behind one index
     auth/          Session state, interceptor, guards, named routes, device label
     errors/        HTTP failure → French sentence
+    reference/     Makes, models, enum values, countries — fetched once
     ui/            Flash messages between screens
   layout/          Site header, footer, primary navigation
   shared/          Reusable pieces with no feature knowledge
@@ -64,6 +65,7 @@ src/app/
     format/        Dates
     ui/            Alert
   features/
+    search/        The home page: filters, results, URL <-> query
     auth/          Sign in, register, forgot, reset
     account/       Layout + sidebar, profile, company, password, sessions
     errors/        Access refused
@@ -81,6 +83,7 @@ a mismatch loads the app and renders nothing.
 
 | Path | Guard |
 | --- | --- |
+| `/` — the search, and the home page | — |
 | `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser-mot-de-passe` | — |
 | `/mon-compte`, `/mon-compte/mot-de-passe`, `/mon-compte/sessions` | `authGuard` |
 | `/mon-compte/entreprise` | `roleGuard(PROFESSIONNEL, ADMIN)` |
@@ -89,6 +92,28 @@ a mismatch loads the app and renders nothing.
 A guard is a courtesy, never a boundary. Every one of these is enforced by the API, which
 is the only place that counts — the bundle is public and anybody can edit a `canActivate`
 out of it.
+
+## The search screen
+
+The URL is the screen's only state. A filter or sort change navigates; the new query
+string is parsed into a `SearchQuery`; that drives the API call. So a link reproduces a
+search, the back button undoes one filter at a time, and the sidebar cannot disagree with
+the list.
+
+- **Parameter names are a contract** once a link is shared: `marque`, `modele`,
+  `annee_min`/`annee_max`, `prix_min`/`prix_max` (whole euros), `km_min`/`km_max`,
+  `carburant`, `boite`, `carrosserie`, `etat`, `lieu`, `tri`. Add; do not rename.
+- **The query string is untrusted.** `parseQuery` bounds numbers, checks enum values
+  against the generated enums and drops anything else — a bad parameter costs that filter,
+  never the page.
+- **Filter options come from the reference endpoints** (makes, models, enum values). Only
+  the French labels are in the frontend (`features/search/labels.fr.ts`), as exhaustive
+  `Record`s over the generated enums.
+- **The count is a separate request** (`GET /listings/count`, capped at 10 000) so the list
+  never waits for it; a failed count is not an error state.
+- **"Voir plus" is keyset pagination** and the cursor is deliberately not in the URL.
+- **A new search cancels the previous one's requests**, so a slow response cannot be shown
+  under a newer filter.
 
 ## Conventions
 
@@ -148,6 +173,7 @@ borders and dividers instead of shadows, nearly square corners. The live referen
 | `app-logo` | `shared/brand` | The wordmark |
 | `app-price` | `shared/listing` | Any price |
 | `app-spec-line` | `shared/listing` | année · km · carburant · boîte · puissance |
+| `app-listing-row` | `shared/listing` | A vehicle in a list: photo, facts, price |
 | `app-filter-chip` | `shared/ui` | An on/off filter |
 | `app-alert` | `shared/ui` | Error, success, note |
 | `app-text-field` | `shared/forms` | A labelled input with its message |

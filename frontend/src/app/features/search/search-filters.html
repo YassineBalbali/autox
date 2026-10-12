@@ -1,0 +1,159 @@
+<!-- Below the large breakpoint the filters collapse behind this button. On desktop it is
+     hidden and the sidebar is always there. -->
+<button
+  class="btn btn--quiet filters__toggle"
+  type="button"
+  [attr.aria-expanded]="open()"
+  aria-controls="filtres"
+  (click)="toggleOpen()"
+>
+  <ng-container i18n="@@filtersToggle">Filtres</ng-container>
+  @if (activeCount() > 0) {
+    <span class="tag tag--accent">{{ activeCount() }}</span>
+  }
+</button>
+
+<!-- A form only so that Enter in a field commits it; it is never submitted anywhere. -->
+<form
+  class="filters"
+  id="filtres"
+  [class.filters--open]="open()"
+  aria-label="Filtres de recherche"
+  i18n-aria-label="@@filtersLabel"
+  (submit)="$event.preventDefault()"
+>
+  <div class="filters__head">
+    <h2 i18n="@@filtersTitle">Filtres</h2>
+    @if (activeCount() > 0) {
+      <button class="filters__reset" type="button" (click)="cleared.emit()" i18n="@@filtersReset">
+        Tout effacer
+      </button>
+    }
+  </div>
+
+  <!-- ============================================================ vehicle -->
+  <fieldset class="filters__group">
+    <legend i18n="@@filterVehicle">Véhicule</legend>
+
+    <label class="filters__label" for="f-marque" i18n="@@filterMake">Marque</label>
+    @if (makeIsFreeText()) {
+      <input
+        class="input"
+        id="f-marque"
+        type="text"
+        autocomplete="off"
+        placeholder="Ex. Peugeot"
+        i18n-placeholder="@@filterMakePlaceholder"
+        [value]="query().make ?? ''"
+        (change)="setMake($event)"
+      />
+    } @else {
+      <select class="input" id="f-marque" [disabled]="makes() === null" (change)="setMake($event)">
+        <option value="" [selected]="!query().make" i18n="@@filterAnyMake">Toutes les marques</option>
+        @for (make of makes() ?? []; track make.id) {
+          <option [value]="make.slug" [selected]="make.slug === query().make">{{ make.name }}</option>
+        }
+        @if (query().make && !selectedMake() && makes() !== null) {
+          <!-- A make from the URL that is not in the catalogue: free text from an old
+               link. Shown, so the filter that is being applied is visible and removable. -->
+          <option [value]="query().make" selected>{{ query().make }}</option>
+        }
+      </select>
+    }
+
+    <label class="filters__label" for="f-modele" i18n="@@filterModel">Modèle</label>
+    @if (query().make && !selectedMake()) {
+      <input
+        class="input"
+        id="f-modele"
+        type="text"
+        autocomplete="off"
+        [value]="query().model ?? ''"
+        (change)="setModel($event)"
+      />
+    } @else {
+      <select class="input" id="f-modele" [disabled]="!selectedMake()" (change)="setModel($event)">
+        <option value="" [selected]="!query().model">
+          @if (selectedMake()) {
+            <ng-container i18n="@@filterAnyModel">Tous les modèles</ng-container>
+          } @else {
+            <ng-container i18n="@@filterModelNeedsMake">Choisissez une marque</ng-container>
+          }
+        </option>
+        @for (model of models(); track model.id) {
+          <option [value]="model.slug" [selected]="model.slug === query().model">{{ model.name }}</option>
+        }
+      </select>
+    }
+  </fieldset>
+
+  <!-- ============================================================= ranges -->
+  <fieldset class="filters__group">
+    <legend i18n="@@filterYear">Année</legend>
+    <div class="filters__range">
+      <input class="input" type="text" inputmode="numeric" placeholder="De" aria-label="Année minimum"
+        i18n-placeholder="@@rangeFrom" i18n-aria-label="@@filterYearMin"
+        [value]="query().yearMin ?? ''" (change)="setNumber('yearMin', $event)" />
+      <input class="input" type="text" inputmode="numeric" placeholder="À" aria-label="Année maximum"
+        i18n-placeholder="@@rangeTo" i18n-aria-label="@@filterYearMax"
+        [value]="query().yearMax ?? ''" (change)="setNumber('yearMax', $event)" />
+    </div>
+  </fieldset>
+
+  <fieldset class="filters__group">
+    <legend i18n="@@filterPrice">Prix (€)</legend>
+    <div class="filters__range">
+      <input class="input" type="text" inputmode="numeric" placeholder="Min" aria-label="Prix minimum en euros"
+        i18n-placeholder="@@rangeMin" i18n-aria-label="@@filterPriceMin"
+        [value]="query().priceMin ?? ''" (change)="setNumber('priceMin', $event)" />
+      <input class="input" type="text" inputmode="numeric" placeholder="Max" aria-label="Prix maximum en euros"
+        i18n-placeholder="@@rangeMax" i18n-aria-label="@@filterPriceMax"
+        [value]="query().priceMax ?? ''" (change)="setNumber('priceMax', $event)" />
+    </div>
+  </fieldset>
+
+  <fieldset class="filters__group">
+    <legend i18n="@@filterMileage">Kilométrage (km)</legend>
+    <div class="filters__range">
+      <input class="input" type="text" inputmode="numeric" placeholder="Min" aria-label="Kilométrage minimum"
+        i18n-placeholder="@@rangeMin" i18n-aria-label="@@filterMileageMin"
+        [value]="query().mileageMin ?? ''" (change)="setNumber('mileageMin', $event)" />
+      <input class="input" type="text" inputmode="numeric" placeholder="Max" aria-label="Kilométrage maximum"
+        i18n-placeholder="@@rangeMax" i18n-aria-label="@@filterMileageMax"
+        [value]="query().mileageMax ?? ''" (change)="setNumber('mileageMax', $event)" />
+    </div>
+  </fieldset>
+
+  <!-- ====================================================== multi-choice -->
+  @for (group of groups(); track group.key) {
+    <fieldset class="filters__group">
+      <legend>{{ group.legend }}</legend>
+      <div class="filters__chips">
+        @for (option of group.options; track option.value) {
+          <app-filter-chip
+            [active]="isChosen(group.key, option.value)"
+            (toggled)="toggleChoice(group.key, option.value, $event)"
+          >
+            {{ option.label }}
+          </app-filter-chip>
+        }
+      </div>
+    </fieldset>
+  }
+
+  <!-- =========================================================== location -->
+  <fieldset class="filters__group">
+    <legend i18n="@@filterLocation">Localisation</legend>
+    <input
+      class="input"
+      type="text"
+      autocomplete="off"
+      placeholder="Ville ou code postal"
+      aria-label="Ville ou code postal"
+      i18n-placeholder="@@filterLocationPlaceholder"
+      i18n-aria-label="@@filterLocationPlaceholder"
+      [value]="query().location ?? ''"
+      (change)="setLocation($event)"
+    />
+  </fieldset>
+</form>

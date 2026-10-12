@@ -1,0 +1,121 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+// The collapse control. Present below the large breakpoint only.
+.filters__toggle {
+  width: 100%;
+  justify-content: space-between;
+
+  @media (min-width: t.$bp-lg) {
+    display: none;
+  }
+}
+
+// One bordered block, groups separated by hairlines — the same construction as the
+// account sidebar and every list.
+.filters {
+  display: none;
+  margin-top: var(--s-2);
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
+
+  @media (min-width: t.$bp-lg) {
+    // Always visible on desktop, whatever the toggle state.
+    display: block;
+    margin-top: 0;
+  }
+}
+
+.filters--open {
+  display: block;
+}
+
+.filters__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--s-2) var(--s-3);
+  background: var(--c-surface-sunk);
+  border-bottom: var(--divider);
+  border-radius: var(--r-md) var(--r-md) 0 0;
+
+  h2 {
+    font-size: var(--t-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--c-ink-soft);
+  }
+}
+
+.filters__reset {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-accent);
+  font-size: var(--t-xs);
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.filters__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+  margin: 0;
+  padding: var(--s-2) var(--s-3) var(--s-3);
+  border: 0;
+  border-bottom: var(--divider);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  legend {
+    // A legend ignores the fieldset's padding and flex layout; floating it puts it back
+    // in the flow so the gap above the first control is the same in every group.
+    float: left;
+    width: 100%;
+    padding: 0;
+    margin-bottom: var(--s-1);
+    font-size: var(--t-sm);
+    font-weight: var(--fw-bold);
+    color: var(--c-ink);
+  }
+}
+
+.filters__label {
+  font-size: var(--t-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink-soft);
+
+  // Space above the second label in a group, not above the first.
+  .input + & {
+    margin-top: var(--s-1);
+  }
+}
+
+// Min and max side by side.
+.filters__range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-2);
+}
+
+.filters__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+// The sidebar is narrower than --w-field, so the cap is irrelevant here; the fields fill
+// their column.
+.input {
+  max-width: none;
+}

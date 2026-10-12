@@ -11,6 +11,7 @@
           class="header__nav-link"
           [routerLink]="'/' + item.path"
           routerLinkActive="header__nav-link--active"
+          [routerLinkActiveOptions]="{ exact: item.path === '' }"
         >
           {{ item.label }}
         </a>

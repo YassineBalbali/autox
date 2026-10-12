@@ -39,8 +39,9 @@ public class PublicListingController {
      * Search the live listings. Every filter is optional; no filters means everything visible.
      *
      * <p>Paginated by cursor, not by page number: {@code nextCursor} from one response is
-     * {@code cursor} in the next. There is no page number and no total, because offset paging
-     * over a table being written to skips and repeats rows, and a count costs a second scan.
+     * {@code cursor} in the next. There is no page number, because offset paging over a table
+     * being written to skips and repeats rows. The number of matches is a separate call,
+     * {@code GET /api/v1/listings/count}, so that no page pays for it.
      */
     @GetMapping
     public CursorPage<PublicListingSummary> search(
@@ -50,6 +51,19 @@ public class PublicListingController {
             @RequestParam(defaultValue = "24") @Min(1) @Max(MAX_PAGE_SIZE) int size) {
 
         return searchService.search(criteria, sort, cursor, size);
+    }
+
+    /**
+     * How many listings match the same filters {@code GET /api/v1/listings} takes.
+     *
+     * <p>Exact up to 10 000; beyond that {@code capped} is true and {@code count} is the
+     * cap, to be shown as "more than 10 000". The bound keeps the cost constant however
+     * large the catalogue grows. Call it once when the filters change — not per page —
+     * and do not make the result list wait for it.
+     */
+    @GetMapping("/count")
+    public ResultCount count(@Valid ListingSearchCriteria criteria) {
+        return searchService.count(criteria);
     }
 
     /**
