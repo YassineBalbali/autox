@@ -1,7 +1,17 @@
-import { BodyType, FuelType, Gearbox, SearchSort, VehicleCondition } from '../../core/api';
+import {
+  BodyType,
+  EmissionClass,
+  ExteriorColor,
+  FeatureCategory,
+  FuelType,
+  Gearbox,
+  SearchSort,
+  UserRole,
+  VehicleCondition,
+} from '../../core/api';
 
 /**
- * French words for the vehicle enums the search screen shows.
+ * French words for the vehicle enums the search and listing screens show.
  *
  * <p>The <em>values</em> come from the API — the filter lists are built from
  * `GET /reference/enums`, so a fuel type added on the backend appears in the sidebar
@@ -51,6 +61,57 @@ export const CONDITION_LABELS: Record<VehicleCondition, string> = {
   [VehicleCondition.NEW]: 'Neuf',
   [VehicleCondition.USED]: 'Occasion',
   [VehicleCondition.DAMAGED]: 'Accidenté',
+};
+
+export const COLOR_LABELS: Record<ExteriorColor, string> = {
+  [ExteriorColor.BLACK]: 'Noir',
+  [ExteriorColor.WHITE]: 'Blanc',
+  [ExteriorColor.GREY]: 'Gris',
+  [ExteriorColor.SILVER]: 'Argent',
+  [ExteriorColor.BLUE]: 'Bleu',
+  [ExteriorColor.RED]: 'Rouge',
+  [ExteriorColor.GREEN]: 'Vert',
+  [ExteriorColor.BROWN]: 'Marron',
+  [ExteriorColor.BEIGE]: 'Beige',
+  [ExteriorColor.YELLOW]: 'Jaune',
+  [ExteriorColor.ORANGE]: 'Orange',
+  [ExteriorColor.PURPLE]: 'Violet',
+  [ExteriorColor.GOLD]: 'Or',
+  [ExteriorColor.OTHER]: 'Autre',
+};
+
+export const EMISSION_LABELS: Record<EmissionClass, string> = {
+  [EmissionClass.EURO_1]: 'Euro 1',
+  [EmissionClass.EURO_2]: 'Euro 2',
+  [EmissionClass.EURO_3]: 'Euro 3',
+  [EmissionClass.EURO_4]: 'Euro 4',
+  [EmissionClass.EURO_5]: 'Euro 5',
+  [EmissionClass.EURO_6]: 'Euro 6',
+  [EmissionClass.EURO_6D]: 'Euro 6d',
+  [EmissionClass.EURO_7]: 'Euro 7',
+  [EmissionClass.OTHER]: 'Autre',
+};
+
+/**
+ * Equipment categories, and — by the order of the keys — the order they are listed in.
+ *
+ * <p>Safety first: on a used car it is what a buyer checks before anything else, and it
+ * is the category where a missing item matters.
+ */
+export const FEATURE_CATEGORY_LABELS: Record<FeatureCategory, string> = {
+  [FeatureCategory.SAFETY]: 'Sécurité',
+  [FeatureCategory.ASSISTANCE]: 'Aides à la conduite',
+  [FeatureCategory.COMFORT]: 'Confort',
+  [FeatureCategory.MULTIMEDIA]: 'Multimédia',
+  [FeatureCategory.INTERIOR]: 'Intérieur',
+  [FeatureCategory.EXTERIOR]: 'Extérieur',
+  [FeatureCategory.OTHER]: 'Autres équipements',
+};
+
+export const SELLER_ROLE_LABELS: Record<UserRole, string> = {
+  [UserRole.PARTICULIER]: 'Particulier',
+  [UserRole.PROFESSIONNEL]: 'Professionnel',
+  [UserRole.ADMIN]: 'AutoX',
 };
 
 /** In the order the sort menu lists them. */

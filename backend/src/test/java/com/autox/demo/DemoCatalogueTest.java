@@ -109,6 +109,44 @@ class DemoCatalogueTest {
     }
 
     @Test
+    @DisplayName("every equipment code the seed uses is one the catalogue of features defines")
+    void featureCodesAreKnown() {
+        // The codes seeded by V5. A code that is not among them is refused by the listing
+        // API, halfway through a seed.
+        Set<String> defined = Set.of(
+                "CRUISE_CONTROL", "ADAPTIVE_CRUISE", "PARKING_SENSORS_REAR", "PARKING_SENSORS_FRONT",
+                "REVERSING_CAMERA", "LANE_ASSIST", "BLIND_SPOT_MONITOR", "AIR_CONDITIONING",
+                "CLIMATE_CONTROL_AUTO", "HEATED_SEATS", "ELECTRIC_SEATS", "KEYLESS_ENTRY",
+                "ELECTRIC_WINDOWS", "ALLOY_WHEELS", "LED_HEADLIGHTS", "XENON_HEADLIGHTS",
+                "PANORAMIC_ROOF", "SUNROOF", "TOW_BAR", "ROOF_RAILS", "LEATHER_STEERING",
+                "AMBIENT_LIGHTING", "BLUETOOTH", "APPLE_CARPLAY", "ANDROID_AUTO", "NAVIGATION",
+                "DAB_RADIO", "START_STOP", "PARTICLE_FILTER", "ABS", "ESP", "EMERGENCY_BRAKING",
+                "ISOFIX", "TYRE_PRESSURE_MONITOR");
+
+        assertThat(vehicles).allSatisfy(vehicle -> {
+            assertThat(defined).as(vehicle.title()).containsAll(DemoDetails.features(vehicle));
+            assertThat(DemoDetails.features(vehicle)).hasSizeGreaterThanOrEqualTo(8);
+        });
+    }
+
+    @Test
+    @DisplayName("the derived details are plausible, and the same on every call")
+    void derivedDetailsAreSane() {
+        assertThat(vehicles).allSatisfy(vehicle -> {
+            assertThat(DemoDetails.features(vehicle)).isEqualTo(DemoDetails.features(vehicle));
+            assertThat(DemoDetails.doors(vehicle)).isBetween(3, 5);
+            assertThat(DemoDetails.co2(vehicle)).isBetween(0, 300);
+            assertThat(DemoDetails.description(vehicle)).contains("Annonce de démonstration");
+            if (vehicle.fuel() == FuelType.ELECTRIC) {
+                // A battery car that emitted CO₂, or carried a particle filter, would be
+                // the kind of nonsense that makes demo data distracting.
+                assertThat(DemoDetails.co2(vehicle)).isZero();
+                assertThat(DemoDetails.features(vehicle)).doesNotContain("PARTICLE_FILTER", "START_STOP");
+            }
+        });
+    }
+
+    @Test
     @DisplayName("posting dates and prices are spread, so each sort order gives a different list")
     void sortOrdersDiffer() {
         assertThat(vehicles.stream().map(DemoCatalogue.Vehicle::publishedDaysAgo).distinct())

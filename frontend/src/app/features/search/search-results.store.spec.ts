@@ -239,4 +239,120 @@ describe('SearchResultsStore', () => {
       expect(store.items().map((item) => item.id)).toEqual(['tesla']);
     });
   });
+
+  describe('coming back to a search', () => {
+    const loadTwoPages = () => {
+      store.search({ fuelType: [FuelType.DIESEL] }, SearchSort.PRICE_ASC);
+      one(LIST).flush({ items: [listing('a'), listing('b')], hasMore: true, nextCursor: 'cursor-1' });
+      one(COUNT).flush({ count: 5, capped: false });
+      store.loadMore();
+      one(LIST).flush({ items: [listing('c')], hasMore: true, nextCursor: 'cursor-2' });
+    };
+
+    it('shows what it already holds for the same search, without asking again', () => {
+      // The visitor opened a listing and came back. They expect the list as they left it:
+      // every page they had loaded, so the page is as tall as it was and the browser can
+      // put them back where they were.
+      loadTwoPages();
+
+      const reused = store.restore({ fuelType: [FuelType.DIESEL] }, SearchSort.PRICE_ASC);
+
+      expect(reused).toBe(true);
+      expect(pending(LIST)).toHaveLength(0);
+      expect(pending(COUNT)).toHaveLength(0);
+      expect(store.status()).toBe('ready');
+      expect(store.items().map((item) => item.id)).toEqual(['a', 'b', 'c']);
+      expect(store.count()).toEqual({ count: 5, capped: false });
+    });
+
+    it('can still load the page after the ones it kept', () => {
+      loadTwoPages();
+      store.restore({ fuelType: [FuelType.DIESEL] }, SearchSort.PRICE_ASC);
+
+      store.loadMore();
+
+      expect(one(LIST).request.params.get('cursor')).toBe('cursor-2');
+    });
+
+    it('searches afresh when the criteria differ', () => {
+      loadTwoPages();
+
+      const reused = store.restore({ fuelType: [FuelType.PETROL] }, SearchSort.PRICE_ASC);
+
+      expect(reused).toBe(false);
+      expect(store.items()).toEqual([]);
+      expect(one(LIST).request.params.getAll('fuelType')).toEqual(['PETROL']);
+    });
+
+    it('searches afresh when only the sort order differs', () => {
+      // Same filters, another order: a different list, and a cursor that no longer applies.
+      loadTwoPages();
+
+      expect(store.restore({ fuelType: [FuelType.DIESEL] }, SearchSort.NEWEST)).toBe(false);
+      expect(one(LIST).request.params.get('sort')).toBe('NEWEST');
+    });
+
+    it('does not mistake a differently ordered criteria object for a different search', () => {
+      store.search({ fuelType: [FuelType.DIESEL], yearFrom: 2019 }, SearchSort.NEWEST);
+      one(LIST).flush({ items: [listing('a')], hasMore: false });
+      pending(COUNT).forEach((request) => request.flush({ count: 1, capped: false }));
+
+      expect(store.restore({ yearFrom: 2019, fuelType: [FuelType.DIESEL] }, SearchSort.NEWEST)).toBe(true);
+    });
+
+    it('searches when it holds nothing', () => {
+      expect(store.restore({}, SearchSort.NEWEST)).toBe(false);
+      expect(pending(LIST)).toHaveLength(1);
+    });
+
+    it('does not restore a search that had failed', () => {
+      store.search({}, SearchSort.NEWEST);
+      one(LIST).error(new ProgressEvent('offline'));
+      pending(COUNT).forEach((request) => request.error(new ProgressEvent('offline')));
+
+      // Coming back to an error screen with no request made would leave the visitor
+      // looking at a failure that nothing is retrying.
+      expect(store.restore({}, SearchSort.NEWEST)).toBe(false);
+      expect(store.status()).toBe('loading');
+    });
+
+    it('is only ever used for a return: an ordinary search always asks the API', () => {
+      // Not a cache. A list that showed held rows because the criteria happened to match
+      // would be a list with sold cars in it.
+      loadTwoPages();
+
+      store.search({ fuelType: [FuelType.DIESEL] }, SearchSort.PRICE_ASC);
+
+      expect(pending(LIST)).toHaveLength(1);
+      expect(store.items()).toEqual([]);
+    });
+  });
+
+  describe('when the search page goes away', () => {
+    it('abandons a page that was still loading, so "voir plus" is not left stuck', () => {
+      // The store outlives the page. Without this, a visitor who pressed "voir plus" and
+      // immediately opened a listing would come back to a button frozen on "Chargement…".
+      store.search({}, SearchSort.NEWEST);
+      one(LIST).flush({ items: [listing('a')], hasMore: true, nextCursor: 'cursor-1' });
+      pending(COUNT).forEach((request) => request.flush({ count: 3, capped: false }));
+      store.loadMore();
+      const inFlight = backend.match((request) => request.url === LIST)[0];
+
+      store.release();
+
+      expect(inFlight.cancelled).toBe(true);
+      expect(store.loadingMore()).toBe(false);
+      // What was loaded is kept, and the next page can be asked for again.
+      expect(store.items()).toHaveLength(1);
+      expect(store.hasMore()).toBe(true);
+    });
+
+    it('does not keep a first page that never arrived', () => {
+      store.search({}, SearchSort.NEWEST);
+      store.release();
+
+      // Nothing to come back to: the return searches again.
+      expect(store.restore({}, SearchSort.NEWEST)).toBe(false);
+    });
+  });
 });

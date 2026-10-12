@@ -37,7 +37,11 @@ final class DemoPhotoPainter {
     private DemoPhotoPainter() {
     }
 
-    static BufferedImage paint(BodyType body, ExteriorColor colour, String caption) {
+    /**
+     * @param view which of the three pictures: {@code 0} the car facing right, {@code 1}
+     *             facing left on a warmer backdrop, {@code 2} a closer view of the front
+     */
+    static BufferedImage paint(BodyType body, ExteriorColor colour, String caption, int view) {
         BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = image.createGraphics();
         try {
@@ -45,7 +49,11 @@ final class DemoPhotoPainter {
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
             // A studio backdrop: pale wall, slightly darker floor.
-            g.setPaint(new GradientPaint(0, 0, new Color(0xE9EDF2), 0, GROUND, new Color(0xD3DAE3)));
+            // The second view gets a warmer wall, so the three thumbnails are visibly three
+            // pictures rather than the same one repeated.
+            Color wallTop = view == 1 ? new Color(0xEFEBE4) : new Color(0xE9EDF2);
+            Color wallFoot = view == 1 ? new Color(0xDDD6CB) : new Color(0xD3DAE3);
+            g.setPaint(new GradientPaint(0, 0, wallTop, 0, GROUND, wallFoot));
             g.fillRect(0, 0, WIDTH, GROUND);
             g.setPaint(new GradientPaint(0, GROUND, new Color(0xB4BDC9), 0, HEIGHT, new Color(0xCBD2DC)));
             g.fillRect(0, GROUND, WIDTH, HEIGHT - GROUND);
@@ -58,7 +66,14 @@ final class DemoPhotoPainter {
             // car that fills two thirds of the frame is a smudge.
             java.awt.geom.AffineTransform unscaled = g.getTransform();
             g.translate(WIDTH / 2.0, GROUND);
-            g.scale(CAR_SCALE, CAR_SCALE);
+            if (view == 2) {
+                // Closer, and shifted so the front half fills the frame.
+                g.scale(CAR_SCALE * 1.6, CAR_SCALE * 1.6);
+                g.translate(-260, 0);
+            } else {
+                // Mirrored for the second view: the same car seen from its other side.
+                g.scale(view == 1 ? -CAR_SCALE : CAR_SCALE, CAR_SCALE);
+            }
             g.translate(-WIDTH / 2.0, -GROUND);
 
             // Contact shadow first, so the car sits on the floor rather than floating.

@@ -29,12 +29,12 @@ import org.springframework.test.context.TestPropertySource;
  */
 @ActiveProfiles({"test", "demo"})
 // The runner would otherwise seed while the context starts, before any test has run.
-// And a dozen listings rather than sixty: each one is a real upload with three resizes,
-// and nothing asserted here depends on how many there are.
+// And six listings rather than sixty: each one is three real uploads with three resizes
+// apiece, and nothing asserted here depends on how many there are.
 @TestPropertySource(properties = {"autox.demo.action=none", "autox.demo.listings=" + DemoDataIntegrationTest.SEEDED})
 class DemoDataIntegrationTest extends AbstractIntegrationTest {
 
-    static final int SEEDED = 12;
+    static final int SEEDED = 6;
 
     @Autowired DemoData demoData;
     @Autowired DemoLedger ledger;
@@ -72,6 +72,34 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("each listing has what its detail page shows: a gallery, equipment, a description")
+    void seedFillsTheDetailPage() throws Exception {
+        demoData.seed();
+
+        JsonNode page = objectMapper.readTree(mockMvc.perform(get("/api/v1/listings").param("size", "60"))
+                .andReturn().getResponse().getContentAsString());
+        String id = page.get("items").get(0).get("id").asText();
+
+        JsonNode detail = objectMapper.readTree(mockMvc.perform(get("/api/v1/listings/" + id))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+
+        // Several photos, each with the variants the gallery uses.
+        assertThat(detail.get("images")).hasSize(DemoData.PHOTOS_PER_LISTING);
+        detail.get("images").forEach(image -> {
+            assertThat(image.get("variants").has("FULL")).isTrue();
+            assertThat(image.get("variants").has("THUMBNAIL")).isTrue();
+        });
+        assertThat(detail.get("featureCodes").size()).isGreaterThanOrEqualTo(8);
+        assertThat(detail.get("description").asText()).contains("Annonce de démonstration");
+        assertThat(detail.get("vehicle").get("doors").asInt()).isBetween(3, 5);
+        assertThat(detail.get("vehicle").get("seats").asInt()).isBetween(4, 5);
+        assertThat(detail.get("seller").get("memberSince").asText()).isNotBlank();
+        // Not there, by design of the public API — and the seed does not invent one.
+        assertThat(detail.has("vin")).isFalse();
+    }
+
+    @Test
     @DisplayName("the seeded catalogue feeds the reference endpoints and the make filter")
     void seedMakesTheMakeFilterWork() throws Exception {
         demoData.seed();
@@ -102,7 +130,7 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
 
         Integer distinctDays = jdbcTemplate.queryForObject(
                 "SELECT count(DISTINCT published_at::date) FROM listing", Integer.class);
-        assertThat(distinctDays).isGreaterThan(8);
+        assertThat(distinctDays).isGreaterThan(4);
     }
 
     @Test

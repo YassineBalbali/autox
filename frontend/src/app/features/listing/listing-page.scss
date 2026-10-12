@@ -1,0 +1,189 @@
+@use '../../../styles/tokens' as t;
+
+.listing__back {
+  margin-bottom: var(--s-2);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+
+  a {
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+// Content on the left, the summary on the right. The summary column is fixed: a price
+// and a button do not need to grow with the window, and the photographs do.
+.listing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-4);
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    gap: var(--s-5);
+    align-items: start;
+  }
+}
+
+.listing__main,
+.listing__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.listing__aside {
+  // On a narrow screen the summary — title, price, contact — comes before the gallery's
+  // long tail of details; on desktop it is the right-hand column and stays in view.
+  order: -1;
+
+  @media (min-width: t.$bp-lg) {
+    order: 0;
+    position: sticky;
+    top: var(--s-4);
+  }
+}
+
+// ---- the summary ----------------------------------------------------------
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-block: var(--s-4);
+}
+
+.summary__title {
+  font-size: var(--t-lg);
+  line-height: var(--lh-snug);
+}
+
+// The price: the largest thing on the page, on its own line, in the accent.
+.summary__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+  padding-top: var(--s-2);
+  margin-top: var(--s-1);
+  border-top: var(--divider);
+}
+
+.summary__contact {
+  margin-top: var(--s-2);
+  height: 2.75rem;
+  font-size: var(--t-md);
+
+  // Looks like what it is: not available. An explicit pair of colours rather than
+  // opacity, which would fail contrast on the label.
+  &[aria-disabled='true'] {
+    background: var(--c-line);
+    color: var(--c-ink-faint);
+    cursor: not-allowed;
+  }
+}
+
+.seller__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+}
+
+// ---- description, specification, equipment --------------------------------
+
+.listing__description {
+  // The seller's own line breaks, kept; anything they typed, shown as text.
+  white-space: pre-line;
+  max-width: var(--w-prose);
+}
+
+// Two columns of label/value rows on a wide screen: thirteen facts in seven lines.
+//
+// CSS columns rather than a two-column grid, for the reading order. A grid fills across —
+// Année, then Mise en circulation beside it, then back to the left for Kilométrage — so
+// the eye zigzags down a list that is meant to be read in order. Columns fill downward:
+// the first half top to bottom, then the second.
+.spec-table {
+  margin: 0;
+
+  @media (min-width: t.$bp-md) {
+    columns: 2;
+    column-gap: var(--s-6);
+  }
+}
+
+.spec-table__row {
+  // A row never splits across the two columns.
+  break-inside: avoid;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-1) 0;
+  border-bottom: var(--divider);
+  font-size: var(--t-sm);
+
+  dt {
+    color: var(--c-ink-soft);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: var(--fw-semibold);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.equipment {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--s-3) var(--s-5);
+}
+
+.equipment__group {
+  h3 {
+    margin-bottom: var(--s-1);
+    font-size: var(--t-xs);
+    color: var(--c-ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--t-sm);
+    line-height: var(--lh-snug);
+  }
+
+  li {
+    padding: 2px 0;
+  }
+}
+
+// ---- loading --------------------------------------------------------------
+
+.placeholder {
+  background: var(--c-line);
+  border-radius: var(--r-md);
+}
+
+.placeholder--gallery {
+  aspect-ratio: 4 / 3;
+}
+
+.placeholder--block {
+  height: 10rem;
+}
+
+.placeholder--summary {
+  height: 16rem;
+}

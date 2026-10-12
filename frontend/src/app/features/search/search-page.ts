@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, catchError, combineLatest, distinctUntilChanged, map, of, switchMap, take } from 'rxjs';
@@ -10,7 +10,7 @@ import { ListingCard } from '../../shared/listing/listing-card';
 import { ListingRow } from '../../shared/listing/listing-row';
 import { Alert } from '../../shared/ui/alert';
 import { ActiveFilters } from './active-filters';
-import { FUEL_LABELS, GEARBOX_LABELS, SORT_OPTIONS, labelOf } from './labels.fr';
+import { FUEL_LABELS, GEARBOX_LABELS, SORT_OPTIONS, labelOf } from '../../shared/listing/labels.fr';
 import { SearchBar } from './search-bar';
 import { SearchFilters } from './search-filters';
 import {
@@ -22,6 +22,7 @@ import {
   toQueryParams,
   withoutFilters,
 } from './search-query';
+import { SearchMemory } from './search-memory';
 import { SearchResultsStore } from './search-results.store';
 import { ResultsView, ViewPreference } from './view-preference';
 import { ViewToggle } from './view-toggle';
@@ -64,7 +65,6 @@ const PRICE_FILTER_CURRENCY = 'EUR';
   selector: 'app-search-page',
   imports: [SearchBar, ActiveFilters, SearchFilters, ViewToggle, ListingRow, ListingCard, Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [SearchResultsStore],
   templateUrl: './search-page.html',
   styleUrl: './search-page.scss',
 })
@@ -74,6 +74,17 @@ export class SearchPage {
   private readonly reference = inject(ReferenceStore);
   protected readonly results = inject(SearchResultsStore);
   private readonly preference = inject(ViewPreference);
+  private readonly memory = inject(SearchMemory);
+
+  /**
+   * True when this page was reached by going back or forward in history.
+   *
+   * <p>Read once, while the navigation that created the page is still the current one.
+   * It decides whether the first search may reuse what the store already holds: yes when
+   * the visitor is returning to a list they left, no for any fresh arrival. See
+   * {@link SearchResultsStore.restore}.
+   */
+  private returning = this.router.getCurrentNavigation()?.trigger === 'popstate';
 
   /**
    * List or grid. A per-visitor preference rather than part of the search, so it comes
@@ -124,7 +135,21 @@ export class SearchPage {
         ),
         takeUntilDestroyed(),
       )
-      .subscribe(({ criteria, sort }) => this.results.search(criteria, sort));
+      .subscribe(({ criteria, sort }) => {
+        // So a listing opened from here knows which search to lead back to.
+        this.memory.remember(this.router.url);
+
+        if (this.returning) {
+          // Only the search the page arrived with. Every later one on this page is a
+          // change the visitor made, and is always asked of the API.
+          this.returning = false;
+          this.results.restore(criteria, sort);
+        } else {
+          this.results.search(criteria, sort);
+        }
+      });
+
+    inject(DestroyRef).onDestroy(() => this.results.release());
   }
 
   protected applyFilters(patch: Partial<SearchQuery>): void {

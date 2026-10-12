@@ -96,12 +96,21 @@ describe('routes', () => {
     }
   });
 
-  it('sends an unknown path home rather than rendering an empty shell', () => {
-    // Home, not the account: the account is guarded, so a visitor who mistyped an address
-    // would be bounced on to the sign-in page for it.
+  it('gives an unknown path a page that says so, rather than redirecting', () => {
+    // A redirect to the home page showed the visitor something other than what they
+    // asked for, with nothing explaining why, and made a mistyped link look as though it
+    // worked. Last in the table, or it would swallow every route after it.
     const wildcard = routes.at(-1);
     expect(wildcard?.path).toBe('**');
-    expect(wildcard?.redirectTo).toBe('/');
+    expect(wildcard?.redirectTo).toBeUndefined();
+    expect(wildcard?.loadComponent).toBeTypeOf('function');
+  });
+
+  it('serves a listing publicly, by id', () => {
+    const listing = top('annonces/:id');
+    expect(listing.loadComponent).toBeTypeOf('function');
+    // The shop window: reachable from a search engine or a shared link, with no account.
+    expect(listing.canActivate).toBeUndefined();
   });
 
   it('serves the search as the home page, publicly', () => {
@@ -117,8 +126,11 @@ describe('routes', () => {
   it('titles every screen, since the tab is how a user finds it again', () => {
     // The layout itself carries no title — its children do, so the tab names the screen
     // rather than the section.
+    // A listing titles itself once it knows which car it is; a static title here would
+    // be "Annonce" on every tab.
+    const selfTitled = ['mon-compte', 'annonces/:id'];
     const screens = [
-      ...routes.filter((route) => route.loadComponent && route.path !== 'mon-compte'),
+      ...routes.filter((route) => route.loadComponent && !selfTitled.includes(route.path ?? '')),
       ...(account.children ?? []),
     ];
     for (const route of screens) {

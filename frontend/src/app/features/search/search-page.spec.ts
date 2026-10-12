@@ -1,6 +1,7 @@
 import { Location } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -44,6 +45,9 @@ const listing = (id: string, over: Partial<PublicListingSummary> = {}): PublicLi
   ...over,
 });
 
+@Component({ template: '<p>annonce</p>' })
+class ListingStub {}
+
 /**
  * The search screen, end to end through a real router.
  *
@@ -82,7 +86,10 @@ describe('SearchPage', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter([{ path: '', pathMatch: 'full', component: SearchPage }]),
+        provideRouter([
+          { path: '', pathMatch: 'full', component: SearchPage },
+          { path: 'annonces/:id', component: ListingStub },
+        ]),
         { provide: BASE_PATH, useValue: BASE },
       ],
     });
@@ -672,6 +679,80 @@ describe('SearchPage', () => {
 
       expect(group.getAttribute('role')).toBe('group');
       expect(group.getAttribute('aria-label')).toBeTruthy();
+    });
+  });
+
+  describe('opening a listing and coming back', () => {
+    const waitFor = async (predicate: () => boolean) => {
+      for (let attempt = 0; attempt < 60 && !predicate(); attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        await settle();
+      }
+    };
+    const page = () => harness.fixture.nativeElement as HTMLElement;
+    const pageRows = () => Array.from(page().querySelectorAll('app-listing-row')) as HTMLElement[];
+
+    async function loadTwoPagesThenOpenAListing(): Promise<void> {
+      await visit('/?carburant=diesel');
+      await answer([listing('a'), listing('b')], { hasMore: true, count: 3 });
+      (Array.from(root.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Voir plus'),
+      ) as HTMLButtonElement).click();
+      await settle();
+      open(LIST)[0].flush({ items: [listing('c')], hasMore: false });
+      await settle();
+      expect(rows()).toHaveLength(3);
+
+      (rows()[2].querySelector('a') as HTMLAnchorElement).click();
+      await waitFor(() => url().startsWith('/annonces/'));
+    }
+
+    it('makes each row a link to its listing', async () => {
+      await visit('/');
+      await answer([listing('a')]);
+
+      expect(rows()[0].querySelector('a')?.getAttribute('href')).toBe('/annonces/a');
+    });
+
+    it('restores the list as it was left — every loaded page, no new request', async () => {
+      // What the browser needs in order to put the visitor back where they were: the page
+      // has to be as tall as when they left it, at once, not after a round trip.
+      await loadTwoPagesThenOpenAListing();
+      expect(url()).toBe('/annonces/c');
+
+      TestBed.inject(Location).back();
+      await waitFor(() => url() === '/?carburant=diesel');
+
+      expect(pageRows()).toHaveLength(3);
+      expect(open(LIST)).toHaveLength(0);
+      expect(open(COUNT)).toHaveLength(0);
+      expect(page().querySelector('.search__count')?.textContent?.trim()).toBe('3 annonces');
+      // And the filter is still shown as applied.
+      expect(page().querySelector('.applied__chip')?.textContent).toContain('Diesel');
+    });
+
+    it('asks the API again when the same search is reached afresh rather than by going back', async () => {
+      // Held rows are for a return, not a cache. Arriving by a link must show today's list.
+      await loadTwoPagesThenOpenAListing();
+
+      await harness.navigateByUrl('/?carburant=diesel');
+      await settle();
+
+      expect(open(LIST)).toHaveLength(1);
+    });
+
+    it('searches normally after a return, when a filter is then changed', async () => {
+      await loadTwoPagesThenOpenAListing();
+      TestBed.inject(Location).back();
+      await waitFor(() => url() === '/?carburant=diesel');
+
+      (Array.from(page().querySelectorAll('app-filter-chip button')).find((button) =>
+        button.textContent?.includes('Automatique'),
+      ) as HTMLButtonElement).click();
+      await waitFor(() => url().includes('boite=automatic'));
+
+      // The reuse applied to the arrival only; this is a new search like any other.
+      expect(open(LIST)).toHaveLength(1);
     });
   });
 });

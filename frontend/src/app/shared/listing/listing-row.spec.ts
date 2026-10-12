@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
 import { PublicListingSummary } from '../../core/api';
@@ -48,6 +49,8 @@ describe('ListingRow', () => {
   let fixture: ComponentFixture<Host>;
 
   async function render(listing: PublicListingSummary = LISTING): Promise<HTMLElement> {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
     fixture = TestBed.createComponent(Host);
     fixture.componentInstance.listing.set(listing);
     await fixture.whenStable();
@@ -145,9 +148,26 @@ describe('ListingRow', () => {
     expect(row.textContent).not.toContain('Publiée le');
   });
 
-  it('is not a link, because there is no listing page to go to yet', async () => {
-    // A row that looks clickable and leads nowhere is worse than an honestly static one.
-    expect((await render()).querySelector('a')).toBeNull();
+  describe('the link to the listing', () => {
+    it('is the title, and leads to the listing page', async () => {
+      const row = await render();
+      const links = row.querySelectorAll('a');
+
+      // One link, not one per element and not a link wrapped round the whole row: a
+      // screen reader then announces the title as the link's name, rather than reading
+      // out the price, the mileage and the town as one enormous name.
+      expect(links).toHaveLength(1);
+      expect(links[0].getAttribute('href')).toBe('/annonces/l-1');
+      expect(links[0].textContent?.trim()).toBe('Peugeot 308 BlueHDi 130 Allure Pack');
+      expect(links[0].closest('h2')).not.toBeNull();
+    });
+
+    it('is not offered for a listing that has no id to link to', async () => {
+      const row = await render({ ...LISTING, id: undefined });
+
+      expect(row.querySelector('a')).toBeNull();
+      expect(row.querySelector('h2')?.textContent).toContain('Peugeot 308');
+    });
   });
 
   describe('departmentOf', () => {

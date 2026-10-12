@@ -249,8 +249,7 @@ class DemoData {
     private void seedListing(DemoCatalogue.Vehicle vehicle, UUID sellerId, UUID[] catalogueIds) {
         CreateListingRequest request = new CreateListingRequest(
                 vehicle.title(),
-                "Annonce de démonstration. Ce véhicule n’existe pas : il sert à illustrer la "
-                        + "recherche en développement local.",
+                DemoDetails.description(vehicle),
                 vehicle.priceEuros() * 100,
                 "EUR",
                 false,
@@ -274,23 +273,25 @@ class DemoData {
                 vehicle.body(),
                 null,
                 vehicle.powerHp(),
+                DemoDetails.powerKw(vehicle),
                 null,
-                null,
-                null,
-                null,
+                DemoDetails.doors(vehicle),
+                DemoDetails.seats(vehicle),
                 vehicle.condition(),
                 vehicle.colour(),
                 null,
                 null,
                 null,
+                DemoDetails.owners(vehicle),
+                vehicle.condition() == com.autox.listing.VehicleCondition.NEW ? null : Boolean.TRUE,
                 null,
                 null,
+                DemoDetails.co2(vehicle),
+                DemoDetails.emissionClass(vehicle),
+                // No VIN. A made-up one would be a real-looking identifier for a car that
+                // does not exist, and the public API does not show it anyway.
                 null,
-                null,
-                null,
-                null,
-                null,
-                null);
+                DemoDetails.features(vehicle));
 
         UUID listingId = listings.create(sellerId, request).id();
         ledger.record(DemoLedger.LISTING, listingId);
@@ -298,13 +299,18 @@ class DemoData {
         // The real three-step upload, with the seeder standing in for the browser: ask for
         // a slot, put the bytes where the slot says, confirm. That is what produces the
         // three variants the results page actually displays.
-        byte[] photo = photoFor(vehicle);
-        ImageUploadTicket ticket = imageService.requestUpload(sellerId, false, listingId,
-                new ImageUploadRequest(vehicle.makeSlug() + "-" + vehicle.modelSlug() + ".jpg",
-                        "image/jpeg", (long) photo.length));
-        String key = images.findByIdAndListing(ticket.imageId(), listingId).orElseThrow().getStorageKey();
-        storage.write(key, photo, "image/jpeg");
-        imageService.confirmUpload(sellerId, false, listingId, ticket.imageId());
+        //
+        // Three per listing — a side view each way and a closer one — because a gallery
+        // with one picture has no thumbnails, no arrows and nothing to enlarge to.
+        for (int view = 0; view < PHOTOS_PER_LISTING; view++) {
+            byte[] photo = photoFor(vehicle, view);
+            ImageUploadTicket ticket = imageService.requestUpload(sellerId, false, listingId,
+                    new ImageUploadRequest(vehicle.makeSlug() + "-" + vehicle.modelSlug() + "-" + (view + 1) + ".jpg",
+                            "image/jpeg", (long) photo.length));
+            String key = images.findByIdAndListing(ticket.imageId(), listingId).orElseThrow().getStorageKey();
+            storage.write(key, photo, "image/jpeg");
+            imageService.confirmUpload(sellerId, false, listingId, ticket.imageId());
+        }
 
         listings.publish(sellerId, false, listingId);
 
@@ -315,10 +321,19 @@ class DemoData {
                 vehicle.publishedDaysAgo(), listingId);
     }
 
-    /** A JPEG from {@code autox.demo.photo-dir} named {@code make-model.jpg}, or a drawing. */
-    private byte[] photoFor(DemoCatalogue.Vehicle vehicle) {
+    static final int PHOTOS_PER_LISTING = 3;
+
+    /**
+     * A JPEG from {@code autox.demo.photo-dir}, or a drawing.
+     *
+     * <p>The files are {@code make-model.jpg} for the first photo and
+     * {@code make-model-2.jpg}, {@code make-model-3.jpg} for the others.
+     */
+    private byte[] photoFor(DemoCatalogue.Vehicle vehicle, int view) {
         if (!photoDirectory.isBlank()) {
-            Path candidate = Path.of(photoDirectory, vehicle.makeSlug() + "-" + vehicle.modelSlug() + ".jpg");
+            String suffix = view == 0 ? "" : "-" + (view + 1);
+            Path candidate = Path.of(photoDirectory,
+                    vehicle.makeSlug() + "-" + vehicle.modelSlug() + suffix + ".jpg");
             if (Files.isRegularFile(candidate)) {
                 try {
                     return Files.readAllBytes(candidate);
@@ -328,6 +343,6 @@ class DemoData {
             }
         }
         return resizer.encodeJpeg(
-                DemoPhotoPainter.paint(vehicle.body(), vehicle.colour(), vehicle.title()), 0.9f);
+                DemoPhotoPainter.paint(vehicle.body(), vehicle.colour(), vehicle.title(), view), 0.9f);
     }
 }

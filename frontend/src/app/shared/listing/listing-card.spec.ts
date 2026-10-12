@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
 import { PublicListingSummary } from '../../core/api';
@@ -45,6 +46,8 @@ describe('ListingCard', () => {
   let fixture: ComponentFixture<Host>;
 
   async function render(listing: PublicListingSummary = LISTING) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
     fixture = TestBed.createComponent(Host);
     fixture.componentInstance.listing.set(listing);
     await fixture.whenStable();
@@ -132,7 +135,12 @@ describe('ListingCard', () => {
     expect(card.textContent).not.toContain('null');
   });
 
-  it('is not a link, because there is no listing page to go to yet', async () => {
-    expect((await render()).card.querySelector('a')).toBeNull();
+  it('links to the listing through its title, and to the same place as the row', async () => {
+    const { card, row } = await render();
+    const links = card.querySelectorAll('a');
+
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute('href')).toBe('/annonces/l-1');
+    expect(links[0].getAttribute('href')).toBe(row.querySelector('a')?.getAttribute('href'));
   });
 });
