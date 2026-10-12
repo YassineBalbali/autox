@@ -113,10 +113,26 @@ input[type='submit'] {
   }
 }
 
-// ---- the two layout primitives every screen will use ----------------------
+// ---- the shell ------------------------------------------------------------
 
-// Horizontal page padding plus a maximum width. The gutter is on the container rather than
-// on the body so that a full-bleed photo gallery can escape it.
+// The application is a column: header, content that grows, footer. Declared on app-root
+// because that is body's only child — without it a short page leaves the footer floating
+// halfway up a desktop window, which is the single most obvious sign of a missing shell.
+app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+// ---- the layout primitives every screen uses ------------------------------
+
+// <b>The one container.</b> Horizontal padding plus a maximum width, used by the header,
+// by main, and by the footer — so the wordmark, the page title and the copyright all sit
+// on the same two vertical lines. Anything that wants to break out of it says so
+// explicitly rather than by not opting in.
+//
+// The gutter is on the container rather than on the body so that a full-bleed photo
+// gallery can still escape it.
 .page {
   width: 100%;
   max-width: var(--w-page);

@@ -1,0 +1,28 @@
+<div class="account">
+  <!-- The sidebar comes first in the DOM as well as on screen, so tab order follows the
+       layout. Its own landmark, distinct from the header's, or a screen reader lists two
+       navigations with nothing to tell them apart. -->
+  <nav class="account__side" aria-label="Mon compte" i18n-aria-label="@@accountNavLabel">
+    <p class="account__side-title" i18n="@@accountNavTitle">Mon compte</p>
+
+    <ul class="account-nav">
+      @for (item of items(); track keyOf(item)) {
+        <li>
+          <a
+            class="account-nav__link"
+            [class.account-nav__link--active]="isActive(item)"
+            [routerLink]="item.path"
+            [fragment]="item.fragment"
+            [attr.aria-current]="isActive(item) ? 'page' : null"
+          >
+            {{ item.label }}
+          </a>
+        </li>
+      }
+    </ul>
+  </nav>
+
+  <div class="account__content">
+    <router-outlet />
+  </div>
+</div>

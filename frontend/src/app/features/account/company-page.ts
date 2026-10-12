@@ -1,17 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 
-import { ProfileService, ProProfileView, UserProfileResponse } from '../../core/api';
-import { ErrorMessageService } from '../../core/errors/error-message.service';
+import { ProfileService, ProProfileView } from '../../core/api';
 import { TextField } from '../../shared/forms/text-field';
-import {
-  MAX_LENGTHS,
-  phoneValidators,
-  requiredText,
-} from '../../shared/forms/validation';
+import { MAX_LENGTHS, phoneValidators, requiredText } from '../../shared/forms/validation';
 import { submitState } from '../../shared/forms/submit-state';
 import { Alert } from '../../shared/ui/alert';
+import { AccountProfileStore } from './account-profile.store';
 
 /**
  * A dealer's company details.
@@ -28,19 +23,19 @@ import { Alert } from '../../shared/ui/alert';
  */
 @Component({
   selector: 'app-company-page',
-  imports: [ReactiveFormsModule, RouterLink, TextField, Alert],
+  imports: [ReactiveFormsModule, TextField, Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './company-page.html',
   styleUrl: './account.scss',
 })
 export class CompanyPage {
   private readonly api = inject(ProfileService);
-  private readonly errors = inject(ErrorMessageService);
+  private readonly store = inject(AccountProfileStore);
 
   protected readonly maxLengths = MAX_LENGTHS;
 
-  protected readonly loaded = signal(false);
-  protected readonly loadFailure = signal<string | null>(null);
+  protected readonly profile = this.store.profile;
+  protected readonly loadFailure = this.store.loadFailure;
   protected readonly saved = signal(false);
 
   protected readonly form = new FormGroup({
@@ -83,18 +78,20 @@ export class CompanyPage {
 
   constructor() {
     this.form.valueChanges.subscribe(() => this.saved.set(false));
-    this.load();
+
+    effect(() => {
+      const profile = this.profile();
+      if (profile) {
+        this.fill(profile.professional);
+      }
+    });
+
+    // Idempotent — the layout has almost certainly asked already.
+    this.store.ensureLoaded();
   }
 
-  protected load(): void {
-    this.loadFailure.set(null);
-    this.api.getOwnProfile().subscribe({
-      next: (profile) => {
-        this.fill(profile.professional);
-        this.loaded.set(true);
-      },
-      error: (error: unknown) => this.loadFailure.set(this.errors.messageFor(error)),
-    });
+  protected retry(): void {
+    this.store.reload();
   }
 
   protected submit(): void {
@@ -125,26 +122,31 @@ export class CompanyPage {
         },
       })
       .subscribe({
-        next: (profile: UserProfileResponse) => {
+        next: (profile) => {
           this.state.succeed();
-          this.fill(profile.professional);
+          // Refills through the effect above, and keeps the sidebar and header in step.
+          this.store.adopt(profile);
           this.saved.set(true);
         },
         error: (error: unknown) => this.state.fail(error),
       });
   }
 
+  /** `emitEvent: false` — see the note on ProfilePage.fill for why this matters. */
   private fill(professional: ProProfileView | undefined): void {
-    this.form.reset({
-      companyName: professional?.companyName ?? '',
-      registrationNumber: professional?.registrationNumber ?? '',
-      legalForm: professional?.legalForm ?? '',
-      vatNumber: professional?.vatNumber ?? '',
-      websiteUrl: professional?.websiteUrl ?? '',
-      description: professional?.description ?? '',
-      addressLine1: professional?.addressLine1 ?? '',
-      addressLine2: professional?.addressLine2 ?? '',
-      contactPhone: professional?.contactPhone ?? '',
-    });
+    this.form.reset(
+      {
+        companyName: professional?.companyName ?? '',
+        registrationNumber: professional?.registrationNumber ?? '',
+        legalForm: professional?.legalForm ?? '',
+        vatNumber: professional?.vatNumber ?? '',
+        websiteUrl: professional?.websiteUrl ?? '',
+        description: professional?.description ?? '',
+        addressLine1: professional?.addressLine1 ?? '',
+        addressLine2: professional?.addressLine2 ?? '',
+        contactPhone: professional?.contactPhone ?? '',
+      },
+      { emitEvent: false },
+    );
   }
 }

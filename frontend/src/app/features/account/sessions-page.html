@@ -1,8 +1,5 @@
-<div class="form-column stack">
+<div class="stack">
   <header>
-    <p class="meta">
-      <a routerLink="/mon-compte" i18n="@@backToAccount">← Mon compte</a>
-    </p>
     <h1 class="page-title" i18n="@@sessionsTitle">Appareils connectés</h1>
     <p class="lede" i18n="@@sessionsLede">
       Chaque appareil sur lequel vous vous êtes connecté reste connecté jusqu’à 90 jours.
@@ -13,7 +10,7 @@
   @if (loadFailure()) {
     <div class="panel stack">
       <app-alert kind="error">{{ loadFailure() }}</app-alert>
-      <button class="btn btn--quiet btn--block" type="button" (click)="load()" i18n="@@retry">
+      <button class="btn btn--quiet" type="button" (click)="load()" i18n="@@retry">
         Réessayer
       </button>
     </div>
@@ -70,7 +67,7 @@
           }
 
           <button
-            class="btn btn--danger btn--block"
+            class="btn btn--danger session__revoke"
             type="button"
             [disabled]="revoking() === session.id"
             (click)="revoke(session)"

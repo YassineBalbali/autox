@@ -403,13 +403,14 @@ frontend/
     auth/                       token store, session state, 401 interceptor, role guards
     errors/                     API code + field -> French, exhaustive against the spec
     ui/                         one-shot messages handed between screens
+  src/app/layout/               site header, footer, primary navigation
   src/app/shared/
     forms/                      validation rules + French text, field component, submit state
     format/                     dates, through Intl rather than a pipe
     ui/                         the alert banner
   src/app/features/
     auth/                       sign in, register, forgot password, reset password
-    account/                    profile, company details, change password, sessions
+    account/                    sidebar layout, profile, company, change password, sessions
     errors/                     access refused
 
 .github/workflows/backend.yml    CI: clean verify, on backend/** and openapi.json

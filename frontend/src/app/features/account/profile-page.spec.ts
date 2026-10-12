@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { BASE_PATH, UserProfileResponse, UserRole } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { TOKEN_STORE, StoredTokens, TokenStore } from '../../core/auth/token-store';
+import { AccountProfileStore } from './account-profile.store';
 import { ProfilePage } from './profile-page';
 
 const BASE = 'http://api.test';
@@ -64,6 +65,9 @@ describe('ProfilePage', () => {
         provideRouter([]),
         { provide: BASE_PATH, useValue: BASE },
         { provide: TOKEN_STORE, useValue: new InMemoryTokenStore() },
+        // Provided by AccountLayout in the application; the page is rendered on its own
+        // here, which is exactly what `ensureLoaded` being idempotent makes possible.
+        AccountProfileStore,
       ],
     });
 
@@ -193,13 +197,6 @@ describe('ProfilePage', () => {
     expect(fixture.nativeElement.querySelector('.alert--success')).toBeNull();
   });
 
-  it('offers the company screen to a dealer only', async () => {
-    expect(fixture.nativeElement.textContent).not.toContain('Informations de l’entreprise');
-
-    await render({ ...PROFILE, role: UserRole.PROFESSIONNEL });
-    expect(fixture.nativeElement.textContent).toContain('Informations de l’entreprise');
-  });
-
   it('offers a retry when the profile cannot be loaded', async () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -209,6 +206,7 @@ describe('ProfilePage', () => {
         provideRouter([]),
         { provide: BASE_PATH, useValue: BASE },
         { provide: TOKEN_STORE, useValue: new InMemoryTokenStore() },
+        AccountProfileStore,
       ],
     });
     backend = TestBed.inject(HttpTestingController);

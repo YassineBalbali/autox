@@ -2,26 +2,10 @@
      That is why it lives in the shell and not in a feature. -->
 <a class="skip-link" href="#contenu" i18n="@@skipToContent">Aller au contenu</a>
 
-<!-- A header, now that there are screens to navigate between. Deliberately the minimum:
-     the wordmark, and one link whose destination depends on whether there is a session.
-     Search, the sell button and a real navigation belong with the screens that need them,
-     and a header that guessed at them before those screens existed would be rewritten. -->
-<header class="app-header">
-  <div class="page app-header__inner">
-    <a class="app-header__brand" routerLink="/" i18n="@@brandHome">AutoX</a>
-
-    @if (signedIn()) {
-      <a class="app-header__action" routerLink="/mon-compte" i18n="@@headerAccount">
-        Mon compte
-      </a>
-    } @else {
-      <a class="app-header__action" routerLink="/connexion" i18n="@@headerSignIn">
-        Se connecter
-      </a>
-    }
-  </div>
-</header>
+<app-site-header />
 
 <main id="contenu" class="page" tabindex="-1">
   <router-outlet />
 </main>
+
+<app-site-footer />

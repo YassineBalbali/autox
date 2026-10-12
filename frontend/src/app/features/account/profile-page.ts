@@ -1,32 +1,34 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 
 import { ProfileService, UserProfileResponse, UserRole } from '../../core/api';
-import { AuthService, userSummaryOf } from '../../core/auth/auth.service';
-import { ErrorMessageService } from '../../core/errors/error-message.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { TextField } from '../../shared/forms/text-field';
 import { formatDateFr } from '../../shared/format/date';
 import { MAX_LENGTHS, phoneValidators, requiredText } from '../../shared/forms/validation';
 import { submitState } from '../../shared/forms/submit-state';
 import { Alert } from '../../shared/ui/alert';
+import { AccountProfileStore } from './account-profile.store';
 
 /**
  * The account: what is on it, and the parts of it the user can change here.
  *
- * <p>One screen rather than a view mode and an edit mode. A separate "modifier" state buys
- * nothing on a form of four fields and costs an extra tap before every correction — and on
- * a phone the edit view and the read view would be the same list of values either way. What
- * genuinely cannot be edited here is shown as a read-only list instead, with the reason:
- * the email address and the account type both have consequences the API deliberately keeps
+ * <p>Two sections, both named in the sidebar: <b>Identité</b>, the facts that cannot be
+ * changed here and why, and <b>Mes informations</b>, the four fields that can. Their
+ * `id`s are the sidebar's anchor targets, so the two entries actually go somewhere.
+ *
+ * <p>One form rather than a view mode and an edit mode. A separate "modifier" state buys
+ * nothing on a form of four fields and costs a click before every correction. What
+ * genuinely cannot be edited is shown as a read-only list instead, with the reason: the
+ * email address and the account type both have consequences the API deliberately keeps
  * off a profile PATCH.
  *
- * <p>The dealer's company details are a separate route. They are nine more fields, they
- * apply to one role, and splitting them keeps this form the length it looks.
+ * <p>The dealer's company details are their own route. Nine more fields that apply to one
+ * role, which would otherwise double the length of this page for half the accounts.
  */
 @Component({
   selector: 'app-profile-page',
-  imports: [ReactiveFormsModule, RouterLink, TextField, Alert],
+  imports: [ReactiveFormsModule, TextField, Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './profile-page.html',
   styleUrl: './account.scss',
@@ -34,23 +36,18 @@ import { Alert } from '../../shared/ui/alert';
 export class ProfilePage {
   private readonly api = inject(ProfileService);
   private readonly auth = inject(AuthService);
-  private readonly errors = inject(ErrorMessageService);
+  private readonly store = inject(AccountProfileStore);
 
   protected readonly maxLengths = MAX_LENGTHS;
   protected readonly roles = UserRole;
 
-  protected readonly profile = signal<UserProfileResponse | null>(null);
-  protected readonly loadFailure = signal<string | null>(null);
+  protected readonly profile = this.store.profile;
+  protected readonly loadFailure = this.store.loadFailure;
   protected readonly saved = signal(false);
 
-  protected readonly isProfessional = computed(
-    () => this.profile()?.role === UserRole.PROFESSIONNEL,
-  );
-
-  /** The account type in words. Falls back to the raw value, which is then visibly wrong. */
   protected readonly accountTypeLabel = computed(() => {
     const role = this.profile()?.role;
-    return role ? ROLE_LABELS_FR[role] : "";
+    return role ? ROLE_LABELS_FR[role] : '';
   });
 
   protected readonly memberSince = computed(() => formatDateFr(this.profile()?.createdAt));
@@ -77,26 +74,24 @@ export class ProfilePage {
     // Clears the confirmation as soon as the user starts editing again, so "enregistré"
     // never sits above a form with unsaved changes in it.
     this.form.valueChanges.subscribe(() => this.saved.set(false));
-    this.load();
+
+    // Refills whenever the store changes — on first load, and after a save, which returns
+    // the updated profile. Only those two things write to the store, so this cannot
+    // overwrite something the user is in the middle of typing.
+    effect(() => {
+      const profile = this.profile();
+      if (profile) {
+        this.fill(profile);
+      }
+    });
+
+    // Idempotent: the layout has almost certainly asked already. Called anyway so the
+    // screen still works when it is rendered on its own, as it is under test.
+    this.store.ensureLoaded();
   }
 
-  protected load(): void {
-    this.loadFailure.set(null);
-    this.api.getOwnProfile().subscribe({
-      next: (profile) => {
-        this.profile.set(profile);
-        this.form.reset({
-          displayName: profile.displayName ?? '',
-          firstName: profile.firstName ?? '',
-          lastName: profile.lastName ?? '',
-          phone: profile.phone ?? '',
-        });
-        // Keeps the rest of the application in step: the header greets the user by display
-        // name, and a reload of this screen is the authority on what that name is.
-        this.auth.setUser(userSummaryOf(profile));
-      },
-      error: (error: unknown) => this.loadFailure.set(this.errors.messageFor(error)),
-    });
+  protected retry(): void {
+    this.store.reload();
   }
 
   protected submit(): void {
@@ -124,15 +119,8 @@ export class ProfilePage {
       .subscribe({
         next: (profile) => {
           this.state.succeed();
-          this.profile.set(profile);
-          this.auth.setUser(userSummaryOf(profile));
-          // After valueChanges has fired from the reset, or it would clear this again.
-          this.form.reset({
-            displayName: profile.displayName ?? '',
-            firstName: profile.firstName ?? '',
-            lastName: profile.lastName ?? '',
-            phone: profile.phone ?? '',
-          });
+          // Refills the form through the effect above, and updates the name in the header.
+          this.store.adopt(profile);
           this.saved.set(true);
         },
         error: (error: unknown) => this.state.fail(error),
@@ -141,6 +129,26 @@ export class ProfilePage {
 
   protected signOut(): void {
     this.auth.logout('/connexion');
+  }
+
+  /**
+   * `emitEvent: false` because this is the application writing to the form, not the user.
+   *
+   * <p>Without it the refill after a save would fire `valueChanges` and clear the
+   * confirmation that the save had just set — and effects are scheduled rather than
+   * synchronous, so it would do it a tick *after* `saved` was set to true. The banner
+   * would never appear, and the cause would not be anywhere near the banner.
+   */
+  private fill(profile: UserProfileResponse): void {
+    this.form.reset(
+      {
+        displayName: profile.displayName ?? '',
+        firstName: profile.firstName ?? '',
+        lastName: profile.lastName ?? '',
+        phone: profile.phone ?? '',
+      },
+      { emitEvent: false },
+    );
   }
 }
 
@@ -154,7 +162,7 @@ export class ProfilePage {
  * lines next to the screen that shows it.
  */
 const ROLE_LABELS_FR: Record<UserRole, string> = {
-  [UserRole.PARTICULIER]: "Particulier",
-  [UserRole.PROFESSIONNEL]: "Professionnel",
-  [UserRole.ADMIN]: "Administrateur",
+  [UserRole.PARTICULIER]: 'Particulier',
+  [UserRole.PROFESSIONNEL]: 'Professionnel',
+  [UserRole.ADMIN]: 'Administrateur',
 };

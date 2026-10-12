@@ -1,0 +1,76 @@
+<div class="page header__inner">
+  <a class="header__brand" routerLink="/" i18n="@@brandHome">AutoX</a>
+
+  @if (navItems.length) {
+    <nav class="header__nav" aria-label="Navigation principale" i18n-aria-label="@@navPrimaryLabel">
+      @for (item of navItems; track item.path) {
+        <a
+          class="header__nav-link"
+          [routerLink]="'/' + item.path"
+          routerLinkActive="header__nav-link--active"
+        >
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+  }
+
+  <!-- Pushed right by the spacer rather than by `justify-content: space-between`, which
+       would spread three groups across the whole container and leave the navigation
+       stranded in the middle of nowhere on a 1440px screen. -->
+  <div class="header__spacer"></div>
+
+  @if (signedIn()) {
+    <div class="account-menu">
+      <button
+        class="account-menu__button"
+        type="button"
+        [attr.aria-expanded]="menuOpen()"
+        aria-haspopup="menu"
+        (click)="toggleMenu()"
+      >
+        <span class="account-menu__name">{{ accountName() }}</span>
+        <span class="account-menu__caret" aria-hidden="true">▾</span>
+      </button>
+
+      @if (menuOpen()) {
+        <div class="account-menu__panel" role="menu">
+          <a
+            class="account-menu__item"
+            role="menuitem"
+            routerLink="/mon-compte"
+            (click)="closeMenu()"
+            i18n="@@headerAccount"
+          >
+            Mon compte
+          </a>
+          <a
+            class="account-menu__item"
+            role="menuitem"
+            routerLink="/mon-compte/sessions"
+            (click)="closeMenu()"
+            i18n="@@navSessions"
+          >
+            Appareils connectés
+          </a>
+          <button
+            class="account-menu__item account-menu__item--danger"
+            role="menuitem"
+            type="button"
+            (click)="signOut()"
+            i18n="@@signOut"
+          >
+            Se déconnecter
+          </button>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="header__auth">
+      <a class="header__signin" routerLink="/connexion" i18n="@@headerSignIn">Se connecter</a>
+      <a class="btn btn--primary header__cta" routerLink="/inscription" i18n="@@headerRegister">
+        Créer un compte
+      </a>
+    </div>
+  }
+</div>

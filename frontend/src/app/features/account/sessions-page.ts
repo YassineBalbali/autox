@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 
 import { ErrorCode, SessionResponse, SessionsService } from '../../core/api';
 import { deviceLabel } from '../../core/auth/device-label';
@@ -44,7 +43,7 @@ interface SessionRow {
  */
 @Component({
   selector: 'app-sessions-page',
-  imports: [RouterLink, Alert],
+  imports: [Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './sessions-page.html',
   styleUrl: './account.scss',
