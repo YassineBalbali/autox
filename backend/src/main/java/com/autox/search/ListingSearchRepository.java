@@ -169,6 +169,8 @@ public class ListingSearchRepository {
             parameters.addValue("model", criteria.model().trim());
         }
 
+        appendFreeText(criteria.q(), sql, parameters);
+
         if (criteria.yearFrom() != null) {
             sql.append(" AND l.first_registration_year >= :yearFrom");
             parameters.addValue("yearFrom", criteria.yearFrom());
@@ -227,6 +229,43 @@ public class ListingSearchRepository {
             parameters.addValue("lonMin", criteria.lonMin());
             parameters.addValue("lonMax", criteria.lonMax());
         }
+    }
+
+    /** More words than this are ignored: each one is another four-column comparison per row. */
+    private static final int MAX_TERMS = 6;
+
+    /**
+     * One AND-ed clause per word, each matching the title, make, model or version.
+     *
+     * <p>The user's text is bound, never concatenated — the only thing interpolated is
+     * the parameter name, {@code q0}…{@code q5}, which is built here from a counter. And
+     * the LIKE wildcards in it are escaped: unescaped, a search for {@code %} would match
+     * every listing and one for {@code 100%} would match "1000 km", because to LIKE a
+     * percent sign means "anything".
+     *
+     * <p>This is a substring scan, not an index lookup. It runs over the rows the other
+     * filters and the visibility predicate have already narrowed, which is fine at the
+     * size of catalogue this serves today; a trigram index, or a search engine, is the
+     * answer when it is not, and nothing here would have to change shape for either.
+     */
+    private static void appendFreeText(String q, StringBuilder sql, MapSqlParameterSource parameters) {
+        if (!hasText(q)) {
+            return;
+        }
+        String[] words = q.trim().split("\\s+");
+        for (int index = 0; index < Math.min(words.length, MAX_TERMS); index++) {
+            String name = "q" + index;
+            sql.append(" AND (l.title ILIKE :").append(name).append(" ESCAPE '\\'")
+                    .append(" OR COALESCE(mk.name, l.make_text) ILIKE :").append(name).append(" ESCAPE '\\'")
+                    .append(" OR COALESCE(mo.name, l.model_text) ILIKE :").append(name).append(" ESCAPE '\\'")
+                    .append(" OR l.version_text ILIKE :").append(name).append(" ESCAPE '\\')");
+            parameters.addValue(name, "%" + escapeLike(words[index]) + "%");
+        }
+    }
+
+    /** Makes {@code %}, {@code _} and the escape character itself match literally. */
+    static String escapeLike(String value) {
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private static <E extends Enum<E>> void appendEnumFilter(StringBuilder sql, MapSqlParameterSource parameters,

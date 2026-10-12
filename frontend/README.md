@@ -57,7 +57,9 @@ src/app/
     errors/        HTTP failure → French sentence
     reference/     Makes, models, enum values, countries — fetched once
     ui/            Flash messages between screens
-  layout/          Site header, footer, primary navigation
+  layout/          Site header, footer, primary navigation. Header and footer entries
+                   become links only once their route exists — see `availableNav` and
+                   `resolveFooter` — so neither can offer a dead link
   shared/          Reusable pieces with no feature knowledge
     brand/         The wordmark
     forms/         Validation rules + text, the field component, submit state
@@ -100,7 +102,12 @@ string is parsed into a `SearchQuery`; that drives the API call. So a link repro
 search, the back button undoes one filter at a time, and the sidebar cannot disagree with
 the list.
 
-- **Parameter names are a contract** once a link is shared: `marque`, `modele`,
+- **Three controls, one loop.** The search bar composes a search and applies it on
+  submit (it has a draft; typing searches nothing). The sidebar refines and applies each
+  change at once. The chips between them show what is applied and remove it. All three
+  only ever navigate, and each filter has exactly one control: make and model are in the
+  bar, not the sidebar.
+- **Parameter names are a contract** once a link is shared: `q` (free text), `marque`, `modele`,
   `annee_min`/`annee_max`, `prix_min`/`prix_max` (whole euros), `km_min`/`km_max`,
   `carburant`, `boite`, `carrosserie`, `etat`, `lieu`, `tri`. Add; do not rename.
 - **The query string is untrusted.** `parseQuery` bounds numbers, checks enum values
@@ -112,6 +119,13 @@ the list.
 - **The count is a separate request** (`GET /listings/count`, capped at 10 000) so the list
   never waits for it; a failed count is not an error state.
 - **"Voir plus" is keyset pagination** and the cursor is deliberately not in the URL.
+- **List or grid is a preference, not search state**, so it is in `localStorage`
+  (`ViewPreference`) and not in the URL: sharing a search should not share your layout,
+  and switching layout should not add a history entry. Per browser, not per account —
+  there is no preferences endpoint. Rows are the default.
+- **Free text** (`q`) matches every word against title, make, model and version on the
+  server. It is a substring scan, fine at today's catalogue size; a trigram index or a
+  search engine is the next step when it is not.
 - **A new search cancels the previous one's requests**, so a slow response cannot be shown
   under a newer filter.
 
@@ -174,6 +188,7 @@ borders and dividers instead of shadows, nearly square corners. The live referen
 | `app-price` | `shared/listing` | Any price |
 | `app-spec-line` | `shared/listing` | année · km · carburant · boîte · puissance |
 | `app-listing-row` | `shared/listing` | A vehicle in a list: photo, facts, price |
+| `app-listing-card` | `shared/listing` | The same vehicle as a card, for the grid view |
 | `app-filter-chip` | `shared/ui` | An on/off filter |
 | `app-alert` | `shared/ui` | Error, success, note |
 | `app-text-field` | `shared/forms` | A labelled input with its message |

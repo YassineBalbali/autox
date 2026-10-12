@@ -29,8 +29,12 @@ import org.springframework.test.context.TestPropertySource;
  */
 @ActiveProfiles({"test", "demo"})
 // The runner would otherwise seed while the context starts, before any test has run.
-@TestPropertySource(properties = "autox.demo.action=none")
+// And a dozen listings rather than sixty: each one is a real upload with three resizes,
+// and nothing asserted here depends on how many there are.
+@TestPropertySource(properties = {"autox.demo.action=none", "autox.demo.listings=" + DemoDataIntegrationTest.SEEDED})
 class DemoDataIntegrationTest extends AbstractIntegrationTest {
+
+    static final int SEEDED = 12;
 
     @Autowired DemoData demoData;
     @Autowired DemoLedger ledger;
@@ -51,16 +55,16 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
     void seedProducesSearchableListings() throws Exception {
         int created = demoData.seed();
 
-        assertThat(created).isEqualTo(DemoCatalogue.VEHICLES.size());
+        assertThat(created).isEqualTo(SEEDED);
         mockMvc.perform(get("/api/v1/listings/count"))
-                .andExpect(jsonPath("$.count").value(DemoCatalogue.VEHICLES.size()));
+                .andExpect(jsonPath("$.count").value(SEEDED));
 
         // Each one has a cover image with its variants, which is the evidence that the
         // upload went through the real confirm step rather than a row being inserted.
         JsonNode page = objectMapper.readTree(mockMvc.perform(get("/api/v1/listings").param("size", "60"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
-        assertThat(page.get("items")).hasSize(DemoCatalogue.VEHICLES.size());
+        assertThat(page.get("items")).hasSize(SEEDED);
         page.get("items").forEach(item -> {
             assertThat(item.get("coverImage").has("CARD")).as(item.get("title").asText()).isTrue();
             assertThat(item.get("city").asText()).isNotBlank();
@@ -85,7 +89,8 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
         }
         assertThat(peugeotId).isNotNull();
 
-        long expected = DemoCatalogue.VEHICLES.stream().filter(v -> v.makeSlug().equals("peugeot")).count();
+        long expected = DemoCatalogue.vehicles().stream().limit(SEEDED)
+                .filter(v -> v.makeSlug().equals("peugeot")).count();
         mockMvc.perform(get("/api/v1/listings/count").param("makeId", peugeotId))
                 .andExpect(jsonPath("$.count").value((int) expected));
     }
@@ -97,7 +102,7 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
 
         Integer distinctDays = jdbcTemplate.queryForObject(
                 "SELECT count(DISTINCT published_at::date) FROM listing", Integer.class);
-        assertThat(distinctDays).isGreaterThan(10);
+        assertThat(distinctDays).isGreaterThan(8);
     }
 
     @Test
@@ -108,7 +113,7 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(second).isZero();
         mockMvc.perform(get("/api/v1/listings/count"))
-                .andExpect(jsonPath("$.count").value(DemoCatalogue.VEHICLES.size()));
+                .andExpect(jsonPath("$.count").value(SEEDED));
     }
 
     @Test

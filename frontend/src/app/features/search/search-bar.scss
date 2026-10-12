@@ -1,0 +1,69 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+// The most prominent block on the page after the results themselves: a white band across
+// the full container, with the navy rule from the header over it. Controls are a step
+// taller than elsewhere — this is where a search starts, and it should be the easiest
+// thing on the screen to hit.
+.bar {
+  --h-control: 40px;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-2) var(--s-3);
+  align-items: end;
+  padding: var(--s-3) var(--s-4);
+  background: var(--c-surface);
+  border: var(--border);
+  border-top: 3px solid var(--c-navy);
+  border-radius: var(--r-md);
+
+  @media (min-width: t.$bp-md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  // One row at desktop width: the text takes the slack, the two selects share evenly,
+  // the two short values take only what a year and a price need.
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.3fr) minmax(0, 1.3fr) 8.5rem 7rem auto;
+  }
+}
+
+.bar__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-0);
+  min-width: 0;
+}
+
+.bar__field--wide {
+  @media (min-width: t.$bp-md) and (max-width: (t.$bp-lg - 1px)) {
+    grid-column: 1 / -1;
+  }
+}
+
+.bar__label {
+  font-size: var(--t-xs);
+  font-weight: var(--fw-bold);
+  color: var(--c-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+// The fields fill their grid cell; the global measure cap is for forms, not for a bar.
+.input {
+  max-width: none;
+}
+
+.bar__submit {
+  padding-inline: var(--s-5);
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+
+  @media (min-width: t.$bp-md) and (max-width: (t.$bp-lg - 1px)) {
+    grid-column: 1 / -1;
+  }
+}

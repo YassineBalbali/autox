@@ -72,7 +72,11 @@ describe('SearchPage', () => {
     open(`${BASE}/api/v1/reference/countries`).forEach((request) => request.flush(COUNTRIES));
   }
 
-  async function visit(url: string, makes: object[] = MAKES): Promise<void> {
+  async function visit(url: string, makes: object[] = MAKES, keepPreferences = false): Promise<void> {
+    if (!keepPreferences) {
+      // The view preference is remembered in localStorage, which outlives a test.
+      localStorage.clear();
+    }
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -420,6 +424,254 @@ describe('SearchPage', () => {
       expect(
         Array.from(root.querySelectorAll('button')).some((button) => button.textContent?.includes('Voir plus')),
       ).toBe(false);
+    });
+  });
+
+  describe('the search bar', () => {
+    const typeInto = async (id: string, value: string) => {
+      const element = root.querySelector(`#${id}`) as HTMLInputElement;
+      element.value = value;
+      element.dispatchEvent(new Event('input'));
+      await settle();
+    };
+    const submitBar = async () => {
+      (root.querySelector('app-search-bar button[type="submit"]') as HTMLButtonElement).click();
+      await settle();
+    };
+
+    it('sits above the filters and the results, across the full width', async () => {
+      await visit('/');
+      await answer([listing('a')]);
+      const bar = root.querySelector('app-search-bar') as HTMLElement;
+      const body = root.querySelector('.search__body') as HTMLElement;
+
+      // Outside the two-column body, so it spans both columns.
+      expect(body.contains(bar)).toBe(false);
+      expect(bar.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('searches free text through the address, and the API receives it', async () => {
+      await visit('/');
+      await answer([listing('a'), listing('b')]);
+
+      await typeInto('b-q', 'golf tdi');
+      // Typing alone searched nothing.
+      expect(open(LIST)).toHaveLength(0);
+      expect(url()).toBe('/');
+
+      await submitBar();
+
+      expect(url()).toBe('/?q=golf%20tdi');
+      const page = await answer([listing('a')]);
+      // The generated client percent-encodes each value itself and gives HttpClient an
+      // identity codec, so what is held here is the wire form — encoded exactly once.
+      expect(page.request.params.get('q')).toBe('golf%20tdi');
+      expect(page.request.urlWithParams).toContain('q=golf%20tdi');
+      expect(page.request.urlWithParams).not.toContain('%2520');
+    });
+
+    it('applies text, make, price and year as one navigation', async () => {
+      await visit('/');
+      await answer([listing('a')]);
+
+      await typeInto('b-q', 'tdi');
+      const make = root.querySelector('#b-marque') as HTMLSelectElement;
+      make.value = 'tesla';
+      make.dispatchEvent(new Event('change'));
+      await settle();
+      open(`${BASE}/api/v1/reference/makes/m-tesla/models`).forEach((request) => request.flush([]));
+      await typeInto('b-prix', '30000');
+      await submitBar();
+
+      expect(url()).toBe('/?q=tdi&marque=tesla&prix_max=30000');
+      const page = await answer([]);
+      expect(page.request.params.get('makeId')).toBe('m-tesla');
+      expect(page.request.params.get('priceMax')).toBe('3000000');
+    });
+
+    it('keeps the sidebar filters when the bar is submitted', async () => {
+      // The bar owns five fields. Submitting it must not wipe the fuel filter chosen in
+      // the sidebar a moment earlier.
+      await visit('/?carburant=diesel&km_max=90000');
+      await answer([listing('a')]);
+
+      await typeInto('b-q', 'golf');
+      await submitBar();
+
+      expect(url()).toBe('/?q=golf&km_max=90000&carburant=diesel');
+    });
+
+    it('reads a search that arrived by link', async () => {
+      await visit('/?q=clio%20automatique&prix_max=12000');
+      await answer([]);
+
+      expect((root.querySelector('#b-q') as HTMLInputElement).value).toBe('clio automatique');
+      expect((root.querySelector('#b-prix') as HTMLInputElement).value).toBe('12000');
+    });
+  });
+
+  describe('the applied-filter chips', () => {
+    const appliedChips = () => Array.from(root.querySelectorAll('.applied__chip')) as HTMLButtonElement[];
+
+    it('show nothing when no filter is set', async () => {
+      await visit('/');
+      await answer([listing('a')]);
+
+      expect(root.querySelector('.applied')).toBeNull();
+    });
+
+    it('list what the address applies, between the bar and the results', async () => {
+      await visit('/?q=tdi&marque=tesla&prix_max=30000&carburant=diesel,electric&lieu=Lyon');
+      await answer([]);
+
+      expect(appliedChips().map((chip) => chip.textContent?.replace('×', '').trim())).toEqual([
+        '« tdi »',
+        'Tesla',
+        `Jusqu’à 30${NBSP}000 €`,
+        'Diesel',
+        'Électrique',
+        'Lyon',
+      ]);
+      const applied = root.querySelector('app-active-filters') as HTMLElement;
+      const bar = root.querySelector('app-search-bar') as HTMLElement;
+      const body = root.querySelector('.search__body') as HTMLElement;
+      expect(bar.compareDocumentPosition(applied) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(applied.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('remove exactly one filter each, through the address', async () => {
+      await visit('/?carburant=diesel,electric&lieu=Lyon');
+      await answer([listing('a')]);
+
+      appliedChips()
+        .find((chip) => chip.textContent?.includes('Diesel'))!
+        .click();
+      await settle();
+
+      // The other fuel and the location are untouched.
+      expect(url()).toBe('/?carburant=electric&lieu=Lyon');
+      const page = await answer([]);
+      expect(page.request.params.getAll('fuelType')).toEqual(['ELECTRIC']);
+      expect(appliedChips()).toHaveLength(2);
+    });
+
+    it('clear everything at once, keeping the sort order', async () => {
+      await visit('/?q=tdi&carburant=diesel&tri=prix-croissant');
+      await answer([listing('a')]);
+
+      (root.querySelector('.applied__clear') as HTMLButtonElement).click();
+      await settle();
+
+      expect(url()).toBe('/?tri=prix-croissant');
+      await answer([listing('a'), listing('b')]);
+      expect(root.querySelector('.applied')).toBeNull();
+      expect((root.querySelector('#b-q') as HTMLInputElement).value).toBe('');
+    });
+  });
+
+  describe('list and grid', () => {
+    const toggle = (label: string) =>
+      Array.from(root.querySelectorAll('.view-toggle__button')).find(
+        (button) => button.textContent?.trim() === label,
+      ) as HTMLButtonElement;
+    const cards = () => Array.from(root.querySelectorAll('app-listing-card')) as HTMLElement[];
+
+    it('shows rows by default', async () => {
+      await visit('/');
+      await answer([listing('a'), listing('b')]);
+
+      expect(rows()).toHaveLength(2);
+      expect(cards()).toHaveLength(0);
+      expect(toggle('Liste').getAttribute('aria-pressed')).toBe('true');
+      expect(toggle('Grille').getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('switches to cards, showing the same results in the same order', async () => {
+      await visit('/');
+      await answer([listing('a'), listing('b'), listing('c')]);
+
+      toggle('Grille').click();
+      await settle();
+
+      expect(rows()).toHaveLength(0);
+      expect(cards().map((card) => card.querySelector('h2')?.textContent?.trim())).toEqual([
+        'Annonce a',
+        'Annonce b',
+        'Annonce c',
+      ]);
+      expect(toggle('Grille').getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('does not search again, and does not touch the address, to change the view', async () => {
+      // A layout choice is not a search: no request, no history entry, nothing to share.
+      await visit('/?carburant=diesel');
+      await answer([listing('a')]);
+
+      toggle('Grille').click();
+      await settle();
+
+      expect(open(LIST)).toHaveLength(0);
+      expect(url()).toBe('/?carburant=diesel');
+    });
+
+    it('remembers the choice on the next visit', async () => {
+      await visit('/');
+      await answer([listing('a')]);
+      toggle('Grille').click();
+      await settle();
+
+      // A fresh application, the same browser.
+      await visit('/', MAKES, true);
+      await answer([listing('a'), listing('b')]);
+
+      expect(cards()).toHaveLength(2);
+      expect(toggle('Grille').getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('keeps the view across a new search', async () => {
+      await visit('/');
+      await answer([listing('a')]);
+      toggle('Grille').click();
+      await settle();
+
+      chip('Diesel').click();
+      await settle();
+      await answer([listing('b')]);
+
+      expect(cards()).toHaveLength(1);
+    });
+
+    it('loads more into the grid as it does into the list', async () => {
+      await visit('/');
+      await answer([listing('a'), listing('b')], { hasMore: true, count: 3 });
+      toggle('Grille').click();
+      await settle();
+
+      (Array.from(root.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Voir plus'),
+      ) as HTMLButtonElement).click();
+      await settle();
+      open(LIST)[0].flush({ items: [listing('c')], hasMore: false });
+      await settle();
+
+      expect(cards()).toHaveLength(3);
+    });
+
+    it('shows card-shaped placeholders while a grid is loading', async () => {
+      localStorage.setItem('autox.search.view', 'grille');
+      await visit('/', MAKES, true);
+
+      expect(root.querySelectorAll('.skeleton-card').length).toBeGreaterThan(0);
+      expect(root.querySelector('.search__grid[aria-busy="true"]')).not.toBeNull();
+    });
+
+    it('labels the two buttons as one control', async () => {
+      await visit('/');
+      await answer([]);
+      const group = root.querySelector('.view-toggle') as HTMLElement;
+
+      expect(group.getAttribute('role')).toBe('group');
+      expect(group.getAttribute('aria-label')).toBeTruthy();
     });
   });
 });

@@ -43,7 +43,10 @@ import { NBSP, formatIntegerFr } from '../format/number';
       white-space: nowrap;
     }
 
-    .specs__item + .specs__item::before {
+    // After each item but the last, not before each but the first: when the line wraps
+    // in a narrow card the dot then stays at the end of the first line, instead of
+    // opening the second one.
+    .specs__item:not(:last-child)::after {
       content: '·';
       margin-inline: var(--s-1);
       color: var(--c-ink-faint);

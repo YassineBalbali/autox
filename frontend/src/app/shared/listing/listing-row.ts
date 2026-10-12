@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
-import { PublicListingSummary } from '../../core/api';
+import { ImageVariantView, PublicListingSummary } from '../../core/api';
 import { formatDateFr } from '../format/date';
 import { Price } from './price';
 import { SpecLine } from './spec-line';
@@ -50,27 +50,39 @@ export class ListingRow {
   /** Set when the image failed to load, so the row falls back to the placeholder. */
   protected readonly photoBroken = signal(false);
 
-  protected readonly photo = computed(() => {
-    const cover = this.listing().coverImage ?? {};
-    const variant = cover[ROW_VARIANT] ?? cover[FALLBACK_VARIANT];
-    return variant?.url && !this.photoBroken() ? variant : null;
-  });
+  protected readonly photo = computed(() =>
+    this.photoBroken() ? null : coverOf(this.listing()),
+  );
 
   protected readonly isProfessional = computed(
     () => this.listing().seller?.role === 'PROFESSIONNEL',
   );
 
-  /** "Lyon (69)" — the city, with the département when the postal code gives one. */
-  protected readonly place = computed(() => {
-    const { city, postalCode, countryCode } = this.listing();
-    if (!city) {
-      return null;
-    }
-    const department = departmentOf(postalCode, countryCode);
-    return department ? `${city} (${department})` : city;
-  });
+  protected readonly place = computed(() => placeOf(this.listing()));
 
   protected readonly published = computed(() => formatDateFr(this.listing().publishedAt));
+}
+
+/**
+ * The image a list shows for a listing, or `null` when it has none.
+ *
+ * <p>Shared by the row and the card, so the two views of the same result cannot pick
+ * different pictures.
+ */
+export function coverOf(listing: PublicListingSummary): ImageVariantView | null {
+  const cover = listing.coverImage ?? {};
+  const variant = cover[ROW_VARIANT] ?? cover[FALLBACK_VARIANT];
+  return variant?.url ? variant : null;
+}
+
+/** "Lyon (69)" — the city, with the département when the postal code gives one. */
+export function placeOf(listing: PublicListingSummary): string | null {
+  const { city, postalCode, countryCode } = listing;
+  if (!city) {
+    return null;
+  }
+  const department = departmentOf(postalCode, countryCode);
+  return department ? `${city} (${department})` : city;
 }
 
 /**

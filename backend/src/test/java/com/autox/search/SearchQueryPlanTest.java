@@ -92,7 +92,7 @@ class SearchQueryPlanTest extends AbstractIntegrationTest {
         return new ListingSearchCriteria(null, null, make, null, null, null,
                 priceMin, priceMax, null, null, mileageMax,
                 List.of(), List.of(), List.of(), List.of(), List.of(),
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     /**
