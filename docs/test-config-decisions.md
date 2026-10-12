@@ -184,3 +184,86 @@ validates the Actions schema rather than just the YAML:
 ```bash
 docker run --rm -v "/$(pwd):/repo" -w /repo rhysd/actionlint:latest
 ```
+
+---
+
+## Loading `.env` into the application
+
+`mvn spring-boot:run` failed from a clean terminal with
+`java.lang.IllegalArgumentException: 'url' must start with "jdbc"`, a hundred and fifty
+stack frames down. `docker compose` reads `.env`; nothing else did, so the Maven process
+inherited none of it.
+
+`DotenvEnvironmentPostProcessor` now reads the same file at startup. Three things about it
+are worth knowing.
+
+**Precedence.** The source is inserted immediately *below* the real environment variables
+and *above* `application.yml`:
+
+```
+system properties  >  OS environment  >  .env  >  application.yml  >  placeholder defaults
+```
+
+A real environment variable always wins, so CI, containers and production are untouched —
+the file does not exist there and the loader is a no-op. Sitting above `application.yml`
+makes it behave like the export it replaces rather than like a weaker default. Verified
+live: `.env` sets `AUTOX_PORT=8081`, and `AUTOX_PORT=8099 mvn spring-boot:run` starts on
+8099.
+
+It is a `SystemEnvironmentPropertySource` rather than a plain map, so entries get the same
+relaxed binding real environment variables get — `SPRING_PROFILES_ACTIVE` in the file works
+instead of being silently inert.
+
+**Not `spring-dotenv`.** The obvious library was last released in May 2023, registers a
+`SpringApplicationRunListener` that cannot be scoped or ordered, and exposes values under an
+`env.` prefix — which would have meant rewriting every `${AUTOX_*}` placeholder in the
+production configuration to fix a local-development convenience. Changing how production
+resolves configuration is a poor trade for seventy lines, and the fail-fast check needed a
+precedence we could state and test.
+
+**Registered in `spring.factories`, not an `.imports` file.** This cost a debugging round.
+`META-INF/spring/org.springframework.boot.env.EnvironmentPostProcessor.imports` looks like
+the modern form and is **silently ignored**: the `.imports` mechanism is `ImportCandidates`
+and serves `@AutoConfiguration` only. `EnvironmentPostProcessor` and `FailureAnalyzer` both
+come from `SpringFactoriesLoader`, which reads `spring.factories` and nothing else. No
+warning, no error — the application simply started with neither hook and failed exactly as
+it had before. `DotenvEnvironmentPostProcessorTest.hooksAreRegistered` asserts the keys are
+in `spring.factories` *and* that no `.imports` file has been reintroduced beside them.
+
+And the same stale-target trap as the configuration rename appeared again: deleting the
+`.imports` file from `src` left a copy in `target/classes`, so the first run after the fix
+still behaved as before. `mvn clean`.
+
+## The failure message, and why the check is on properties
+
+`RequiredConfigurationEnvironmentPostProcessor` refuses to start when configuration is
+missing, and a `FailureAnalyzer` renders it as Boot's `APPLICATION FAILED TO START` report
+naming each variable, what it needs, and which property it sets. It fails in nine seconds
+rather than thirty-three, because it runs before Tomcat.
+
+**It checks Spring properties, not environment variables.** The requirement is "the
+application is configured", not "this variable is set" — the integration tests supply
+`autox.auth.jwt-secret` from `application-test.yml` and the datasource from Testcontainers,
+and never set an `AUTOX_*` variable at all. Checking variables would have failed all of
+them. Checking properties asks the real question and still lets the message name the
+variable that normally answers it.
+
+**The root cause was subtler than "the variable is unset".** When a `${AUTOX_*}` placeholder
+has no default and nothing supplies it, Spring hands back *the placeholder text itself* —
+not `null`, not an exception. That literal then travels on as if it were a value, which is
+why the symptoms were `'url' must start with "jdbc"` and, once the URL had a default,
+`FATAL: password authentication failed for user "autox"`: PostgreSQL was being offered the
+string `${AUTOX_DB_PASSWORD}` as a password. The check compares against the exact expected
+placeholder, so a credential containing `$` is not mistaken for one.
+
+Which surfaced a real constraint on `.env` contents, now documented in `.env.example`: a
+password containing `${` is **unusable**, because Spring tries to expand it inside the
+property value. Nothing in the application can rescue that — the value is broken before any
+check sees it — so it is reported as not set and warned about up front.
+
+**Defaults are split by whether the value is a credential.** `AUTOX_DB_URL` and
+`AUTOX_DB_USERNAME` default to the docker-compose coordinates, so a stock local stack
+starts. The four credentials have no default and will not get one: a default password is a
+password in version control, and one that works locally is one that reaches a server
+eventually. `defaultsCoverCoordinatesButNeverCredentials` asserts both halves against
+`application.yml` itself, which is where that rule is either kept or quietly broken.

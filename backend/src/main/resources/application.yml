@@ -1,12 +1,23 @@
-# Every credential is read from the environment. There are no defaults for
-# secrets: a missing variable must fail startup, not fall back to something weak.
+# Configuration comes from the environment, and from a .env file at the repository root
+# which DotenvEnvironmentPostProcessor loads at startup — the same file docker compose
+# reads, so there is one place to configure a local machine and nothing to export by hand.
+# A real environment variable always wins over .env, so CI and production are unaffected.
+#
+# Non-secret coordinates below carry a local default that matches docker-compose, so the
+# application starts against a stock local stack. CREDENTIALS DELIBERATELY HAVE NO DEFAULT:
+# a default password is a password in version control, and one that works locally is one
+# that reaches a server eventually. Those are listed in RequiredSetting.all(), which fails
+# startup naming the variable instead of letting Hikari assert about a URL.
 spring:
   application:
     name: autox-backend
 
   datasource:
-    url: ${AUTOX_DB_URL}
-    username: ${AUTOX_DB_USERNAME}
+    # Defaults match the docker-compose service: port 5433 because a natively installed
+    # PostgreSQL owns 5432 and the connection would silently reach the wrong server.
+    url: ${AUTOX_DB_URL:jdbc:postgresql://localhost:5433/autox}
+    username: ${AUTOX_DB_USERNAME:autox}
+    # No default. See the header.
     password: ${AUTOX_DB_PASSWORD}
     hikari:
       maximum-pool-size: ${AUTOX_DB_POOL_SIZE:10}
