@@ -1,0 +1,105 @@
+<div class="form-column stack">
+  <header>
+    <p class="meta">
+      <a routerLink="/mon-compte" i18n="@@backToAccount">← Mon compte</a>
+    </p>
+    <h1 class="page-title" i18n="@@sessionsTitle">Appareils connectés</h1>
+    <p class="lede" i18n="@@sessionsLede">
+      Chaque appareil sur lequel vous vous êtes connecté reste connecté jusqu’à 90 jours.
+      Si vous ne reconnaissez pas une session, fermez-la.
+    </p>
+  </header>
+
+  @if (loadFailure()) {
+    <div class="panel stack">
+      <app-alert kind="error">{{ loadFailure() }}</app-alert>
+      <button class="btn btn--quiet btn--block" type="button" (click)="load()" i18n="@@retry">
+        Réessayer
+      </button>
+    </div>
+  } @else if (rows(); as sessions) {
+    @if (actionFailure()) {
+      <app-alert kind="error">{{ actionFailure() }}</app-alert>
+    }
+
+    <ul class="session-list">
+      @for (session of sessions; track session.id) {
+        <li class="panel session">
+          <div class="session__head">
+            <h2 class="session__label">{{ session.label }}</h2>
+            @if (session.isThisDevice) {
+              <span class="session__badge" i18n="@@sessionThisDevice">Cet appareil</span>
+            }
+          </div>
+
+          <dl class="readout session__facts">
+            @if (session.lastUsedAt) {
+              <div>
+                <dt class="readout__term" i18n="@@sessionLastUsed">Dernière activité</dt>
+                <dd class="readout__value">{{ session.lastUsedAt }}</dd>
+              </div>
+            }
+            @if (session.createdAt) {
+              <div>
+                <dt class="readout__term" i18n="@@sessionCreated">Connexion le</dt>
+                <dd class="readout__value">{{ session.createdAt }}</dd>
+              </div>
+            }
+            @if (session.ipAddress) {
+              <div>
+                <dt class="readout__term" i18n="@@sessionAddress">Adresse IP</dt>
+                <dd class="readout__value">{{ session.ipAddress }}</dd>
+              </div>
+            }
+            @if (session.expiresAt) {
+              <div>
+                <dt class="readout__term" i18n="@@sessionExpires">Expire le</dt>
+                <dd class="readout__value">{{ session.expiresAt }}</dd>
+              </div>
+            }
+          </dl>
+
+          @if (session.userAgent) {
+            <!-- The raw User-Agent, folded away. It is the only thing that distinguishes two
+                 sessions carrying the same label, so it has to be available — and it is
+                 unreadable enough that it should not be the first thing on the row. -->
+            <details class="session__agent">
+              <summary class="meta" i18n="@@sessionTechnicalDetail">Détail technique</summary>
+              <p class="meta session__ua">{{ session.userAgent }}</p>
+            </details>
+          }
+
+          <button
+            class="btn btn--danger btn--block"
+            type="button"
+            [disabled]="revoking() === session.id"
+            (click)="revoke(session)"
+          >
+            @if (revoking() === session.id) {
+              <ng-container i18n="@@sessionRevoking">Fermeture…</ng-container>
+            } @else if (session.isThisDevice) {
+              <ng-container i18n="@@sessionRevokeThis">
+                Fermer — vous serez déconnecté
+              </ng-container>
+            } @else {
+              <ng-container i18n="@@sessionRevoke">Fermer cette session</ng-container>
+            }
+          </button>
+        </li>
+      } @empty {
+        <!-- Only reachable if every session expired between signing in and loading this
+             page, which is to say almost never — but an empty list with no text reads as a
+             broken screen. -->
+        <li class="panel meta" i18n="@@sessionsEmpty">Aucune session active.</li>
+      }
+    </ul>
+
+    <p class="meta" i18n="@@sessionsOwnDeviceNote">
+      « Cet appareil » n’est affiché que lorsqu’il peut être identifié sans ambiguïté. Si
+      vous vous êtes connecté plusieurs fois depuis le même navigateur, les sessions sont
+      indistinguables : comparez le détail technique et la date de connexion.
+    </p>
+  } @else {
+    <p class="panel meta" aria-busy="true" i18n="@@loading">Chargement…</p>
+  }
+</div>

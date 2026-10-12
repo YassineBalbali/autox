@@ -1,0 +1,59 @@
+<div class="form-column stack">
+  <header>
+    <h1 class="page-title" i18n="@@loginTitle">Se connecter</h1>
+    <p class="lede" i18n="@@loginLede">
+      Accédez à vos annonces et à votre compte AutoX.
+    </p>
+  </header>
+
+  @if (notice()) {
+    <app-alert kind="success">{{ notice() }}</app-alert>
+  }
+
+  <div class="panel">
+    <!-- novalidate: the browser's own bubbles are in the browser UI language, unstyled, and
+         appear one at a time. The form's own messages are French, inline, and all visible at
+         once, which is the behaviour the rest of the application has. -->
+    <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (state.message()) {
+        <app-alert kind="error">{{ state.message() }}</app-alert>
+      }
+
+      <app-text-field
+        label="Adresse e-mail"
+        i18n-label="@@fieldEmail"
+        type="email"
+        autocomplete="email"
+        inputMode="email"
+        [maxLength]="maxLengths.email"
+        [control]="form.controls.email"
+        [rejectedByServer]="state.rejected('email')"
+      />
+
+      <app-text-field
+        label="Mot de passe"
+        i18n-label="@@fieldPassword"
+        type="password"
+        autocomplete="current-password"
+        [control]="form.controls.password"
+        [rejectedByServer]="state.rejected('password')"
+      />
+
+      <button class="btn btn--primary btn--block" type="submit" [disabled]="state.pending()">
+        @if (state.pending()) {
+          <ng-container i18n="@@loginSubmitting">Connexion…</ng-container>
+        } @else {
+          <ng-container i18n="@@loginSubmit">Se connecter</ng-container>
+        }
+      </button>
+
+      <p class="meta">
+        <a routerLink="/mot-de-passe-oublie" i18n="@@loginForgot">Mot de passe oublié ?</a>
+      </p>
+    </form>
+  </div>
+
+  <p class="meta" i18n="@@loginNoAccount">
+    Pas encore de compte ? <a routerLink="/inscription">Créer un compte</a>
+  </p>
+</div>

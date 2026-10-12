@@ -62,8 +62,13 @@ class AuthFlowIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(body.get("user").get("role").asText()).isEqualTo("PROFESSIONNEL");
         AppUser stored = users.findActiveByEmail(email).orElseThrow();
-        assertThat(proProfiles.findByUserId(stored.getId())).isPresent()
-                .get().extracting(profile -> profile.getCompanyName()).isEqualTo("Garage du Test");
+        assertThat(proProfiles.findByUserId(stored.getId())).isPresent().get()
+                .satisfies(profile -> {
+                    assertThat(profile.getCompanyName()).isEqualTo("Garage du Test");
+                    // Captured at registration rather than left for a later profile edit:
+                    // a dealer account with no registry identifier cannot be verified.
+                    assertThat(profile.getRegistrationNumber()).isEqualTo("81234567800012");
+                });
     }
 
     @Test
@@ -79,6 +84,25 @@ class AuthFlowIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors").isArray())
                 .andExpect(jsonPath("$.errors[0].field").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("a dealer registration without a registration number is rejected with a field error")
+    void registerProfessionnelWithoutRegistrationNumber() throws Exception {
+        Map<String, Object> payload = registrationPayload(uniqueEmail("pro-nosiret"), UserRole.PROFESSIONNEL);
+        payload.remove("registrationNumber");
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors").isArray())
+                .andExpect(jsonPath("$.errors[0].field").isNotEmpty());
+
+        // And nothing was created: the whole registration is one transaction, so a rejected
+        // dealer must not leave an account behind without its company row.
+        assertThat(users.existsByEmailIgnoreCase((String) payload.get("email"))).isFalse();
     }
 
     @Test

@@ -113,8 +113,10 @@ autox:
     from-address: ${AUTOX_MAIL_FROM:no-reply@autox.local}
     from-name: ${AUTOX_MAIL_FROM_NAME:AutoX}
     # The frontend page that takes the token, which the email links to with ?token=…
-    # The API cannot guess it: the web app is deployed separately.
-    password-reset-url: ${AUTOX_PASSWORD_RESET_URL:http://localhost:4200/reset-password}
+    # The API cannot guess it: the web app is deployed separately. The path is French
+    # because every URL the user sees is — it must match the Angular route exactly, since a
+    # mismatch produces a link that reaches the app and renders nothing.
+    password-reset-url: ${AUTOX_PASSWORD_RESET_URL:http://localhost:4200/reinitialiser-mot-de-passe}
 
   public-api:
     # Per-IP limit on the unauthenticated GETs (search, listing detail, reference).

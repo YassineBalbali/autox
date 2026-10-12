@@ -7,9 +7,11 @@ import {
   AuthResponse,
   AuthenticationService,
   RegisterRequest,
+  UserProfileResponse,
   UserRole,
   UserSummary,
 } from '../api';
+import { deviceLabel } from './device-label';
 import { TOKEN_STORE, StoredTokens } from './token-store';
 
 /**
@@ -97,18 +99,25 @@ export class AuthService {
 
   // --- the session lifecycle ---------------------------------------------
 
-  login(email: string, password: string, deviceLabel?: string): Observable<UserSummary> {
+  /**
+   * Signs in, labelling the session with the browser it was created from.
+   *
+   * <p>The label defaults rather than being left to the caller: it is what the sessions
+   * screen lists, and it is the only handle a client has on its own entry in that list.
+   * An unlabelled session is one a user cannot reason about.
+   */
+  login(email: string, password: string, label = deviceLabel()): Observable<UserSummary> {
     return this.api
-      .login({ loginRequest: { email, password, deviceLabel } }, 'body', false, {
+      .login({ loginRequest: { email, password, deviceLabel: label } }, 'body', false, {
         context: skipAuth(),
       })
-      .pipe(map((response) => this.adopt(response)));
+      .pipe(map((response) => this.adoptAuthResponse(response)));
   }
 
   register(registerRequest: RegisterRequest): Observable<UserSummary> {
     return this.api
       .register({ registerRequest }, 'body', false, { context: skipAuth() })
-      .pipe(map((response) => this.adopt(response)));
+      .pipe(map((response) => this.adoptAuthResponse(response)));
   }
 
   /**
@@ -130,7 +139,7 @@ export class AuthService {
       .refresh({ refreshRequest: { refreshToken } }, 'body', false, { context: skipAuth() })
       .pipe(
         map((response) => {
-          this.adopt(response);
+          this.adoptAuthResponse(response);
           return requireString(response.accessToken, 'accessToken');
         }),
         finalize(() => {
@@ -184,6 +193,12 @@ export class AuthService {
   /**
    * Takes a successful auth response into state and storage.
    *
+   * <p>Public because it is not only the login path. Changing a password revokes every
+   * session on the account and hands back a <em>new</em> pair in the same response — so the
+   * change-password screen has to adopt it. A screen that ignored it would leave the user
+   * holding a refresh token the server has just revoked, and sign them out on the next
+   * renewal: the one outcome that change of all changes must not produce.
+   *
    * <p>Every field of a generated response model is optional, because the backend's schema
    * has no `required` markers on output types — springdoc only infers those from Bean
    * Validation annotations, which responses rightly do not carry. Rather than spread
@@ -191,7 +206,7 @@ export class AuthService {
    * boundary where it belongs. A server that stops sending an access token is a bug worth a
    * loud failure, not a silent `undefined`.
    */
-  private adopt(response: AuthResponse): UserSummary {
+  adoptAuthResponse(response: AuthResponse): UserSummary {
     const accessToken = requireString(response.accessToken, 'accessToken');
     const refreshToken = requireString(response.refreshToken, 'refreshToken');
     const user = response.user;
@@ -234,3 +249,25 @@ function requireString(value: string | undefined, field: string): string {
   return value;
 }
 
+
+/**
+ * The compact summary the application keeps in session state, from the full profile.
+ *
+ * <p>`GET /api/v1/me` returns the whole profile while `AuthService` holds only the summary
+ * the auth responses carry, so the two shapes have to be bridged in three places: the role
+ * guard resolving a role after a reload, the profile screen saving an edit that changed the
+ * display name, and any future screen that reloads the profile. One function, so a field
+ * added to the summary is added once.
+ */
+export function userSummaryOf(profile: UserProfileResponse): UserSummary {
+  return {
+    id: profile.id,
+    email: profile.email,
+    role: profile.role,
+    status: profile.status,
+    displayName: profile.displayName,
+    emailVerified: profile.emailVerified,
+    countryCode: profile.countryCode,
+    locale: profile.locale,
+  };
+}

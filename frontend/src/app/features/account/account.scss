@@ -1,0 +1,87 @@
+// Styles shared by the account screens. One stylesheet referenced by four components
+// rather than four near-copies: the sessions list and the account menu are each used once
+// today, but the pattern — a stack of panels inside a form column — is every one of them.
+
+// ---- the account menu -----------------------------------------------------
+
+.account-nav {
+  display: flex;
+  flex-direction: column;
+  // Zero gap and dividers between, so the whole row is tappable right to the edge of the
+  // panel. A gap here would put dead space between two 44px targets.
+  gap: 0;
+  padding-block: 0;
+}
+
+.account-nav__link {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding-block: var(--s-3);
+  text-decoration: none;
+  font-weight: var(--fw-medium);
+
+  & + & {
+    border-top: 1px solid var(--c-line);
+  }
+}
+
+// ---- the sessions list ----------------------------------------------------
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.session__head {
+  display: flex;
+  align-items: baseline;
+  // Wraps rather than shrinking the badge: a long device label and the badge on one line
+  // at 375px would otherwise squeeze "Cet appareil" onto three lines of its own.
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.session__label {
+  font-size: var(--t-body);
+}
+
+.session__badge {
+  padding: 2px var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--c-accent-soft);
+  color: var(--c-accent-strong);
+  font-size: var(--t-xs);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+
+.session__facts {
+  gap: var(--s-2);
+}
+
+.session__agent summary {
+  // The default marker alignment puts the triangle on the text baseline; this keeps the
+  // whole row a comfortable target without turning it into a button.
+  min-height: var(--s-6);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.session__ua {
+  // A User-Agent string is one unbroken token long enough to widen the page on a phone.
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+}

@@ -123,6 +123,9 @@ public abstract class AbstractIntegrationTest {
         payload.put("locale", "fr-FR");
         if (role == UserRole.PROFESSIONNEL) {
             payload.put("companyName", "Garage du Test");
+            // 14 digits, the French SIRET shape. The API stores it as free text; this is
+            // only here so the fixture looks like something a real dealer would send.
+            payload.put("registrationNumber", "81234567800012");
         }
         return payload;
     }

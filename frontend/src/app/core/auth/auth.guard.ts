@@ -4,7 +4,7 @@ import { Observable, catchError, map, of } from 'rxjs';
 
 import { ProfileService, UserRole } from '../api';
 import { FORBIDDEN_ROUTE, RETURN_URL_PARAM, SIGN_IN_ROUTE } from './auth.routes';
-import { AuthService } from './auth.service';
+import { AuthService, userSummaryOf } from './auth.service';
 
 /**
  * Requires a session. Sends an anonymous visitor to sign in, remembering where they were.
@@ -65,16 +65,7 @@ export function roleGuard(...roles: readonly UserRole[]): CanActivateFn {
     // after a page reload. Resolve it before deciding rather than guessing.
     return profile.getOwnProfile().pipe(
       map((me) => {
-        auth.setUser({
-          id: me.id,
-          email: me.email,
-          role: me.role,
-          status: me.status,
-          displayName: me.displayName,
-          emailVerified: me.emailVerified,
-          countryCode: me.countryCode,
-          locale: me.locale,
-        });
+        auth.setUser(userSummaryOf(me));
         return decide(auth.hasAnyRole(...roles), router);
       }),
       catchError(() => {

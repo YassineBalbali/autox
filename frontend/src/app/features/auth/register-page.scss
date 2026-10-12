@@ -1,0 +1,62 @@
+// The account-type choice. The only control on these screens with styling of its own,
+// because it is the only one that is not a labelled text input.
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice__option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  // The whole card is the target, not just the dot. At 375px a 12px radio is a miss
+  // waiting to happen, and the label is already associated with the input.
+  min-height: var(--tap);
+  padding: var(--s-3);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-md);
+  cursor: pointer;
+
+  // :has on the parent rather than a bound class, so the selected state is driven by the
+  // radio's own checked state. One source of truth, and no change detection involved.
+  &:has(input:checked) {
+    border-color: var(--c-accent);
+    background: var(--c-accent-soft);
+  }
+
+  // The ring belongs on the card, not on the 12px dot inside it, so a keyboard user can
+  // see which option is focused.
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 2px;
+  }
+}
+
+.choice__option input {
+  // Kept in the layout and visible: a radio drawn by the browser is a radio the user
+  // recognises, and hiding it would mean reimplementing the dot and its states.
+  margin-top: 0.3rem;
+  flex: 0 0 auto;
+  accent-color: var(--c-accent);
+}
+
+.choice__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.choice__title {
+  font-weight: var(--fw-medium);
+}
+
+.choice__note {
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+  line-height: var(--lh-tight);
+}

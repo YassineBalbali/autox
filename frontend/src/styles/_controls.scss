@@ -1,0 +1,194 @@
+// Form and action vocabulary.
+//
+// Global rather than per-component, which is a deliberate exception to "components bring
+// their own styles". An input, a button and a card look the same on every screen or the
+// product looks unfinished, and six auth forms each carrying their own copy of the same
+// 40 lines is how that divergence starts. Everything here references tokens only.
+//
+// Mobile-first throughout: these are the 375px styles, and nothing below needs a media
+// query to be usable at that width.
+
+@use 'tokens' as t;
+
+// ---- the page card --------------------------------------------------------
+//
+// Auth screens are a single column of fields on a white panel. On a phone the panel is
+// the page; from the small breakpoint up it becomes a centred card with a visible edge.
+
+.panel {
+  background: var(--c-surface);
+  padding: var(--s-5) var(--s-4);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+
+  @media (min-width: t.$bp-sm) {
+    padding: var(--s-6);
+  }
+}
+
+// The reading measure for a form. Wider than this and the eye loses the label-to-field
+// relationship; narrower and the touch targets crowd.
+.form-column {
+  width: 100%;
+  max-width: 26rem;
+  margin-inline: auto;
+}
+
+// ---- fields ---------------------------------------------------------------
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.field__label {
+  font-size: var(--t-sm);
+  font-weight: var(--fw-medium);
+  color: var(--c-ink-soft);
+}
+
+// "optionnel" next to a label. Marking the optional fields rather than the required ones:
+// on these forms most fields are required, so asterisks everywhere carry no information.
+.field__optional {
+  font-weight: var(--fw-regular);
+  color: var(--c-ink-faint);
+}
+
+.input {
+  width: 100%;
+  // 44px of target, and the 16px font-size from _base.scss that stops iOS zooming.
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-3);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-md);
+
+  &::placeholder {
+    color: var(--c-ink-faint);
+  }
+
+  &:disabled {
+    background: var(--c-surface-sunk);
+    color: var(--c-ink-faint);
+  }
+
+  // The invalid state is carried by aria-invalid rather than by a class, so the visual
+  // and the accessible state cannot drift apart — there is only one source for both.
+  &[aria-invalid='true'] {
+    border-color: var(--c-danger);
+  }
+}
+
+textarea.input {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.field__hint {
+  font-size: var(--t-sm);
+  color: var(--c-ink-faint);
+}
+
+.field__error {
+  font-size: var(--t-sm);
+  font-weight: var(--fw-medium);
+  color: var(--c-danger);
+}
+
+// ---- buttons --------------------------------------------------------------
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-5);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: none;
+  font-weight: var(--fw-medium);
+  text-align: center;
+  text-decoration: none;
+
+  &:disabled {
+    // Not opacity: a translucent label over a coloured fill fails contrast. An explicit
+    // pair of colours stays readable, which matters because a disabled submit button is
+    // the state a user stares at while a request is in flight.
+    background: var(--c-line);
+    border-color: var(--c-line);
+    color: var(--c-ink-faint);
+    cursor: not-allowed;
+  }
+}
+
+.btn--primary {
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+
+  &:hover:not(:disabled) {
+    background: var(--c-accent-strong);
+  }
+}
+
+.btn--quiet {
+  border-color: var(--c-line-strong);
+  color: var(--c-ink);
+
+  &:hover:not(:disabled) {
+    background: var(--c-surface-sunk);
+  }
+}
+
+.btn--danger {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+
+  &:hover:not(:disabled) {
+    background: var(--c-danger-soft);
+  }
+}
+
+// Full width on a phone, where a button sharing a row with nothing should fill the thumb
+// zone; natural width from the small breakpoint up.
+.btn--block {
+  width: 100%;
+
+  @media (min-width: t.$bp-sm) {
+    width: auto;
+  }
+}
+
+// ---- small pieces ---------------------------------------------------------
+
+.page-title {
+  margin-bottom: var(--s-2);
+}
+
+.lede {
+  color: var(--c-ink-soft);
+}
+
+.meta {
+  font-size: var(--t-sm);
+  color: var(--c-ink-faint);
+}
+
+// A definition list used as a read-only field list: label above value, which is the only
+// layout that survives 375px with a long email address in it.
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.readout__term {
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+}
+
+.readout__value {
+  margin: 0;
+}

@@ -1,11 +1,26 @@
-<!-- The application shell. Deliberately almost empty: this task built the API layer and
-     the plumbing, and a header with navigation is a screen decision that belongs with the
-     screens.
-
-     The skip link is here from the start because it is the one piece of markup that is
-     painful to add retrospectively — it has to be the first focusable element on the page,
-     which means it has to be in the shell and not in a feature. -->
+<!-- The skip link is first, because it has to be the first focusable element on the page.
+     That is why it lives in the shell and not in a feature. -->
 <a class="skip-link" href="#contenu" i18n="@@skipToContent">Aller au contenu</a>
+
+<!-- A header, now that there are screens to navigate between. Deliberately the minimum:
+     the wordmark, and one link whose destination depends on whether there is a session.
+     Search, the sell button and a real navigation belong with the screens that need them,
+     and a header that guessed at them before those screens existed would be rewritten. -->
+<header class="app-header">
+  <div class="page app-header__inner">
+    <a class="app-header__brand" routerLink="/" i18n="@@brandHome">AutoX</a>
+
+    @if (signedIn()) {
+      <a class="app-header__action" routerLink="/mon-compte" i18n="@@headerAccount">
+        Mon compte
+      </a>
+    } @else {
+      <a class="app-header__action" routerLink="/connexion" i18n="@@headerSignIn">
+        Se connecter
+      </a>
+    }
+  </div>
+</header>
 
 <main id="contenu" class="page" tabindex="-1">
   <router-outlet />

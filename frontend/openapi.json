@@ -635,7 +635,7 @@
           "Authentication"
         ],
         "summary": "Creates an account and signs it in, returning the same token pair as login — so a\n client never has to follow registration with a second call",
-        "description": "Creates an account and signs it in, returning the same token pair as login — so a\n client never has to follow registration with a second call.\n\n <p><code>role</code> chooses PARTICULIER or PROFESSIONNEL; a professional must also send\n <code>companyName</code>. ADMIN cannot be self-assigned.",
+        "description": "Creates an account and signs it in, returning the same token pair as login — so a\n client never has to follow registration with a second call.\n\n <p><code>role</code> chooses PARTICULIER or PROFESSIONNEL; a professional must also send\n <code>companyName</code> and <code>registrationNumber</code>. ADMIN cannot be self-assigned.",
         "operationId": "register",
         "requestBody": {
           "content": {
@@ -2448,6 +2448,11 @@
           "companyName": {
             "type": "string",
             "maxLength": 160,
+            "minLength": 0
+          },
+          "registrationNumber": {
+            "type": "string",
+            "maxLength": 40,
             "minLength": 0
           }
         },
