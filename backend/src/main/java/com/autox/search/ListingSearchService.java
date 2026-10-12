@@ -26,6 +26,9 @@ public class ListingSearchService {
     /** One more than the page, to learn whether another page exists without counting. */
     private static final int LOOKAHEAD = 1;
 
+    /** Past this, the count is reported as "more than". See {@code countUpTo}. */
+    static final int COUNT_CAP = 10_000;
+
     private final ListingSearchRepository searchRepository;
     private final ListingRepository listings;
     private final ListingImageRepository images;
@@ -68,6 +71,22 @@ public class ListingSearchService {
         }
 
         return CursorPage.of(toSummaries(page), nextCursor, sort, page.size());
+    }
+
+    /**
+     * The number of listings matching a search, exact up to {@link #COUNT_CAP}.
+     *
+     * <p>Its own call rather than a field on the page: it is asked once per filter change,
+     * not once per page, and a results list should not wait on it.
+     */
+    @Transactional(readOnly = true)
+    public ResultCount count(ListingSearchCriteria criteria) {
+        if (criteria.hasPartialBoundingBox()) {
+            throw ApiException.validationFailed(
+                    "A bounding box needs all four of latMin, latMax, lonMin and lonMax.");
+        }
+        int counted = searchRepository.countUpTo(criteria, COUNT_CAP);
+        return new ResultCount(Math.min(counted, COUNT_CAP), counted > COUNT_CAP);
     }
 
     @Transactional(readOnly = true)

@@ -385,7 +385,80 @@ class PublicSearchIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.condition").value("USED"));
     }
 
+    // --- count ------------------------------------------------------------
+
+    @Test
+    @DisplayName("the count is public and matches what search would return")
+    void countMatchesSearch() throws Exception {
+        JsonNode seller = register(uniqueEmail("count"), UserRole.PROFESSIONNEL);
+        publishedListing(seller, Map.of("title", "Diesel one", "fuelType", "DIESEL"));
+        publishedListing(seller, Map.of("title", "Diesel two", "fuelType", "DIESEL"));
+        publishedListing(seller, Map.of("title", "Petrol", "fuelType", "PETROL"));
+        // Not visible, so not counted: the count has to apply the same visibility rule as
+        // the list, or the figure above the results disagrees with the results.
+        createListing(seller, Map.of("title", "Draft diesel", "fuelType", "DIESEL"));
+
+        mockMvc.perform(get("/api/v1/listings/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.count").value(3))
+                .andExpect(jsonPath("$.capped").value(false));
+
+        mockMvc.perform(get("/api/v1/listings/count").param("fuelType", "DIESEL"))
+                .andExpect(jsonPath("$.count").value(2));
+
+        mockMvc.perform(get("/api/v1/listings/count").param("fuelType", "ELECTRIC"))
+                .andExpect(jsonPath("$.count").value(0))
+                .andExpect(jsonPath("$.capped").value(false));
+    }
+
+    @Test
+    @DisplayName("the count takes the same filters as search, including make and location")
+    void countHonoursJoinedFilters() throws Exception {
+        // Make and location read through joins the count query has to carry too. Dropping
+        // them from the count as an optimisation would silently count everything.
+        JsonNode seller = register(uniqueEmail("count-joins"), UserRole.PROFESSIONNEL);
+        publishedListing(seller, Map.of("title", "A", "makeText", "Peugeot", "city", "Lyon",
+                "postalCode", "69003"));
+        publishedListing(seller, Map.of("title", "B", "makeText", "Renault", "city", "Nantes",
+                "postalCode", "44000"));
+
+        mockMvc.perform(get("/api/v1/listings/count").param("make", "Peugeot"))
+                .andExpect(jsonPath("$.count").value(1));
+        mockMvc.perform(get("/api/v1/listings/count").param("location", "Nantes"))
+                .andExpect(jsonPath("$.count").value(1));
+    }
+
+    @Test
+    @DisplayName("counting stops at the cap and says so")
+    void countIsBounded() throws Exception {
+        // The property that makes the endpoint safe to expose: the scan is bounded by the
+        // cap, not by the table. Exercised on the repository with a cap of 2, since nobody
+        // wants a test that inserts ten thousand listings to reach the real one.
+        JsonNode seller = register(uniqueEmail("count-cap"), UserRole.PROFESSIONNEL);
+        for (int i = 0; i < 4; i++) {
+            publishedListing(seller, "Capped " + i);
+        }
+        ListingSearchCriteria all = objectMapper.readValue("{}", ListingSearchCriteria.class);
+
+        // One past the cap and no further: 4 rows match, 3 are counted.
+        assertThat(searchRepository.countUpTo(all, 2)).isEqualTo(3);
+        assertThat(searchRepository.countUpTo(all, 10)).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("an invalid filter is rejected by the count exactly as by search")
+    void countValidatesItsCriteria() throws Exception {
+        mockMvc.perform(get("/api/v1/listings/count").param("fuelType", "STEAM"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/listings/count").param("latMin", "45.0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
     // --- helpers ----------------------------------------------------------
+
+    @org.springframework.beans.factory.annotation.Autowired ListingSearchRepository searchRepository;
+
 
     @org.springframework.beans.factory.annotation.Autowired ListingTestFixtures fixtures;
 

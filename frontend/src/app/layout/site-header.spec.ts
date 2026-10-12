@@ -193,11 +193,15 @@ describe('SiteHeader', () => {
     });
   });
 
-  it('renders no primary navigation while neither destination exists', async () => {
-    // Not an omission: the entries are declared, and `availableNav` hides the ones with no
-    // route so the header cannot offer a link that silently lands on the account.
+  it('offers only the destinations that exist', async () => {
+    // "Vendre" is declared and has no screen yet, so `availableNav` leaves it out: the
+    // header must not offer a link that the wildcard would silently send somewhere else.
     await render(false);
-    expect(query('.header__nav')).toBeNull();
+
+    const links = Array.from(
+      (query('.header__nav') as HTMLElement).querySelectorAll('a'),
+    ).map((link) => [link.textContent?.trim(), link.getAttribute('href')]);
+    expect(links).toEqual([['Acheter', '/']]);
   });
 
   it('does not render an account menu for a role it has not loaded', async () => {

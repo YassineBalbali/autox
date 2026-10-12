@@ -1,0 +1,56 @@
+<article class="listing">
+  <!-- A fixed 4:3 box whether or not there is a photo, so every row is the same height and
+       nothing moves when an image arrives. -->
+  <div class="listing__photo">
+    @if (photo(); as image) {
+      <img
+        class="listing__img"
+        [src]="image.url"
+        [attr.width]="image.width"
+        [attr.height]="image.height"
+        [attr.loading]="eager() ? 'eager' : 'lazy'"
+        decoding="async"
+        [alt]="listing().title"
+        (error)="photoBroken.set(true)"
+      />
+    } @else {
+      <span class="listing__nophoto" i18n="@@listingNoPhoto">Pas de photo</span>
+    }
+  </div>
+
+  <div class="listing__main">
+    <div class="listing__head">
+      <h2 class="row__title listing__title">{{ listing().title }}</h2>
+      @if (isProfessional()) {
+        <span class="tag" i18n="@@listingPro">Pro</span>
+      }
+    </div>
+
+    <app-spec-line
+      [year]="listing().firstRegistrationYear"
+      [mileage]="listing().mileageKm"
+      [fuel]="fuelLabel()"
+      [gearbox]="gearboxLabel()"
+    />
+
+    <p class="listing__meta">
+      @if (place()) {
+        <span class="listing__place">{{ place() }}</span>
+      }
+      @if (published()) {
+        <span><ng-container i18n="@@listingPublished">Publiée le</ng-container> {{ published() }}</span>
+      }
+    </p>
+  </div>
+
+  <!-- The price: last in the row, right-aligned, and in the same place on every row. -->
+  <div class="listing__price">
+    @if (listing().priceAmount !== undefined) {
+      <app-price
+        [amountMinor]="listing().priceAmount!"
+        [currency]="listing().currencyCode ?? 'EUR'"
+        [minorUnit]="minorUnit()"
+      />
+    }
+  </div>
+</article>

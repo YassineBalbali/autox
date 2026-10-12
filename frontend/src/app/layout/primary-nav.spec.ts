@@ -36,17 +36,26 @@ describe('availableNav', () => {
     expect(availableNav(onlyWildcard, nav)).toEqual([]);
   });
 
-  it('is not fooled by the empty path either', () => {
-    const onlyIndex: Routes = [{ path: '', redirectTo: '/mon-compte', pathMatch: 'full' }];
+  it('does not count a redirect as a destination', () => {
+    // An index route that only redirects renders nothing of its own. Treating it as the
+    // home page would light up "Acheter" on an application with no search screen.
+    const home = [{ label: 'Acheter', path: '' }];
+    const onlyRedirect: Routes = [{ path: '', redirectTo: '/mon-compte', pathMatch: 'full' }];
 
-    expect(availableNav(onlyIndex, nav)).toEqual([]);
+    expect(availableNav(onlyRedirect, home)).toEqual([]);
   });
 
-  it('shows nothing today, because neither screen has been built', () => {
-    // A deliberate assertion rather than an oversight: it documents the current state and
-    // will fail the day the search screen lands, which is the moment somebody should look
-    // at the header again.
-    expect(availableNav(routes)).toEqual([]);
-    expect(PRIMARY_NAV.map((item) => item.path)).toEqual(['annonces', 'vendre']);
+  it('shows the home entry once the home page renders something', () => {
+    const home = [{ label: 'Acheter', path: '' }];
+    const withHome: Routes = [{ path: '', pathMatch: 'full', loadComponent: async () => class {} }];
+
+    expect(availableNav(withHome, home).map((item) => item.label)).toEqual(['Acheter']);
+  });
+
+  it('shows buying, which exists, and not selling, which does not yet', () => {
+    // The real route table. This will fail the day a selling screen is added, which is the
+    // moment somebody should look at the header again.
+    expect(availableNav(routes).map((item) => item.label)).toEqual(['Acheter']);
+    expect(PRIMARY_NAV.map((item) => item.path)).toEqual(['', 'vendre']);
   });
 });

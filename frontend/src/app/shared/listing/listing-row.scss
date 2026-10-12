@@ -1,0 +1,101 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+// Three columns from the small breakpoint up: photo, facts, price. Below it the price
+// drops under the facts, still right-aligned, rather than squeezing the title.
+.listing {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-2) var(--s-3);
+
+  @media (min-width: t.$bp-sm) {
+    // The photo is sized so the row is as tall as its three lines of text need and no
+    // taller: a bigger picture would only add empty space beside it, and rows per screen
+    // is the number this layout exists to maximise.
+    grid-template-columns: 9rem minmax(0, 1fr) auto;
+    gap: var(--s-3);
+    padding: var(--s-2) var(--s-3);
+  }
+}
+
+.listing__photo {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-surface-sunk);
+  border: var(--divider);
+  border-radius: var(--r-sm);
+}
+
+.listing__img {
+  width: 100%;
+  height: 100%;
+  // Sellers upload every ratio there is. Cover crops to the box, so a portrait photo
+  // does not leave the row with a stripe of grey on either side.
+  object-fit: cover;
+}
+
+.listing__nophoto {
+  font-size: var(--t-xs);
+  color: var(--c-ink-faint);
+}
+
+.listing__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+}
+
+.listing__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-2);
+}
+
+.listing__title {
+  // A seller's title can be 140 characters. Two lines, then cut: the row keeps its
+  // height and the list keeps its rhythm.
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.listing__meta {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: auto;
+  font-size: var(--t-xs);
+  color: var(--c-ink-faint);
+  line-height: var(--lh-snug);
+
+  span + span::before {
+    content: '·';
+    margin-inline: var(--s-1);
+  }
+}
+
+.listing__place {
+  color: var(--c-ink-soft);
+  font-weight: var(--fw-semibold);
+}
+
+.listing__price {
+  grid-column: 2;
+  text-align: right;
+
+  @media (min-width: t.$bp-sm) {
+    grid-column: auto;
+    // A minimum width, so a five-figure and a six-figure price start a column of the
+    // same width and the facts beside them do not shift from row to row.
+    min-width: 7.5rem;
+  }
+}

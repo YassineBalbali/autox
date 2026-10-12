@@ -5,13 +5,10 @@ import java.util.List;
 /**
  * A page of search results.
  *
- * <p>No total count, deliberately. Counting the matches for an arbitrary filter combination
- * means a second full scan of the result set on every page, which costs more than the page
- * itself and grows with the catalogue. Infinite scroll — which is what a phone does — needs
- * {@code nextCursor} and nothing else.
- *
- * <p>When a result count does become a product requirement, the answer is a cached approximate
- * count per filter combination, or Elasticsearch, not a {@code COUNT(*)} on the hot path.
+ * <p>No total count on the page, deliberately. Counting the matches for an arbitrary filter
+ * combination on every page would cost more than the page itself. The count is its own
+ * endpoint — {@code GET /api/v1/listings/count}, see {@link ResultCount} — asked once per
+ * filter change and bounded by a cap, so it is off the pagination path entirely.
  */
 public record CursorPage<T>(
         List<T> items,
