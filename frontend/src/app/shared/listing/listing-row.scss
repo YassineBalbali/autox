@@ -22,6 +22,37 @@
   }
 }
 
+// The row is the link's target. The article is the positioning context; the link's
+// ::after is stretched over all of it.
+.listing {
+  position: relative;
+}
+
+.listing__link {
+  color: inherit;
+  text-decoration: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  &:hover {
+    color: var(--c-accent);
+  }
+
+  // The ring goes round the row, since the row is what will be activated.
+  &:focus-visible {
+    outline: none;
+
+    &::after {
+      outline: 2px solid var(--c-focus);
+      outline-offset: -2px;
+    }
+  }
+}
+
 .listing__photo {
   aspect-ratio: 4 / 3;
   overflow: hidden;

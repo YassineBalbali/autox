@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, defer, map, of, shareReplay, tap } from 'rxjs';
 
-import { Country, Make, Model, ReferenceService } from '../api';
+import { Country, Feature, Make, Model, ReferenceService } from '../api';
 
 /**
  * Reference data — makes, models, enum values, countries — fetched once and shared.
@@ -23,6 +23,7 @@ export class ReferenceStore {
   private makes$: Observable<Make[]> | null = null;
   private enums$: Observable<Record<string, string[]>> | null = null;
   private countries$: Observable<Country[]> | null = null;
+  private features$: Observable<Feature[]> | null = null;
   private readonly models$ = new Map<string, Observable<Model[]>>();
 
   /** Active makes, popular ones first — the order the API returns them in. */
@@ -51,6 +52,14 @@ export class ReferenceStore {
     return (this.enums$ ??= this.once(
       () => this.api.enums().pipe(map((response) => response.values ?? {})),
       () => (this.enums$ = null),
+    ));
+  }
+
+  /** Every equipment item: its code, its category, and its label per locale. */
+  features(): Observable<Feature[]> {
+    return (this.features$ ??= this.once(
+      () => this.api.features(),
+      () => (this.features$ = null),
     ));
   }
 

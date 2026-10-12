@@ -20,7 +20,13 @@
 
   <div class="listing__main">
     <div class="listing__head">
-      <h2 class="row__title listing__title">{{ listing().title }}</h2>
+      <h2 class="row__title listing__title">
+        @if (link(); as target) {
+          <a class="listing__link" [routerLink]="target">{{ listing().title }}</a>
+        } @else {
+          {{ listing().title }}
+        }
+      </h2>
       @if (isProfessional()) {
         <span class="tag" i18n="@@listingPro">Pro</span>
       }

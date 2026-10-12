@@ -18,7 +18,15 @@ export type ResultsStatus = 'loading' | 'ready' | 'error';
 /**
  * The results of one search: the rows loaded so far, whether there are more, and the count.
  *
- * <p>Provided by the search page, so it lives exactly as long as the page does.
+ * <p><b>Provided in the root, so it outlives the search page.</b> That is what makes
+ * "back to the results" work. Opening a listing destroys the search page; coming back
+ * creates a new one, and if the results lived in the page they would be gone — the list
+ * would reload from its first page, shorter than the one the visitor left, and the
+ * browser would have nothing to restore their scroll position against. Kept here, the
+ * rows they had loaded are rendered at once and the page is the height it was.
+ *
+ * <p>See {@link restore} for when that memory is used and, as importantly, when it is
+ * not.
  *
  * <h2>Two requests, deliberately separate</h2>
  *
@@ -35,7 +43,7 @@ export type ResultsStatus = 'loading' | 'ready' | 'error';
  * second — the slower response wins, and it is not necessarily the later one. The same
  * applies to "voir plus": a page of the old search must never be appended to the new.
  */
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class SearchResultsStore {
   private readonly api = inject(ListingsPublicService);
   private readonly errors = inject(ErrorMessageService);
@@ -62,6 +70,28 @@ export class SearchResultsStore {
   private current: { criteria: ListingSearchCriteria; sort: SearchSort } | null = null;
   private pageRequest: Subscription | null = null;
   private countRequest: Subscription | null = null;
+
+  /**
+   * Shows what is already held for this exact search, if anything is; searches if not.
+   *
+   * <p>For one situation only: the visitor coming <em>back</em> — the browser's back
+   * button, or a listing's "retour aux résultats". They expect the list as they left it,
+   * with the pages they had loaded and at the place they had scrolled to.
+   *
+   * <p>It is not a cache, and must not be used as one. Arriving at a search any other
+   * way — a link, the logo, a changed filter — calls {@link search}, which always asks
+   * the API. A marketplace list that shows yesterday's rows because the criteria
+   * happened to match is a list with sold cars in it.
+   *
+   * @return whether the held results were reused
+   */
+  restore(criteria: ListingSearchCriteria, sort: SearchSort): boolean {
+    if (this.state() === 'ready' && this.current && keyOf(this.current) === keyOf({ criteria, sort })) {
+      return true;
+    }
+    this.search(criteria, sort);
+    return false;
+  }
 
   /** Starts a search from the top, discarding whatever was shown. */
   search(criteria: ListingSearchCriteria, sort: SearchSort): void {
@@ -137,10 +167,30 @@ export class SearchResultsStore {
       });
   }
 
+  /**
+   * Abandons anything in flight. Called when the search page is destroyed: the store
+   * outlives the page, so a request the page started would otherwise complete into a
+   * screen nobody is looking at — and leave "voir plus" stuck in its loading state if
+   * the visitor returned before it did.
+   */
+  release(): void {
+    this.cancel();
+    if (this.state() === 'loading') {
+      // A first page that never arrived is not something to come back to.
+      this.current = null;
+    }
+    this.more.set(false);
+  }
+
   private cancel(): void {
     this.pageRequest?.unsubscribe();
     this.countRequest?.unsubscribe();
     this.pageRequest = null;
     this.countRequest = null;
   }
+}
+
+/** Two searches are the same search when their criteria and sort serialise identically. */
+function keyOf(search: { criteria: ListingSearchCriteria; sort: SearchSort }): string {
+  return JSON.stringify([search.sort, Object.entries(search.criteria).sort(([a], [b]) => a.localeCompare(b))]);
 }

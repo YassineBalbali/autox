@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { PublicListingSummary } from '../../core/api';
-import { coverOf, placeOf } from './listing-row';
+import { coverOf, listingLink, placeOf } from './listing-row';
 import { Price } from './price';
 import { SpecLine } from './spec-line';
 
@@ -20,7 +21,7 @@ import { SpecLine } from './spec-line';
  */
 @Component({
   selector: 'app-listing-card',
-  imports: [Price, SpecLine],
+  imports: [Price, SpecLine, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card">
@@ -50,7 +51,13 @@ import { SpecLine } from './spec-line';
           />
         }
 
-        <h2 class="card__title">{{ listing().title }}</h2>
+        <h2 class="card__title">
+          @if (link(); as target) {
+            <a class="card__link" [routerLink]="target">{{ listing().title }}</a>
+          } @else {
+            {{ listing().title }}
+          }
+        </h2>
 
         <app-spec-line
           [year]="listing().firstRegistrationYear"
@@ -81,6 +88,8 @@ import { SpecLine } from './spec-line';
     }
 
     .card {
+      // The positioning context for the title link's stretched hit area.
+      position: relative;
       display: flex;
       flex-direction: column;
       height: 100%;
@@ -133,6 +142,31 @@ import { SpecLine } from './spec-line';
       overflow: hidden;
     }
 
+    // The title is the link; its ::after covers the card, so the card is the target.
+    .card__link {
+      color: inherit;
+      text-decoration: none;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+      }
+
+      &:hover {
+        color: var(--c-accent);
+      }
+
+      &:focus-visible {
+        outline: none;
+
+        &::after {
+          outline: 2px solid var(--c-focus);
+          outline-offset: -2px;
+        }
+      }
+    }
+
     // Pinned to the foot of the card, whatever the title's length.
     .card__seller {
       display: flex;
@@ -172,4 +206,5 @@ export class ListingCard {
   protected readonly isProfessional = computed(
     () => this.listing().seller?.role === 'PROFESSIONNEL',
   );
+  protected readonly link = computed(() => listingLink(this.listing().id));
 }

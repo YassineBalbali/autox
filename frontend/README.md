@@ -68,6 +68,7 @@ src/app/
     ui/            Alert
   features/
     search/        The home page: filters, results, URL <-> query
+    listing/       One listing: gallery, specification, equipment, seller
     auth/          Sign in, register, forgot, reset
     account/       Layout + sidebar, profile, company, password, sessions
     errors/        Access refused
@@ -86,6 +87,7 @@ a mismatch loads the app and renders nothing.
 | Path | Guard |
 | --- | --- |
 | `/` — the search, and the home page | — |
+| `/annonces/:id` — one listing | — |
 | `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser-mot-de-passe` | — |
 | `/mon-compte`, `/mon-compte/mot-de-passe`, `/mon-compte/sessions` | `authGuard` |
 | `/mon-compte/entreprise` | `roleGuard(PROFESSIONNEL, ADMIN)` |
@@ -128,6 +130,29 @@ the list.
   search engine is the next step when it is not.
 - **A new search cancels the previous one's requests**, so a slow response cannot be shown
   under a newer filter.
+
+## The listing page
+
+Public, like the search. The API only returns a listing that is live, so the page has four
+states — loading, shown, gone, failed — and "exists but hidden" is not one of them.
+
+- **Gone is not failed.** A listing that was sold or withdrawn (404, or an id the API could
+  never have issued) gets its own screen with a way back to the search. A request that
+  failed gets a retry. Telling someone to retry a sold car is as wrong as telling them a
+  car is gone because their connection dropped.
+- **No VIN.** The public API deliberately does not send one, so there is no row for it.
+- **The description is text.** It is interpolated, never `innerHTML`: it is the one field
+  on the page a stranger wrote at length.
+- **Equipment labels come from the API** (`/reference/features`, per locale), unlike enum
+  labels — equipment is a catalogue that grows without a release.
+- **The contact button is `aria-disabled`, not `disabled`**, with the reason beside it:
+  messaging does not exist yet. It stays in the tab order so a screen reader reads both
+  the label and why it does nothing.
+- **Back to the results restores the list.** `SearchResultsStore` is root-provided so it
+  outlives the search page; returning by history (`popstate`) reuses the rows already
+  loaded, which is what lets the browser restore the scroll position. Any other arrival
+  at a search asks the API: it is a memory of the last list, not a cache.
+- **An unknown address gets a 404 page**, not a redirect to the home page.
 
 ## Conventions
 
@@ -189,6 +214,8 @@ borders and dividers instead of shadows, nearly square corners. The live referen
 | `app-spec-line` | `shared/listing` | année · km · carburant · boîte · puissance |
 | `app-listing-row` | `shared/listing` | A vehicle in a list: photo, facts, price |
 | `app-listing-card` | `shared/listing` | The same vehicle as a card, for the grid view |
+| `app-photo-gallery` | `shared/listing` | Main image, thumbnails, arrow keys, enlarged view |
+| `app-not-found` | `shared/ui` | "This is not here" — a gone listing, an unknown address |
 | `app-filter-chip` | `shared/ui` | An on/off filter |
 | `app-alert` | `shared/ui` | Error, success, note |
 | `app-text-field` | `shared/forms` | A labelled input with its message |

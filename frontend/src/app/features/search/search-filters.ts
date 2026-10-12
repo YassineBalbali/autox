@@ -11,7 +11,7 @@ import {
   FUEL_LABELS,
   GEARBOX_LABELS,
   labelOf,
-} from './labels.fr';
+} from '../../shared/listing/labels.fr';
 import { SearchQuery, activeFilterCount } from './search-query';
 
 /** One multi-choice filter: its key in the query, its heading, its options. */

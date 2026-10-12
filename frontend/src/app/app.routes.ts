@@ -31,6 +31,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/search/search-page').then((m) => m.SearchPage),
   },
 
+  {
+    // One listing. Public, like the search. The id reaches the component as an input
+    // through `withComponentInputBinding()`. No static title: the page sets its own
+    // once it knows which car it is.
+    path: 'annonces/:id',
+    loadComponent: () => import('./features/listing/listing-page').then((m) => m.ListingPage),
+  },
+
   // ---- public -------------------------------------------------------------
 
   {
@@ -122,12 +130,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/errors/forbidden-page').then((m) => m.ForbiddenPage),
   },
 
-  // A wildcard rather than nothing: an unknown path with no route renders an empty shell,
-  // which looks like a broken application rather than a wrong address. Sent home, which is
-  // public — the account would bounce an anonymous visitor on to the sign-in page for
-  // having mistyped a URL.
+  // An address that matches nothing gets a page that says so. Not a redirect to the home
+  // page, which was the previous behaviour: that showed the visitor something other than
+  // what they asked for with nothing explaining why, and made a mistyped link look as
+  // though it worked.
   {
     path: '**',
-    redirectTo: '/',
+    title: 'Page introuvable · AutoX',
+    loadComponent: () => import('./features/errors/not-found-page').then((m) => m.NotFoundPage),
   },
 ];

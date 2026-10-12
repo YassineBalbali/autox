@@ -4,7 +4,7 @@ import { catchError, map, of, switchMap } from 'rxjs';
 
 import { ReferenceStore } from '../../core/reference/reference.store';
 import { formatIntegerFr } from '../../shared/format/number';
-import { BODY_LABELS, CONDITION_LABELS, FUEL_LABELS, GEARBOX_LABELS, labelOf } from './labels.fr';
+import { BODY_LABELS, CONDITION_LABELS, FUEL_LABELS, GEARBOX_LABELS, labelOf } from '../../shared/listing/labels.fr';
 import { SearchQuery } from './search-query';
 
 /** One filter currently applied, in words, with what removing it means. */

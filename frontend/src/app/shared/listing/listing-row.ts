@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { ImageVariantView, PublicListingSummary } from '../../core/api';
 import { formatDateFr } from '../format/date';
@@ -21,13 +22,14 @@ const FALLBACK_VARIANT = 'THUMBNAIL';
  * numbers and dates; it does not own a vocabulary, so it can be reused by a screen with
  * different words — a dealer's stock list, a saved search — without change.
  *
- * <p>Not a link, yet: there is no listing page to go to, and a row that looks clickable
- * and leads nowhere is worse than one that is honestly static. When that page exists the
- * title becomes its link and nothing else here changes.
+ * <p>The title is the link to the listing, and the whole row is its target: the link's
+ * hit area is stretched over the row in CSS. One link per row, not a link wrapped round
+ * everything — a screen reader then announces "Peugeot 308, lien" rather than reading
+ * the price, the mileage and the town out as one enormous link name.
  */
 @Component({
   selector: 'app-listing-row',
-  imports: [Price, SpecLine],
+  imports: [Price, SpecLine, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-row.html',
   styleUrl: './listing-row.scss',
@@ -61,6 +63,13 @@ export class ListingRow {
   protected readonly place = computed(() => placeOf(this.listing()));
 
   protected readonly published = computed(() => formatDateFr(this.listing().publishedAt));
+
+  protected readonly link = computed(() => listingLink(this.listing().id));
+}
+
+/** The route to a listing's page, or `null` for a listing with no id to link to. */
+export function listingLink(id: string | undefined): string[] | null {
+  return id ? ['/annonces', id] : null;
 }
 
 /**
