@@ -1,0 +1,169 @@
+<div class="form-column stack">
+  <header>
+    <h1 class="page-title" i18n="@@registerTitle">Créer un compte</h1>
+    <p class="lede" i18n="@@registerLede">
+      Vendez votre véhicule ou suivez vos annonces depuis votre compte.
+    </p>
+  </header>
+
+  <div class="panel">
+    <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (state.message()) {
+        <app-alert kind="error">{{ state.message() }}</app-alert>
+      }
+
+      <!-- A radiogroup rather than a select: there are two options, each needs a line of
+           explanation, and a native select shows neither. Real radio inputs, visually
+           hidden under the label, so keyboard and screen reader behaviour is the browser's
+           and not a reimplementation of it. -->
+      <fieldset class="choice">
+        <legend class="field__label" i18n="@@registerAccountType">Type de compte</legend>
+
+        <label class="choice__option">
+          <input type="radio" formControlName="role" [value]="roles.PARTICULIER" />
+          <span class="choice__body">
+            <span class="choice__title" i18n="@@registerParticulier">Particulier</span>
+            <span class="choice__note" i18n="@@registerParticulierNote">
+              Je vends mon véhicule personnel.
+            </span>
+          </span>
+        </label>
+
+        <label class="choice__option">
+          <input type="radio" formControlName="role" [value]="roles.PROFESSIONNEL" />
+          <span class="choice__body">
+            <span class="choice__title" i18n="@@registerProfessionnel">Professionnel</span>
+            <span class="choice__note" i18n="@@registerProfessionnelNote">
+              Je suis garage, concessionnaire ou mandataire.
+            </span>
+          </span>
+        </label>
+      </fieldset>
+
+      @if (isProfessional()) {
+        <!-- Rendered only for a dealer, so a private seller never sees two fields that do
+             not apply to them. The validators are added and removed in step with this. -->
+        <app-text-field
+          label="Raison sociale"
+          i18n-label="@@fieldCompanyName"
+          autocomplete="organization"
+          [maxLength]="maxLengths.companyName"
+          [control]="form.controls.companyName"
+          [rejectedByServer]="state.rejected('companyName')"
+        />
+
+        <app-text-field
+          label="Numéro SIRET"
+          i18n-label="@@fieldRegistrationNumber"
+          inputMode="numeric"
+          hint="14 chiffres, tel qu’il figure sur votre avis de situation."
+          i18n-hint="@@fieldRegistrationNumberHint"
+          [maxLength]="maxLengths.registrationNumber"
+          [control]="form.controls.registrationNumber"
+          [rejectedByServer]="state.rejected('registrationNumber')"
+        />
+      }
+
+      <app-text-field
+        label="Nom affiché"
+        i18n-label="@@fieldDisplayName"
+        autocomplete="nickname"
+        hint="Le nom que verront les acheteurs sur vos annonces."
+        i18n-hint="@@fieldDisplayNameHint"
+        [maxLength]="maxLengths.displayName"
+        [control]="form.controls.displayName"
+        [rejectedByServer]="state.rejected('displayName')"
+      />
+
+      <app-text-field
+        label="Adresse e-mail"
+        i18n-label="@@fieldEmail"
+        type="email"
+        autocomplete="email"
+        inputMode="email"
+        [maxLength]="maxLengths.email"
+        [control]="form.controls.email"
+        [rejectedByServer]="state.rejected('email')"
+      />
+
+      <app-text-field
+        label="Mot de passe"
+        i18n-label="@@fieldPassword"
+        type="password"
+        autocomplete="new-password"
+        hint="Au moins {{ passwordMinLength }} caractères. Une phrase est plus sûre et plus facile à retenir qu’un mot compliqué."
+        i18n-hint="@@fieldPasswordHint"
+        [control]="form.controls.password"
+        [rejectedByServer]="state.rejected('password')"
+      />
+
+      <app-text-field
+        label="Confirmer le mot de passe"
+        i18n-label="@@fieldPasswordConfirmation"
+        type="password"
+        autocomplete="new-password"
+        [control]="form.controls.passwordConfirmation"
+      />
+
+      <app-text-field
+        label="Prénom"
+        i18n-label="@@fieldFirstName"
+        autocomplete="given-name"
+        [optional]="true"
+        [maxLength]="maxLengths.firstName"
+        [control]="form.controls.firstName"
+        [rejectedByServer]="state.rejected('firstName')"
+      />
+
+      <app-text-field
+        label="Nom"
+        i18n-label="@@fieldLastName"
+        autocomplete="family-name"
+        [optional]="true"
+        [maxLength]="maxLengths.lastName"
+        [control]="form.controls.lastName"
+        [rejectedByServer]="state.rejected('lastName')"
+      />
+
+      <app-text-field
+        label="Téléphone"
+        i18n-label="@@fieldPhone"
+        type="tel"
+        autocomplete="tel"
+        inputMode="tel"
+        hint="Format international, par exemple +33612345678."
+        i18n-hint="@@fieldPhoneHint"
+        [optional]="true"
+        [control]="form.controls.phone"
+        [rejectedByServer]="state.rejected('phone')"
+      />
+
+      <!-- Longhand rather than through app-text-field: a select is a different control with
+           different ARIA, and one more branch inside that component to serve one field here
+           would be worse than these twelve lines. -->
+      <div class="field">
+        <label class="field__label" for="pays" i18n="@@fieldCountry">Pays</label>
+        <select class="input" id="pays" formControlName="countryCode">
+          @for (country of countryOptions(); track country.code) {
+            <option [value]="country.code">{{ country.name ?? country.code }}</option>
+          }
+        </select>
+        <p class="field__hint" i18n="@@fieldCountryHint">
+          Détermine la devise et l’unité de distance de vos annonces.
+        </p>
+      </div>
+
+      <button class="btn btn--primary btn--block" type="submit" [disabled]="state.pending()">
+        @if (state.pending()) {
+          <ng-container i18n="@@registerSubmitting">Création du compte…</ng-container>
+        } @else {
+          <ng-container i18n="@@registerSubmit">Créer mon compte</ng-container>
+        }
+      </button>
+    </form>
+  </div>
+
+  <p class="meta" i18n="@@registerHaveAccount">
+    Vous avez déjà un compte ? <a routerLink="/connexion">Se connecter</a>
+  </p>
+</div>

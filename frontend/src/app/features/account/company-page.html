@@ -1,0 +1,137 @@
+<div class="form-column stack">
+  <header>
+    <p class="meta">
+      <a routerLink="/mon-compte" i18n="@@backToAccount">← Mon compte</a>
+    </p>
+    <h1 class="page-title" i18n="@@companyTitle">Informations de l’entreprise</h1>
+    <p class="lede" i18n="@@companyLede">
+      Ces informations apparaissent sur vos annonces et permettent aux acheteurs de vous
+      identifier.
+    </p>
+  </header>
+
+  @if (loadFailure()) {
+    <div class="panel stack">
+      <app-alert kind="error">{{ loadFailure() }}</app-alert>
+      <button class="btn btn--quiet btn--block" type="button" (click)="load()" i18n="@@retry">
+        Réessayer
+      </button>
+    </div>
+  } @else if (loaded()) {
+    <div class="panel">
+      <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @if (state.message()) {
+          <app-alert kind="error">{{ state.message() }}</app-alert>
+        }
+        @if (saved()) {
+          <app-alert kind="success" i18n="@@companySaved">
+            Les informations de l’entreprise ont été enregistrées.
+          </app-alert>
+        }
+
+        <app-text-field
+          label="Raison sociale"
+          i18n-label="@@fieldCompanyName"
+          autocomplete="organization"
+          [maxLength]="maxLengths.companyName"
+          [control]="form.controls.companyName"
+          [rejectedByServer]="state.rejected('professional.companyName')"
+        />
+
+        <app-text-field
+          label="Numéro SIRET"
+          i18n-label="@@fieldRegistrationNumber"
+          inputMode="numeric"
+          [maxLength]="maxLengths.registrationNumber"
+          [control]="form.controls.registrationNumber"
+          [rejectedByServer]="state.rejected('professional.registrationNumber')"
+        />
+
+        <app-text-field
+          label="Forme juridique"
+          i18n-label="@@fieldLegalForm"
+          hint="Par exemple SARL, SAS, EURL."
+          i18n-hint="@@fieldLegalFormHint"
+          [optional]="true"
+          [maxLength]="maxLengths.legalForm"
+          [control]="form.controls.legalForm"
+          [rejectedByServer]="state.rejected('professional.legalForm')"
+        />
+
+        <app-text-field
+          label="Numéro de TVA"
+          i18n-label="@@fieldVatNumber"
+          [optional]="true"
+          [maxLength]="maxLengths.vatNumber"
+          [control]="form.controls.vatNumber"
+          [rejectedByServer]="state.rejected('professional.vatNumber')"
+        />
+
+        <app-text-field
+          label="Site web"
+          i18n-label="@@fieldWebsiteUrl"
+          type="url"
+          inputMode="url"
+          autocomplete="url"
+          [optional]="true"
+          [maxLength]="maxLengths.websiteUrl"
+          [control]="form.controls.websiteUrl"
+          [rejectedByServer]="state.rejected('professional.websiteUrl')"
+        />
+
+        <app-text-field
+          label="Adresse"
+          i18n-label="@@fieldAddressLine1"
+          autocomplete="address-line1"
+          [optional]="true"
+          [maxLength]="maxLengths.addressLine"
+          [control]="form.controls.addressLine1"
+          [rejectedByServer]="state.rejected('professional.addressLine1')"
+        />
+
+        <app-text-field
+          label="Complément d’adresse"
+          i18n-label="@@fieldAddressLine2"
+          autocomplete="address-line2"
+          [optional]="true"
+          [maxLength]="maxLengths.addressLine"
+          [control]="form.controls.addressLine2"
+          [rejectedByServer]="state.rejected('professional.addressLine2')"
+        />
+
+        <app-text-field
+          label="Téléphone de contact"
+          i18n-label="@@fieldContactPhone"
+          type="tel"
+          inputMode="tel"
+          hint="Format international, par exemple +33123456789."
+          i18n-hint="@@fieldContactPhoneHint"
+          [optional]="true"
+          [control]="form.controls.contactPhone"
+          [rejectedByServer]="state.rejected('professional.contactPhone')"
+        />
+
+        <app-text-field
+          label="Présentation"
+          i18n-label="@@fieldDescription"
+          type="textarea"
+          [rows]="5"
+          [optional]="true"
+          [maxLength]="maxLengths.description"
+          [control]="form.controls.description"
+          [rejectedByServer]="state.rejected('professional.description')"
+        />
+
+        <button class="btn btn--primary btn--block" type="submit" [disabled]="state.pending()">
+          @if (state.pending()) {
+            <ng-container i18n="@@saving">Enregistrement…</ng-container>
+          } @else {
+            <ng-container i18n="@@save">Enregistrer</ng-container>
+          }
+        </button>
+      </form>
+    </div>
+  } @else {
+    <p class="panel meta" aria-busy="true" i18n="@@loading">Chargement…</p>
+  }
+</div>

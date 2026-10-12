@@ -1,17 +1,25 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink, RouterOutlet } from '@angular/router';
+
+import { AuthService } from './core/auth/auth.service';
 
 /**
- * The application shell.
+ * The application shell: the skip link, a minimal header, and the router outlet.
  *
- * <p>Holds the skip link and the router outlet, and nothing else. Header, navigation and
- * footer arrive with the screens that need them — a shell that guesses at its own chrome
- * before any screen exists is a shell that gets rewritten.
+ * <p>It reads `isAuthenticated` to choose between "Se connecter" and "Mon compte", which is
+ * the one piece of state the chrome needs. A signal, so this renders correctly under
+ * zoneless change detection when a sign-in or a sign-out changes it — there is no
+ * subscription here and nothing to tear down.
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App {}
+export class App {
+  private readonly auth = inject(AuthService);
+
+  protected readonly signedIn = this.auth.isAuthenticated;
+}

@@ -1,0 +1,131 @@
+<div class="form-column stack">
+  <header>
+    <h1 class="page-title" i18n="@@profileTitle">Mon compte</h1>
+  </header>
+
+  @if (loadFailure()) {
+    <div class="panel stack">
+      <app-alert kind="error">{{ loadFailure() }}</app-alert>
+      <!-- A retry rather than only a message: the common cause is a dropped connection, and
+           reloading the whole page to recover from it is a heavier ask than one button. -->
+      <button class="btn btn--quiet btn--block" type="button" (click)="load()" i18n="@@retry">
+        Réessayer
+      </button>
+    </div>
+  } @else if (profile(); as me) {
+    <div class="panel stack">
+      <h2 i18n="@@profileIdentity">Identité</h2>
+
+      <dl class="readout">
+        <div>
+          <dt class="readout__term" i18n="@@fieldEmail">Adresse e-mail</dt>
+          <dd class="readout__value">{{ me.email }}</dd>
+        </div>
+        <div>
+          <dt class="readout__term" i18n="@@profileAccountType">Type de compte</dt>
+          <dd class="readout__value">{{ accountTypeLabel() }}</dd>
+        </div>
+        @if (memberSince()) {
+          <div>
+            <dt class="readout__term" i18n="@@profileMemberSince">Compte créé le</dt>
+            <dd class="readout__value">{{ memberSince() }}</dd>
+          </div>
+        }
+      </dl>
+
+      <p class="meta" i18n="@@profileImmutableNote">
+        L’adresse e-mail et le type de compte ne se modifient pas ici : changer d’adresse
+        demande une nouvelle vérification. Écrivez-nous pour l’un ou l’autre.
+      </p>
+    </div>
+
+    <div class="panel">
+      <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <h2 i18n="@@profileDetails">Mes informations</h2>
+
+        @if (state.message()) {
+          <app-alert kind="error">{{ state.message() }}</app-alert>
+        }
+        @if (saved()) {
+          <app-alert kind="success" i18n="@@profileSaved">
+            Vos informations ont été enregistrées.
+          </app-alert>
+        }
+
+        <app-text-field
+          label="Nom affiché"
+          i18n-label="@@fieldDisplayName"
+          autocomplete="nickname"
+          hint="Le nom que verront les acheteurs sur vos annonces."
+          i18n-hint="@@fieldDisplayNameHint"
+          [maxLength]="maxLengths.displayName"
+          [control]="form.controls.displayName"
+          [rejectedByServer]="state.rejected('displayName')"
+        />
+
+        <app-text-field
+          label="Prénom"
+          i18n-label="@@fieldFirstName"
+          autocomplete="given-name"
+          [optional]="true"
+          [maxLength]="maxLengths.firstName"
+          [control]="form.controls.firstName"
+          [rejectedByServer]="state.rejected('firstName')"
+        />
+
+        <app-text-field
+          label="Nom"
+          i18n-label="@@fieldLastName"
+          autocomplete="family-name"
+          [optional]="true"
+          [maxLength]="maxLengths.lastName"
+          [control]="form.controls.lastName"
+          [rejectedByServer]="state.rejected('lastName')"
+        />
+
+        <app-text-field
+          label="Téléphone"
+          i18n-label="@@fieldPhone"
+          type="tel"
+          autocomplete="tel"
+          inputMode="tel"
+          hint="Format international, par exemple +33612345678. Laissez vide pour le retirer."
+          i18n-hint="@@fieldPhoneProfileHint"
+          [optional]="true"
+          [control]="form.controls.phone"
+          [rejectedByServer]="state.rejected('phone')"
+        />
+
+        <button class="btn btn--primary btn--block" type="submit" [disabled]="state.pending()">
+          @if (state.pending()) {
+            <ng-container i18n="@@saving">Enregistrement…</ng-container>
+          } @else {
+            <ng-container i18n="@@save">Enregistrer</ng-container>
+          }
+        </button>
+      </form>
+    </div>
+
+    <nav class="panel account-nav" [attr.aria-label]="'Gestion du compte'">
+      @if (isProfessional()) {
+        <a class="account-nav__link" routerLink="/mon-compte/entreprise" i18n="@@navCompany">
+          Informations de l’entreprise
+        </a>
+      }
+      <a class="account-nav__link" routerLink="/mon-compte/mot-de-passe" i18n="@@navPassword">
+        Changer mon mot de passe
+      </a>
+      <a class="account-nav__link" routerLink="/mon-compte/sessions" i18n="@@navSessions">
+        Appareils connectés
+      </a>
+    </nav>
+
+    <button class="btn btn--quiet btn--block" type="button" (click)="signOut()" i18n="@@signOut">
+      Se déconnecter
+    </button>
+  } @else {
+    <!-- aria-busy rather than a spinner: there is nothing to animate yet, and a screen
+         reader is told the region is loading rather than that it is empty. -->
+    <p class="panel meta" aria-busy="true" i18n="@@loading">Chargement…</p>
+  }
+</div>

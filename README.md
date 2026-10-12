@@ -98,6 +98,12 @@ is no generation step to remember either. The dev server calls the API at the UR
 `src/environments/environment.development.ts` — port **8081** by default, matching
 `AUTOX_PORT` in `.env.example`; keep the two in step.
 
+One more pair has to stay in step: `autox.mail.password-reset-url` is the link in the reset
+email, and its path must match the Angular route `/reinitialiser-mot-de-passe`. A mismatch
+produces a link that loads the application and renders nothing — no error, on either side.
+With `AUTOX_MAIL_PROVIDER=log` the link is written to the backend log, which is what makes
+the reset flow walkable locally.
+
 ### If it will not start
 
 The application refuses to start when configuration is missing, and says what is missing by
@@ -390,12 +396,21 @@ frontend/
   openapi.json                  the committed API contract — the client is generated from it
   scripts/fetch-openapi.mjs     refreshes it from a running backend
   src/environments/             apiBaseUrl, per build configuration
-  src/styles/                   design tokens and mobile-first base styles
+  src/styles/                   design tokens, base styles, shared form and button classes
   src/app/core/
     api/generated/              GENERATED, gitignored — never edited, never committed
     api/index.ts                the only import path the app uses for API types
     auth/                       token store, session state, 401 interceptor, role guards
     errors/                     API code + field -> French, exhaustive against the spec
+    ui/                         one-shot messages handed between screens
+  src/app/shared/
+    forms/                      validation rules + French text, field component, submit state
+    format/                     dates, through Intl rather than a pipe
+    ui/                         the alert banner
+  src/app/features/
+    auth/                       sign in, register, forgot password, reset password
+    account/                    profile, company details, change password, sessions
+    errors/                     access refused
 
 .github/workflows/backend.yml    CI: clean verify, on backend/** and openapi.json
 .github/workflows/frontend.yml   CI: install, lint, build, test, on frontend/**

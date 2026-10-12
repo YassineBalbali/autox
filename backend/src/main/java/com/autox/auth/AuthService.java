@@ -96,7 +96,8 @@ public class AuthService {
         }
 
         if (request.role() == UserRole.PROFESSIONNEL) {
-            proProfiles.save(ProProfile.forUser(user, request.companyName().trim()));
+            proProfiles.save(ProProfile.forUser(user,
+                    request.companyName().trim(), request.registrationNumber().trim()));
         }
 
         log.info("Registered user {} with role {}", user.getId(), user.getRole());

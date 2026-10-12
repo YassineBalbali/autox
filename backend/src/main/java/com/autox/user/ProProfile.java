@@ -84,11 +84,18 @@ public class ProProfile {
     protected ProProfile() {
     }
 
-    /** The dealer row that must accompany a PROFESSIONNEL account. */
-    public static ProProfile forUser(AppUser user, String companyName) {
+    /**
+     * The dealer row that must accompany a PROFESSIONNEL account.
+     *
+     * <p>Both arguments are mandatory at registration: a professional account with no
+     * company name or no registry identifier is a dealer nobody can verify, and backfilling
+     * one later means asking a seller for it after their listings are already public.
+     */
+    public static ProProfile forUser(AppUser user, String companyName, String registrationNumber) {
         ProProfile profile = new ProProfile();
         profile.user = user;
         profile.companyName = companyName;
+        profile.registrationNumber = registrationNumber;
         return profile;
     }
 

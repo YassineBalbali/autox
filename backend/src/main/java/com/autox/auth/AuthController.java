@@ -38,7 +38,7 @@ public class AuthController {
      * client never has to follow registration with a second call.
      *
      * <p>{@code role} chooses PARTICULIER or PROFESSIONNEL; a professional must also send
-     * {@code companyName}. ADMIN cannot be self-assigned.
+     * {@code companyName} and {@code registrationNumber}. ADMIN cannot be self-assigned.
      */
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request,
