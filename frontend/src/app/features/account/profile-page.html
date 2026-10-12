@@ -1,4 +1,4 @@
-<div class="form-column stack">
+<div class="stack">
   <header>
     <h1 class="page-title" i18n="@@profileTitle">Mon compte</h1>
   </header>
@@ -8,15 +8,16 @@
       <app-alert kind="error">{{ loadFailure() }}</app-alert>
       <!-- A retry rather than only a message: the common cause is a dropped connection, and
            reloading the whole page to recover from it is a heavier ask than one button. -->
-      <button class="btn btn--quiet btn--block" type="button" (click)="load()" i18n="@@retry">
+      <button class="btn btn--quiet" type="button" (click)="retry()" i18n="@@retry">
         Réessayer
       </button>
     </div>
   } @else if (profile(); as me) {
-    <div class="panel stack">
+    <!-- id: the sidebar's "Identité" entry anchors here. -->
+    <section class="panel stack" id="identite">
       <h2 i18n="@@profileIdentity">Identité</h2>
 
-      <dl class="readout">
+      <dl class="readout readout--grid">
         <div>
           <dt class="readout__term" i18n="@@fieldEmail">Adresse e-mail</dt>
           <dd class="readout__value">{{ me.email }}</dd>
@@ -37,9 +38,9 @@
         L’adresse e-mail et le type de compte ne se modifient pas ici : changer d’adresse
         demande une nouvelle vérification. Écrivez-nous pour l’un ou l’autre.
       </p>
-    </div>
+    </section>
 
-    <div class="panel">
+    <section class="panel" id="mes-informations">
       <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <h2 i18n="@@profileDetails">Mes informations</h2>
 
@@ -96,33 +97,27 @@
           [rejectedByServer]="state.rejected('phone')"
         />
 
-        <button class="btn btn--primary btn--block" type="submit" [disabled]="state.pending()">
-          @if (state.pending()) {
-            <ng-container i18n="@@saving">Enregistrement…</ng-container>
-          } @else {
-            <ng-container i18n="@@save">Enregistrer</ng-container>
-          }
-        </button>
+        <!-- Not full width any more: on desktop a submit button spanning the content
+             column reads as a page-level action rather than as this form's. -->
+        <div class="form-actions">
+          <button class="btn btn--primary" type="submit" [disabled]="state.pending()">
+            @if (state.pending()) {
+              <ng-container i18n="@@saving">Enregistrement…</ng-container>
+            } @else {
+              <ng-container i18n="@@save">Enregistrer</ng-container>
+            }
+          </button>
+        </div>
       </form>
+    </section>
+
+    <!-- The sidebar covers navigation now; signing out is the one account action that is
+         not a destination, and it stays at the foot of the account's own page. -->
+    <div class="form-actions">
+      <button class="btn btn--quiet" type="button" (click)="signOut()" i18n="@@signOut">
+        Se déconnecter
+      </button>
     </div>
-
-    <nav class="panel account-nav" [attr.aria-label]="'Gestion du compte'">
-      @if (isProfessional()) {
-        <a class="account-nav__link" routerLink="/mon-compte/entreprise" i18n="@@navCompany">
-          Informations de l’entreprise
-        </a>
-      }
-      <a class="account-nav__link" routerLink="/mon-compte/mot-de-passe" i18n="@@navPassword">
-        Changer mon mot de passe
-      </a>
-      <a class="account-nav__link" routerLink="/mon-compte/sessions" i18n="@@navSessions">
-        Appareils connectés
-      </a>
-    </nav>
-
-    <button class="btn btn--quiet btn--block" type="button" (click)="signOut()" i18n="@@signOut">
-      Se déconnecter
-    </button>
   } @else {
     <!-- aria-busy rather than a spinner: there is nothing to animate yet, and a screen
          reader is told the region is loading rather than that it is empty. -->

@@ -1,30 +1,6 @@
-// Styles shared by the account screens. One stylesheet referenced by four components
-// rather than four near-copies: the sessions list and the account menu are each used once
-// today, but the pattern — a stack of panels inside a form column — is every one of them.
-
-// ---- the account menu -----------------------------------------------------
-
-.account-nav {
-  display: flex;
-  flex-direction: column;
-  // Zero gap and dividers between, so the whole row is tappable right to the edge of the
-  // panel. A gap here would put dead space between two 44px targets.
-  gap: 0;
-  padding-block: 0;
-}
-
-.account-nav__link {
-  display: flex;
-  align-items: center;
-  min-height: var(--tap);
-  padding-block: var(--s-3);
-  text-decoration: none;
-  font-weight: var(--fw-medium);
-
-  & + & {
-    border-top: 1px solid var(--c-line);
-  }
-}
+// Styles shared by the account screens, which is now only the sessions list — the account
+// menu moved into the layout's sidebar when the section gained one, and the shared panel
+// and form classes live in styles/_controls.scss where every screen can reach them.
 
 // ---- the sessions list ----------------------------------------------------
 
@@ -41,6 +17,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
+  // Keeps a card readable beside the sidebar rather than letting four short facts spread
+  // across the full content column.
+  align-items: flex-start;
 }
 
 .session__head {
@@ -66,10 +45,6 @@
   white-space: nowrap;
 }
 
-.session__facts {
-  gap: var(--s-2);
-}
-
 .session__agent summary {
   // The default marker alignment puts the triangle on the text baseline; this keeps the
   // whole row a comfortable target without turning it into a button.
@@ -84,4 +59,20 @@
   overflow-wrap: anywhere;
   font-family: var(--font-mono);
   font-size: var(--t-xs);
+}
+
+.session__revoke {
+  // Natural width, at the foot of its own card. Full-width was the phone treatment; in a
+  // desktop column it made every card end in a red band.
+  align-self: flex-start;
+}
+
+.session__facts {
+  width: 100%;
+
+  @media (min-width: 768px) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: var(--s-3) var(--s-4);
+  }
 }

@@ -1,7 +1,12 @@
 # Frontend
 
-Angular 22, standalone components, zoneless, French only. Mobile-first: every screen is
-built for 375px and widens from there.
+Angular 22, standalone components, zoneless, French only.
+
+**Desktop is the primary target: screens are designed and reviewed at 1440px.** The
+breakpoints stay in place and a phone must not break — no horizontal page scroll, nothing
+unusable — but it is not polished yet; a proper mobile pass comes at the end of the
+project. The CSS is still written as min-width queries, so that pass adds to the base
+rules rather than fighting them.
 
 ## Running it
 
@@ -51,13 +56,14 @@ src/app/
     auth/          Session state, interceptor, guards, named routes, device label
     errors/        HTTP failure → French sentence
     ui/            Flash messages between screens
+  layout/          Site header, footer, primary navigation
   shared/          Reusable pieces with no feature knowledge
     forms/         Validation rules + text, the field component, submit state
     format/        Dates
     ui/            Alert
   features/
     auth/          Sign in, register, forgot, reset
-    account/       Profile, company, password, sessions
+    account/       Layout + sidebar, profile, company, password, sessions
     errors/        Access refused
 src/styles/        Tokens, base, controls
 ```
@@ -99,8 +105,17 @@ property will not re-render when it changes. `AbstractControl` is not signal-bac
 — see `TextField` for how its state is bridged, and why a `computed` over `control.touched`
 silently never updates.
 
-**Every screen is lazy**, and every screen works at 375px with a 16px gutter and 44px
-targets. Inputs stay at 16px or larger, or iOS zooms the viewport on focus.
+**One container, one input measure.** `.page` (`--w-page`, 1200px) wraps the header,
+`main` and the footer, so everything shares the same two vertical lines. Inputs are capped
+at `--w-field` wherever they sit — a field is never stretched across a desktop panel.
+Inputs also stay at 16px or larger, or iOS zooms the viewport on focus.
+
+**Every screen is lazy.** The account section is a routed layout (`AccountLayout`) with
+its screens as children: one sidebar, one `authGuard`, one load of the profile.
+
+**Checking for horizontal overflow:** compare against the width you asked for, not
+`window.innerWidth`. Under mobile emulation Chrome widens the layout viewport to fit
+overflowing content, so `scrollWidth - innerWidth` reads 0 on a page that is too wide.
 
 ## Tests
 

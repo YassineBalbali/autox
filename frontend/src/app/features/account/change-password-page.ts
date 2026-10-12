@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 
 import { ProfileService } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
@@ -34,7 +33,7 @@ import { Alert } from '../../shared/ui/alert';
  */
 @Component({
   selector: 'app-change-password-page',
-  imports: [ReactiveFormsModule, RouterLink, TextField, Alert],
+  imports: [ReactiveFormsModule, TextField, Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './change-password-page.html',
   styleUrl: './account.scss',

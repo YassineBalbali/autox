@@ -52,8 +52,8 @@
   --s-6: 2rem; // 32px
   --s-7: 3rem; // 48px
 
-  // The page gutter. 16px at 375px leaves 343px of content, which is the narrowest the
-  // layout is ever allowed to get.
+  // The page gutter. 16px is the phone value — 343px of content at 375px, the narrowest
+  // the layout is ever allowed to get. It widens on larger screens, below.
   --gutter: var(--s-4);
 
   // ---- type --------------------------------------------------------------
@@ -92,10 +92,40 @@
   // ---- layout ------------------------------------------------------------
   // Reading measure for text, and the widest the app ever gets.
   --w-prose: 36rem;
+
+  // The one container width, shared by the header, every page and the footer. 1200px
+  // inside a 1440px window leaves a margin either side rather than running edge to edge,
+  // which is what every marketplace this competes with does and what stops a row of
+  // filters turning into a horizon.
   --w-page: 75rem;
+
+  // The account section beside its sidebar. Wide enough for a panel of facts, not so wide
+  // that a list of them becomes a spreadsheet.
+  --w-content: 48rem;
+
+  // A form column with nothing beside it — the sign-in and registration screens.
+  --w-form: 28rem;
+
+  // <b>The widest an input is ever allowed to be.</b> A text field stretched across a
+  // desktop container is unreadable and unanswerable: the eye loses the line between the
+  // label and the value, and a 900px box invites a sentence where a surname belongs. The
+  // field keeps its measure even where the panel around it does not.
+  --w-field: 26rem;
 
   // Minimum touch target. 44px is Apple's figure and the one that matters on a phone.
   --tap: 44px;
+
+  // Height of the site header, so anything that needs to sit below it can say so.
+  --h-header: 64px;
+}
+
+// More room to breathe once there is room to breathe. Only the gutter changes: the scales
+// above are sized in rem and hold at every width.
+@media (min-width: 768px) {
+  :root {
+    --gutter: var(--s-5);
+    --h-header: 72px;
+  }
 }
 
 // Breakpoints cannot be CSS custom properties — @media cannot read them — so these are the

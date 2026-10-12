@@ -47,38 +47,47 @@ export const routes: Routes = [
       import('./features/auth/reset-password-page').then((m) => m.ResetPasswordPage),
   },
 
-  // ---- any signed-in account ---------------------------------------------
+  // ---- the account section -----------------------------------------------
+  //
+  // A routed layout with the screens as children. The sidebar is rendered once and stays
+  // put while the content changes, `authGuard` is declared once instead of four times,
+  // and the profile is loaded once for the whole section rather than per screen.
 
   {
     path: 'mon-compte',
     canActivate: [authGuard],
-    title: 'Mon compte · AutoX',
-    loadComponent: () => import('./features/account/profile-page').then((m) => m.ProfilePage),
-  },
-  {
-    path: 'mon-compte/mot-de-passe',
-    canActivate: [authGuard],
-    title: 'Changer mon mot de passe · AutoX',
     loadComponent: () =>
-      import('./features/account/change-password-page').then((m) => m.ChangePasswordPage),
-  },
-  {
-    path: 'mon-compte/sessions',
-    canActivate: [authGuard],
-    title: 'Appareils connectés · AutoX',
-    loadComponent: () => import('./features/account/sessions-page').then((m) => m.SessionsPage),
-  },
-
-  // ---- dealers only -------------------------------------------------------
-
-  {
-    // ADMIN is included because an administrator has to be able to see a dealer's own
-    // screens to support them, and excluding the role here would be a guard that says
-    // "no" to the one account that is allowed everything.
-    path: 'mon-compte/entreprise',
-    canActivate: [roleGuard(UserRole.PROFESSIONNEL, UserRole.ADMIN)],
-    title: 'Informations de l’entreprise · AutoX',
-    loadComponent: () => import('./features/account/company-page').then((m) => m.CompanyPage),
+      import('./features/account/account-layout').then((m) => m.AccountLayout),
+    children: [
+      {
+        path: '',
+        title: 'Mon compte · AutoX',
+        loadComponent: () =>
+          import('./features/account/profile-page').then((m) => m.ProfilePage),
+      },
+      {
+        path: 'mot-de-passe',
+        title: 'Changer mon mot de passe · AutoX',
+        loadComponent: () =>
+          import('./features/account/change-password-page').then((m) => m.ChangePasswordPage),
+      },
+      {
+        path: 'sessions',
+        title: 'Appareils connectés · AutoX',
+        loadComponent: () =>
+          import('./features/account/sessions-page').then((m) => m.SessionsPage),
+      },
+      {
+        // ADMIN is included because an administrator has to be able to see a dealer's own
+        // screens to support them, and excluding the role here would be a guard that says
+        // "no" to the one account that is allowed everything.
+        path: 'entreprise',
+        canActivate: [roleGuard(UserRole.PROFESSIONNEL, UserRole.ADMIN)],
+        title: 'Informations de l’entreprise · AutoX',
+        loadComponent: () =>
+          import('./features/account/company-page').then((m) => m.CompanyPage),
+      },
+    ],
   },
 
   // ---- outcomes -----------------------------------------------------------

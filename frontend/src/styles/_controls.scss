@@ -26,12 +26,23 @@
   }
 }
 
-// The reading measure for a form. Wider than this and the eye loses the label-to-field
-// relationship; narrower and the touch targets crowd.
+// A form with nothing beside it — sign in, register, the password screens. Centred in the
+// container, which is right when the column is the whole page and wrong inside the account
+// layout, where the content sits next to a sidebar and belongs against it.
 .form-column {
   width: 100%;
-  max-width: 26rem;
+  max-width: var(--w-form);
   margin-inline: auto;
+}
+
+// Where a form's own buttons go. Left-aligned and natural width: a submit button spanning
+// a 768px content column reads as a page-level action rather than as this form's, and a
+// full-width button is a phone convention that looks unfinished on a desktop panel.
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  padding-top: var(--s-1);
 }
 
 // ---- fields ---------------------------------------------------------------
@@ -57,6 +68,12 @@
 
 .input {
   width: 100%;
+
+  // <b>The measure cap.</b> A text field stretched across a desktop panel is both
+  // unreadable and unanswerable: the eye loses the line from the label to the value, and a
+  // 700px box invites a sentence where a surname belongs. Declared once here rather than
+  // per screen, so no form can forget it.
+  max-width: var(--w-field);
   // 44px of target, and the 16px font-size from _base.scss that stops iOS zooming.
   min-height: var(--tap);
   padding: var(--s-2) var(--s-3);
@@ -191,4 +208,14 @@ textarea.input {
 
 .readout__value {
   margin: 0;
+}
+
+// The same list, in columns once there is room. For a short run of label/value pairs —
+// three facts stacked down a 768px panel is a lot of vertical travel for very little.
+.readout--grid {
+  @media (min-width: 768px) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--s-4);
+  }
 }

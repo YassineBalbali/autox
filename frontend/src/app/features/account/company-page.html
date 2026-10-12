@@ -1,8 +1,5 @@
-<div class="form-column stack">
+<div class="stack">
   <header>
-    <p class="meta">
-      <a routerLink="/mon-compte" i18n="@@backToAccount">← Mon compte</a>
-    </p>
     <h1 class="page-title" i18n="@@companyTitle">Informations de l’entreprise</h1>
     <p class="lede" i18n="@@companyLede">
       Ces informations apparaissent sur vos annonces et permettent aux acheteurs de vous
@@ -13,11 +10,11 @@
   @if (loadFailure()) {
     <div class="panel stack">
       <app-alert kind="error">{{ loadFailure() }}</app-alert>
-      <button class="btn btn--quiet btn--block" type="button" (click)="load()" i18n="@@retry">
+      <button class="btn btn--quiet" type="button" (click)="retry()" i18n="@@retry">
         Réessayer
       </button>
     </div>
-  } @else if (loaded()) {
+  } @else if (profile()) {
     <div class="panel">
       <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         @if (state.message()) {
@@ -122,13 +119,15 @@
           [rejectedByServer]="state.rejected('professional.description')"
         />
 
-        <button class="btn btn--primary btn--block" type="submit" [disabled]="state.pending()">
-          @if (state.pending()) {
-            <ng-container i18n="@@saving">Enregistrement…</ng-container>
-          } @else {
-            <ng-container i18n="@@save">Enregistrer</ng-container>
-          }
-        </button>
+        <div class="form-actions">
+          <button class="btn btn--primary" type="submit" [disabled]="state.pending()">
+            @if (state.pending()) {
+              <ng-container i18n="@@saving">Enregistrement…</ng-container>
+            } @else {
+              <ng-container i18n="@@save">Enregistrer</ng-container>
+            }
+          </button>
+        </div>
       </form>
     </div>
   } @else {
