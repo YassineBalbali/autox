@@ -1,0 +1,131 @@
+<div class="uploader">
+  @if (problem()) {
+    <app-alert kind="error">{{ problem() }}</app-alert>
+  }
+
+  <!-- The drop zone. It wraps the button rather than replacing it: dropping is a shortcut,
+       and choosing files is the way that works with a keyboard and on a touch screen. -->
+  <div
+    class="dropzone"
+    [class.dropzone--over]="dragOver()"
+    [class.dropzone--full]="full()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="dragOver.set(false)"
+    (drop)="onDrop($event)"
+  >
+    @if (full()) {
+      <p class="dropzone__text" i18n="@@uploaderFull">
+        Cette annonce contient le maximum de {{ rules.maxPerListing }} photos. Supprimez-en une
+        pour en ajouter une autre.
+      </p>
+    } @else {
+      <p class="dropzone__text" i18n="@@uploaderDrop">Glissez vos photos ici, ou</p>
+      <label class="btn btn--quiet dropzone__choose">
+        <ng-container i18n="@@uploaderChoose">Choisir des photos</ng-container>
+        <input class="visually-hidden" type="file" multiple [accept]="accept" (change)="onChosen($event)" />
+      </label>
+      <p class="meta" i18n="@@uploaderRules">
+        JPEG ou PNG, 10 Mo au maximum par photo, jusqu’à {{ rules.maxPerListing }} photos. La
+        première est la photo principale de l’annonce.
+      </p>
+    }
+  </div>
+
+  @if (refused().length) {
+    <!-- Refused before sending anything, each with its own reason and its file's name. -->
+    <app-alert kind="error">
+      <ul class="uploader__refused">
+        @for (reason of refused(); track reason) {
+          <li>{{ reason }}</li>
+        }
+      </ul>
+    </app-alert>
+  }
+
+  @if (queue().length) {
+    <ul class="rows uploader__queue" aria-label="Envois en cours" i18n-aria-label="@@uploaderQueue">
+      @for (item of queue(); track item.key) {
+        <li class="row upload" [class.upload--failed]="item.state === 'failed'">
+          <div class="row__main">
+            <p class="upload__name">{{ item.name }}</p>
+            @switch (item.state) {
+              @case ('waiting') {
+                <p class="meta" i18n="@@uploadWaiting">En attente…</p>
+              }
+              @case ('sending') {
+                <!-- A real progress element: announced as a percentage, not as a bar. -->
+                <progress class="upload__bar" max="100" [value]="item.percent" [attr.aria-label]="'Envoi de ' + item.name">
+                  {{ item.percent }} %
+                </progress>
+                <p class="meta">
+                  <ng-container i18n="@@uploadSending">Envoi…</ng-container> {{ item.percent }} %
+                </p>
+              }
+              @case ('processing') {
+                <p class="meta" i18n="@@uploadProcessing">Vérification de l’image…</p>
+              }
+              @case ('failed') {
+                <p class="upload__error" role="alert">{{ item.error }}</p>
+              }
+            }
+          </div>
+          @if (item.state === 'failed') {
+            <div class="row__aside upload__actions">
+              <button class="btn btn--quiet btn--sm" type="button" (click)="retry(item)" i18n="@@retry">
+                Réessayer
+              </button>
+              <button class="btn btn--quiet btn--sm" type="button" (click)="dismiss(item)" i18n="@@uploadDismiss">
+                Retirer
+              </button>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (photos().length) {
+    <ul class="photos" aria-label="Photos de l’annonce" i18n-aria-label="@@uploaderPhotos">
+      @for (photo of photos(); track photo.id; let index = $index; let last = $last) {
+        <li
+          class="photo"
+          draggable="true"
+          (dragstart)="onPhotoDragStart(index, $event)"
+          (dragover)="$event.preventDefault()"
+          (drop)="onPhotoDrop(index, $event)"
+          (dragend)="onPhotoDragEnd()"
+        >
+          <div class="photo__frame">
+            @if (thumbnail(photo); as source) {
+              <img [src]="source" [alt]="'Photo ' + (index + 1)" draggable="false" />
+            }
+            @if (index === 0) {
+              <span class="tag tag--accent photo__main" i18n="@@photoMain">Photo principale</span>
+            }
+          </div>
+
+          <div class="photo__actions">
+            <button class="btn btn--quiet btn--sm" type="button" [disabled]="index === 0"
+              [attr.aria-label]="'Déplacer la photo ' + (index + 1) + ' vers la gauche'" (click)="move(index, index - 1)">←</button>
+            <button class="btn btn--quiet btn--sm" type="button" [disabled]="last"
+              [attr.aria-label]="'Déplacer la photo ' + (index + 1) + ' vers la droite'" (click)="move(index, index + 1)">→</button>
+            @if (index > 0) {
+              <button class="btn btn--quiet btn--sm" type="button"
+                [attr.aria-label]="'Définir la photo ' + (index + 1) + ' comme photo principale'" (click)="makeMain(index)" i18n="@@photoMakeMain">
+                Principale
+              </button>
+            }
+            <button class="btn btn--danger btn--sm photo__remove" type="button"
+              [attr.aria-label]="'Supprimer la photo ' + (index + 1)" (click)="remove(photo)" i18n="@@photoRemove">
+              Supprimer
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  } @else if (!queue().length) {
+    <p class="meta" i18n="@@uploaderEmpty">
+      Aucune photo pour l’instant. Il en faut au moins une pour mettre l’annonce en ligne.
+    </p>
+  }
+</div>

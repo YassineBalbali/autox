@@ -194,14 +194,17 @@ describe('SiteHeader', () => {
   });
 
   it('offers only the destinations that exist', async () => {
-    // "Vendre" is declared and has no screen yet, so `availableNav` leaves it out: the
-    // header must not offer a link that the wildcard would silently send somewhere else.
+    // Both entries have a route. "Vendre" is offered to a visitor too: the guard on it
+    // sends them to sign in and brings them back, which is the right first step.
     await render(false);
 
     const links = Array.from(
       (query('.header__nav') as HTMLElement).querySelectorAll('a'),
     ).map((link) => [link.textContent?.trim(), link.getAttribute('href')]);
-    expect(links).toEqual([['Acheter', '/']]);
+    expect(links).toEqual([
+      ['Acheter', '/'],
+      ['Vendre', '/vendre'],
+    ]);
   });
 
   it('does not render an account menu for a role it has not loaded', async () => {

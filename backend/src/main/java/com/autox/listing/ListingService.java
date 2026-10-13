@@ -10,6 +10,7 @@ import com.autox.catalog.VehicleModelRepository;
 import com.autox.catalog.VehicleTrim;
 import com.autox.catalog.VehicleTrimRepository;
 import com.autox.listing.dto.CreateListingRequest;
+import com.autox.listing.dto.ListingQuota;
 import com.autox.listing.dto.ListingResponse;
 import com.autox.listing.dto.ListingSummary;
 import com.autox.listing.dto.UpdateListingRequest;
@@ -122,6 +123,24 @@ public class ListingService {
                 ? listings.findBySeller(callerId, pageable)
                 : listings.findBySellerAndStatus(callerId, status, pageable);
         return page.map(ListingSummary::from);
+    }
+
+    /**
+     * The caller's active-listing count and cap, for display.
+     *
+     * <p>Read without the lock that publishing takes: this is information, not a
+     * decision, and it may be a moment out of date. The decision is
+     * {@link #requireQuotaAvailable}.
+     */
+    @Transactional(readOnly = true)
+    public ListingQuota quota(UUID callerId) {
+        AppUser seller = users.findActiveById(callerId).orElseThrow(() -> ApiException.notFound("User"));
+        int limit = effectiveLimit(seller);
+        long active = listings.countActiveBySeller(callerId);
+        // Zero or less means "no limit", as it does where the rule is enforced.
+        return limit <= 0
+                ? new ListingQuota(active, null, true)
+                : new ListingQuota(active, limit, active < limit);
     }
 
     // --- writes -----------------------------------------------------------

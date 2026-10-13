@@ -135,6 +135,39 @@ export function mirrorPassword(
 }
 
 /**
+ * A whole number within bounds, typed into a text field.
+ *
+ * <p>For years, mileages and prices. A text field with `inputmode="numeric"` rather than
+ * `type="number"`: the number input accepts "1e5", swallows a comma silently in some
+ * locales, and changes value when the wheel scrolls over it — on a price field, that is a
+ * listing published at the wrong price.
+ *
+ * <p>Empty is valid here; pair it with {@link requiredText} when the field is required, so
+ * that "missing" and "not a number" are two different messages.
+ */
+export function wholeNumber(min: number, max: number): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const raw = typeof control.value === 'string' ? control.value.trim() : '';
+    if (raw === '') {
+      return null;
+    }
+    // Spaces are allowed and ignored: people type "15 000".
+    const digits = raw.replace(/[\s\u00a0\u202f]/g, '');
+    if (!/^\d{1,10}$/.test(digits)) {
+      return { wholeNumber: true };
+    }
+    const value = Number(digits);
+    return value < min || value > max ? { range: { min, max } } : null;
+  };
+}
+
+/** The number a {@link wholeNumber} field holds, or `null` when it is empty or invalid. */
+export function parseWholeNumber(raw: string | null | undefined): number | null {
+  const digits = (raw ?? '').replace(/[\s\u00a0\u202f]/g, '');
+  return /^\d{1,10}$/.test(digits) ? Number(digits) : null;
+}
+
+/**
  * The French sentence for the first failure on a control.
  *
  * <p>The first and not all of them: a field showing three sentences at once is a field
@@ -173,6 +206,16 @@ const MESSAGES_FR: Record<string, (detail: unknown) => string> = {
   // with its own key rather than a second meaning for this one.
   pattern: () => 'Utilisez le format international, par exemple +33612345678.',
   passwordMismatch: () => 'Les deux mots de passe ne correspondent pas.',
+  wholeNumber: () => 'Saisissez un nombre entier, sans décimale.',
+  range: (detail) => {
+    const { min, max } = (detail ?? {}) as { min?: number; max?: number };
+    return `Saisissez une valeur entre ${GROUPED.format(min ?? 0)} et ${GROUPED.format(max ?? 0)}.`;
+  },
+};
+
+/** Bounds are shown grouped — "3 000 000", not "3000000" — with a space every font draws. */
+const GROUPED = {
+  format: (value: number) => new Intl.NumberFormat('fr-FR').format(value).replace(/\u202f/g, '\u00a0'),
 };
 
 function lengthOf(detail: unknown): number {

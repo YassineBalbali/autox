@@ -123,12 +123,29 @@ describe('routes', () => {
     expect(home.pathMatch).toBe('full');
   });
 
+  it('puts every selling screen behind a session', () => {
+    // Each of them reads or writes the caller's own listings. The API refuses without a
+    // token regardless; the guard is what turns that refusal into the sign-in screen.
+    for (const path of ['vendre', 'mes-annonces', 'mes-annonces/:id/modifier']) {
+      const route = routes.find((candidate) => candidate.path === path);
+      expect(route, path).toBeDefined();
+      expect(route!.canActivate, path).toEqual([authGuard]);
+    }
+  });
+
+  it('serves create and edit with one component', async () => {
+    // "Same form, loaded with existing values" — literally the same class.
+    const load = (path: string) => routes.find((candidate) => candidate.path === path)!.loadComponent!();
+    expect(await load('vendre')).toBe(await load('mes-annonces/:id/modifier'));
+  });
+
   it('titles every screen, since the tab is how a user finds it again', () => {
     // The layout itself carries no title — its children do, so the tab names the screen
     // rather than the section.
     // A listing titles itself once it knows which car it is; a static title here would
     // be "Annonce" on every tab.
-    const selfTitled = ['mon-compte', 'annonces/:id'];
+    // The editor does the same on its edit route: "Modifier « Peugeot 308 »".
+    const selfTitled = ['mon-compte', 'annonces/:id', 'mes-annonces/:id/modifier'];
     const screens = [
       ...routes.filter((route) => route.loadComponent && !selfTitled.includes(route.path ?? '')),
       ...(account.children ?? []),

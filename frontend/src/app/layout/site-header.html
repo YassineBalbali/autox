@@ -42,6 +42,15 @@
           <a
             class="account-menu__item"
             role="menuitem"
+            routerLink="/mes-annonces"
+            (click)="closeMenu()"
+            i18n="@@headerMyListings"
+          >
+            Mes annonces
+          </a>
+          <a
+            class="account-menu__item"
+            role="menuitem"
             routerLink="/mon-compte"
             (click)="closeMenu()"
             i18n="@@headerAccount"
