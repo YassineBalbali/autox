@@ -1,0 +1,133 @@
+:host {
+  display: block;
+}
+
+.uploader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+// A dashed border is the one convention everybody reads as "drop things here".
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-5) var(--s-4);
+  background: var(--c-surface-sunk);
+  border: 2px dashed var(--c-line-strong);
+  border-radius: var(--r-md);
+  text-align: center;
+}
+
+// While a file is held over it: the accent, which is the "this will act" colour.
+.dropzone--over {
+  background: var(--c-accent-soft);
+  border-color: var(--c-accent);
+}
+
+.dropzone--full {
+  border-style: solid;
+}
+
+.dropzone__text {
+  font-weight: var(--fw-semibold);
+}
+
+.dropzone__choose {
+  cursor: pointer;
+
+  // The real input is visually hidden inside the label; the ring goes on the label.
+  &:focus-within {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 1px;
+  }
+}
+
+.uploader__refused {
+  margin: 0;
+  padding-left: var(--s-4);
+}
+
+// ---- the queue ------------------------------------------------------------
+
+.upload__name {
+  font-weight: var(--fw-semibold);
+  overflow-wrap: anywhere;
+}
+
+.upload__bar {
+  width: 100%;
+  max-width: 24rem;
+  height: 6px;
+  accent-color: var(--c-accent);
+}
+
+.upload__error {
+  color: var(--c-danger);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.upload--failed {
+  background: var(--c-danger-soft);
+}
+
+.upload__actions {
+  display: flex;
+  gap: var(--s-1);
+}
+
+// ---- the photos -----------------------------------------------------------
+
+.photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
+  // The grab cursor is the only hint that these can be dragged; the buttons are the
+  // other way to do the same thing.
+  cursor: grab;
+  overflow: hidden;
+}
+
+.photo__frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--c-surface-sunk);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.photo__main {
+  position: absolute;
+  top: var(--s-1);
+  left: var(--s-1);
+}
+
+.photo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+  padding: var(--s-1) var(--s-2) var(--s-2);
+}
+
+.photo__remove {
+  margin-left: auto;
+}

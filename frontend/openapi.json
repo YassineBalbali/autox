@@ -1378,8 +1378,6 @@
         "tags": [
           "Listings (seller)"
         ],
-        "summary": "The seller's own view: full detail in any state, including drafts",
-        "description": "The seller's own view: full detail in any state, including drafts.\n\n <p>Under <code>/mine/</code> rather than at <code>/listings/{id</code>} because that path is now the\n public detail endpoint, and one path returning two different shapes depending on who is\n asking makes for a contract no typed client can rely on.",
         "operationId": "getOwn",
         "parameters": [
           {
@@ -1399,6 +1397,43 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ListingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/mine/quota": {
+      "get": {
+        "tags": [
+          "Listings (seller)"
+        ],
+        "summary": "How many listings the caller has online and how many they may have",
+        "description": "How many listings the caller has online and how many they may have.\n\n <p>A private seller is capped; a dealer is not, and <code>limit</code> is then\n <code>null</code>. Use it to explain the cap before the seller tries to publish — the cap\n itself is enforced by <code>POST /listings/{id</code>/publish}, which answers 409\n <code>ACTIVE_LISTING_LIMIT_REACHED</code> whatever this said a moment earlier.",
+        "operationId": "quota",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingQuota"
                 }
               }
             }
@@ -3559,6 +3594,19 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "allowedTransitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingStatus"
+            },
+            "uniqueItems": true
+          },
+          "renewable": {
+            "type": "boolean"
+          },
+          "editable": {
+            "type": "boolean"
           }
         }
       },
@@ -3590,6 +3638,26 @@
           },
           "hasNext": {
             "type": "boolean"
+          }
+        }
+      },
+      "ListingQuota": {
+        "type": "object",
+        "description": "How many listings the caller has online, against how many they may have.\n\n <p>The rule is enforced when a listing is published, whatever a client believes; this\n exists so that a client can say so <em>before</em> the seller has spent ten minutes on a\n listing they will not be allowed to put online.",
+        "properties": {
+          "active": {
+            "type": "integer",
+            "format": "int64",
+            "description": "listings currently online — the only ones that count"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "the most this account may have online, or <code>null</code> for no limit"
+          },
+          "canPublish": {
+            "type": "boolean",
+            "description": "whether one more could go online now. Advisory: publishing checks\n                   again, under a lock, and is the only answer that counts"
           }
         }
       },

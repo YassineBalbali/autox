@@ -110,6 +110,34 @@ export const routes: Routes = [
     ],
   },
 
+  // ---- selling ------------------------------------------------------------
+  //
+  // Create and edit are one component: the editor takes the listing's id from the route
+  // when there is one, and the step from `?etape=`. Saving the draft on the create route
+  // navigates to the edit route, so a reload continues with the draft.
+
+  {
+    path: 'vendre',
+    canActivate: [authGuard],
+    title: 'Déposer une annonce · AutoX',
+    loadComponent: () =>
+      import('./features/seller/listing-editor-page').then((m) => m.ListingEditorPage),
+  },
+  {
+    path: 'mes-annonces',
+    canActivate: [authGuard],
+    title: 'Mes annonces · AutoX',
+    loadComponent: () =>
+      import('./features/seller/my-listings-page').then((m) => m.MyListingsPage),
+  },
+  {
+    // No static title: the editor sets its own once it knows which listing it is.
+    path: 'mes-annonces/:id/modifier',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/seller/listing-editor-page').then((m) => m.ListingEditorPage),
+  },
+
   // ---- internal -----------------------------------------------------------
 
   {

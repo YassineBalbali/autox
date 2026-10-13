@@ -91,6 +91,9 @@ a mismatch loads the app and renders nothing.
 | `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser-mot-de-passe` | — |
 | `/mon-compte`, `/mon-compte/mot-de-passe`, `/mon-compte/sessions` | `authGuard` |
 | `/mon-compte/entreprise` | `roleGuard(PROFESSIONNEL, ADMIN)` |
+| `/vendre` — create a listing | `authGuard` |
+| `/mes-annonces` — the seller's listings (`?statut=`) | `authGuard` |
+| `/mes-annonces/:id/modifier` — edit a listing (`?etape=`) | `authGuard` |
 | `/acces-refuse` | — |
 
 A guard is a courtesy, never a boundary. Every one of these is enforced by the API, which
@@ -153,6 +156,38 @@ states — loading, shown, gone, failed — and "exists but hidden" is not one o
   loaded, which is what lets the browser restore the scroll position. Any other arrival
   at a search asks the API: it is a memory of the last list, not a cache.
 - **An unknown address gets a 404 page**, not a redirect to the home page.
+
+## The seller flow
+
+`features/seller/`. Create (`/vendre`) and edit (`/mes-annonces/:id/modifier`) are one
+component; the step is in `?etape=vehicule|offre|photos|apercu`.
+
+- **The steps are vehicle, offer, photos, preview — photos third, not second.** A photo is
+  uploaded *to a listing*, and the API cannot create a listing without a price and a
+  location. So the draft is created (one `POST`) at the end of step two, and the address
+  becomes the listing's own (`replaceUrl`), so a reload carries on with the draft.
+- **Make and model are both catalogue ids or both text, never one of each** — the API
+  refuses the mix. "Autre" in either list opens a text field; a catalogue make with a
+  typed model is sent as two texts. With no catalogue at all, both are typed.
+  `listing-form.ts` holds that mapping as pure functions.
+- **The price is typed in whole units and sent in minor ones**, with the exponent of the
+  seller's market from `/reference/countries` — not a hard-coded 100.
+- **Photos go straight to storage.** `PhotoUploadService`: ask the API for a pre-signed
+  URL, `PUT` the file to it, confirm. The `PUT` carries **no bearer token**
+  (`skipAuth()`): it goes to another host. Uploads run one at a time so photos land in
+  the order chosen. The first photo is the cover, so "set as main" is a reorder; reorder
+  works by drag, by arrow buttons and by "Principale".
+- **The buttons offered are the ones the API said it would accept.** Every row of
+  `GET /listings/mine` carries `allowedTransitions`, `editable` and `renewable`;
+  `actionsFor` reads them and never derives anything from the status. `allowedTransitions`
+  is typed as a `Set` by the generator and arrives as an array — always go through
+  `transitionsOf`.
+- **Rules are explained before the click, enforced by the API after it.** The preview says
+  a photo is needed and, from `GET /listings/mine/quota`, that a private seller is at
+  their cap; the publish button is disabled meanwhile. A refusal that happens anyway
+  (`PHOTO_REQUIRED`, `ACTIVE_LISTING_LIMIT_REACHED`, `CONFLICT`) is shown as its French
+  sentence on the row or step concerned, and the row is reloaded.
+- **"Vendue" and "Supprimer" ask first**, inline on the row. The other actions act.
 
 ## Conventions
 

@@ -2,6 +2,7 @@ package com.autox.listing;
 
 import com.autox.api.PageResponse;
 import com.autox.listing.dto.CreateListingRequest;
+import com.autox.listing.dto.ListingQuota;
 import com.autox.listing.dto.ListingResponse;
 import com.autox.listing.dto.ListingSummary;
 import com.autox.listing.dto.UpdateListingRequest;
@@ -79,6 +80,19 @@ public class ListingController {
      * public detail endpoint, and one path returning two different shapes depending on who is
      * asking makes for a contract no typed client can rely on.
      */
+    /**
+     * How many listings the caller has online and how many they may have.
+     *
+     * <p>A private seller is capped; a dealer is not, and {@code limit} is then
+     * {@code null}. Use it to explain the cap before the seller tries to publish — the cap
+     * itself is enforced by {@code POST /listings/{id}/publish}, which answers 409
+     * {@code ACTIVE_LISTING_LIMIT_REACHED} whatever this said a moment earlier.
+     */
+    @GetMapping("/mine/quota")
+    public ListingQuota quota(@AuthenticationPrincipal Jwt token) {
+        return listingService.quota(CurrentUser.id(token));
+    }
+
     @GetMapping("/mine/{id}")
     public ListingResponse getOwn(@AuthenticationPrincipal Jwt token, @PathVariable UUID id) {
         return listingService.get(CurrentUser.id(token), CurrentUser.isAdmin(token), id);

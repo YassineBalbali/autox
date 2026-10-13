@@ -11,8 +11,10 @@ import {
   matchesPassword,
   mirrorPassword,
   passwordValidators,
+  parseWholeNumber,
   phoneValidators,
   requiredText,
+  wholeNumber,
 } from './validation';
 
 /**
@@ -186,6 +188,62 @@ describe('validation rules', () => {
 
       expect(form.controls.confirmation.errors).toBeNull();
       expect(form.valid).toBe(true);
+    });
+  });
+
+  describe('wholeNumber', () => {
+    const errorsOf = (value: string) =>
+      new FormControl(value, { nonNullable: true, validators: [wholeNumber(1900, 2027)] }).errors;
+
+    it('accepts a number inside the bounds, and both bounds themselves', () => {
+      expect(errorsOf('2021')).toBeNull();
+      expect(errorsOf('1900')).toBeNull();
+      expect(errorsOf('2027')).toBeNull();
+    });
+
+    it('leaves an empty field to the required rule', () => {
+      // "Missing" and "not a number" are two messages; this validator only owns one.
+      expect(errorsOf('')).toBeNull();
+      expect(errorsOf('   ')).toBeNull();
+    });
+
+    it('ignores the spaces people type as thousands separators', () => {
+      const mileage = (value: string) =>
+        new FormControl(value, { nonNullable: true, validators: [wholeNumber(0, 3_000_000)] }).errors;
+      expect(mileage('42 500')).toBeNull();
+      // The two no-break spaces a French number formatter produces, pasted back in.
+      expect(mileage('42\u00a0500')).toBeNull();
+      expect(mileage('42\u202f500')).toBeNull();
+    });
+
+    it.each(['abc', '12,5', '12.5', '-3', '1e3', '12 km'])('refuses %s as not a whole number', (value) => {
+      expect(errorsOf(value)).toEqual({ wholeNumber: true });
+    });
+
+    it('reports the bounds when the number is outside them', () => {
+      expect(errorsOf('1850')).toEqual({ range: { min: 1900, max: 2027 } });
+      expect(errorsOf('2028')).toEqual({ range: { min: 1900, max: 2027 } });
+    });
+
+    it('says both in French, with the bounds grouped by a space every font draws', () => {
+      expect(firstErrorFr({ wholeNumber: true })).toBe('Saisissez un nombre entier, sans décimale.');
+      expect(firstErrorFr({ range: { min: 0, max: 3_000_000 } })).toBe(
+        'Saisissez une valeur entre 0 et 3\u00a0000\u00a0000.',
+      );
+    });
+  });
+
+  describe('parseWholeNumber', () => {
+    it('reads what wholeNumber accepts', () => {
+      expect(parseWholeNumber('42 500')).toBe(42500);
+      expect(parseWholeNumber('0')).toBe(0);
+    });
+
+    it('answers null, not NaN or zero, for anything else', () => {
+      // Zero is a real mileage. "Nothing typed" must not turn into it.
+      expect(parseWholeNumber('')).toBeNull();
+      expect(parseWholeNumber(null)).toBeNull();
+      expect(parseWholeNumber('12,5')).toBeNull();
     });
   });
 

@@ -1,0 +1,390 @@
+@switch (load()) {
+  @case ('missing') {
+    <app-not-found
+      heading="Cette annonce est introuvable"
+      i18n-heading="@@editorMissingTitle"
+      message="Elle a peut-être été supprimée, ou l’adresse est incomplète."
+      i18n-message="@@editorMissingMessage"
+      [linkUrl]="myListings"
+      linkLabel="Voir mes annonces"
+      i18n-linkLabel="@@editorMissingLink"
+    />
+  }
+
+  @case ('error') {
+    <div class="panel stack">
+      <app-alert kind="error">{{ loadFailure() }}</app-alert>
+      <div class="form-actions">
+        <button class="btn btn--quiet" type="button" (click)="retryLoad()" i18n="@@retry">Réessayer</button>
+        <a class="btn btn--quiet" [routerLink]="myListings" i18n="@@editorBackToMine">← Mes annonces</a>
+      </div>
+    </div>
+  }
+
+  @case ('loading') {
+    <div class="panel editor__loading" aria-busy="true">
+      <p class="meta" i18n="@@editorLoading">Chargement de l’annonce…</p>
+    </div>
+  }
+
+  @case ('ready') {
+    <div class="stack editor">
+      <header class="editor__head">
+        <h1 class="page-title">{{ heading() }}</h1>
+        <a class="editor__back" [routerLink]="myListings" i18n="@@editorBackToMine">← Mes annonces</a>
+      </header>
+
+      <!-- The steps, numbered. A step that cannot be opened yet is text, not a dead link. -->
+      <nav aria-label="Étapes" i18n-aria-label="@@editorSteps">
+        <ol class="steps">
+          @for (name of steps; track name; let index = $index) {
+            <li class="steps__item" [class.steps__item--current]="name === step()">
+              @if (name !== step() && reachable(name)) {
+                <button class="steps__link" type="button" (click)="goTo(name)">
+                  <span class="steps__number">{{ index + 1 }}</span> {{ stepTitles[name] }}
+                </button>
+              } @else {
+                <span class="steps__link" [attr.aria-current]="name === step() ? 'step' : null">
+                  <span class="steps__number">{{ index + 1 }}</span> {{ stepTitles[name] }}
+                </span>
+              }
+            </li>
+          }
+        </ol>
+      </nav>
+
+      @if (failure()) {
+        <app-alert kind="error">{{ failure() }}</app-alert>
+      }
+
+      @switch (step()) {
+        @case ('vehicule') {
+          <section class="panel">
+            <form class="stack form--rows" [formGroup]="vehicle" (ngSubmit)="continueFromVehicle()" novalidate>
+              <div class="panel__head"><h2 i18n="@@editorVehicle">Le véhicule</h2></div>
+
+              @if (makes() === null) {
+                <p class="meta" i18n="@@editorCatalogueLoading">Chargement des marques…</p>
+              } @else if (makes()!.length) {
+                <app-select-field
+                  label="Marque"
+                  i18n-label="@@fieldMake"
+                  [control]="vehicle.controls.make"
+                  [options]="makeOptions()"
+                />
+              } @else {
+                <!-- No catalogue to choose from: the form still works, typed. -->
+                <p class="meta" i18n="@@editorCatalogueMissing">
+                  La liste des marques est indisponible pour le moment : saisissez la marque et le modèle.
+                </p>
+              }
+
+              @if (makeTyped()) {
+                <app-text-field
+                  label="Marque (saisie libre)"
+                  i18n-label="@@fieldMakeText"
+                  [maxLength]="limits.makeText"
+                  [control]="vehicle.controls.makeText"
+                />
+              } @else if (make()) {
+                <app-select-field
+                  label="Modèle"
+                  i18n-label="@@fieldModel"
+                  [control]="vehicle.controls.model"
+                  [options]="modelOptions()"
+                />
+              }
+
+              @if (modelTyped()) {
+                <app-text-field
+                  label="Modèle (saisie libre)"
+                  i18n-label="@@fieldModelText"
+                  [maxLength]="limits.modelText"
+                  [control]="vehicle.controls.modelText"
+                />
+              }
+
+              <app-text-field
+                label="Version"
+                i18n-label="@@fieldVersion"
+                hint="Finition et motorisation, par exemple « 1.5 BlueHDi 130 Allure »."
+                i18n-hint="@@fieldVersionHint"
+                [optional]="true"
+                [maxLength]="limits.version"
+                [control]="vehicle.controls.version"
+              />
+
+              <app-text-field
+                label="Année"
+                i18n-label="@@fieldYear"
+                hint="Année de première mise en circulation."
+                i18n-hint="@@fieldYearHint"
+                inputMode="numeric"
+                [maxLength]="4"
+                [control]="vehicle.controls.year"
+              />
+
+              <app-text-field
+                label="Kilométrage (km)"
+                i18n-label="@@fieldMileage"
+                inputMode="numeric"
+                [maxLength]="9"
+                [control]="vehicle.controls.mileage"
+              />
+
+              <app-select-field
+                label="Carburant"
+                i18n-label="@@fieldFuel"
+                [control]="vehicle.controls.fuel"
+                [options]="fuelOptions()"
+              />
+              <app-select-field
+                label="Boîte de vitesses"
+                i18n-label="@@fieldGearbox"
+                [control]="vehicle.controls.gearbox"
+                [options]="gearboxOptions()"
+              />
+              <app-select-field
+                label="Carrosserie"
+                i18n-label="@@fieldBody"
+                [optional]="true"
+                [control]="vehicle.controls.body"
+                [options]="bodyOptions()"
+              />
+              <app-select-field
+                label="État"
+                i18n-label="@@fieldCondition"
+                [control]="vehicle.controls.condition"
+                [options]="conditionOptions()"
+              />
+
+              <div class="form-actions">
+                <button class="btn btn--primary" type="submit" [disabled]="saving()">
+                  @if (editing()) {
+                    <ng-container i18n="@@editorSaveContinue">Enregistrer et continuer</ng-container>
+                  } @else {
+                    <ng-container i18n="@@editorContinue">Continuer</ng-container>
+                  }
+                </button>
+              </div>
+            </form>
+          </section>
+        }
+
+        @case ('offre') {
+          <section class="panel">
+            <form class="stack form--rows" [formGroup]="offer" (ngSubmit)="continueFromOffer()" novalidate>
+              <div class="panel__head"><h2 i18n="@@editorOffer">Prix, description et localisation</h2></div>
+
+              <app-text-field
+                label="Titre de l’annonce"
+                i18n-label="@@fieldTitle"
+                hint="Proposé à partir du véhicule ; vous pouvez le modifier."
+                i18n-hint="@@fieldTitleHint"
+                [maxLength]="limits.title"
+                [control]="offer.controls.title"
+              />
+
+              <app-text-field
+                [label]="priceLabel()"
+                hint="En unités entières, sans centimes."
+                i18n-hint="@@fieldPriceHint"
+                inputMode="numeric"
+                [maxLength]="10"
+                [control]="offer.controls.price"
+              />
+
+              <div class="field">
+                <span class="field__label" aria-hidden="true"></span>
+                <label class="check">
+                  <input type="checkbox" formControlName="negotiable" />
+                  <span i18n="@@fieldNegotiable">Prix négociable</span>
+                </label>
+              </div>
+
+              <app-text-field
+                label="Description"
+                i18n-label="@@fieldDescription"
+                type="textarea"
+                hint="Historique, entretien, options, défauts éventuels."
+                i18n-hint="@@fieldDescriptionHint"
+                [optional]="true"
+                [rows]="8"
+                [maxLength]="limits.description"
+                [control]="offer.controls.description"
+              />
+
+              <app-text-field
+                label="Code postal"
+                i18n-label="@@fieldPostalCode"
+                autocomplete="postal-code"
+                [maxLength]="limits.postalCode"
+                [control]="offer.controls.postalCode"
+              />
+
+              <app-text-field
+                label="Ville"
+                i18n-label="@@fieldCity"
+                autocomplete="address-level2"
+                hint="Où le véhicule est visible."
+                i18n-hint="@@fieldCityHint"
+                [maxLength]="limits.city"
+                [control]="offer.controls.city"
+              />
+
+              <div class="form-actions">
+                <button class="btn btn--quiet" type="button" (click)="goTo('vehicule')" i18n="@@editorPrevious">
+                  ← Précédent
+                </button>
+                <button class="btn btn--primary" type="submit" [disabled]="saving()">
+                  @if (editing()) {
+                    <ng-container i18n="@@editorSaveContinue">Enregistrer et continuer</ng-container>
+                  } @else {
+                    <ng-container i18n="@@editorSaveDraft">Enregistrer le brouillon et continuer</ng-container>
+                  }
+                </button>
+              </div>
+              @if (!editing()) {
+                <p class="meta" i18n="@@editorDraftNote">
+                  L’annonce est enregistrée comme brouillon à cette étape : elle n’est pas visible tant
+                  que vous ne l’avez pas mise en ligne.
+                </p>
+              }
+            </form>
+          </section>
+        }
+
+        @case ('photos') {
+          @if (listing(); as item) {
+            <section class="panel stack">
+              <div class="panel__head"><h2 i18n="@@editorPhotos">Photos</h2></div>
+              <app-photo-uploader [listingId]="item.id!" [initial]="photos()" (changed)="onPhotos($event)" />
+              <div class="form-actions">
+                <button class="btn btn--quiet" type="button" (click)="goTo('offre')" i18n="@@editorPrevious">
+                  ← Précédent
+                </button>
+                <button class="btn btn--primary" type="button" (click)="goTo('apercu')" i18n="@@editorToPreview">
+                  Voir l’aperçu
+                </button>
+              </div>
+            </section>
+          }
+        }
+
+        @case ('apercu') {
+          @if (listing(); as item) {
+            <section class="panel stack">
+              <div class="panel__head"><h2 i18n="@@editorPreview">Aperçu de l’annonce</h2></div>
+
+              <div class="preview">
+                <div class="preview__main">
+                  @if (previewImages().length) {
+                    <app-photo-gallery [images]="previewImages()" [subject]="item.title ?? ''" />
+                  } @else {
+                    <div class="preview__nophoto" i18n="@@previewNoPhoto">Aucune photo</div>
+                  }
+                  @if (item.description) {
+                    <p class="preview__description">{{ item.description }}</p>
+                  }
+                </div>
+
+                <div class="preview__aside stack">
+                  <h3 class="preview__title">{{ item.title }}</h3>
+                  <app-spec-line
+                    [year]="item.vehicle?.firstRegistrationYear"
+                    [mileage]="item.mileageKm"
+                    [fuel]="previewFuel()"
+                    [gearbox]="previewGearbox()"
+                  />
+                  @if (item.priceAmount !== undefined) {
+                    <div class="preview__price">
+                      <app-price
+                        size="detail"
+                        [amountMinor]="item.priceAmount"
+                        [currency]="item.currencyCode ?? 'EUR'"
+                        [minorUnit]="minorUnit()"
+                      />
+                      @if (item.priceNegotiable) {
+                        <span class="tag" i18n="@@listingNegotiable">Prix négociable</span>
+                      }
+                    </div>
+                  }
+                  <dl class="readout">
+                    @for (row of previewSpecs(); track row.label) {
+                      <div>
+                        <dt class="readout__term">{{ row.label }}</dt>
+                        <dd class="readout__value">{{ row.value }}</dd>
+                      </div>
+                    }
+                    @if (item.location?.city) {
+                      <div>
+                        <dt class="readout__term" i18n="@@listingPlace">Localisation</dt>
+                        <dd class="readout__value">{{ item.location.postalCode }} {{ item.location.city }}</dd>
+                      </div>
+                    }
+                  </dl>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel stack">
+              <div class="panel__head"><h2 i18n="@@editorPublish">Mise en ligne</h2></div>
+
+              @if (online()) {
+                <app-alert kind="info" i18n="@@publishAlreadyOnline">
+                  Cette annonce est en ligne. Vos modifications sont déjà visibles des acheteurs.
+                </app-alert>
+              } @else if (!publishable()) {
+                <app-alert kind="info" i18n="@@publishNotFromHere">
+                  Dans son état actuel, cette annonce ne peut pas être mise en ligne depuis cette page.
+                  Retrouvez les actions possibles dans « Mes annonces ».
+                </app-alert>
+              } @else {
+                <!-- The rules, stated before the button rather than discovered by pressing it. -->
+                @if (!hasPhoto()) {
+                  <app-alert kind="error" data-rule="photo">
+                    <ng-container i18n="@@publishNeedsPhoto">
+                      Ajoutez au moins une photo pour mettre l’annonce en ligne.
+                    </ng-container>
+                  </app-alert>
+                }
+                @if (capReached()) {
+                  <app-alert kind="error" data-rule="cap">
+                    Vous avez déjà {{ quota()?.active }} annonces en ligne, le maximum pour un compte
+                    particulier ({{ quota()?.limit }}). Mettez-en une en pause ou marquez-la comme vendue
+                    pour publier celle-ci. Votre brouillon est conservé.
+                  </app-alert>
+                }
+              }
+
+              <div class="form-actions">
+                <button class="btn btn--quiet" type="button" (click)="goTo('photos')" i18n="@@editorPrevious">
+                  ← Précédent
+                </button>
+                @if (publishable()) {
+                  <button
+                    class="btn btn--primary"
+                    type="button"
+                    data-action="publish"
+                    [disabled]="!canPublish()"
+                    (click)="publish()"
+                    i18n="@@editorPublishAction"
+                  >
+                    Mettre en ligne
+                  </button>
+                }
+                <a class="btn btn--quiet" [routerLink]="myListings">
+                  @if (online()) {
+                    <ng-container i18n="@@editorDone">Terminer</ng-container>
+                  } @else {
+                    <ng-container i18n="@@editorKeepDraft">Plus tard, retour à mes annonces</ng-container>
+                  }
+                </a>
+              </div>
+            </section>
+          }
+        }
+      }
+    </div>
+  }
+}

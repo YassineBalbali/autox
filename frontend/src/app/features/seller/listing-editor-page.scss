@@ -1,0 +1,136 @@
+:host {
+  display: block;
+}
+
+.editor__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.editor__back {
+  font-size: var(--t-sm);
+}
+
+.editor__loading {
+  padding-block: var(--s-6);
+}
+
+// The stepper: one bordered strip, the current step in navy. Not a progress bar — the
+// steps can be revisited in any order once the draft exists.
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
+  list-style: none;
+  overflow: hidden;
+}
+
+.steps__item {
+  flex: 1 1 10rem;
+  border-right: var(--border);
+
+  &:last-child {
+    border-right: 0;
+  }
+}
+
+.steps__link {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  min-height: var(--h-control);
+  padding: var(--s-2) var(--s-3);
+  background: none;
+  border: 0;
+  color: var(--c-ink-faint);
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  text-align: left;
+}
+
+button.steps__link {
+  color: var(--c-ink);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--c-surface-sunk);
+  }
+}
+
+.steps__item--current .steps__link {
+  background: var(--c-navy);
+  color: #fff;
+}
+
+.steps__number {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: var(--t-sm);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--h-control);
+  cursor: pointer;
+}
+
+// ---- preview ----------------------------------------------------------------
+
+.preview {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--s-4);
+
+  @media (max-width: 60rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.preview__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.preview__nophoto {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  background: var(--c-surface-sunk);
+  border: var(--border);
+  border-radius: var(--r-md);
+  color: var(--c-ink-faint);
+  font-weight: var(--fw-semibold);
+}
+
+.preview__title {
+  font-size: var(--t-lg);
+}
+
+.preview__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+// The seller's own line breaks, kept; plain text, never HTML.
+.preview__description {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

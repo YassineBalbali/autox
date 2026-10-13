@@ -540,6 +540,132 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
      * A listing that is ready to publish. Publication requires a confirmed photo, and these
      * tests are about the lifecycle rather than about photos, so one is attached up front.
      */
+    // --- what the dashboard reads ------------------------------------------
+
+    /** autox.listing.particulier-active-limit in application-test.yml. */
+    private static final int TEST_PARTICULIER_CAP = 2;
+
+    @Test
+    @DisplayName("each row of the seller's list says which actions it would accept")
+    void summariesCarryTheirAllowedTransitions() throws Exception {
+        JsonNode seller = register(uniqueEmail("summary-actions"), UserRole.PROFESSIONNEL);
+        String draft = createListing(seller);
+        String live = createListing(seller);
+        publish(seller, live);
+
+        JsonNode items = objectMapper.readTree(mockMvc.perform(get("/api/v1/listings/mine")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get("items");
+
+        for (JsonNode item : items) {
+            java.util.Set<String> allowed = new java.util.HashSet<>();
+            item.get("allowedTransitions").forEach(node -> allowed.add(node.asText()));
+
+            if (item.get("id").asText().equals(live)) {
+                // The table, not a client's guess at it.
+                assertThat(allowed).containsExactlyInAnyOrder("PAUSED", "SOLD", "EXPIRED", "REMOVED");
+                assertThat(item.get("renewable").asBoolean()).isTrue();
+                assertThat(item.get("editable").asBoolean()).isTrue();
+            } else {
+                assertThat(item.get("id").asText()).isEqualTo(draft);
+                assertThat(allowed).containsExactlyInAnyOrder("ACTIVE", "PENDING_REVIEW", "REMOVED");
+                // A draft has never been online; there is nothing to renew.
+                assertThat(item.get("renewable").asBoolean()).isFalse();
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a sold listing is reported as no longer editable or renewable")
+    void soldSummaryIsFrozen() throws Exception {
+        JsonNode seller = register(uniqueEmail("summary-sold"), UserRole.PROFESSIONNEL);
+        String id = createListing(seller);
+        publish(seller, id);
+        mockMvc.perform(post("/api/v1/listings/" + id + "/sold").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/listings/mine").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(jsonPath("$.items[0].status").value("SOLD"))
+                .andExpect(jsonPath("$.items[0].editable").value(false))
+                .andExpect(jsonPath("$.items[0].renewable").value(false))
+                // The one thing left to do with it.
+                .andExpect(jsonPath("$.items[0].allowedTransitions.length()").value(1))
+                .andExpect(jsonPath("$.items[0].allowedTransitions[0]").value("REMOVED"));
+    }
+
+    @Test
+    @DisplayName("the quota reports the private seller's cap and how much of it is used")
+    void quotaForAPrivateSeller() throws Exception {
+        JsonNode seller = register(uniqueEmail("quota-part"), UserRole.PARTICULIER);
+        String first = createListing(seller);
+        createListing(seller);
+        publish(seller, first);
+
+        // Two listings, one online: drafts do not count.
+        mockMvc.perform(get("/api/v1/listings/mine/quota").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(1))
+                // The cap the test profile sets; production's is higher.
+                .andExpect(jsonPath("$.limit").value(TEST_PARTICULIER_CAP))
+                .andExpect(jsonPath("$.canPublish").value(true));
+    }
+
+    @Test
+    @DisplayName("the quota says no once the cap is reached, and yes again when a slot frees")
+    void quotaAtTheCap() throws Exception {
+        JsonNode seller = register(uniqueEmail("quota-full"), UserRole.PARTICULIER);
+        String last = null;
+        for (int i = 0; i < TEST_PARTICULIER_CAP; i++) {
+            last = createListing(seller);
+            publish(seller, last);
+        }
+
+        mockMvc.perform(get("/api/v1/listings/mine/quota").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(jsonPath("$.active").value(TEST_PARTICULIER_CAP))
+                .andExpect(jsonPath("$.canPublish").value(false));
+
+        mockMvc.perform(post("/api/v1/listings/" + last + "/unpublish")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/listings/mine/quota").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(jsonPath("$.active").value(TEST_PARTICULIER_CAP - 1))
+                .andExpect(jsonPath("$.canPublish").value(true));
+    }
+
+    @Test
+    @DisplayName("a dealer has no cap, reported as a null limit rather than a large number")
+    void quotaForADealer() throws Exception {
+        JsonNode seller = register(uniqueEmail("quota-pro"), UserRole.PROFESSIONNEL);
+
+        mockMvc.perform(get("/api/v1/listings/mine/quota").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(jsonPath("$.active").value(0))
+                .andExpect(jsonPath("$.limit").doesNotExist())
+                .andExpect(jsonPath("$.canPublish").value(true));
+    }
+
+    @Test
+    @DisplayName("the quota is the caller's own, and needs a session")
+    void quotaIsPrivate() throws Exception {
+        mockMvc.perform(get("/api/v1/listings/mine/quota")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("\"quota\" is not mistaken for a listing id")
+    void quotaPathDoesNotCollideWithOwnListing() throws Exception {
+        // /mine/quota and /mine/{id} share a prefix. A wrong match would try to parse
+        // "quota" as a UUID and answer 400.
+        JsonNode seller = register(uniqueEmail("quota-path"), UserRole.PARTICULIER);
+        String id = createListing(seller);
+
+        mockMvc.perform(get("/api/v1/listings/mine/quota").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/listings/mine/" + id).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id));
+    }
+
     private String createListing(JsonNode session) throws Exception {
         String id = createListingWithoutPhoto(session);
         attachReadyPhoto(id);
