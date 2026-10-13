@@ -147,6 +147,10 @@ public class ReferenceService {
         published.put("ModerationStatus", ModerationStatus.class);
         published.put("ImageStatus", ImageStatus.class);
         published.put("ImageVariantType", ImageVariantType.class);
+        // Moderation. The reasons are also what a seller is told, so a client needs the full set.
+        published.put("ModerationReason", com.autox.listing.ModerationReason.class);
+        published.put("ModerationActionType", com.autox.listing.ModerationActionType.class);
+        published.put("ModerationView", com.autox.listing.ModerationView.class);
 
         // Account.
         published.put("UserRole", UserRole.class);

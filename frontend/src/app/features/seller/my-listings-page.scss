@@ -44,6 +44,33 @@
   padding-block: var(--s-5);
 }
 
+// Same box whether or not there is a photo, so every row's text starts at the same x.
+.mine__thumb {
+  display: grid;
+  flex: 0 0 7.5rem;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  background: var(--c-surface-sunk);
+  border: var(--border);
+  border-radius: var(--r-sm);
+  color: var(--c-ink-faint);
+  font-size: var(--t-sm);
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.mine__removal {
+  margin-top: var(--s-1);
+  color: var(--c-danger);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+}
+
 .mine__title-line {
   display: flex;
   flex-wrap: wrap;

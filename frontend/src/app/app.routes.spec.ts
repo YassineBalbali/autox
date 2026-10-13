@@ -123,6 +123,23 @@ describe('routes', () => {
     expect(home.pathMatch).toBe('full');
   });
 
+  it('guards the administration by role, and sends /admin to its one screen', () => {
+    const moderation = routes.find((route) => route.path === 'admin/moderation')!;
+    // A role guard, not the session guard: being signed in is not enough. (It also turns
+    // away a visitor with no session, which is why it stands alone.)
+    expect(moderation.canActivate).toHaveLength(1);
+    expect(moderation.canActivate![0]).not.toBe(authGuard);
+    expect(moderation.title).toContain('AutoX');
+
+    const index = routes.find((route) => route.path === 'admin')!;
+    expect(index.redirectTo).toBe('admin/moderation');
+    expect(index.pathMatch).toBe('full');
+    // Nothing else lives under /admin unguarded.
+    for (const route of routes.filter((candidate) => candidate.path?.startsWith('admin/'))) {
+      expect(route.canActivate, route.path).toHaveLength(1);
+    }
+  });
+
   it('puts every selling screen behind a session', () => {
     // Each of them reads or writes the caller's own listings. The API refuses without a
     // token regardless; the guard is what turns that refusal into the sign-in screen.

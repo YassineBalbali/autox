@@ -24,6 +24,22 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
                                         @Param("status") ListingStatus status,
                                         Pageable pageable);
 
+    /**
+     * The moderation queue: online and not yet reviewed. Served by
+     * ix_listing_moderation_queue, which is built on exactly this predicate.
+     */
+    @Query("""
+            select l from Listing l
+             where l.status = com.autox.listing.ListingStatus.ACTIVE
+               and l.moderationStatus = com.autox.listing.ModerationStatus.NOT_REVIEWED
+               and l.deletedAt is null
+            """)
+    Page<Listing> findAwaitingReview(Pageable pageable);
+
+    /** Every seller's listings in one state. For moderators; sellers go through {@link #findBySellerAndStatus}. */
+    @Query("select l from Listing l where l.status = :status and l.deletedAt is null")
+    Page<Listing> findByStatus(@Param("status") ListingStatus status, Pageable pageable);
+
     /** Backs the active-listing quota. Counts only what {@link ListingStatus#occupiesQuota()} says counts. */
     @Query("""
             select count(l) from Listing l

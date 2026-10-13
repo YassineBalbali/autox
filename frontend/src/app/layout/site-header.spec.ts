@@ -1,5 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
@@ -205,6 +205,86 @@ describe('SiteHeader', () => {
       ['Acheter', '/'],
       ['Vendre', '/vendre'],
     ]);
+  });
+
+  describe('the administration entry', () => {
+    const ME = `${BASE}/api/v1/me`;
+    const openMenu = async () => {
+      (query('.account-menu__button') as HTMLButtonElement).click();
+      await fixture.whenStable();
+    };
+    const entries = () =>
+      Array.from(fixture.nativeElement.querySelectorAll('.account-menu__item')).map((item) =>
+        (item as HTMLElement).textContent?.trim(),
+      );
+
+    it('is offered to an administrator, first in the menu', async () => {
+      await render(true);
+      auth.setUser({ id: 'u-1', email: 'admin@exemple.fr', role: UserRole.ADMIN });
+      await fixture.whenStable();
+      await openMenu();
+
+      expect(entries()[0]).toBe('Administration');
+      const link = Array.from(fixture.nativeElement.querySelectorAll('.account-menu__item'))[0] as HTMLAnchorElement;
+      expect(link.getAttribute('href')).toBe('/admin/moderation');
+    });
+
+    it.each([UserRole.PARTICULIER, UserRole.PROFESSIONNEL])('is not offered to a %s', async (role) => {
+      await render(true);
+      auth.setUser({ id: 'u-1', email: 'vendeur@exemple.fr', role });
+      await fixture.whenStable();
+      await openMenu();
+
+      expect(entries()).not.toContain('Administration');
+    });
+
+    it('is absent while the role is unknown, never guessed', async () => {
+      // A session restored from storage: tokens, and nothing else, until GET /me answers.
+      await render(true);
+      await openMenu();
+
+      expect(entries()).not.toContain('Administration');
+    });
+
+    it('appears once the profile the header asked for says ADMIN', async () => {
+      await render(true);
+      const backend = TestBed.inject(HttpTestingController);
+
+      backend.expectOne(ME).flush({ id: 'u-1', email: 'admin@exemple.fr', displayName: 'Camille', role: UserRole.ADMIN });
+      await fixture.whenStable();
+      await openMenu();
+
+      expect(entries()).toContain('Administration');
+      // And the button now says who is signed in.
+      expect(query('.account-menu__button')?.textContent).toContain('Camille');
+    });
+
+    it('asks for the profile once, and not at all when somebody already has', async () => {
+      await render(true);
+      const backend = TestBed.inject(HttpTestingController);
+      expect(backend.match(ME)).toHaveLength(1);
+
+      auth.setUser({ id: 'u-1', email: 'jean@exemple.fr' });
+      await fixture.whenStable();
+      auth.setUser(null);
+      await fixture.whenStable();
+
+      expect(backend.match(ME)).toHaveLength(0);
+    });
+
+    it('asks nothing of a visitor who is not signed in', async () => {
+      await render(false);
+
+      TestBed.inject(HttpTestingController).expectNone(ME);
+    });
+
+    it('keeps its generic label when the profile cannot be read', async () => {
+      await render(true);
+      TestBed.inject(HttpTestingController).expectOne(ME).flush(null, { status: 500, statusText: 'Error' });
+      await fixture.whenStable();
+
+      expect(query('.account-menu__button')?.textContent?.trim()).toBeTruthy();
+    });
   });
 
   it('does not render an account menu for a role it has not loaded', async () => {

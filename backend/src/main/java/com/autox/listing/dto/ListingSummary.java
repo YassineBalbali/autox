@@ -2,8 +2,11 @@ package com.autox.listing.dto;
 
 import com.autox.listing.Listing;
 import com.autox.listing.ListingStatus;
+import com.autox.listing.ImageVariantType;
+import com.autox.listing.ModerationReason;
 import com.autox.listing.ModerationStatus;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -51,9 +54,24 @@ public record ListingSummary(
          * False once a listing is sold or removed: the record of what was sold is kept
          * as it was.
          */
-        boolean editable) {
+        boolean editable,
 
-    public static ListingSummary from(Listing listing) {
+        /**
+         * The listing's first photo, one URL per size — the same shape as a photo's
+         * {@code variants} on {@link ImageResponse}. Null while the listing has none.
+         */
+        Map<ImageVariantType, ImageResponse.VariantView> coverImage,
+
+        /**
+         * Why a moderator refused the listing or took it down. Present only on a listing
+         * that is REMOVED for that reason; the seller is owed the reason, and is not
+         * shown who decided or what they noted.
+         */
+        ModerationReason removalReason) {
+
+    public static ListingSummary from(Listing listing,
+                                      Map<ImageVariantType, ImageResponse.VariantView> coverImage,
+                                      ModerationReason removalReason) {
         return new ListingSummary(
                 listing.getId(),
                 listing.getStatus(),
@@ -69,8 +87,10 @@ public record ListingSummary(
                 listing.getPublishedAt(),
                 listing.getExpiresAt(),
                 listing.getUpdatedAt(),
-                listing.getStatus().allowedTargets(),
+                listing.getStatus().sellerTargets(),
                 listing.getStatus() == ListingStatus.ACTIVE || listing.getStatus() == ListingStatus.EXPIRED,
-                listing.getStatus().isEditable());
+                listing.getStatus().isEditable(),
+                coverImage,
+                removalReason);
     }
 }

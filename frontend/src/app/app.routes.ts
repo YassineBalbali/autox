@@ -138,6 +138,21 @@ export const routes: Routes = [
       import('./features/seller/listing-editor-page').then((m) => m.ListingEditorPage),
   },
 
+  // ---- administration -----------------------------------------------------
+  //
+  // One screen today. `roleGuard` also turns away a visitor with no session, so it is
+  // the only guard needed — and it is a courtesy: the API refuses every call these
+  // screens make to anyone who is not an administrator.
+
+  { path: 'admin', pathMatch: 'full', redirectTo: 'admin/moderation' },
+  {
+    // The list and the page number are in the query string: `?vue=`, `?page=`.
+    path: 'admin/moderation',
+    canActivate: [roleGuard(UserRole.ADMIN)],
+    title: 'Modération · AutoX',
+    loadComponent: () => import('./features/admin/moderation-page').then((m) => m.ModerationPage),
+  },
+
   // ---- internal -----------------------------------------------------------
 
   {

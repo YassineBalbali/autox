@@ -10,6 +10,7 @@ import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/referen
 import { FlashService } from '../../core/ui/flash.service';
 import { formatDateFr } from '../../shared/format/date';
 import { formatIntegerFr, NBSP } from '../../shared/format/number';
+import { MODERATION_REASON_LABELS } from '../../shared/listing/moderation.fr';
 import { Price } from '../../shared/listing/price';
 import { Alert } from '../../shared/ui/alert';
 import {
@@ -46,9 +47,13 @@ interface Row {
   readonly id: string;
   readonly statusLabel: string;
   readonly online: boolean;
+  /** The first photo, small. Null while the listing has none. */
+  readonly cover: string | null;
   readonly facts: readonly string[];
   /** "Expire le 12 novembre 2026", "Vendue", … — the date that matters in this state. */
   readonly dateLine: string | null;
+  /** Why a moderator took it down, in French. Null for every listing that was not. */
+  readonly removal: string | null;
   readonly actions: readonly ListingAction[];
 }
 
@@ -120,8 +125,10 @@ export class MyListingsPage {
         id: listing.id!,
         statusLabel: listing.status ? STATUS_LABELS[listing.status] : '',
         online: listing.status === ListingStatus.ACTIVE,
+        cover: coverOf(listing),
         facts: factsOf(listing),
         dateLine: dateLineOf(listing),
+        removal: listing.removalReason ? (MODERATION_REASON_LABELS[listing.removalReason] ?? null) : null,
         actions: actionsFor(listing),
       })),
   );
@@ -284,6 +291,12 @@ function factsOf(listing: ListingSummary): string[] {
     typeof listing.mileageKm === 'number' ? `${formatIntegerFr(listing.mileageKm)}${NBSP}km` : '',
     listing.city ?? '',
   ].filter(Boolean);
+}
+
+/** The smallest size that exists: these are thumbnails, on a list that may hold a hundred. */
+function coverOf(listing: ListingSummary): string | null {
+  const sizes = listing.coverImage ?? {};
+  return sizes['THUMBNAIL']?.url ?? sizes['CARD']?.url ?? sizes['FULL']?.url ?? null;
 }
 
 /** The one date that matters for the state the listing is in. */

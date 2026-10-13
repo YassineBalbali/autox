@@ -4,13 +4,15 @@ import {
   ElementRef,
   HostListener,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { routes } from '../app.routes';
-import { AuthService } from '../core/auth/auth.service';
+import { ProfileService, UserRole } from '../core/api';
+import { AuthService, userSummaryOf } from '../core/auth/auth.service';
 import { Logo } from '../shared/brand/logo';
 import { availableNav } from './primary-nav';
 
@@ -37,6 +39,7 @@ import { availableNav } from './primary-nav';
 })
 export class SiteHeader {
   private readonly auth = inject(AuthService);
+  private readonly profile = inject(ProfileService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly signedIn = this.auth.isAuthenticated;
@@ -51,9 +54,41 @@ export class SiteHeader {
    * header renders the same links under test as it does in the browser — a test that
    * provides an empty router would otherwise see an empty navigation and prove nothing.
    */
+  /**
+   * Whether to offer the administration entry.
+   *
+   * <p>True only when the role is <em>known</em> to be ADMIN. After a reload the session
+   * is restored from storage with no profile, and until `GET /me` answers the role is
+   * unknown — in which case the entry is absent, never guessed. Hiding it is a matter of
+   * tidiness, not of security: the route is guarded, and the API behind it is what
+   * actually refuses.
+   */
+  protected readonly isAdmin = computed(() => this.auth.role() === UserRole.ADMIN);
+
   protected readonly navItems = availableNav(routes);
 
   protected readonly menuOpen = signal(false);
+
+  constructor() {
+    // A session restored from storage knows its tokens and nothing else. The header is
+    // on every page and shows who is signed in, so it is the one to ask — once, and only
+    // when nobody else has. A failure changes nothing here: the interceptor deals with a
+    // dead session, and the menu simply keeps its generic label.
+    effect(() => {
+      if (this.signedIn() && this.auth.user() === null && !this.asked) {
+        this.asked = true;
+        this.profile.getOwnProfile().subscribe({
+          next: (me) => this.auth.setUser(userSummaryOf(me)),
+          error: () => undefined,
+        });
+      }
+      if (!this.signedIn()) {
+        this.asked = false;
+      }
+    });
+  }
+
+  private asked = false;
 
   protected toggleMenu(): void {
     this.menuOpen.update((open) => !open);

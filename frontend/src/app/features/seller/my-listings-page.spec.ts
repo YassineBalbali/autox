@@ -6,7 +6,14 @@ import { Router, provideRouter, withComponentInputBinding } from '@angular/route
 import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, expect, it } from 'vitest';
 
-import { BASE_PATH, ErrorCode, ListingQuota, ListingStatus, ListingSummary } from '../../core/api';
+import {
+  BASE_PATH,
+  ErrorCode,
+  ListingQuota,
+  ListingStatus,
+  ListingSummary,
+  ModerationReason,
+} from '../../core/api';
 import { FlashService } from '../../core/ui/flash.service';
 import { NBSP } from '../../shared/format/number';
 import { MyListingsPage, statusOfSlug } from './my-listings-page';
@@ -187,6 +194,67 @@ describe('MyListingsPage', () => {
         'Peugeot 308',
         `0${NBSP}km`,
       ]);
+    });
+  });
+
+  describe('the photo', () => {
+    it('shows the listing’s cover, the smallest size there is', async () => {
+      await show([
+        draft('d1', {
+          coverImage: {
+            FULL: { url: 'http://img.test/d1/full.jpg' },
+            THUMBNAIL: { url: 'http://img.test/d1/thumbnail.jpg' },
+          },
+        }),
+      ]);
+      const image = rowOf('d1').querySelector('.mine__thumb img') as HTMLImageElement;
+
+      expect(image.src).toBe('http://img.test/d1/thumbnail.jpg');
+      // Decorative: the title beside it names the car, and a screen reader should not
+      // hear it twice.
+      expect(image.getAttribute('alt')).toBe('');
+      expect(image.getAttribute('loading')).toBe('lazy');
+    });
+
+    it('falls back to a larger size when there is no thumbnail', async () => {
+      await show([draft('d1', { coverImage: { CARD: { url: 'http://img.test/d1/card.jpg' } } })]);
+
+      expect((rowOf('d1').querySelector('.mine__thumb img') as HTMLImageElement).src).toBe('http://img.test/d1/card.jpg');
+    });
+
+    it('says there is no photo, in the same box, rather than leaving a hole', async () => {
+      await show([draft('d1')]);
+
+      expect(rowOf('d1').querySelector('.mine__thumb img')).toBeNull();
+      expect(rowOf('d1').querySelector('.mine__thumb')?.textContent).toContain('Pas de photo');
+    });
+  });
+
+  describe('a listing a moderator took down', () => {
+    const takenDown = (over: Partial<ListingSummary> = {}) =>
+      row('r1', REMOVED, [], { editable: false, renewable: false, removalReason: ModerationReason.INAPPROPRIATE_PHOTOS, ...over });
+
+    it('is labelled as removed, with the reason in French', async () => {
+      await show([takenDown()]);
+
+      expect(rowOf('r1').querySelector('.tag')?.textContent?.trim()).toBe('Retirée');
+      expect(rowOf('r1').querySelector('.mine__removal')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'Retirée par la modération : Photos inadaptées.',
+      );
+      expect(rowOf('r1').textContent).not.toContain('INAPPROPRIATE_PHOTOS');
+    });
+
+    it('offers no way of putting it back, because the API offers none', async () => {
+      await show([takenDown()]);
+
+      expect(actionsOf('r1')).toEqual([]);
+      expect(rowOf('r1').querySelector('.row__title a')).toBeNull();
+    });
+
+    it('says nothing about moderation on any other listing', async () => {
+      await show([online(), draft()]);
+
+      expect(root.querySelector('.mine__removal')).toBeNull();
     });
   });
 

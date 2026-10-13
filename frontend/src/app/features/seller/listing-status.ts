@@ -12,7 +12,9 @@ export const STATUS_LABELS: Record<ListingStatus, string> = {
   [ListingStatus.PAUSED]: 'En pause',
   [ListingStatus.SOLD]: 'Vendue',
   [ListingStatus.EXPIRED]: 'Expirée',
-  [ListingStatus.REMOVED]: 'Supprimée',
+  // What a seller deletes disappears from their list altogether, so the only removed
+  // listing anybody is shown is one a moderator took down.
+  [ListingStatus.REMOVED]: 'Retirée',
 };
 
 /** The statuses a seller can filter their list by, in the order of a listing's life. */

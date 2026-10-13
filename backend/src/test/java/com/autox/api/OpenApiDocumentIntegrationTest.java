@@ -55,6 +55,36 @@ class OpenApiDocumentIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("the public seller and the moderator's view of a seller are two schemas, not one")
+    void publicAndAdminSellerSchemasDoNotCollide() throws Exception {
+        // Schemas are keyed by simple class name. Two records called SellerView — one
+        // public, one for moderators — were silently merged into a single schema, and the
+        // generated client then typed the public seller with an email it never carries.
+        // A new DTO that reuses an existing name fails here rather than in a client.
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(jsonPath("$.components.schemas.SellerView.properties.displayName").exists())
+                .andExpect(jsonPath("$.components.schemas.SellerView.properties.email").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.ModeratedSeller.properties.email").exists())
+                .andExpect(jsonPath("$.components.schemas.PublicListingDetail.properties.seller.$ref")
+                        .value("#/components/schemas/SellerView"))
+                .andExpect(jsonPath("$.components.schemas.ModeratedListing.properties.seller.$ref")
+                        .value("#/components/schemas/ModeratedSeller"));
+    }
+
+    @Test
+    @DisplayName("the moderation endpoints are documented as requiring a token")
+    void moderationEndpointsAreSecured() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(jsonPath("$.paths['/api/v1/admin/listings'].get.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/admin/listings/{id}/approve'].post.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/admin/listings/{id}/reject'].post.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/admin/listings/{id}/remove'].post.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/admin/listings/{id}/reinstate'].post.security[0].bearerAuth").exists())
+                // A reason is required to refuse, in the contract and not only in the code.
+                .andExpect(jsonPath("$.components.schemas.ModerationDecisionRequest.required[0]").value("reasonCode"));
+    }
+
+    @Test
     @DisplayName("bearer authentication is declared as a security scheme")
     void declaresBearerScheme() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
