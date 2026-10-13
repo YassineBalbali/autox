@@ -13,16 +13,23 @@ import java.util.Set;
  *
  * <p>The transition table lives here rather than in the service so there is exactly one
  * definition of what is allowed, and an illegal move is rejected rather than quietly
- * applied. Transitions are about the shape of the lifecycle only — who may make a move,
- * and whether a quota permits it, are separate questions answered by the service.
+ * applied. It describes every move the API can make and no move it cannot. Whether a
+ * quota permits a move is a separate question, answered by the service.
  *
  * <pre>
  *   DRAFT ──publish──▶ ACTIVE ──unpublish──▶ PAUSED ──publish──▶ ACTIVE
  *                        │                     │
  *                        ├──▶ SOLD ◀───sold────┘
  *                        ├──▶ EXPIRED ──renew──▶ ACTIVE
- *                        └──▶ REMOVED  (terminal, see below)
+ *                        └──▶ REMOVED ──reinstate (moderator only)──▶ ACTIVE | PAUSED | EXPIRED
  * </pre>
+ *
+ * <p><b>Out of REMOVED is a moderator's move, never a seller's.</b> A listing reaches
+ * REMOVED two ways. A seller's delete also stamps {@code deleted_at}, and the row then
+ * exists for no read path at all: it is gone. A moderator's refusal or takedown sets
+ * REMOVED alone, and that listing can be reinstated — by a moderator. The seller it
+ * belongs to still sees it, and must not be able to put it back online themselves, which
+ * is why {@link #sellerTargets()} exists beside {@link #allowedTargets()}.
  */
 @Schema(enumAsRef = true)
 public enum ListingStatus {
@@ -30,8 +37,11 @@ public enum ListingStatus {
     DRAFT,
 
     /**
-     * Reserved. The MVP publishes straight to ACTIVE and moderates afterwards; this
-     * state exists so pre-publish review can be switched on without a migration.
+     * Reserved, and unreachable: no transition leads here. The MVP publishes straight to
+     * ACTIVE and moderates afterwards — "awaiting review" is ACTIVE with a moderation
+     * status of NOT_REVIEWED. The value exists, here and in ck_listing_status, so that
+     * pre-publication review can be switched on without a migration; its transitions are
+     * added to the table the day an endpoint makes them.
      */
     PENDING_REVIEW,
 
@@ -45,26 +55,28 @@ public enum ListingStatus {
     /** Passed {@code expires_at}. Renewable. */
     EXPIRED,
 
-    /** Taken down by an admin, or deleted by the seller. */
+    /**
+     * Refused or taken down by a moderator (reversible), or deleted by the seller
+     * (permanent: {@code deleted_at} is set as well).
+     */
     REMOVED;
 
     private static final Map<ListingStatus, Set<ListingStatus>> ALLOWED = allowedTransitions();
 
     private static Map<ListingStatus, Set<ListingStatus>> allowedTransitions() {
         Map<ListingStatus, Set<ListingStatus>> allowed = new EnumMap<>(ListingStatus.class);
-        allowed.put(DRAFT, EnumSet.of(ACTIVE, PENDING_REVIEW, REMOVED));
-        allowed.put(PENDING_REVIEW, EnumSet.of(ACTIVE, DRAFT, REMOVED));
+        allowed.put(DRAFT, EnumSet.of(ACTIVE, REMOVED));
+        // Nothing leads here and nothing leaves: see the constant.
+        allowed.put(PENDING_REVIEW, EnumSet.noneOf(ListingStatus.class));
         allowed.put(ACTIVE, EnumSet.of(PAUSED, SOLD, EXPIRED, REMOVED));
         allowed.put(PAUSED, EnumSet.of(ACTIVE, SOLD, REMOVED));
         // Sold is kept for the record, and can only be withdrawn.
         allowed.put(SOLD, EnumSet.of(REMOVED));
         allowed.put(EXPIRED, EnumSet.of(ACTIVE, REMOVED));
-        // Terminal for now. Reinstatement after an admin takedown becomes legal when the
-        // moderation endpoints land, together with the split that makes it reachable:
-        // a seller delete sets deleted_at (permanent), an admin takedown sets REMOVED
-        // alone (reversible). Until then this table does not promise a move the API
-        // cannot make.
-        allowed.put(REMOVED, EnumSet.noneOf(ListingStatus.class));
+        // Reinstatement by a moderator. Back online; or paused when the seller's quota
+        // has filled meanwhile; or expired when the listing's window ran out while it
+        // was down. See ListingModerationService#reinstate.
+        allowed.put(REMOVED, EnumSet.of(ACTIVE, PAUSED, EXPIRED));
 
         allowed.replaceAll((status, targets) -> Collections.unmodifiableSet(targets));
         return Collections.unmodifiableMap(allowed);
@@ -74,8 +86,25 @@ public enum ListingStatus {
         return target != null && ALLOWED.getOrDefault(this, Set.of()).contains(target);
     }
 
+    /** Every state reachable from this one, by anyone. */
     public Set<ListingStatus> allowedTargets() {
         return ALLOWED.getOrDefault(this, Set.of());
+    }
+
+    /**
+     * The states the listing's own seller may move it to from this one.
+     *
+     * <p>The same as {@link #allowedTargets()} except out of REMOVED, where it is empty:
+     * a listing a moderator took down is not the seller's to put back. This is what a
+     * seller-facing response reports as {@code allowedTransitions}, and what the seller's
+     * endpoints check.
+     */
+    public Set<ListingStatus> sellerTargets() {
+        return this == REMOVED ? Set.of() : allowedTargets();
+    }
+
+    public boolean canSellerTransitionTo(ListingStatus target) {
+        return target != null && sellerTargets().contains(target);
     }
 
     /** Counts against the seller's active-listing quota. */

@@ -26,6 +26,7 @@ import com.autox.user.UserRole;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -68,6 +69,8 @@ public class ListingService {
     private final ListingAccessGuard accessGuard;
     private final ListingImageRepository images;
     private final com.autox.storage.ObjectStorage storage;
+    private final ListingQuotaPolicy quotaPolicy;
+    private final ModerationActionRepository moderationActions;
 
     public ListingService(ListingRepository listings,
                           ListingPriceHistoryRepository priceHistory,
@@ -82,7 +85,9 @@ public class ListingService {
                           ListingProperties properties,
                           ListingAccessGuard accessGuard,
                           ListingImageRepository images,
-                          com.autox.storage.ObjectStorage storage) {
+                          com.autox.storage.ObjectStorage storage,
+                          ListingQuotaPolicy quotaPolicy,
+                          ModerationActionRepository moderationActions) {
         this.listings = listings;
         this.priceHistory = priceHistory;
         this.users = users;
@@ -97,6 +102,8 @@ public class ListingService {
         this.accessGuard = accessGuard;
         this.images = images;
         this.storage = storage;
+        this.quotaPolicy = quotaPolicy;
+        this.moderationActions = moderationActions;
     }
 
     /**
@@ -122,7 +129,34 @@ public class ListingService {
         Page<Listing> page = status == null
                 ? listings.findBySeller(callerId, pageable)
                 : listings.findBySellerAndStatus(callerId, status, pageable);
-        return page.map(ListingSummary::from);
+
+        // One query for every cover on the page, and one for the reasons behind the
+        // removed ones — rather than one of each per row.
+        List<UUID> ids = page.getContent().stream().map(Listing::getId).toList();
+        Map<UUID, Map<com.autox.listing.ImageVariantType, com.autox.listing.dto.ImageResponse.VariantView>> covers =
+                new java.util.HashMap<>();
+        if (!ids.isEmpty()) {
+            images.findCoversByListings(ids).forEach(image -> covers.put(image.getListing().getId(),
+                    com.autox.listing.dto.ImageResponse.from(image, storage::readUrl).variants()));
+        }
+
+        List<UUID> removed = page.getContent().stream()
+                .filter(listing -> listing.getStatus() == ListingStatus.REMOVED)
+                .map(Listing::getId)
+                .toList();
+        Map<UUID, ModerationReason> reasons = new java.util.HashMap<>();
+        if (!removed.isEmpty()) {
+            // Oldest first, so the last one written for a listing is the one that stands.
+            moderationActions.findTrails(removed).forEach(action -> {
+                ModerationReason reason = com.autox.listing.dto.ModerationEntry.reasonOf(action);
+                if (reason != null) {
+                    reasons.put(action.getListing().getId(), reason);
+                }
+            });
+        }
+
+        return page.map(listing -> ListingSummary.from(listing,
+                covers.get(listing.getId()), reasons.get(listing.getId())));
     }
 
     /**
@@ -135,8 +169,8 @@ public class ListingService {
     @Transactional(readOnly = true)
     public ListingQuota quota(UUID callerId) {
         AppUser seller = users.findActiveById(callerId).orElseThrow(() -> ApiException.notFound("User"));
-        int limit = effectiveLimit(seller);
-        long active = listings.countActiveBySeller(callerId);
+        int limit = quotaPolicy.limitFor(seller);
+        long active = quotaPolicy.activeCount(seller);
         // Zero or less means "no limit", as it does where the rule is enforced.
         return limit <= 0
                 ? new ListingQuota(active, null, true)
@@ -458,9 +492,12 @@ public class ListingService {
         if (current == target) {
             throw ApiException.conflict("Listing is already " + current + ".");
         }
-        if (!current.canTransitionTo(target)) {
+        // The seller's table, whoever is calling. An administrator using these endpoints
+        // acts as the seller would; what only a moderator may do — bringing a listing
+        // back from REMOVED — has its own endpoints, which write the trail.
+        if (!current.canSellerTransitionTo(target)) {
             throw ApiException.conflict("Cannot move a listing from " + current + " to " + target
-                    + ". Allowed from " + current + ": " + current.allowedTargets() + ".");
+                    + ". Allowed from " + current + ": " + current.sellerTargets() + ".");
         }
     }
 
@@ -476,35 +513,9 @@ public class ListingService {
         }
     }
 
-    /**
-     * The cap a private individual is held to, as the brief requires. Zero means
-     * unlimited; a per-account override on the user wins over the role default.
-     *
-     * <p>Counting and then publishing is not safe on its own. At READ COMMITTED two
-     * concurrent publications by the same seller both read one below the limit, both pass,
-     * and both commit — which is how a cap of five becomes six. A row lock on the seller
-     * makes the check and the write atomic <em>for that seller</em>: the second request
-     * waits here, and then counts the listing the first one created.
-     *
-     * <p>Locking the seller rather than taking a table lock or raising the isolation level
-     * keeps the contention where it belongs. Two different sellers never wait for each
-     * other, and one seller publishing twice at once is not a case worth optimising.
-     */
+    /** The active-listing cap, checked under the seller's row lock. See {@link ListingQuotaPolicy}. */
     private void requireQuotaAvailable(Listing listing) {
-        AppUser seller = listing.getSeller();
-        int limit = effectiveLimit(seller);
-        if (limit <= 0) {
-            return;
-        }
-
-        users.lockForQuotaCheck(seller.getId());
-        long active = listings.countActiveBySeller(seller.getId());
-        // The listing being published is not ACTIVE yet, so it is not in that count.
-        if (active >= limit) {
-            throw ApiException.quotaExceeded(
-                    "You already have " + active + " active listings, which is the maximum of " + limit
-                            + " for this account. Pause or remove one first.");
-        }
+        quotaPolicy.requireRoomForOneMore(listing.getSeller());
     }
 
     /**
@@ -530,15 +541,6 @@ public class ListingService {
         log.info("Listing {} price changed from {} {} to {} {}", listing.getId(),
                 previousAmount, previousCurrency.getCode(),
                 listing.getPriceAmount(), listing.getPriceCurrency().getCode());
-    }
-
-    private int effectiveLimit(AppUser seller) {
-        if (seller.getActiveListingLimit() != null) {
-            return seller.getActiveListingLimit();
-        }
-        return seller.getRole() == UserRole.PARTICULIER
-                ? properties.particulierActiveLimit()
-                : properties.professionnelActiveLimit();
     }
 
     // --- field mapping ----------------------------------------------------

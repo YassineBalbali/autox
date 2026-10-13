@@ -64,6 +64,15 @@
         <ul class="rows">
           @for (row of rows(); track row.id) {
             <li class="row mine__row" [attr.data-listing]="row.id" [attr.aria-busy]="busy() === row.id">
+              <!-- Decorative: the title beside it already says which car this is. -->
+              <div class="mine__thumb">
+                @if (row.cover) {
+                  <img [src]="row.cover" alt="" loading="lazy" />
+                } @else {
+                  <span i18n="@@mineNoPhoto">Pas de photo</span>
+                }
+              </div>
+
               <div class="row__main">
                 <div class="mine__title-line">
                   <h2 class="row__title">
@@ -85,6 +94,13 @@
                 </ul>
                 @if (row.dateLine) {
                   <p class="meta">{{ row.dateLine }}</p>
+                }
+                @if (row.removal) {
+                  <!-- The seller is owed the reason. Not who decided, nor their notes. -->
+                  <p class="mine__removal">
+                    <ng-container i18n="@@mineRemovedBy">Retirée par la modération :</ng-container>
+                    {{ row.removal }}.
+                  </p>
                 }
 
                 @if (rowFailure(); as failure) {

@@ -76,7 +76,7 @@ public record ListingResponse(
                 listing.getSeller().getId(),
                 listing.getStatus(),
                 listing.getModerationStatus(),
-                listing.getStatus().allowedTargets(),
+                listing.getStatus().sellerTargets(),
                 listing.getTitle(),
                 listing.getDescription(),
                 listing.getPriceAmount(),

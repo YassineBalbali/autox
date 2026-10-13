@@ -43,6 +43,18 @@ public class ModerationAction extends CreatedEntity {
     protected ModerationAction() {
     }
 
+    /** One line of the trail. There is no other way to make one, and no way to change one. */
+    public static ModerationAction of(Listing listing, AppUser admin, ModerationActionType action,
+                                      String reasonCode, String note) {
+        ModerationAction entry = new ModerationAction();
+        entry.listing = listing;
+        entry.admin = admin;
+        entry.action = action;
+        entry.reasonCode = reasonCode;
+        entry.note = note;
+        return entry;
+    }
+
     public Listing getListing() {
         return listing;
     }

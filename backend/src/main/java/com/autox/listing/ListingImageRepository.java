@@ -31,6 +31,31 @@ public interface ListingImageRepository extends JpaRepository<ListingImage, UUID
             """)
     List<ListingImage> findReadyByListing(@Param("listingId") UUID listingId);
 
+    /** The ready photos of several listings at once, in gallery order within each. */
+    @Query("""
+            select distinct i from ListingImage i
+             left join fetch i.variants
+             where i.listing.id in :listingIds
+               and i.status = com.autox.listing.ImageStatus.READY
+             order by i.listing.id asc, i.position asc
+            """)
+    List<ListingImage> findReadyByListings(@Param("listingIds") java.util.Collection<UUID> listingIds);
+
+    /**
+     * The cover of each of several listings: its first ready photo. One query for a page
+     * of rows rather than one per row, and one photo per listing rather than the gallery.
+     */
+    @Query("""
+            select distinct i from ListingImage i
+             left join fetch i.variants
+             where i.listing.id in :listingIds
+               and i.status = com.autox.listing.ImageStatus.READY
+               and i.position = (select min(j.position) from ListingImage j
+                                  where j.listing.id = i.listing.id
+                                    and j.status = com.autox.listing.ImageStatus.READY)
+            """)
+    List<ListingImage> findCoversByListings(@Param("listingIds") java.util.Collection<UUID> listingIds);
+
     @Query("""
             select i from ListingImage i
              left join fetch i.variants

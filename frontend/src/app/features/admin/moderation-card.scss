@@ -1,0 +1,164 @@
+:host {
+  display: block;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  padding-bottom: var(--s-2);
+  border-bottom: var(--divider);
+}
+
+.card__title {
+  margin-right: auto;
+  font-size: var(--t-lg);
+  font-weight: var(--fw-bold);
+  overflow-wrap: anywhere;
+}
+
+// Photos, the listing, and who and what has been decided: three columns, read left to
+// right in the order a moderator judges in.
+.card__body {
+  display: grid;
+  grid-template-columns: minmax(0, 22rem) minmax(0, 1fr) minmax(0, 18rem);
+  gap: var(--s-4);
+
+  @media (max-width: 75rem) {
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+
+    .card__side {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 48rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card__photos,
+.card__details,
+.card__side {
+  min-width: 0;
+}
+
+.card__nophoto {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  background: var(--c-surface-sunk);
+  border: var(--border);
+  border-radius: var(--r-md);
+  color: var(--c-ink-faint);
+  font-weight: var(--fw-semibold);
+}
+
+.card__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+// The shared readout is laid out for a full-width panel; here it sits in a column.
+.card__specs > div {
+  padding: var(--s-1) 0;
+}
+
+.card__label {
+  margin-bottom: var(--s-1);
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card__description {
+  max-height: 14rem;
+  overflow-y: auto;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.card__seller {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  font-weight: var(--fw-bold);
+}
+
+.card__email {
+  overflow-wrap: anywhere;
+}
+
+// ---- the trail --------------------------------------------------------------
+
+.trail {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trail__line {
+  padding: var(--s-2) 0 var(--s-2) var(--s-3);
+  border-left: 2px solid var(--c-line-strong);
+
+  & + & {
+    margin-top: var(--s-1);
+  }
+}
+
+.trail__who {
+  display: block;
+}
+
+.trail__what {
+  font-weight: var(--fw-bold);
+}
+
+.trail__when,
+.trail__reason,
+.trail__note {
+  display: block;
+}
+
+.trail__reason {
+  font-weight: var(--fw-semibold);
+}
+
+.trail__note {
+  color: var(--c-ink-soft);
+  font-style: italic;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+// ---- deciding ---------------------------------------------------------------
+
+.card__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-top: var(--s-3);
+  border-top: var(--divider);
+}
+
+.card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.card__form {
+  max-width: 44rem;
+}

@@ -201,8 +201,11 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
         assertThat(ListingStatus.SOLD.canTransitionTo(ListingStatus.ACTIVE)).isFalse();
         assertThat(ListingStatus.SOLD.canTransitionTo(ListingStatus.REMOVED)).isTrue();
 
-        // REMOVED is terminal until the moderation endpoints make reinstatement reachable.
-        assertThat(ListingStatus.REMOVED.allowedTargets()).isEmpty();
+        // Out of REMOVED is reinstatement, which is a moderator's move and never a
+        // seller's — see ListingModerationIntegrationTest for the rest of it.
+        assertThat(ListingStatus.REMOVED.sellerTargets()).isEmpty();
+        assertThat(ListingStatus.REMOVED.canTransitionTo(ListingStatus.DRAFT)).isFalse();
+        assertThat(ListingStatus.REMOVED.canTransitionTo(ListingStatus.SOLD)).isFalse();
 
         assertThat(ListingStatus.ACTIVE.canTransitionTo(null)).isFalse();
     }
@@ -569,7 +572,8 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
                 assertThat(item.get("editable").asBoolean()).isTrue();
             } else {
                 assertThat(item.get("id").asText()).isEqualTo(draft);
-                assertThat(allowed).containsExactlyInAnyOrder("ACTIVE", "PENDING_REVIEW", "REMOVED");
+                // No PENDING_REVIEW: nothing in the API makes that move, so it is not promised.
+                assertThat(allowed).containsExactlyInAnyOrder("ACTIVE", "REMOVED");
                 // A draft has never been online; there is nothing to renew.
                 assertThat(item.get("renewable").asBoolean()).isFalse();
             }
@@ -664,6 +668,72 @@ class ListingLifecycleIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/listings/mine/" + id).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id));
+    }
+
+    // --- the cover image on a summary ---------------------------------------
+
+    @Test
+    @DisplayName("a summary carries the listing's first ready photo, one URL per size")
+    void summaryCarriesTheCover() throws Exception {
+        JsonNode seller = register(uniqueEmail("covered"), UserRole.PARTICULIER);
+        String withPhotos = createListingWithoutPhoto(seller);
+        String without = createListingWithoutPhoto(seller);
+
+        // Three rows: the cover, a later photo, and an earlier position that is not ready
+        // and so is not a photo at all.
+        UUID cover = insertImage(withPhotos, 1, "READY");
+        UUID later = insertImage(withPhotos, 2, "READY");
+        insertImage(withPhotos, 0, "PENDING");
+        insertVariant(cover, "THUMBNAIL", 320, 240);
+        insertVariant(cover, "CARD", 640, 480);
+        insertVariant(later, "THUMBNAIL", 320, 240);
+
+        JsonNode items = objectMapper.readTree(mockMvc.perform(get("/api/v1/listings/mine")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get("items");
+
+        JsonNode covered = null;
+        JsonNode bare = null;
+        for (JsonNode item : items) {
+            if (item.get("id").asText().equals(withPhotos)) {
+                covered = item;
+            } else if (item.get("id").asText().equals(without)) {
+                bare = item;
+            }
+        }
+
+        assertThat(covered).isNotNull();
+        JsonNode image = covered.get("coverImage");
+        assertThat(image.size()).isEqualTo(2);
+        assertThat(image.get("THUMBNAIL").get("url").asText()).contains(cover.toString()).contains("thumbnail");
+        assertThat(image.get("THUMBNAIL").get("width").asInt()).isEqualTo(320);
+        assertThat(image.get("CARD").get("url").asText()).contains(cover.toString());
+        // A URL the client can load, never a storage key it could rebuild others from.
+        assertThat(image.get("CARD").get("url").asText()).startsWith("http");
+
+        // No photo: no cover, rather than an empty object a client has to probe.
+        assertThat(bare).isNotNull();
+        assertThat(bare.hasNonNull("coverImage")).isFalse();
+    }
+
+    private UUID insertImage(String listingId, int position, String status) {
+        UUID imageId = com.autox.common.UuidV7.generate();
+        jdbcTemplate.update("""
+                INSERT INTO listing_image (id, listing_id, position, status, storage_key,
+                                           content_type, byte_size, width, height, uploaded_at)
+                VALUES (?, ?::uuid, ?, ?, ?, 'image/jpeg', 12345, 1600, 1200, now())
+                """, imageId, listingId, position, status,
+                "listings/" + listingId + "/" + imageId + "/original.jpg");
+        return imageId;
+    }
+
+    private void insertVariant(UUID imageId, String variant, int width, int height) {
+        jdbcTemplate.update("""
+                INSERT INTO listing_image_variant (id, image_id, variant, storage_key, width, height, byte_size)
+                VALUES (?, ?, ?, ?, ?, ?, 4321)
+                """, com.autox.common.UuidV7.generate(), imageId, variant,
+                "listings/x/" + imageId + "/" + variant.toLowerCase() + ".jpg", width, height);
     }
 
     private String createListing(JsonNode session) throws Exception {

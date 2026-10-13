@@ -94,6 +94,7 @@ a mismatch loads the app and renders nothing.
 | `/vendre` — create a listing | `authGuard` |
 | `/mes-annonces` — the seller's listings (`?statut=`) | `authGuard` |
 | `/mes-annonces/:id/modifier` — edit a listing (`?etape=`) | `authGuard` |
+| `/admin` → `/admin/moderation` — the moderation lists (`?vue=`, `?page=`) | `roleGuard(ADMIN)` |
 | `/acces-refuse` | — |
 
 A guard is a courtesy, never a boundary. Every one of these is enforced by the API, which
@@ -188,6 +189,27 @@ component; the step is in `?etape=vehicule|offre|photos|apercu`.
   (`PHOTO_REQUIRED`, `ACTIVE_LISTING_LIMIT_REACHED`, `CONFLICT`) is shown as its French
   sentence on the row or step concerned, and the row is reloaded.
 - **"Vendue" and "Supprimer" ask first**, inline on the row. The other actions act.
+
+## Administration
+
+`features/admin/`. One screen, `/admin/moderation`, with three lists of the same card:
+`?vue=a-verifier` (the default — online and not yet reviewed, oldest first), `en-ligne`,
+`retirees`.
+
+- **The card holds everything needed to judge**: every photo, the whole description, the
+  figures, the VIN, the seller with their email, and the moderation trail. No click-through.
+- **Buttons come from `allowedActions`**, sent with each listing. The one display choice:
+  where the API would accept both a refusal and a takedown, only "Refuser" is shown.
+- **A refusal or takedown needs a reason**, chosen from `ModerationReason`; "Autre motif"
+  also needs a note. The form says who reads what: the seller sees the reason, only
+  moderators see the note. The labels are in `shared/listing/moderation.fr.ts`, shared
+  with the seller's dashboard, which shows the reason on a listing that was taken down.
+- **After every decision the page refetches** instead of patching its list — two people
+  can work the same queue. A decision the API refuses (someone else got there first) is
+  explained in French on the card, or above the list if the card has gone.
+- **"Administration" is in the account menu only when the role is known to be ADMIN.**
+  After a reload the session has tokens and no profile, so the header asks `GET /me` once;
+  until it answers the entry is absent, not guessed.
 
 ## Conventions
 

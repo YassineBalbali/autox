@@ -1,0 +1,209 @@
+<article class="panel card" [attr.data-listing]="listing().id" [attr.aria-busy]="busy()">
+  <header class="card__head">
+    <h2 class="card__title">
+      @if (online()) {
+        <!-- A new tab: the queue behind this card is the moderator's place, and stays. -->
+        <a [routerLink]="['/annonces', listing().id]" target="_blank" rel="noopener">{{ listing().title }}</a>
+      } @else {
+        {{ listing().title }}
+      }
+    </h2>
+    <span class="tag" [class.tag--accent]="online()" data-tag="status">{{ statusLabel() }}</span>
+    <span class="tag" data-tag="verdict">{{ verdictLabel() }}</span>
+  </header>
+
+  <div class="card__body">
+    <div class="card__photos">
+      @if (images().length) {
+        <app-photo-gallery [images]="images()" [subject]="listing().title ?? ''" />
+      } @else {
+        <div class="card__nophoto" i18n="@@moderationNoPhoto">Aucune photo</div>
+      }
+    </div>
+
+    <div class="card__details stack">
+      <div class="card__price">
+        @if (listing().priceAmount !== undefined) {
+          <app-price
+            size="detail"
+            [amountMinor]="listing().priceAmount!"
+            [currency]="listing().currencyCode ?? 'EUR'"
+            [minorUnit]="minorUnit()"
+          />
+        }
+        @if (listing().priceNegotiable) {
+          <span class="tag" i18n="@@listingNegotiable">Prix négociable</span>
+        }
+      </div>
+
+      <app-spec-line
+        [year]="listing().vehicle?.firstRegistrationYear"
+        [mileage]="listing().mileageKm"
+        [fuel]="fuel()"
+        [gearbox]="gearbox()"
+        [powerHp]="listing().vehicle?.powerHp"
+      />
+
+      <dl class="readout card__specs">
+        @for (row of specs(); track row.label) {
+          <div>
+            <dt class="readout__term">{{ row.label }}</dt>
+            <dd class="readout__value">{{ row.value }}</dd>
+          </div>
+        }
+        @if (place()) {
+          <div>
+            <dt class="readout__term" i18n="@@listingPlace">Localisation</dt>
+            <dd class="readout__value">{{ place() }}</dd>
+          </div>
+        }
+        @if (listing().vin) {
+          <!-- Shown here and never on the public page: a moderator checks it, a buyer
+               has no use for it and a plate-cloner does. -->
+          <div>
+            <dt class="readout__term" i18n="@@moderationVin">Numéro de série (VIN)</dt>
+            <dd class="readout__value">{{ listing().vin }}</dd>
+          </div>
+        }
+        @if (publishedOn()) {
+          <div>
+            <dt class="readout__term" i18n="@@moderationPublished">Mise en ligne</dt>
+            <dd class="readout__value">{{ publishedOn() }}</dd>
+          </div>
+        }
+      </dl>
+
+      <section>
+        <h3 class="card__label" i18n="@@listingDescription">Description</h3>
+        @if (listing().description) {
+          <!-- Plain text with the seller's line breaks. Never innerHTML: a stranger wrote it. -->
+          <p class="card__description">{{ listing().description }}</p>
+        } @else {
+          <p class="meta" i18n="@@moderationNoDescription">Le vendeur n’a pas rédigé de description.</p>
+        }
+      </section>
+    </div>
+
+    <aside class="card__side stack">
+      <section>
+        <h3 class="card__label" i18n="@@listingSeller">Vendeur</h3>
+        <p class="card__seller">
+          {{ seller().displayName }}
+          @if (sellerKind()) {
+            <span class="tag">{{ sellerKind() }}</span>
+          }
+        </p>
+        <p class="meta card__email">{{ seller().email }}</p>
+        @if (memberSince()) {
+          <p class="meta"><ng-container i18n="@@listingMemberSince">Membre depuis</ng-container> {{ memberSince() }}</p>
+        }
+      </section>
+
+      <section>
+        <h3 class="card__label" i18n="@@moderationTrail">Historique de modération</h3>
+        @if (trail().length) {
+          <ol class="trail">
+            @for (line of trail(); track line.id) {
+              <li class="trail__line">
+                <span class="trail__who"><strong class="trail__what">{{ line.what }}</strong> par {{ line.who }}</span>
+                <span class="meta trail__when">{{ line.when }}</span>
+                @if (line.reason) {
+                  <span class="trail__reason">{{ line.reason }}</span>
+                }
+                @if (line.note) {
+                  <span class="trail__note">{{ line.note }}</span>
+                }
+              </li>
+            }
+          </ol>
+        } @else {
+          <p class="meta" i18n="@@moderationNoTrail">Aucune décision pour l’instant.</p>
+        }
+      </section>
+    </aside>
+  </div>
+
+  <footer class="card__foot">
+    @if (failure()) {
+      <app-alert kind="error">{{ failure() }}</app-alert>
+    }
+
+    @switch (open()) {
+      @case ('refuse') {
+        <form class="stack form--rows card__form" [formGroup]="refusal" (ngSubmit)="submitRefusal()" novalidate>
+          <app-select-field
+            label="Motif"
+            i18n-label="@@moderationReason"
+            hint="Le vendeur verra ce motif."
+            i18n-hint="@@moderationReasonHint"
+            [control]="refusal.controls.reason"
+            [options]="reasonOptions"
+          />
+          <app-text-field
+            label="Note interne"
+            i18n-label="@@moderationNote"
+            type="textarea"
+            hint="Visible des modérateurs uniquement."
+            i18n-hint="@@moderationNoteHint"
+            [optional]="!noteRequired()"
+            [rows]="3"
+            [maxLength]="maxNote"
+            [control]="refusal.controls.note"
+          />
+          <div class="form-actions">
+            <button class="btn btn--danger" type="submit" data-action="confirm-refusal" [disabled]="busy()">
+              {{ refusalLabel() }}
+            </button>
+            <button class="btn btn--quiet" type="button" (click)="cancel()" i18n="@@cancel">Annuler</button>
+          </div>
+        </form>
+      }
+
+      @case ('reinstate') {
+        <form class="stack form--rows card__form" [formGroup]="reinstatement" (ngSubmit)="submitReinstatement()" novalidate>
+          <p i18n="@@moderationReinstateQuestion">
+            Réintégrer cette annonce ? Elle redevient visible, sauf si elle a expiré entre-temps ou si
+            le vendeur a déjà atteint son nombre maximum d’annonces en ligne.
+          </p>
+          <app-text-field
+            label="Note interne"
+            i18n-label="@@moderationNote"
+            type="textarea"
+            hint="Visible des modérateurs uniquement."
+            i18n-hint="@@moderationNoteHint"
+            [optional]="true"
+            [rows]="2"
+            [maxLength]="maxNote"
+            [control]="reinstatement.controls.note"
+          />
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" data-action="confirm-reinstatement" [disabled]="busy()" i18n="@@moderationReinstate">
+              Réintégrer
+            </button>
+            <button class="btn btn--quiet" type="button" (click)="cancel()" i18n="@@cancel">Annuler</button>
+          </div>
+        </form>
+      }
+
+      @default {
+        <div class="card__actions">
+          @if (canApprove()) {
+            <button class="btn btn--primary" type="button" data-action="approve" [disabled]="busy()" (click)="approve()" i18n="@@moderationApprove">
+              Approuver
+            </button>
+          }
+          @if (refusalAction()) {
+            <button class="btn btn--danger" type="button" data-action="refuse" [disabled]="busy()" (click)="openForm('refuse')">
+              {{ refusalLabel() }}
+            </button>
+          }
+          @if (canReinstate()) {
+            <button class="btn btn--quiet" type="button" data-action="reinstate" [disabled]="busy()" (click)="openForm('reinstate')" i18n="@@moderationReinstate">
+              Réintégrer
+            </button>
+          }
+        </div>
+      }
+    }
+  </footer>
+</article>

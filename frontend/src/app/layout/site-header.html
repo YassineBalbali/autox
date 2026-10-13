@@ -39,6 +39,18 @@
 
       @if (menuOpen()) {
         <div class="account-menu__panel" role="menu">
+          @if (isAdmin()) {
+            <!-- Only once the role is known to be ADMIN: see SiteHeader.isAdmin. -->
+            <a
+              class="account-menu__item"
+              role="menuitem"
+              routerLink="/admin/moderation"
+              (click)="closeMenu()"
+              i18n="@@headerAdmin"
+            >
+              Administration
+            </a>
+          }
           <a
             class="account-menu__item"
             role="menuitem"

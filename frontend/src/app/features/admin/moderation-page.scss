@@ -1,0 +1,55 @@
+:host {
+  display: block;
+}
+
+// Says which part of the site this is, above the page's own title. Navy, not accent:
+// it is a label, and blue is for prices and actions.
+.moderation__section {
+  color: var(--c-navy);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+// The same strip of links as the seller's status filter: each view is an address.
+.moderation__views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-4);
+  border-bottom: var(--border);
+}
+
+.moderation__view {
+  padding: var(--s-2) 0;
+  border-bottom: 2px solid transparent;
+  color: var(--c-ink-soft);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--c-ink);
+  }
+}
+
+.moderation__view--active {
+  border-bottom-color: var(--c-accent);
+  color: var(--c-ink);
+}
+
+.moderation__count {
+  color: var(--c-ink-soft);
+  font-weight: var(--fw-regular, 400);
+}
+
+.moderation__state {
+  padding-block: var(--s-5);
+}
+
+.moderation__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+}

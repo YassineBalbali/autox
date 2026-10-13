@@ -312,6 +312,47 @@ Then `Authorization: Bearer <accessToken>`.
 Roles: **PARTICULIER** (private seller, free, capped at 5 live listings), **PROFESSIONNEL**
 (dealer, uncapped until subscription tiers exist), **ADMIN**.
 
+### Moderation
+
+A listing goes online when its seller publishes it and is reviewed afterwards. "Awaiting
+review" is therefore not a status: it is `status = ACTIVE` with
+`moderationStatus = NOT_REVIEWED`. Everything below requires the **ADMIN** role (403
+otherwise, 401 without a token).
+
+```
+GET  /api/v1/admin/listings?view=PENDING|LIVE|REMOVED   →  a page of listings, each complete
+GET  /api/v1/admin/listings/{id}
+POST /api/v1/admin/listings/{id}/approve      { note? }              ACTIVE, APPROVED
+POST /api/v1/admin/listings/{id}/reject       { reasonCode, note? }  REMOVED, REJECTED
+POST /api/v1/admin/listings/{id}/remove       { reasonCode, note? }  REMOVED, REJECTED
+POST /api/v1/admin/listings/{id}/reinstate    { note? }              ACTIVE | PAUSED | EXPIRED, APPROVED
+```
+
+- **Each listing in the answer carries everything**: the full listing with its photos, the
+  seller (email included), `allowedActions`, and the `trail` — who did what, when, why.
+- **`reject` is for a listing nobody has reviewed; `remove` takes down any listing that is
+  online.** Both need a `reasonCode`; `OTHER` also needs a `note`. The seller is shown the
+  reason (`removalReason` on their own listing) and never the note or the moderator.
+- **A moderator's removal is reversible; a seller's delete is not.** The first sets
+  `REMOVED` alone, the second also stamps `deleted_at`, after which the listing exists for
+  no endpoint — including these.
+- **`reinstate` returns the listing to where it would be**: online, or `PAUSED` if the
+  seller's quota has filled meanwhile, or `EXPIRED` if its window ran out.
+- **A seller cannot leave `REMOVED`.** `allowedTransitions` on a seller's own listing is
+  empty there, and `publish`/`renew` answer 409 — for an administrator calling those
+  endpoints too, so that a reinstatement always goes through the trail.
+
+There is no endpoint that creates an administrator, on purpose. Locally, register an
+account and promote it:
+
+```bash
+docker exec -i autox-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+UPDATE app_user SET role = 'ADMIN' WHERE email = 'you@example.com';
+SQL
+```
+
+then sign in again — the role travels in the access token.
+
 ### Password and session management
 
 ```

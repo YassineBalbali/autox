@@ -860,6 +860,236 @@
         }
       }
     },
+    "/api/v1/admin/listings/{id}/remove": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Takes down a listing that is online.",
+        "description": "Takes down a listing that is online. Reversible — see {@link com.autox.admin.AdminListingController#reinstate #reinstate} — unlike a\n seller's own delete. A reason is required.",
+        "operationId": "remove",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeratedListing"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/listings/{id}/reject": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Refuses a listing awaiting review; it leaves the site.",
+        "description": "Refuses a listing awaiting review; it leaves the site. A reason is required.",
+        "operationId": "reject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeratedListing"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/listings/{id}/reinstate": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Brings back a listing a moderator refused or took down.",
+        "description": "Brings back a listing a moderator refused or took down. It returns online, or\n paused if the seller's quota is full, or expired if its window has run out.",
+        "operationId": "reinstate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationNoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeratedListing"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/listings/{id}/approve": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Accepts a listing awaiting review.",
+        "description": "Accepts a listing awaiting review. 409 if it is not online and unreviewed.",
+        "operationId": "approve",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationNoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeratedListing"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -1546,6 +1776,125 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PageResponseUserSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/listings": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "One of the three moderation lists, a page at a time.",
+        "description": "One of the three moderation lists, a page at a time. <code>PENDING</code> is the queue:\n online and not yet reviewed, oldest first.",
+        "operationId": "moderationList",
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ModerationView",
+              "default": "PENDING"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseModeratedListing"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/listings/{id}": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "One listing in any state, with its moderation trail.",
+        "description": "One listing in any state, with its moderation trail. 404 once its seller has deleted it.",
+        "operationId": "moderationDetail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeratedListing"
                 }
               }
             }
@@ -2300,7 +2649,7 @@
       },
       "ListingStatus": {
         "type": "string",
-        "description": "Seller-facing lifecycle, and the authority on which moves between states are legal.\n Mirrors ck_listing_status.\n\n <p>The transition table lives here rather than in the service so there is exactly one\n definition of what is allowed, and an illegal move is rejected rather than quietly\n applied. Transitions are about the shape of the lifecycle only — who may make a move,\n and whether a quota permits it, are separate questions answered by the service.\n\n <pre>\n   DRAFT ──publish──▶ ACTIVE ──unpublish──▶ PAUSED ──publish──▶ ACTIVE\n                        │                     │\n                        ├──▶ SOLD ◀───sold────┘\n                        ├──▶ EXPIRED ──renew──▶ ACTIVE\n                        └──▶ REMOVED  (terminal, see below)\n </pre>",
+        "description": "Seller-facing lifecycle, and the authority on which moves between states are legal.\n Mirrors ck_listing_status.\n\n <p>The transition table lives here rather than in the service so there is exactly one\n definition of what is allowed, and an illegal move is rejected rather than quietly\n applied. It describes every move the API can make and no move it cannot. Whether a\n quota permits a move is a separate question, answered by the service.\n\n <pre>\n   DRAFT ──publish──▶ ACTIVE ──unpublish──▶ PAUSED ──publish──▶ ACTIVE\n                        │                     │\n                        ├──▶ SOLD ◀───sold────┘\n                        ├──▶ EXPIRED ──renew──▶ ACTIVE\n                        └──▶ REMOVED ──reinstate (moderator only)──▶ ACTIVE | PAUSED | EXPIRED\n </pre>\n\n <p><b>Out of REMOVED is a moderator's move, never a seller's.</b> A listing reaches\n REMOVED two ways. A seller's delete also stamps <code>deleted_at</code>, and the row then\n exists for no read path at all: it is gone. A moderator's refusal or takedown sets\n REMOVED alone, and that listing can be reinstated — by a moderator. The seller it\n belongs to still sees it, and must not be able to put it back online themselves, which\n is why {@link com.autox.listing.ListingStatus#sellerTargets #sellerTargets()} exists beside {@link com.autox.listing.ListingStatus#allowedTargets #allowedTargets()}.",
         "enum": [
           "DRAFT",
           "PENDING_REVIEW",
@@ -2614,6 +2963,146 @@
           "email",
           "password"
         ]
+      },
+      "ModerationDecisionRequest": {
+        "type": "object",
+        "description": "Why a listing is being refused or taken down.\n\n <p>The reason is required: a listing that disappears without one cannot be explained to\n its seller or defended in a dispute. The note is the moderator's own words, kept for\n other moderators, and required only when the reason is <code>OTHER</code>.",
+        "properties": {
+          "reasonCode": {
+            "$ref": "#/components/schemas/ModerationReason",
+            "description": "Why. Shown, translated, to the seller."
+          },
+          "note": {
+            "type": "string",
+            "description": "Internal detail for other moderators. Required when reasonCode is OTHER.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "reasonCode"
+        ]
+      },
+      "ModerationReason": {
+        "type": "string",
+        "description": "Why a moderator refused a listing or took it down. Stored by name in\n <code>moderation_action.reason_code</code>.\n\n <p>A closed list rather than free text, for two reasons. The seller is told the reason,\n and a code can be said in their language where a moderator's note cannot. And \"how many\n listings were refused as duplicates last month\" is a question a code answers and a\n sentence does not.\n\n <p>Codes are stable: one that has been written to the trail is never renamed or removed,\n only retired from the screens that offer it.",
+        "enum": [
+          "SUSPECTED_FRAUD",
+          "MISLEADING_INFORMATION",
+          "DUPLICATE",
+          "NOT_A_VEHICLE",
+          "INAPPROPRIATE_PHOTOS",
+          "PROHIBITED_CONTENT",
+          "CONTACT_DETAILS_IN_TEXT",
+          "OTHER"
+        ]
+      },
+      "ModeratedListing": {
+        "type": "object",
+        "description": "A listing as a moderator sees it: everything needed to judge it, in one answer.\n\n <p>The whole listing rather than a summary — description, VIN, every photo — because\n the point of the queue is to decide without opening anything else, and a moderator who\n has to click through to read the description will stop reading descriptions.",
+        "properties": {
+          "listing": {
+            "$ref": "#/components/schemas/ListingResponse",
+            "description": "the full listing, photos included"
+          },
+          "seller": {
+            "$ref": "#/components/schemas/ModeratedSeller",
+            "description": "who is selling, including the email a buyer never sees"
+          },
+          "allowedActions": {
+            "type": "array",
+            "description": "what this listing's state permits a moderator to do — the answer\n                       to \"would you accept this?\", so that no client keeps its own copy\n                       of the rules",
+            "items": {
+              "$ref": "#/components/schemas/ModerationActionType"
+            },
+            "uniqueItems": true
+          },
+          "trail": {
+            "type": "array",
+            "description": "every moderation action on this listing, oldest first",
+            "items": {
+              "$ref": "#/components/schemas/ModerationEntry"
+            }
+          }
+        }
+      },
+      "ModeratedSeller": {
+        "type": "object",
+        "description": "The seller, as an administrator may see them.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "memberSince": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ModerationActionType": {
+        "type": "string",
+        "description": "Mirrors ck_moderation_action. REJECT and REMOVE require a reason code.",
+        "enum": [
+          "APPROVE",
+          "REJECT",
+          "REMOVE",
+          "REINSTATE"
+        ]
+      },
+      "ModerationEntry": {
+        "type": "object",
+        "description": "One line of a listing's moderation trail: who did what, when, and why.\n\n <p>Admin-only. It names the moderator and carries their internal note, neither of which\n a seller is shown — a seller sees the reason code, on their own listing, and no more.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "$ref": "#/components/schemas/ModerationActionType"
+          },
+          "reasonCode": {
+            "$ref": "#/components/schemas/ModerationReason"
+          },
+          "note": {
+            "type": "string"
+          },
+          "moderatorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "moderatorName": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ModerationNoteRequest": {
+        "type": "object",
+        "description": "The optional body of an approval or a reinstatement: a note for the trail, nothing else.\n Neither needs a reason code — putting a listing online is the unremarkable outcome.",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "Internal detail for other moderators.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        }
       },
       "ProProfileUpdate": {
         "type": "object",
@@ -3607,6 +4096,15 @@
           },
           "editable": {
             "type": "boolean"
+          },
+          "coverImage": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/VariantView"
+            }
+          },
+          "removalReason": {
+            "$ref": "#/components/schemas/ModerationReason"
           }
         }
       },
@@ -3684,6 +4182,46 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UserSummary"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ModerationView": {
+        "type": "string",
+        "description": "The three lists a moderator works from.",
+        "enum": [
+          "PENDING",
+          "LIVE",
+          "REMOVED"
+        ]
+      },
+      "PageResponseModeratedListing": {
+        "type": "object",
+        "description": "The envelope every list endpoint returns.\n\n <p>Spring's own <code>Page</code> serialises its internal structure, which would tie the\n public contract to a Spring Data version. This is our shape, and it is the only\n one a mobile client has to understand.\n\n <p>Offset paging is correct for admin tables. Public search will use a keyset\n cursor instead — same envelope, with a <code>nextCursor</code> added — because offset\n paging skips and repeats rows while listings are being inserted underneath.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModeratedListing"
             }
           },
           "page": {

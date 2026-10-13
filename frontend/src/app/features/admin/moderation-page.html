@@ -1,0 +1,102 @@
+<div class="stack moderation">
+  <header>
+    <p class="moderation__section" i18n="@@adminSection">Administration</p>
+    <h1 class="page-title" i18n="@@moderationTitle">Modération des annonces</h1>
+    <p class="lede" i18n="@@moderationLede">
+      Une annonce est en ligne dès sa publication et vérifiée ensuite. Refuser ou retirer une annonce la
+      masque immédiatement ; c’est réversible.
+    </p>
+  </header>
+
+  <nav class="moderation__views" aria-label="Listes de modération" i18n-aria-label="@@moderationViews">
+    @for (entry of views; track entry.slug; let first = $first) {
+      <a
+        class="moderation__view"
+        [class.moderation__view--active]="entry.slug === current().slug"
+        [attr.aria-current]="entry.slug === current().slug ? 'page' : null"
+        routerLink="/admin/moderation"
+        [queryParams]="{ vue: first ? null : entry.slug }"
+      >
+        {{ entry.label }}
+        @if (entry.slug === current().slug && countLine() && state() === 'ready') {
+          <span class="moderation__count">({{ total() }})</span>
+        }
+      </a>
+    }
+  </nav>
+
+  @if (notice()) {
+    <app-alert kind="success">{{ notice() }}</app-alert>
+  }
+  @if (strayFailure()) {
+    <app-alert kind="error" data-failure="stray">
+      {{ strayFailure() }}
+      <ng-container i18n="@@moderationStale">La liste a été actualisée.</ng-container>
+    </app-alert>
+  }
+
+  @switch (state()) {
+    @case ('loading') {
+      <div class="panel moderation__state" aria-busy="true">
+        <p class="meta" i18n="@@moderationLoading">Chargement des annonces…</p>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="panel stack">
+        <app-alert kind="error">{{ loadFailure() }}</app-alert>
+        <div class="form-actions">
+          <button class="btn btn--quiet" type="button" (click)="reload()" i18n="@@retry">Réessayer</button>
+        </div>
+      </div>
+    }
+
+    @case ('ready') {
+      @if (items().length === 0) {
+        <div class="panel moderation__state">
+          <p>{{ current().empty }}</p>
+        </div>
+      } @else {
+        @for (item of items(); track item.listing?.id) {
+          <app-moderation-card
+            [item]="item"
+            [busy]="busy() === item.listing?.id"
+            [failure]="failureFor(item)"
+            [minorUnit]="minorUnit(item.listing?.currencyCode)"
+            (decided)="decide(item, $event)"
+          />
+        }
+
+        @if (totalPages() > 1) {
+          <nav class="moderation__pages" aria-label="Pagination" i18n-aria-label="@@pagination">
+            @if (hasPrevious()) {
+              <a
+                class="btn btn--quiet"
+                routerLink="/admin/moderation"
+                [queryParams]="{ page: pageIndex() === 1 ? null : pageIndex() }"
+                queryParamsHandling="merge"
+                rel="prev"
+                i18n="@@pagePrevious"
+              >
+                ← Page précédente
+              </a>
+            }
+            <span class="meta">Page {{ pageIndex() + 1 }} sur {{ totalPages() }}</span>
+            @if (hasNext()) {
+              <a
+                class="btn btn--quiet"
+                routerLink="/admin/moderation"
+                [queryParams]="{ page: pageIndex() + 2 }"
+                queryParamsHandling="merge"
+                rel="next"
+                i18n="@@pageNext"
+              >
+                Page suivante →
+              </a>
+            }
+          </nav>
+        }
+      }
+    }
+  }
+</div>
