@@ -21,6 +21,13 @@ spring:
     password: ${AUTOX_DB_PASSWORD}
     hikari:
       maximum-pool-size: ${AUTOX_DB_POOL_SIZE:10}
+      # How many connections stay open while nothing is happening, and for how long an
+      # unused one is kept. Locally: the whole pool, for ten minutes — Hikari's defaults.
+      # Against a database that scales to zero (Neon), 0 and a minute: an open connection
+      # is pinged every two minutes to keep it alive, and those pings alone would keep
+      # the database awake around the clock and spend its monthly compute allowance.
+      minimum-idle: ${AUTOX_DB_POOL_MIN_IDLE:${AUTOX_DB_POOL_SIZE:10}}
+      idle-timeout: ${AUTOX_DB_IDLE_TIMEOUT_MS:600000}
       pool-name: autox-pool
 
   jpa:
@@ -67,7 +74,27 @@ server:
   error:
     include-message: never
     include-stacktrace: never
-  forward-headers-strategy: framework
+  # Who the client is, behind a proxy. Every throttle keys on this, so it decides whether
+  # the rate limits can be dodged.
+  #
+  # `native`: Tomcat's RemoteIpValve, which believes a forwarding header only when the
+  # connection comes from an internal proxy (by default the private ranges: 10/8,
+  # 172.16/12, 192.168/16, 100.64/10, loopback and their IPv6 equivalents), and reads it
+  # from the RIGHT, skipping hops it trusts. Not `framework`: that takes the first value of
+  # X-Forwarded-For, which is whatever the client wrote — most proxies, Render's included,
+  # append to the header rather than replace it, so a forged first value went straight
+  # through and every caller could pick their own throttle key.
+  #
+  # Which header carries the client is the deployment's to say. X-Forwarded-For is right
+  # behind a single proxy that appends. Render puts Cloudflare in front of its own proxy,
+  # so the rightmost untrusted hop there is a Cloudflare edge, shared by thousands of
+  # visitors; Render sets True-Client-IP to the real client, overwriting any value the
+  # client sent, and that is what AUTOX_CLIENT_IP_HEADER names there. See
+  # docs/deployment.md for the check to run once deployed.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      remote-ip-header: ${AUTOX_CLIENT_IP_HEADER:X-Forwarded-For}
 
 autox:
   auth:
@@ -135,6 +162,14 @@ autox:
       requests-per-window: ${AUTOX_PUBLIC_RATE_LIMIT_REQUESTS:300}
       window: PT1M
       block-for: PT1M
+
+  # How often the background sweeps run. Each touches the database, so on a database that
+  # scales to zero each run is a wake-up; a demo with nothing to expire can run them a few
+  # times a day. Durations for the two interval sweeps, a Spring cron for the hourly one.
+  scheduling:
+    listing-expiry-interval: ${AUTOX_SCHEDULE_LISTING_EXPIRY:PT10M}
+    image-cleanup-interval: ${AUTOX_SCHEDULE_IMAGE_CLEANUP:PT15M}
+    auth-maintenance-cron: ${AUTOX_SCHEDULE_AUTH_MAINTENANCE:0 17 * * * *}
 
   listing:
     # A published listing stays live for this long, then the sweeper expires it.

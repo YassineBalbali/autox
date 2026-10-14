@@ -1,0 +1,10 @@
+# The build context is backend/. The image build needs the pom and src/main; the rest is
+# either rebuilt inside it or has no business in an image.
+target/
+src/test/
+.idea/
+*.iml
+.vscode/
+.trivyignore
+Dockerfile
+.dockerignore

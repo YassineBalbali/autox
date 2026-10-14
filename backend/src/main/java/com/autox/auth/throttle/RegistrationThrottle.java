@@ -28,9 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
  * in its own transaction: the counter is written here, and a refusal thrown by the caller
  * afterwards must not roll the count back.
  *
- * <p>It is only as good as the address it is given. Behind a proxy that does not overwrite
- * {@code X-Forwarded-For}, a caller chooses their own key — see the README, "Deploying
- * behind a proxy".
+ * <p>It is only as good as the address it is given, which Tomcat's RemoteIpValve resolves
+ * from the proxy headers it trusts — see the README, "Deploying behind a proxy".
  */
 @Service
 public class RegistrationThrottle {

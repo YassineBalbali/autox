@@ -54,26 +54,30 @@ class PublicRateLimitIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("X-Forwarded-For is the key behind a proxy, and counts per forwarded address")
-    void forwardedAddressIsTheKey() throws Exception {
-        // Unreachable by any test until the configuration rename: the production setting
-        // that makes Spring honour this header, server.forward-headers-strategy=framework,
-        // was in a file the suite never loaded. It is the mechanism the whole deployment
-        // warning in the README is about, so it is worth having pinned.
+    @DisplayName("the client address is the key, and counts per address")
+    void clientAddressIsTheKey() throws Exception {
+        // The address as the container resolved it. Behind a proxy that is Tomcat's
+        // RemoteIpValve's work, which MockMvc does not run; ClientAddressIntegrationTest
+        // covers the proxy headers on a real port.
         for (int request = 0; request < 3; request++) {
-            mockMvc.perform(get("/api/v1/listings").header("X-Forwarded-For", "203.0.113.7"))
+            mockMvc.perform(get("/api/v1/listings").with(from("203.0.113.7")))
                     .andExpect(status().isOk());
         }
-        mockMvc.perform(get("/api/v1/listings").header("X-Forwarded-For", "203.0.113.7"))
+        mockMvc.perform(get("/api/v1/listings").with(from("203.0.113.7")))
                 .andExpect(status().isTooManyRequests());
 
-        // The counter is keyed on the forwarded address, not on the socket's.
         assertThat(counters.find(ThrottleScope.PUBLIC_READ, "203.0.113.7")).isPresent();
 
-        // And a different client behind the same proxy is unaffected — which is the whole
-        // point of reading the header, and the reason an untrusted proxy is dangerous.
-        mockMvc.perform(get("/api/v1/listings").header("X-Forwarded-For", "203.0.113.8"))
+        // A different client is unaffected.
+        mockMvc.perform(get("/api/v1/listings").with(from("203.0.113.8")))
                 .andExpect(status().isOk());
+    }
+
+    private static org.springframework.test.web.servlet.request.RequestPostProcessor from(String address) {
+        return request -> {
+            request.setRemoteAddr(address);
+            return request;
+        };
     }
 
     @Test

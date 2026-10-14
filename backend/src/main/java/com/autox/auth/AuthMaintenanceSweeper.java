@@ -53,9 +53,9 @@ public class AuthMaintenanceSweeper {
      * Hourly, offset from the hour so it does not pile onto other scheduled work, and on
      * one instance at a time. Each statement here is an idempotent DELETE and would survive
      * being run twice; it is coordinated anyway, because "this one is safe" is a property
-     * that quietly stops being true.
+     * that quietly stops being true. The schedule is configurable (autox.scheduling).
      */
-    @Scheduled(cron = "0 17 * * * *")
+    @Scheduled(cron = "${autox.scheduling.auth-maintenance-cron}")
     public void purge() {
         coordinator.runExclusively("auth-maintenance", () -> {
             int counters = throttle.purgeStaleCounters();

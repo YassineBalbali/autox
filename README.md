@@ -246,7 +246,7 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 378 tests, needs Docker running
+mvn clean verify         # 386 tests, needs Docker running
 
 cd ../frontend
 npm run lint
@@ -279,15 +279,16 @@ that can change its result.
 
 | Workflow | Watches | Runs |
 |---|---|---|
-| `.github/workflows/backend.yml` | `backend/**`, `frontend/openapi.json`, itself | `mvn -B clean verify`, then a vulnerability scan of the built jar |
+| `.github/workflows/backend.yml` | `backend/**`, `frontend/openapi.json`, itself | `mvn -B clean verify`, then builds the API image from `backend/Dockerfile` and scans it |
 | `.github/workflows/frontend.yml` | `frontend/**`, itself | `npm ci`, an audit of production dependencies, generate, lint, the build-script tests, build, test |
 
-**Dependency scanning.** The backend job scans the libraries inside the jar it just built
-with Trivy (run from its image, pinned by digest), and fails on a HIGH or CRITICAL advisory
-that has a fixed version. Advisories judged not to apply are in `backend/.trivyignore`, each
-with the reason a reviewer can check. The frontend job runs `npm audit --omit=dev
---audit-level=high`: what reaches a browser. `.github/dependabot.yml` proposes the upgrades,
-grouped weekly, for Maven, npm, the Actions themselves and the MinIO image digest.
+**Dependency scanning.** The backend job builds the image Render deploys and scans it — its
+Alpine packages and every library in it — with Trivy (run from its image, pinned by digest),
+and fails on a HIGH or CRITICAL advisory that has a fixed version. Advisories judged not to
+apply are in `backend/.trivyignore`, each with the reason a reviewer can check. The frontend
+job runs `npm audit --omit=dev --audit-level=high`: what reaches a browser.
+`.github/dependabot.yml` proposes the upgrades, grouped weekly, for Maven, npm, the Actions
+themselves, the MinIO image digest and the Dockerfile's base images.
 
 **The MinIO image is pinned by digest**, in `docker-compose.yml` and in the test suite, so
 two machines — and CI — run the same build. Dependabot proposes the next digest.
@@ -501,6 +502,11 @@ AWS S3 all speak this protocol, so the provider is configuration rather than cod
 | `AUTOX_PORT` | `8080` | `.env.example` sets 8081, which is what the web app's development build calls. |
 | `AUTOX_LOG_LEVEL` | `INFO` | Application logging only |
 | `AUTOX_DB_POOL_SIZE` | `10` | |
+| `AUTOX_DB_POOL_MIN_IDLE` | the pool size | Connections kept open while idle. `0` lets a database that scales to zero sleep |
+| `AUTOX_DB_IDLE_TIMEOUT_MS` | `600000` | How long an unused connection is kept, above the minimum |
+| `AUTOX_SCHEDULE_LISTING_EXPIRY`, `AUTOX_SCHEDULE_IMAGE_CLEANUP` | `PT10M`, `PT15M` | Intervals of the two background sweeps |
+| `AUTOX_SCHEDULE_AUTH_MAINTENANCE` | `0 17 * * * *` | Cron of the token and counter purge |
+| `AUTOX_CLIENT_IP_HEADER` | `X-Forwarded-For` | Which proxy header carries the client address; `True-Client-IP` on Render. See below |
 | `AUTOX_JWT_ISSUER` | `https://api.autox.local` | |
 | `AUTOX_CORS_ALLOWED_ORIGINS` | `http://localhost:4200` | Comma-separated. Browsers only — a native app is not subject to CORS. |
 | `AUTOX_LOGIN_THROTTLE_ENABLED` | `true` | Leave on. |
@@ -528,16 +534,27 @@ has to name the API and the photo storage, so three variables are read **at buil
 
 With none set, the policy allows the site's own origin only, which is what CI builds. The
 build fails if Angular ever emits inline script, which the policy would block in production.
-`docs/deployment.md` has the rest of the deployment plan.
+On Cloudflare Pages no `404.html` is written, on purpose: Pages serves the app for every path
+only when there is none. `docs/deployment.md` is the step-by-step deployment.
+
+### Deploying
+
+`docs/deployment.md` walks through the demo's deployment step by step: Render for the API
+(`backend/Dockerfile`, `render.yaml`), Neon for PostgreSQL, Cloudflare R2 for photos and
+Cloudflare Pages for the site. It lists every variable, says which service each value comes
+from, and covers seeding, the first administrator and the checks to run afterwards.
 
 ### Deploying behind a proxy
 
-`server.forward-headers-strategy=framework` is set, so Spring honours `X-Forwarded-For` and
-the application sees the real client address. **That is only safe if the proxy is trusted to
-overwrite the header** — Spring takes its *first* value, and a proxy that appends to the
-header leaves that value to the client. `docs/deployment.md` §5.2 has the change to make
-before deploying: a caller that can set it freely can forge the key the rate limiter
-and the login throttle count against, and sidestep both. Terminate at a proxy you control.
+Every throttle keys on the client address, so who the client is decides whether the limits
+hold. `server.forward-headers-strategy=native` hands that to Tomcat's `RemoteIpValve`. It
+believes a forwarding header only on a connection from an internal proxy (the private
+address ranges by default), and reads it **from the right**, skipping the hops it trusts.
+A value the client wrote at the front of `X-Forwarded-For` is therefore never taken for
+the client. `AUTOX_CLIENT_IP_HEADER` names the header: `X-Forwarded-For` behind a single
+appending proxy, `True-Client-IP` on Render, whose Cloudflare edge would otherwise be every
+visitor's address. `ClientAddressIntegrationTest` covers all three cases on a real port,
+and `docs/deployment.md` (step 8) has the check to run once deployed.
 
 Both throttles key IPv6 on the **/64 prefix**, not the full address — a single connection is
 routinely handed a /64, so keying on the address means an IPv6 caller is never limited at
@@ -568,9 +585,10 @@ backend/
     config/       security, JWT, MVC, OpenAPI
       env/          .env loading, and the fail-fast check that names a missing variable
   src/main/java/com/autox/demo/      the demo seed — loaded only under the "demo" profile
-  src/main/resources/db/migration/   V1 … V12, Flyway owns the schema
+  src/main/resources/db/migration/   V1 … V13, Flyway owns the schema
   src/test/java/com/autox/           integration tests, Testcontainers
   src/test/resources/application-test.yml   the test profile: deviations only
+  Dockerfile                         the API image Render runs: Java 21 JRE, non-root, sized for 512 MB
 
 frontend/
   openapi.json                  the committed API contract — the client is generated from it
@@ -602,8 +620,10 @@ frontend/
     admin/                      moderation: three lists of one card
     errors/                     access refused, page not found
 
-.github/workflows/backend.yml    CI: clean verify, on backend/** and openapi.json
+.github/workflows/backend.yml    CI: clean verify, then build and scan the API image
 .github/workflows/frontend.yml   CI: install, lint, build, test, on frontend/**
+.github/dependabot.yml           weekly upgrade proposals for every ecosystem
+render.yaml                      the API service on Render (Blueprint); see docs/deployment.md
 
 docs/            why things are the way they are — read these before changing them
 ```
@@ -623,7 +643,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
 | `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |
-| `docs/deployment.md` | **The deployment plan**: what runs where, every production variable, what to change first. |
+| `docs/deployment.md` | **Deploying the demo**, step by step: Neon, R2, Render, Pages — every variable, seeding, the first admin, the checks afterwards. |
 | `docs/frontend-decisions.md` | The generated API client, the single in-flight refresh, token storage, guards, error translation, design tokens |
 
 ---

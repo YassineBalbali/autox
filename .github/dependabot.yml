@@ -43,3 +43,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+
+  # backend/Dockerfile pins both base images (Maven build, Temurin JRE) by digest.
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly

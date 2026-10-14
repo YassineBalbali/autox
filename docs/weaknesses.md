@@ -111,10 +111,10 @@ applies — no `frame-ancestors`, no HSTS — unless the headers are configured 
 - **Login has the same CPU cost per attempt**, by design (the dummy hash that prevents
   account enumeration). The throttle counts failures per address and per IP; a spray
   across addresses and sources burns a core without tripping it.
-- **Every throttle trusts `X-Forwarded-For` — its first value.** A platform proxy that
-  appends to the header leaves that value to the client, who then chooses their own key and
-  none of the limits apply. A configuration change (`docs/deployment.md` §5.2), depending
-  on the host; the most important item on the deployment list.
+- ~~**Every throttle trusts `X-Forwarded-For` — its first value.**~~ **Fixed:** Tomcat's
+  RemoteIpValve trusts a forwarding header only from a private-network proxy and reads it
+  from the right; on Render the client is read from `True-Client-IP`, which Render
+  overwrites. Tested on a real port; `docs/deployment.md` step 8 is the check once deployed.
 - **No CAPTCHA or proof-of-work anywhere.**
 
 ### R6. The legal surface of a public site is absent — high, and not an engineering call
@@ -145,7 +145,7 @@ strength (no endpoint to attack) and a process gap (no record of who promoted wh
 - **The full OpenAPI document and Swagger UI are public**, administrator endpoints
   included. Deliberate — the endpoints are discoverable anyway — but worth a conscious
   yes for production.
-- ~~**No dependency scanning in CI.**~~ **Fixed:** the backend jar is scanned with Trivy and
+- ~~**No dependency scanning in CI.**~~ **Fixed:** the API image (OS packages and libraries) is scanned with Trivy and
   production npm dependencies are audited on every push and weekly; Dependabot proposes
   upgrades. Still no secret scanning, and GitHub Actions are pinned by tag, not by commit.
 - **Spring Framework 6.2 carries two CRITICAL advisories with no fixed 6.2 release** —
@@ -297,7 +297,7 @@ Adding a language is a real project, not a translation file.
 | 6. Quota race | **Fixed**, and the rule now lives in one class shared with reinstatement. |
 | 7. Uncoordinated scheduled jobs | **Fixed.** |
 | 8. Search proven only at 20 000 rows | **Unchanged.** W10. |
-| 9. Rate limiting weaker than it looks | **Partly fixed** (IPv6 /64). Still trusts `X-Forwarded-For`. R5. |
+| 9. Rate limiting weaker than it looks | **Fixed** for addresses (IPv6 /64, proxy headers read from the right or from Render's `True-Client-IP`). No CAPTCHA. R5. |
 | 10. Smaller things | Price history fixed, MinIO pinned; signed image URLs (W12) and accents (W3) stand. |
 
 ---

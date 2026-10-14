@@ -81,8 +81,15 @@ public class MissingConfigurationFailureAnalyzer
                     """;
         }
 
+        // No .env is also the normal state of a deployed container, where the file's
+        // instructions would send an operator looking for something that should not exist.
+        // So the deployment case comes first, in one line.
         return """
-                No .env file was found. Looked in:
+                On a server or in a container: set each variable above in the service's
+                environment (on Render: the service's Environment page) and redeploy. There is
+                no .env there, by design. docs/deployment.md lists every variable.
+
+                On a development machine: no .env file was found. Looked in:
 
                 %s
 

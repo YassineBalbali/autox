@@ -80,25 +80,32 @@ jobs:
       - name: Build and test
         run: mvn -B --no-transfer-progress clean verify
 
-      # Known vulnerabilities in what ships: the libraries inside the jar `verify` just
-      # built, not the pom — scanning the pom means resolving it again against Maven
+      # The image Render deploys, built from the Dockerfile here: a Dockerfile that no
+      # longer builds fails this check rather than the deploy, which waits for it.
+      - name: Build the container image
+        run: docker build -t autox-api:ci .
+
+      # Known vulnerabilities in what ships: the image — its Alpine packages and the
+      # libraries in it — not the pom, which would mean resolving it again against Maven
       # Central, which rate-limits scanners. HIGH and CRITICAL with a fixed version
       # available fail the build; an advisory with no fix cannot be acted on by a version
       # bump and is reported elsewhere (Dependabot) rather than blocking every push.
       #
       # Trivy runs from its image, pinned by digest: a scanner that pulls whatever was
-      # published last is itself a supply-chain risk. Findings judged not to apply are in
-      # backend/.trivyignore, each with its reason.
-      - name: Scan dependencies for known vulnerabilities
+      # published last is itself a supply-chain risk. It reads the image from a saved
+      # archive rather than the Docker socket, so it is handed nothing it could act on.
+      # Findings judged not to apply are in backend/.trivyignore, each with its reason.
+      - name: Scan the image for known vulnerabilities
         run: |
           mkdir -p target/scan
-          cp target/*.jar target/scan/
+          docker save autox-api:ci -o target/scan/autox-api.tar
           docker run --rm \
             -v "$PWD/target/scan:/scan:ro" \
             -v "$PWD/.trivyignore:/.trivyignore:ro" \
             aquasec/trivy@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa \
-            rootfs --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
-            --ignorefile /.trivyignore --exit-code 1 /scan
+            image --input /scan/autox-api.tar --timeout 15m \
+            --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+            --ignorefile /.trivyignore --exit-code 1
 
       # Surefire's XML is the only place the actual assertion failure is written down. The
       # log above is truncated and interleaved; without this a red run says "tests failed"

@@ -167,9 +167,6 @@ Read URLs are pre-signed per response and expire in six hours unless
   API while it was built, by scripts that were not committed.
 - **No metrics, no structured logs, no request correlation id** except `incidentId` on a
   500. Actuator exposes `health` only, on purpose.
-- **The throttles trust the first value of `X-Forwarded-For`.** A configuration change
-  per host: `docs/deployment.md` §5.2.
-- **No container image** for the API: `docs/deployment.md` §5.1.
 - **Spring Boot 4.** Two Spring Framework 6.2 advisories have no 6.2 fix
   (`backend/.trivyignore`); the move to Boot 4 / Framework 7 is the only remedy.
 - **No backup or retention story** for the database or the bucket.
@@ -221,4 +218,6 @@ Nothing here blocks building; each is worth deciding rather than defaulting.
 | No security headers | A Content-Security-Policy and the usual headers, written into the built site and sent by the API. |
 | No rate limit on registration | Five attempts an hour per address. |
 | Unpinned MinIO image | Pinned by digest. |
-| No dependency scanning | Trivy on the backend jar, `npm audit` on production dependencies, Dependabot. |
+| No dependency scanning | Trivy on the API image, `npm audit` on production dependencies, Dependabot. |
+| The throttles trust the first value of `X-Forwarded-For` | Tomcat's RemoteIpValve, reading from the right; `True-Client-IP` on Render. |
+| No container image | `backend/Dockerfile`, sized for 512 MB; `render.yaml` for the service. |
