@@ -1,0 +1,45 @@
+# Update pull requests for every ecosystem in the repository, weekly.
+#
+# The CI scans block a push on a known HIGH or CRITICAL advisory in what ships; this is the
+# other half — it proposes the upgrades, including for the build tools the scans leave out
+# and for advisories that have no fix yet when they are published.
+#
+# Minor and patch updates are grouped into one pull request per ecosystem, so a week's
+# worth of version bumps is one review rather than twenty. Major versions arrive one by
+# one, because each is a migration.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      backend-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      angular:
+        patterns: ['@angular/*', '@angular-devkit/*']
+      frontend-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  # docker-compose.yml pins MinIO by digest. Dependabot proposes the new digest when the
+  # image is rebuilt, which is the only way a pinned digest ever moves forward.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly

@@ -52,7 +52,7 @@ public abstract class AbstractIntegrationTest {
      */
     static final org.testcontainers.containers.MinIOContainer MINIO =
             new org.testcontainers.containers.MinIOContainer(
-                    org.testcontainers.utility.DockerImageName.parse("chainguard/minio:latest")
+                    org.testcontainers.utility.DockerImageName.parse("chainguard/minio@sha256:e7ca559d9f7c0b5f24f5f669bb92f40f3ca88d56273b808bf3a7c116c17d2ffa")
                             // The official minio/minio repository is no longer anonymously
                             // pullable; this is the same server from a mirror that is.
                             .asCompatibleSubstituteFor("minio/minio"))

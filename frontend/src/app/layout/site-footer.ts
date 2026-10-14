@@ -129,6 +129,18 @@ export function resolveFooter(
         }
       </nav>
 
+      <!-- Said on every page, in words, not implied by the look of the listings: a
+           visitor arriving from a link has no other way to know. role="note" so that it
+           is announced as an aside rather than read as part of the navigation. -->
+      <p class="footer__demo" role="note">
+        <strong i18n="@@footerDemoTitle">Site de démonstration.</strong>
+        <ng-container i18n="@@footerDemoBody">
+          Les annonces, les vendeurs et les prix sont fictifs : aucun de ces véhicules n’est à vendre.
+          Les comptes créés ici ne sont pas destinés à un usage réel et peuvent être supprimés à tout
+          moment ; n’y saisissez ni donnée personnelle, ni mot de passe utilisé ailleurs.
+        </ng-container>
+      </p>
+
       <div class="footer__base">
         <app-logo class="footer__logo" />
         <p class="footer__note" i18n="@@footerNote">Annonces de véhicules d’occasion en France.</p>
@@ -192,6 +204,22 @@ export function resolveFooter(
     .footer__link--soon {
       color: var(--c-ink-faint);
       cursor: default;
+    }
+
+    // The one place the footer raises its voice. The warning colours, because that is
+    // what it is; a rule on the leading edge like the alert banner, so it reads as a notice
+    // and not as a paragraph of small print.
+    .footer__demo {
+      // Overrides the global reading measure on p.
+      max-width: none;
+      margin-bottom: var(--s-3);
+      padding: var(--s-2) var(--s-3);
+      background: var(--c-warn-soft);
+      border-left: 3px solid var(--c-warn);
+      border-radius: var(--r-sm);
+      color: var(--c-warn);
+      font-size: var(--t-sm);
+      line-height: var(--lh-snug);
     }
 
     .footer__base {

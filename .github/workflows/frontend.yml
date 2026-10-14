@@ -10,10 +10,15 @@ on:
       - 'frontend/**'
       - '.github/workflows/frontend.yml'
   pull_request:
-    branches: [main]
+    branches: [main, master]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend.yml'
+  # Weekly, whatever has been pushed: an advisory published on Tuesday about a dependency
+  # nobody touched should not wait for the next commit to be noticed.
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
 
 concurrency:
   group: frontend-${{ github.ref }}
@@ -60,6 +65,13 @@ jobs:
       - name: Install
         run: npm ci
 
+      # Known vulnerabilities in what reaches a browser: the production dependencies.
+      # The build tools are left out of the gate on purpose — the API client generator
+      # pulls in a dependency chain with open advisories that never ships, and failing on
+      # it would only teach everyone to ignore this step. Dependabot reports those.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       # Explicit, though lint/build/test each trigger it through their pre-scripts. Doing
       # it once up front means a generator failure is reported as a generator failure
       # rather than as three identical "cannot find module '../api'" compile errors.
@@ -69,8 +81,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The security policy and headers are written into the site by scripts/build.mjs;
+      # its rules are tested here, with the runtime that runs it.
+      - name: Test the build scripts
+        run: npm run test:scripts
+
       # Production configuration: optimisation, budgets and locale inlining all on. A
-      # development build would pass while the thing that ships does not.
+      # development build would pass while the thing that ships does not. No AUTOX_*
+      # variables, so the policy allows this origin only — the build also fails here if
+      # it ever emits inline script that policy would block.
       - name: Build
         run: npm run build
 

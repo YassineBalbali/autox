@@ -40,6 +40,13 @@ autox:
       ip-initial-delay: PT1S
       ip-max-delay: PT2S
 
+    # Off across the suite, for the reason the public rate limit is: every test registers
+    # its users from one client address, and five an hour would fail the sixth test for a
+    # reason that has nothing to do with it. RegistrationThrottleIntegrationTest switches
+    # it back on for itself.
+    registration-throttle:
+      enabled: false
+
   mail:
     # Pinned rather than inherited: production reads ${AUTOX_MAIL_PROVIDER:log}, and a
     # developer who has that variable set for their own reasons should not change what the

@@ -3023,6 +3023,10 @@
             "items": {
               "$ref": "#/components/schemas/ModerationEntry"
             }
+          },
+          "editedSinceReview": {
+            "type": "boolean",
+            "description": "true when the listing is awaiting review <em>again</em>: it had\n                       been approved or reinstated, and its seller has since changed its\n                       content. The trail then ends in a decision that no longer stands,\n                       and this is what says why."
           }
         }
       },

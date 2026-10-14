@@ -3,11 +3,16 @@
 A vehicle marketplace — buying and selling cars — built for the French market first and
 multi-country from the data model up. Competitors are La Centrale, Leboncoin and Mobile.de.
 
-**The backend MVP is complete** — accounts with the full password and session lifecycle,
-listings, photos, public search and the reference vocabularies. **The frontend has its
-scaffold and API layer** and no screens yet: the generated client, the auth plumbing, error
-translation and the design tokens are in place, and the first screen is the next piece of
-work.
+**The MVP is feature-complete, and not deployed.** A visitor can search and filter used
+cars and open a listing. A seller can register, create a listing in four steps with photos
+uploaded straight to object storage, publish it, and pause, renew, mark as sold or delete
+it. An administrator reviews what was published, refuses or takes down a listing with a
+reason, and reinstates it. The interface is French and designed for a desktop screen.
+
+**What it is not yet:** a buyer cannot contact a seller, there is no real vehicle catalogue
+or location data, no email is ever sent, and it has never run anywhere but a developer's
+machine. `docs/weaknesses.md` ranks all of that, and separates what is merely unfinished
+from what would be a risk if the site were public; **read it before deploying anything.**
 
 | | |
 |---|---|
@@ -56,7 +61,7 @@ cp .env.example .env     # 1. then fill in the two blanks it leaves — see belo
 docker compose up -d     # 2. PostgreSQL on 5433, MinIO on 9000/9001
 
 cd backend
-mvn spring-boot:run      # 3. the API, on AUTOX_PORT (8080 unless .env says otherwise)
+mvn spring-boot:run      # 3. the API, on AUTOX_PORT — 8081 in .env.example
 ```
 
 ```bash
@@ -95,8 +100,9 @@ start on drift, so a stale entity fails fast rather than silently.
 
 `npm start` regenerates the API client from `frontend/openapi.json` before serving, so there
 is no generation step to remember either. The dev server calls the API at the URL in
-`src/environments/environment.development.ts` — port **8081** by default, matching
-`AUTOX_PORT` in `.env.example`; keep the two in step.
+`src/environments/environment.development.ts` — port **8081**, which is what
+`.env.example` sets `AUTOX_PORT` to. Keep the two in step: with no `AUTOX_PORT` at all the
+API listens on 8080 and the web app, calling 8081, shows a connection error on every page.
 
 One more pair has to stay in step: `autox.mail.password-reset-url` is the link in the reset
 email, and its path must match the Angular route `/reinitialiser-mot-de-passe`. A mismatch
@@ -196,18 +202,35 @@ ones above.
 ### Check it came up
 
 ```bash
-curl http://localhost:8080/actuator/health
+curl http://localhost:8081/actuator/health
 # {"status":"UP","groups":["liveness","readiness"]}
 #
 # For a second or two after the log says "Started AutoxApplication" this answers
 # OUT_OF_SERVICE: readiness flips to accepting traffic on ApplicationReadyEvent, which
 # fires just after. That is the probe working, not a fault.
 
-curl http://localhost:8080/api/v1/reference/countries
+curl http://localhost:8081/api/v1/reference/countries
 # [{"code":"FR","name":"France","defaultLocale":"fr-FR", ... "currencyMinorUnit":2}]
 ```
 
-Then open **http://localhost:8080/swagger-ui.html** for the whole API.
+Then open **http://localhost:8081/swagger-ui.html** for the whole API, and
+**http://localhost:4200** for the site. With an empty database the search page says there
+is nothing for sale — see *Demo data* above.
+
+### An administrator account
+
+There is no endpoint that creates one, on purpose. Register an account in the web app,
+then promote it:
+
+```bash
+docker exec -i autox-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+UPDATE app_user SET role = 'ADMIN' WHERE email = 'you@example.com';
+SQL
+```
+
+Sign out and in again — the role travels in the access token — and "Administration"
+appears in the account menu. The demo seed's listings are all awaiting review, so the
+moderation queue has sixty entries to try it on.
 
 ### Ports already in use
 
@@ -216,16 +239,23 @@ Both are common collisions, and both are a variable away from fixed:
 - **5432** — a natively installed PostgreSQL wins over Docker's port proxy, and the
   connection silently reaches the *wrong server*. That is why compose maps **5433**. If 5433
   is also taken, change `POSTGRES_PORT` and the port inside `AUTOX_DB_URL` together.
-- **8080** — set `AUTOX_PORT`.
+- **8081** (or 8080) — set `AUTOX_PORT`, and `apiBaseUrl` in
+  `frontend/src/environments/environment.development.ts` to match.
 
 ### Tests
 
 ```bash
 cd backend
-mvn clean verify         # 231 tests, needs Docker running
+mvn clean verify         # 378 tests, needs Docker running
+
+cd ../frontend
+npm run lint
+npm test -- --no-watch   # 814 tests, jsdom
+npm run test:scripts     # 21 tests of the build scripts: the security policy
+npm run build            # the production build, with the policy and headers written in
 ```
 
-Every test is an integration test against a real PostgreSQL and a real S3-compatible store
+Every backend test is an integration test against a real PostgreSQL and a real S3-compatible store
 in Testcontainers. Nothing about authentication, storage or SQL is mocked: a passing test
 exercises the code path a phone would. The containers start once and are shared, so the suite
 pays that cost a single time (expect roughly five minutes in total).
@@ -236,15 +266,31 @@ renamed — so an incremental build can keep loading a stale copy and run the wh
 against the wrong configuration. `ConfigurationLayeringIntegrationTest` fails loudly if that
 happens, with the remedy in the message.
 
+The frontend's tests render components in jsdom against a mocked HTTP backend. **No test
+drives a real browser against the real API**; that was done by hand for every screen and
+is not automated — `docs/weaknesses.md`, W10.
+
 ### CI
 
-Two workflows, both on **every push** to every branch and on pull requests into `main`,
-each filtered to the paths that can change its result.
+Two workflows, both on **every push** to every branch, on pull requests into `main` or
+`master`, and **weekly** whatever was pushed — an advisory published about a dependency
+nobody touched should not wait for the next commit. Each push run is filtered to the paths
+that can change its result.
 
 | Workflow | Watches | Runs |
 |---|---|---|
-| `.github/workflows/backend.yml` | `backend/**`, `frontend/openapi.json`, itself | `mvn -B clean verify` |
-| `.github/workflows/frontend.yml` | `frontend/**`, itself | `npm ci`, generate, lint, build, test |
+| `.github/workflows/backend.yml` | `backend/**`, `frontend/openapi.json`, itself | `mvn -B clean verify`, then a vulnerability scan of the built jar |
+| `.github/workflows/frontend.yml` | `frontend/**`, itself | `npm ci`, an audit of production dependencies, generate, lint, the build-script tests, build, test |
+
+**Dependency scanning.** The backend job scans the libraries inside the jar it just built
+with Trivy (run from its image, pinned by digest), and fails on a HIGH or CRITICAL advisory
+that has a fixed version. Advisories judged not to apply are in `backend/.trivyignore`, each
+with the reason a reviewer can check. The frontend job runs `npm audit --omit=dev
+--audit-level=high`: what reaches a browser. `.github/dependabot.yml` proposes the upgrades,
+grouped weekly, for Maven, npm, the Actions themselves and the MinIO image digest.
+
+**The MinIO image is pinned by digest**, in `docker-compose.yml` and in the test suite, so
+two machines — and CI — run the same build. Dependabot proposes the next digest.
 
 GitHub's Ubuntu runners have a Docker daemon, so Testcontainers needs no extra setup, and
 no secrets are involved — the test profile supplies its own signing key and the containers
@@ -277,6 +323,41 @@ document is generated from the controllers and their validation annotations, so 
 from the code; the prose comes from the Javadoc already on those methods rather than from a
 second copy inside annotations. A test asserts every mapped endpoint appears in it.
 
+### Route map
+
+**The web app** (`frontend/src/app/app.routes.ts`). Paths are French because they are part
+of the interface.
+
+| Path | Who | What |
+|---|---|---|
+| `/` | anyone | Search: filters, sort and view in the query string |
+| `/annonces/:id` | anyone | One listing |
+| `/connexion`, `/inscription` | anyone | Sign in, register (private seller or dealer) |
+| `/mot-de-passe-oublie`, `/reinitialiser-mot-de-passe` | anyone | Reset by emailed link |
+| `/mon-compte`, `…/mot-de-passe`, `…/sessions` | signed in | Profile, password, devices |
+| `/mon-compte/entreprise` | dealer, admin | Company details |
+| `/vendre` | signed in | Create a listing (`?etape=`) |
+| `/mes-annonces` | signed in | The seller's listings (`?statut=`) |
+| `/mes-annonces/:id/modifier` | signed in | Edit a listing (`?etape=`) |
+| `/admin` → `/admin/moderation` | admin | Moderation (`?vue=`, `?page=`) |
+| `/guide-de-style` | anyone, unlinked | Tokens and shared components, rendered |
+| `/acces-refuse`, anything else | anyone | Refused; not found |
+
+A route guard is a courtesy. The API is what refuses.
+
+**The API**, all under `/api/v1`. The OpenAPI document is the authority; this is the map.
+
+| Area | Endpoints | Auth |
+|---|---|---|
+| Accounts | `POST /auth/register`, `/login`, `/refresh`, `/logout`, `/password/forgot`, `/password/reset` | none |
+| The caller | `GET`·`PATCH /me`, `POST /me/password`, `GET /me/sessions`, `DELETE /me/sessions/{id}` | token |
+| Public listings | `GET /listings` (search), `GET /listings/count`, `GET /listings/{id}` | none |
+| A seller's listings | `POST /listings`, `GET /listings/mine`, `/mine/quota`, `/mine/{id}`, `PATCH`·`DELETE /listings/{id}`, `POST /listings/{id}/publish`·`unpublish`·`renew`·`sold` | token, owner |
+| Photos | `POST`·`GET /listings/{id}/images`, `POST …/images/{imageId}/confirm`, `PUT …/images/order`, `DELETE …/images/{imageId}` | token, owner |
+| Reference | `GET /reference/countries`, `/enums`, `/makes`, `/makes/{id}/models`, `/features` | none |
+| Moderation | `GET /admin/listings`, `/admin/listings/{id}`, `POST /admin/listings/{id}/approve`·`reject`·`remove`·`reinstate` | ADMIN |
+| Users | `GET /admin/users` | ADMIN |
+
 ### Conventions that apply everywhere
 
 - **Money** is an integer of the currency's minor unit plus an ISO 4217 code.
@@ -288,7 +369,8 @@ second copy inside annotations. A test asserts every mapped endpoint appears in 
 - **Enums** serialise as their constant name. The full set is at `/api/v1/reference/enums`.
 - **Every list endpoint is paginated**, and there is no unbounded form of any of them. Public
   search is cursor-paginated: pass the previous response's `nextCursor` back as `cursor`.
-  There are no page numbers and no total count.
+  There are no page numbers; the total is a separate call, `GET /api/v1/listings/count`,
+  capped at 10 000. The seller's and the administrator's lists are page-numbered.
 - **Photos never pass through the API.** Request a slot, PUT the bytes straight to object
   storage with the pre-signed URL, then confirm. The server builds the size variants.
 - **The API is language-neutral.** It returns codes, never display strings. All user-facing
@@ -342,16 +424,13 @@ POST /api/v1/admin/listings/{id}/reinstate    { note? }              ACTIVE | PA
   empty there, and `publish`/`renew` answer 409 — for an administrator calling those
   endpoints too, so that a reinstatement always goes through the trail.
 
-There is no endpoint that creates an administrator, on purpose. Locally, register an
-account and promote it:
+- **An approval is of the listing as it was.** When the seller later changes its content —
+  anything a buyer reads except the price, or adds or removes a photo — the verdict
+  returns to `NOT_REVIEWED` and the listing to the queue, still online, marked
+  `editedSinceReview`. A price change alone, a reorder of photos, or a save that changes
+  nothing does not.
 
-```bash
-docker exec -i autox-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
-UPDATE app_user SET role = 'ADMIN' WHERE email = 'you@example.com';
-SQL
-```
-
-then sign in again — the role travels in the access token.
+There is no endpoint that creates an administrator; see *An administrator account* above.
 
 ### Password and session management
 
@@ -413,13 +492,13 @@ AWS S3 all speak this protocol, so the provider is configuration rather than cod
 | `AUTOX_MAIL_PROVIDER` | `log` | **`log` writes the message to the application log instead of sending it.** That makes the password reset flow walkable locally — the link is in the console — and is a credential leak in production, since anyone who can read the log can take over any account. It warns at every startup. A real provider is an `EmailSender` bean conditional on its own value here. |
 | `AUTOX_MAIL_FROM` | `no-reply@autox.local` | Unused by the logging sender; required by every real one. |
 | `AUTOX_MAIL_FROM_NAME` | `AutoX` | |
-| `AUTOX_PASSWORD_RESET_URL` | `http://localhost:4200/reset-password` | The frontend page that takes the token; the email links to it with `?token=…`. The API cannot guess it — the web app is deployed separately. |
+| `AUTOX_PASSWORD_RESET_URL` | `http://localhost:4200/reinitialiser-mot-de-passe` | The frontend page that takes the token; the email links to it with `?token=…`. The API cannot guess it — the web app is deployed separately. |
 
 ### Optional
 
 | Variable | Default | Notes |
 |---|---|---|
-| `AUTOX_PORT` | `8080` | |
+| `AUTOX_PORT` | `8080` | `.env.example` sets 8081, which is what the web app's development build calls. |
 | `AUTOX_LOG_LEVEL` | `INFO` | Application logging only |
 | `AUTOX_DB_POOL_SIZE` | `10` | |
 | `AUTOX_JWT_ISSUER` | `https://api.autox.local` | |
@@ -427,17 +506,37 @@ AWS S3 all speak this protocol, so the provider is configuration rather than cod
 | `AUTOX_LOGIN_THROTTLE_ENABLED` | `true` | Leave on. |
 | `AUTOX_PUBLIC_RATE_LIMIT_ENABLED` | `true` | Per-IP limit on the public reads |
 | `AUTOX_PUBLIC_RATE_LIMIT_REQUESTS` | `300` | Per minute, per address |
+| `AUTOX_REGISTRATION_THROTTLE_ENABLED` | `true` | Leave on. |
+| `AUTOX_REGISTRATION_MAX_ATTEMPTS` | `5` | Registration attempts per hour, per address — successful or not |
 
 The compose file also reads `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`,
 `POSTGRES_PORT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_PORT` and
 `MINIO_CONSOLE_PORT`. The `POSTGRES_*` and `MINIO_*` values must match their `AUTOX_*`
 counterparts, since one pair configures the container and the other the client.
 
+### Building the site for a host
+
+`npm run build` is `ng build` followed by `scripts/build.mjs`, which writes the
+Content-Security-Policy into the page and the security headers into `_headers`. The policy
+has to name the API and the photo storage, so three variables are read **at build time**:
+
+| Variable | Meaning |
+|---|---|
+| `AUTOX_API_BASE_URL` | The API's origin. Empty: the site and the API share one. |
+| `AUTOX_STORAGE_ORIGINS` | Every origin photos are read from or uploaded to, space-separated. |
+| `AUTOX_SITE_URL` | The site's origin: makes the link-preview image absolute, and turns on HSTS. |
+
+With none set, the policy allows the site's own origin only, which is what CI builds. The
+build fails if Angular ever emits inline script, which the policy would block in production.
+`docs/deployment.md` has the rest of the deployment plan.
+
 ### Deploying behind a proxy
 
 `server.forward-headers-strategy=framework` is set, so Spring honours `X-Forwarded-For` and
 the application sees the real client address. **That is only safe if the proxy is trusted to
-overwrite the header**: a caller that can set it freely can forge the key the rate limiter
+overwrite the header** — Spring takes its *first* value, and a proxy that appends to the
+header leaves that value to the client. `docs/deployment.md` §5.2 has the change to make
+before deploying: a caller that can set it freely can forge the key the rate limiter
 and the login throttle count against, and sidestep both. Terminate at a proxy you control.
 
 Both throttles key IPv6 on the **/64 prefix**, not the full address — a single connection is
@@ -456,7 +555,9 @@ backend/
     auth/         register, login, refresh, logout; login throttling
       password/     change, forgotten-password reset
     user/         accounts, profiles, refresh tokens, the session list
-    listing/      the seller's listings; state machine; price history; photos (listing/image)
+    listing/      the seller's listings; state machine; quota; price history; photos
+                  (listing/image); moderation decisions and their trail
+    admin/        the administrator-only controllers: moderation, the user list
     search/       public search and detail; keyset cursors
     reference/    countries and currencies; the reference endpoints
     catalog/      vehicle make/model/trim, equipment vocabulary
@@ -474,6 +575,9 @@ backend/
 frontend/
   openapi.json                  the committed API contract — the client is generated from it
   scripts/fetch-openapi.mjs     refreshes it from a running backend
+  scripts/build.mjs             the production build: ng build, then the security policy
+  scripts/security-headers.mjs  the policy and headers, as pure functions, and their tests
+  public/                       favicon, wordmark, robots.txt, the link-preview image
   src/environments/             apiBaseUrl, per build configuration
   src/styles/                   design tokens, base styles, shared form and button classes
   src/app/core/
@@ -484,15 +588,19 @@ frontend/
     ui/                         one-shot messages handed between screens
   src/app/layout/               site header, footer, primary navigation
   src/app/shared/
-    forms/                      validation rules + French text, field component, submit state
-    format/                     dates, through Intl rather than a pipe
-    ui/                         the alert banner
+    forms/                      validation rules + French text, text and select fields
+    format/                     dates and numbers, through Intl rather than a pipe
+    listing/                    row, card, price, spec line, gallery; French labels for enums
+                                and for moderation reasons
+    ui/                         the alert banner, filter chip, not-found block
   src/app/features/
     search/                     the home page: filters, results, URL <-> query
     listing/                    one listing: gallery, specification, equipment, seller
     auth/                       sign in, register, forgot password, reset password
     account/                    sidebar layout, profile, company, change password, sessions
-    errors/                     access refused
+    seller/                     "Mes annonces", the four-step create/edit form, photo upload
+    admin/                      moderation: three lists of one card
+    errors/                     access refused, page not found
 
 .github/workflows/backend.yml    CI: clean verify, on backend/** and openapi.json
 .github/workflows/frontend.yml   CI: install, lint, build, test, on frontend/**
@@ -505,7 +613,7 @@ docs/            why things are the way they are — read these before changing 
 | | |
 |---|---|
 | `docs/deferred.md` | **What is deliberately not built, and what each gap costs.** Start here. |
-| `docs/weaknesses.md` | An honest assessment of where the backend is weakest. |
+| `docs/weaknesses.md` | **Where the product is weakest, ranked — and, separately, what would be a security or privacy risk if it went public.** Read before deploying. |
 | `docs/er-overview.md` | The data model in plain text |
 | `docs/schema-decisions.md` | Why the schema is shaped as it is |
 | `docs/auth-decisions.md` | Tokens, rotation, throttling |
@@ -515,6 +623,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
 | `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |
+| `docs/deployment.md` | **The deployment plan**: what runs where, every production variable, what to change first. |
 | `docs/frontend-decisions.md` | The generated API client, the single in-flight refresh, token storage, guards, error translation, design tokens |
 
 ---

@@ -22,12 +22,17 @@ import java.util.UUID;
  *                       to "would you accept this?", so that no client keeps its own copy
  *                       of the rules
  * @param trail          every moderation action on this listing, oldest first
+ * @param editedSinceReview true when the listing is awaiting review <em>again</em>: it had
+ *                       been approved or reinstated, and its seller has since changed its
+ *                       content. The trail then ends in a decision that no longer stands,
+ *                       and this is what says why.
  */
 public record ModeratedListing(
         ListingResponse listing,
         ModeratedSeller seller,
         Set<ModerationActionType> allowedActions,
-        List<ModerationEntry> trail) {
+        List<ModerationEntry> trail,
+        boolean editedSinceReview) {
 
     /** The seller, as an administrator may see them. */
     public record ModeratedSeller(

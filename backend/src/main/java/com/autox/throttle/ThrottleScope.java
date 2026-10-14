@@ -27,5 +27,11 @@ public enum ThrottleScope {
      * many addresses. Kept apart from {@link #IP} so that failing to guess a password and
      * asking for reset links are not counted into the same block.
      */
-    PASSWORD_RESET_IP
+    PASSWORD_RESET_IP,
+
+    /**
+     * Registration attempts from one client address, successful or not. Bounds how many
+     * accounts — and how many password hashes — one caller can make the server produce.
+     */
+    REGISTRATION_IP
 }

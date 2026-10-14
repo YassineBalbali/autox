@@ -35,6 +35,27 @@ describe('resolveFooter', () => {
   });
 });
 
+describe('the demonstration notice', () => {
+  it('says, on every page, that the listings are invented and accounts are not for real use', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(SiteFooter);
+    await fixture.whenStable();
+    const notice = fixture.nativeElement.querySelector('.footer__demo') as HTMLElement;
+    const words = notice.textContent!.replace(/\s+/g, ' ').trim();
+
+    expect(words).toContain('Site de démonstration.');
+    expect(words).toContain('Les annonces, les vendeurs et les prix sont fictifs');
+    expect(words).toContain('Les comptes créés ici ne sont pas destinés à un usage réel');
+    expect(words).toContain('ni mot de passe utilisé ailleurs');
+    // An aside, not part of the footer's navigation — and not hidden from anyone.
+    expect(notice.getAttribute('role')).toBe('note');
+    expect(notice.closest('nav')).toBeNull();
+    expect(notice.hasAttribute('hidden')).toBe(false);
+    expect(notice.getAttribute('aria-hidden')).toBeNull();
+  });
+});
+
 describe('SiteFooter', () => {
   async function render(): Promise<HTMLElement> {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });

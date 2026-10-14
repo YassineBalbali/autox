@@ -43,6 +43,11 @@ import org.springframework.transaction.annotation.Transactional;
  *   <tr><td>REINSTATE</td><td>REMOVED</td><td>ACTIVE, PAUSED or EXPIRED</td><td>APPROVED</td></tr>
  * </table>
  *
+ * <p><b>An approval is of the listing as it was.</b> When its seller later changes its
+ * content — anything a buyer reads except the price, or its photos — the verdict returns
+ * to NOT_REVIEWED and the listing to the queue, still online. See
+ * {@link Listing#contentChanged()}.
+ *
  * <p>Refusing and taking down end in the same place on purpose. They differ in when they
  * happen — at first review, or after the listing had been accepted — and the trail keeps
  * that difference; the listing itself needs only one way of being off the site by a
@@ -220,6 +225,22 @@ public class ListingModerationService {
     }
 
     /**
+     * Whether the listing is in the queue because it was edited after a moderator had
+     * accepted it.
+     *
+     * <p>Derived rather than stored. The only way a listing can be unreviewed with a trail
+     * that ends in an acceptance is {@link Listing#contentChanged()}: every moderator's
+     * decision leaves a verdict other than NOT_REVIEWED.
+     */
+    static boolean editedSinceReview(Listing listing, List<ModerationAction> trail) {
+        if (listing.getModerationStatus() != ModerationStatus.NOT_REVIEWED || trail.isEmpty()) {
+            return false;
+        }
+        ModerationActionType last = trail.get(trail.size() - 1).getAction();
+        return last == ModerationActionType.APPROVE || last == ModerationActionType.REINSTATE;
+    }
+
+    /**
      * Loads a listing for moderation: any seller's, but never one its seller deleted.
      * Those are gone for good — see the class comment.
      */
@@ -283,6 +304,7 @@ public class ListingModerationService {
                 ListingResponse.from(listing, gallery),
                 ModeratedListing.ModeratedSeller.from(listing.getSeller()),
                 allowedActions(listing),
-                trail.stream().map(ModerationEntry::from).toList());
+                trail.stream().map(ModerationEntry::from).toList(),
+                editedSinceReview(listing, trail));
     }
 }

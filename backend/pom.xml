@@ -22,6 +22,17 @@
         <awssdk.version>2.55.12</awssdk.version>
         <springdoc.version>2.8.9</springdoc.version>
         <therapi.version>0.15.0</therapi.version>
+
+        <!-- Security overrides of versions the Spring Boot parent manages. Each one is here
+             because the dependency scan in CI reported a HIGH or CRITICAL advisory fixed in
+             a patch release newer than the one Boot 3.5.16 ships, and 3.5.16 is the latest
+             3.5.x. They are patch-level bumps within the same minor line.
+
+             Delete an entry when a newer Boot parent manages a version at least as new:
+             an override that has fallen behind its parent holds a dependency back. -->
+        <tomcat.version>10.1.61</tomcat.version>
+        <jackson-bom.version>2.21.7</jackson-bom.version>
+        <postgresql.version>42.7.14</postgresql.version>
     </properties>
 
     <dependencyManagement>
@@ -66,6 +77,21 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
+            <exclusions>
+                <!-- The S3 module pulls in two HTTP clients this application never uses:
+                     the Netty one (for the async client; ours is synchronous) and the
+                     Apache 5 one. StorageConfig builds the client on Apache 4 explicitly.
+                     Unused code is not harmless when it is on the classpath: Netty and
+                     HttpCore 5 accounted for eight of the advisories the scan reported. -->
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache5-client</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Apache HTTP client: the default URL-connection client cannot stream a PUT
              without buffering it, which matters for variant uploads. -->

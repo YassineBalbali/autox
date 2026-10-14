@@ -5,6 +5,7 @@ import com.autox.auth.dto.AuthResponse;
 import com.autox.auth.dto.LoginRequest;
 import com.autox.auth.dto.RegisterRequest;
 import com.autox.auth.throttle.LoginThrottleService;
+import com.autox.auth.throttle.RegistrationThrottle;
 import com.autox.reference.Country;
 import com.autox.reference.CountryRepository;
 import com.autox.user.AppUser;
@@ -49,6 +50,7 @@ public class AuthService {
     private final AccessTokenService accessTokens;
     private final RefreshTokenService refreshTokens;
     private final LoginThrottleService loginThrottle;
+    private final RegistrationThrottle registrationThrottle;
 
     public AuthService(AppUserRepository users,
                        ProProfileRepository proProfiles,
@@ -56,7 +58,8 @@ public class AuthService {
                        PasswordEncoder passwordEncoder,
                        AccessTokenService accessTokens,
                        RefreshTokenService refreshTokens,
-                       LoginThrottleService loginThrottle) {
+                       LoginThrottleService loginThrottle,
+                       RegistrationThrottle registrationThrottle) {
         this.users = users;
         this.proProfiles = proProfiles;
         this.countries = countries;
@@ -64,11 +67,19 @@ public class AuthService {
         this.accessTokens = accessTokens;
         this.refreshTokens = refreshTokens;
         this.loginThrottle = loginThrottle;
+        this.registrationThrottle = registrationThrottle;
         this.dummyHash = passwordEncoder.encode("unused-placeholder-for-constant-time-login");
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request, RefreshTokenService.SessionContext context) {
+        // Before the lookup and before the hash: a refused attempt must cost us nothing,
+        // and must not say whether the address it named is registered.
+        RegistrationThrottle.Decision allowed = registrationThrottle.record(context.ipAddress());
+        if (!allowed.allowed()) {
+            throw ApiException.rateLimited(allowed.retryAfterSeconds());
+        }
+
         String email = request.email().trim();
 
         if (users.existsByEmailIgnoreCase(email)) {

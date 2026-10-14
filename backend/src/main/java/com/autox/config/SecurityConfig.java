@@ -33,6 +33,9 @@ public class SecurityConfig {
      * offline cracking expensive while keeping login responsive. The cost is stored
      * in the hash, so raising it later leaves existing hashes verifiable.
      */
+    /** Nothing may be loaded by, or frame, a response from the API. */
+    static final String API_CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'";
+
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
@@ -49,6 +52,23 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
+                // Spring Security already sends nosniff, X-Frame-Options: DENY, no-store and —
+                // on a secure request — HSTS. Three more, because every response under /api
+                // is data and never a document:
+                .headers(headers -> headers
+                        // An API response has no business loading anything or being framed.
+                        // Scoped to /api: the Swagger UI is a page, and needs its scripts.
+                        .addHeaderWriter(new org.springframework.security.web.header.writers
+                                .DelegatingRequestMatcherHeaderWriter(
+                                request -> request.getRequestURI().startsWith("/api/"),
+                                new org.springframework.security.web.header.writers.StaticHeadersWriter(
+                                        "Content-Security-Policy", API_CONTENT_SECURITY_POLICY)))
+                        // Listing ids and reset tokens appear in URLs; none should travel on.
+                        .referrerPolicy(referrer -> referrer.policy(
+                                org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
+                                        .ReferrerPolicy.NO_REFERRER))
+                        .permissionsPolicyHeader(permissions -> permissions.policy(
+                                "camera=(), microphone=(), geolocation=(), payment=()")))
                 .authorizeHttpRequests(auth -> auth
                         // Obtaining or renewing credentials cannot itself require credentials.
                         .requestMatchers(HttpMethod.POST,

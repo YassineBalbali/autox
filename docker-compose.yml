@@ -27,7 +27,7 @@ services:
     # Chainguard's build, not minio/minio: the official Docker Hub repository is no
     # longer anonymously pullable, so `docker compose up` would fail for anyone
     # without a MinIO registry login. Same server, same S3 API.
-    image: chainguard/minio:latest
+    image: chainguard/minio@sha256:e7ca559d9f7c0b5f24f5f669bb92f40f3ca88d56273b808bf3a7c116c17d2ffa
     container_name: autox-minio
     # Runs as root because this image's non-root default user cannot write to the
     # data directory. Acceptable for a local development container; a production

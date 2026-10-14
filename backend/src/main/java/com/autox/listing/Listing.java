@@ -297,6 +297,28 @@ public class Listing extends BaseEntity {
         this.moderationStatus = moderationStatus;
     }
 
+    /**
+     * Records that what a moderator approved is no longer what the listing says.
+     *
+     * <p>An approval is of a particular listing: these words, these photos, this vehicle.
+     * Without this, a seller could publish something blameless, wait to be approved, and
+     * then edit it into something else under the same verdict. So a change of content
+     * withdraws the approval and the listing goes back to the queue — while staying
+     * online, as every unreviewed listing is.
+     *
+     * <p>Only an approval is withdrawn. A listing nobody has reviewed is already in the
+     * queue, and a rejected one is off the site and cannot be edited at all.
+     *
+     * @return whether the verdict changed
+     */
+    public boolean contentChanged() {
+        if (moderationStatus != ModerationStatus.APPROVED) {
+            return false;
+        }
+        moderationStatus = ModerationStatus.NOT_REVIEWED;
+        return true;
+    }
+
     public String getTitle() {
         return title;
     }

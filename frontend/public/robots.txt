@@ -1,0 +1,13 @@
+# AutoX is a demonstration: the listings and the sellers are invented.
+#
+# The public pages may be fetched, so that a shared link can be previewed. The areas
+# behind a sign-in are excluded — they answer every crawler with the sign-in page, and
+# there is nothing in them to index.
+
+User-agent: *
+Allow: /
+Disallow: /mon-compte
+Disallow: /mes-annonces
+Disallow: /vendre
+Disallow: /admin
+Disallow: /reinitialiser-mot-de-passe

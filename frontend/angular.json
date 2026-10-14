@@ -58,7 +58,15 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": false
+              }
             },
             "development": {
               "optimization": false,
@@ -100,7 +108,10 @@
         }
       },
       "i18n": {
-        "sourceLocale": "fr"
+        "sourceLocale": {
+          "code": "fr",
+          "subPath": ""
+        }
       }
     }
   }
