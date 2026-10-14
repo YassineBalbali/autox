@@ -20,7 +20,7 @@
     <properties>
         <java.version>21</java.version>
         <awssdk.version>2.55.12</awssdk.version>
-        <springdoc.version>2.8.9</springdoc.version>
+        <springdoc.version>3.1.1</springdoc.version>
         <therapi.version>0.15.0</therapi.version>
 
         <!-- Security overrides of versions the Spring Boot parent manages. Each one is here
