@@ -28,7 +28,7 @@ RUN mvn -B --no-transfer-progress -Dmaven.test.skip=true package \
 # ---- run ------------------------------------------------------------------------------
 # Alpine's Temurin JRE: no compiler, no Maven, no JDK tools, and it ships the fonts the
 # demo photo painter needs.
-FROM eclipse-temurin:21-jre-alpine@sha256:51ab5e3302e7141ce665ca3ea85e8b5cd648eafbc3c0c90dd79d6537684e4555
+FROM eclipse-temurin:25-jre-alpine@sha256:3c0a9084927a221ccd1d007fcaf614465672c0af37aaa834c5184483afe56d61
 
 RUN addgroup -S -g 10001 autox && adduser -S -u 10001 -G autox -H -s /sbin/nologin autox
 WORKDIR /app
