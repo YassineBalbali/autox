@@ -127,6 +127,12 @@ class DemoData {
         Country france = countries.findEnabledByCode("FR")
                 .orElseThrow(() -> new IllegalStateException("The demo seed needs France enabled."));
 
+        // Storage before the first row. This runs before StorageReadinessCheck, which waits
+        // for the application to be ready — so on a fresh local stack the bucket did not
+        // exist yet, and a storage fault anywhere failed the seed halfway, leaving a ledger
+        // that makes every later start skip it. Here it either works or nothing is written.
+        storage.ensureReady();
+
         Map<String, UUID> sellerIds = seedSellers(france);
         Map<String, UUID[]> catalogue = seedCatalogue();
 
@@ -139,7 +145,7 @@ class DemoData {
         }
 
         log.warn("Seeded {} demo listings, {} demo accounts and {} demo makes. This is invented data "
-                        + "for local development — remove it with AUTOX_DEMO_ACTION=remove.",
+                        + "— remove it with AUTOX_DEMO_ACTION=remove.",
                 created, sellerIds.size(), DemoCatalogue.MAKES.size());
         return created;
     }
@@ -195,6 +201,10 @@ class DemoData {
             UUID userId = transactions.execute(status -> {
                 AppUser user = AppUser.register(seller.email(), passwordHash,
                         seller.role(), seller.displayName(), france, "fr-FR");
+                // No cap (0) on these accounts, whatever the deployment caps real ones at:
+                // the dealers own more listings each than a public demo lets a stranger
+                // publish, and the seed failed halfway the first time it met such a cap.
+                user.setActiveListingLimit((short) 0);
                 users.saveAndFlush(user);
                 if (seller.role() == UserRole.PROFESSIONNEL) {
                     proProfiles.save(ProProfile.forUser(user, seller.companyName(), seller.registrationNumber()));

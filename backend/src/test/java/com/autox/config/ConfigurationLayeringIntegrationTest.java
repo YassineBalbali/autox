@@ -98,10 +98,11 @@ class ConfigurationLayeringIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("the proxy header strategy is in force, as in production")
     void forwardedHeadersAreHonoured() {
-        // What makes X-Forwarded-For the client address. The throttles key on it, and the
-        // README's deployment warning is about it, yet no test could reach the behaviour
-        // while this setting was absent. PublicRateLimitIntegrationTest now exercises it.
-        assertThat(environment.getProperty("server.forward-headers-strategy")).isEqualTo("framework");
+        // Tomcat's valve, which only trusts a forwarding header from an internal proxy and
+        // reads it from the right. The throttles key on its result; ClientAddressIntegrationTest
+        // exercises it on a real port, where the valve runs (MockMvc bypasses it).
+        assertThat(environment.getProperty("server.forward-headers-strategy")).isEqualTo("native");
+        assertThat(environment.getProperty("server.tomcat.remoteip.remote-ip-header")).isEqualTo("X-Forwarded-For");
     }
 
     @Test

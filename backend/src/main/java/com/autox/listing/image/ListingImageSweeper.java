@@ -33,9 +33,10 @@ public class ListingImageSweeper {
     /**
      * One instance at a time. This sweep deletes objects from storage as well as rows, so
      * two instances running it together would race on the same abandoned upload — the one
-     * place among the scheduled jobs where duplicated work is not merely wasteful.
+     * place among the scheduled jobs where duplicated work is not merely wasteful. Every
+     * fifteen minutes by default; configurable (autox.scheduling).
      */
-    @Scheduled(fixedDelayString = "PT15M", initialDelayString = "PT2M")
+    @Scheduled(fixedDelayString = "${autox.scheduling.image-cleanup-interval}", initialDelayString = "PT2M")
     public void purgeAbandonedUploads() {
         coordinator.runExclusively("listing-image-cleanup", () -> {
             try {

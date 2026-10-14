@@ -35,10 +35,10 @@ public class PublicRateLimitInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * {@code server.forward-headers-strategy=framework} makes Spring honour
-     * {@code X-Forwarded-For}, so this is the real client address behind a proxy — provided
-     * the proxy is trusted to set it. See the deployment note in the README: an untrusted
-     * one lets a caller forge the key and sidestep the limit.
+     * The real client address behind a proxy: with
+     * {@code server.forward-headers-strategy=native}, Tomcat's RemoteIpValve has already
+     * replaced the socket address with the client named by a header it trusts — read from
+     * the right, and only from an internal proxy. See the README, "Deploying behind a proxy".
      */
     private static String clientIp(HttpServletRequest request) {
         String address = request.getRemoteAddr();

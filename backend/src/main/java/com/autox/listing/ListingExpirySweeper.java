@@ -30,9 +30,10 @@ public class ListingExpirySweeper {
     /**
      * Every ten minutes, on one instance at a time. A listing may therefore stay visible a
      * few minutes past its expiry, which is the right trade: nobody is harmed, and a sweep
-     * this cheap does not justify running every second.
+     * this cheap does not justify running every second. The interval is configurable
+     * (autox.scheduling), for a database that should be left to sleep.
      */
-    @Scheduled(fixedDelayString = "PT10M", initialDelayString = "PT1M")
+    @Scheduled(fixedDelayString = "${autox.scheduling.listing-expiry-interval}", initialDelayString = "PT1M")
     public void expireDueListings() {
         coordinator.runExclusively("listing-expiry", () -> {
             int expired = listingService.expireDueListings();

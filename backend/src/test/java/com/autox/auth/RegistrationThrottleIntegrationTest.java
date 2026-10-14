@@ -100,8 +100,13 @@ class RegistrationThrottleIntegrationTest extends AbstractIntegrationTest {
 
     private ResultActions register(String email, String address) throws Exception {
         Map<String, Object> payload = registrationPayload(email, UserRole.PARTICULIER);
+        // The address as the container resolved it; the proxy headers that feed it are
+        // covered on a real port by ClientAddressIntegrationTest.
         return mockMvc.perform(post("/api/v1/auth/register")
-                .header("X-Forwarded-For", address)
+                .with(request -> {
+                    request.setRemoteAddr(address);
+                    return request;
+                })
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(payload)));
     }

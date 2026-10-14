@@ -114,9 +114,10 @@ public class AuthController {
     }
 
     /**
-     * Behind a load balancer the socket address is the proxy's.
-     * {@code server.forward-headers-strategy=framework} makes Spring honour
-     * {@code X-Forwarded-For}, so {@code getRemoteAddr()} is already the real client.
+     * Behind a load balancer the socket address is the proxy's. With
+     * {@code server.forward-headers-strategy=native}, Tomcat's RemoteIpValve has already
+     * replaced it with the client named by a trusted proxy header, so {@code getRemoteAddr()}
+     * is the real client.
      */
     private static String clientIp(HttpServletRequest http) {
         String address = http.getRemoteAddr();

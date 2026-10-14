@@ -219,7 +219,10 @@ class RequiredConfigurationTest {
                 false);
 
         assertThat(analysis.getAction())
-                .contains("No .env file was found")
+                // A deployed container has no .env either, and is told so first.
+                .contains("On a server or in a container")
+                .contains("docs/deployment.md")
+                .contains("no .env file was found")
                 .contains("cp .env.example .env")
                 .contains("docker compose up -d")
                 // Says where it looked, so "but I made one" has an answer.

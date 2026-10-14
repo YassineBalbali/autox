@@ -29,6 +29,12 @@ public class StorageConfig {
                 .httpClientBuilder(ApacheHttpClient.builder())
                 .serviceConfiguration(S3Configuration.builder()
                         .pathStyleAccessEnabled(properties.pathStyleAccess())
+                        // The SDK signs a putObject body in aws-chunked form by default.
+                        // MinIO and AWS accept that; Cloudflare R2 rejects the signature
+                        // with a 403, which would fail every photo variant written there.
+                        // A signed plain body works everywhere, and the bodies written here
+                        // are a few hundred kilobytes already in memory.
+                        .chunkedEncodingEnabled(false)
                         .build());
 
         endpointOf(properties).ifPresent(builder::endpointOverride);

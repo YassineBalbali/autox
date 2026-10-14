@@ -31,7 +31,13 @@ import org.springframework.test.context.TestPropertySource;
 // The runner would otherwise seed while the context starts, before any test has run.
 // And six listings rather than sixty: each one is three real uploads with three resizes
 // apiece, and nothing asserted here depends on how many there are.
-@TestPropertySource(properties = {"autox.demo.action=none", "autox.demo.listings=" + DemoDataIntegrationTest.SEEDED})
+// Caps of one listing per account, for both roles: lower than any deployment's, and lower
+// than what a demo dealer owns, so every seed in this class runs into them.
+@TestPropertySource(properties = {
+        "autox.demo.action=none",
+        "autox.demo.listings=" + DemoDataIntegrationTest.SEEDED,
+        "autox.listing.particulier-active-limit=1",
+        "autox.listing.professionnel-active-limit=1"})
 class DemoDataIntegrationTest extends AbstractIntegrationTest {
 
     static final int SEEDED = 6;
@@ -69,6 +75,20 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
             assertThat(item.get("coverImage").has("CARD")).as(item.get("title").asText()).isTrue();
             assertThat(item.get("city").asText()).isNotBlank();
         });
+    }
+
+    @Test
+    @DisplayName("the seed's own sellers are uncapped, so a deployment's listing caps cannot stop it halfway")
+    void seedIgnoresDeploymentCaps() {
+        // The public demo caps dealers at three, and a demo dealer owns more. The first seed
+        // on a container with that cap failed partway through, leaving a ledger that made
+        // every later start skip it.
+        int created = demoData.seed();
+
+        assertThat(created).isEqualTo(SEEDED);
+        assertThat(jdbcTemplate.queryForList("SELECT active_listing_limit FROM app_user", Short.class))
+                .isNotEmpty()
+                .allSatisfy(limit -> assertThat(limit).isEqualTo((short) 0));
     }
 
     @Test

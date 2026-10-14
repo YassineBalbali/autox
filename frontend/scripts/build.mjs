@@ -103,11 +103,12 @@ html = withAbsoluteUrls(html, siteUrl);
 writeFileSync(index, html);
 writeFileSync(join(dist, '_headers'), headersFile(options));
 
-// A single-page app answers every path with the same document. Two conventions cover the
-// static hosts that do not take a rewrite rule: a `404.html` (GitHub Pages and others
-// serve it for an unknown path) and `_redirects` (Netlify, Cloudflare Pages).
-writeFileSync(join(dist, '404.html'), html);
-writeFileSync(join(dist, '_redirects'), '/*  /index.html  200\n');
+// A single-page app answers every path with the same document. Cloudflare Pages does that
+// by itself — with a 200 — for any build that has no top-level 404.html, so nothing is
+// written for it. Deliberately not a 404.html "for the other hosts": its mere presence
+// switches Pages' fallback off, and every deep link (/annonces/…) is then served with a 404
+// status, which link previews and crawlers take at its word. Another host needs its own
+// rewrite rule (Netlify: `/*  /index.html  200` in _redirects).
 
 const bytes = readdirSync(dist)
   .filter((name) => /\.(js|css)$/.test(name))
