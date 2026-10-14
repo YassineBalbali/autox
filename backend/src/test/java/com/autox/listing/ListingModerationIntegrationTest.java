@@ -580,6 +580,197 @@ class ListingModerationIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.items[0].removalReason").doesNotExist());
     }
 
+    // --- an approval is of the listing as it was ----------------------------
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(delimiter = '|', value = {
+            "title       | {\"title\": \"Something else entirely\"}",
+            "description | {\"description\": \"Western Union only, write to me at ...\"}",
+            "mileage     | {\"mileageKm\": 12000}",
+            "vehicle     | {\"makeText\": \"Ferrari\", \"modelText\": \"F40\"}",
+            "location    | {\"postalCode\": \"13001\", \"city\": \"Marseille\"}",
+            "cleared     | {\"description\": \"\"}",
+    })
+    @DisplayName("editing the content of an approved listing sends it back to the queue, still online")
+    void contentEditWithdrawsApproval(String what, String patch) throws Exception {
+        JsonNode seller = register(uniqueEmail("bait-and-switch"), UserRole.PARTICULIER);
+        String id = publishedListing(seller);
+        JsonNode admin = admin();
+        decide(admin, id, "approve", null).andExpect(status().isOk());
+        assertThat(ids(view(admin, "PENDING"))).isEmpty();
+
+        mockMvc.perform(patch("/api/v1/listings/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(patch))
+                .andExpect(status().isOk())
+                // It is not taken down: every unreviewed listing is online.
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.moderationStatus").value("NOT_REVIEWED"));
+
+        mockMvc.perform(get("/api/v1/listings/" + id)).andExpect(status().isOk());
+        assertThat(ids(view(admin, "PENDING"))).containsExactly(id);
+
+        // The moderator is told why it is back, and can decide again.
+        mockMvc.perform(get(ADMIN_LISTINGS + "/" + id).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(jsonPath("$.editedSinceReview").value(true))
+                .andExpect(jsonPath("$.trail.length()").value(1))
+                .andExpect(jsonPath("$.allowedActions.length()").value(3));
+        decide(admin, id, "approve", null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.listing.moderationStatus").value("APPROVED"))
+                .andExpect(jsonPath("$.editedSinceReview").value(false))
+                .andExpect(jsonPath("$.trail.length()").value(2));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(delimiter = '|', value = {
+            "price       | {\"priceAmount\": 1799000}",
+            "negotiable  | {\"priceNegotiable\": false}",
+            "vat         | {\"vatDeductible\": true}",
+            "privacy     | {\"hideExactLocation\": false}",
+    })
+    @DisplayName("a change of price alone leaves the approval standing")
+    void priceEditKeepsApproval(String what, String patch) throws Exception {
+        JsonNode seller = register(uniqueEmail("price-drop"), UserRole.PARTICULIER);
+        String id = publishedListing(seller);
+        JsonNode admin = admin();
+        decide(admin, id, "approve", null).andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/listings/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(patch))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.moderationStatus").value("APPROVED"));
+
+        assertThat(ids(view(admin, "PENDING"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("saving a form unchanged is not an edit")
+    void resendingTheSameValuesKeepsApproval() throws Exception {
+        // The seller's form sends every field of a step on each save. A listing that went
+        // back to the queue whenever its seller pressed "save" would never leave it.
+        JsonNode seller = register(uniqueEmail("no-op"), UserRole.PARTICULIER);
+        String id = publishedListing(seller);
+        JsonNode admin = admin();
+        decide(admin, id, "approve", null).andExpect(status().isOk());
+
+        Map<String, Object> same = new java.util.HashMap<>(ListingTestFixtures.freeTextListingPayload());
+        same.put("title", "  BMW 320d xDrive M Sport  ");
+        mockMvc.perform(patch("/api/v1/listings/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(same)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.moderationStatus").value("APPROVED"));
+    }
+
+    @Test
+    @DisplayName("price and content changed together still withdraw the approval")
+    void priceWithContentWithdrawsApproval() throws Exception {
+        JsonNode seller = register(uniqueEmail("both"), UserRole.PARTICULIER);
+        String id = publishedListing(seller);
+        decide(admin(), id, "approve", null).andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/listings/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"priceAmount\": 100, \"title\": \"Now something else\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.moderationStatus").value("NOT_REVIEWED"));
+    }
+
+    @Test
+    @DisplayName("adding or removing a photo withdraws the approval; reordering them does not")
+    void photoChangesWithdrawApproval() throws Exception {
+        JsonNode seller = register(uniqueEmail("photo-swap"), UserRole.PARTICULIER);
+        String id = draftListing(seller);
+        String first = uploadPhoto(seller, id);
+        String second = uploadPhoto(seller, id);
+        mockMvc.perform(post("/api/v1/listings/" + id + "/publish").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk());
+        JsonNode admin = admin();
+        decide(admin, id, "approve", null).andExpect(status().isOk());
+
+        // The same photos in another order: all of them were seen.
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/v1/listings/" + id + "/images/order")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("imageIds", List.of(second, first)))))
+                .andExpect(status().isOk());
+        assertThat(moderationOf(id)).isEqualTo(ModerationStatus.APPROVED);
+
+        // A photo nobody has seen.
+        uploadPhoto(seller, id);
+        assertThat(moderationOf(id)).isEqualTo(ModerationStatus.NOT_REVIEWED);
+        assertThat(statusOf(id)).isEqualTo(ListingStatus.ACTIVE);
+
+        // And one taken away from what was approved.
+        decide(admin, id, "approve", null).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/listings/" + id + "/images/" + first)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isNoContent());
+        assertThat(moderationOf(id)).isEqualTo(ModerationStatus.NOT_REVIEWED);
+    }
+
+    @Test
+    @DisplayName("a requested upload that is never completed changes nothing")
+    void unconfirmedUploadKeepsApproval() throws Exception {
+        JsonNode seller = register(uniqueEmail("half-upload"), UserRole.PARTICULIER);
+        String id = publishedListing(seller);
+        decide(admin(), id, "approve", null).andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/listings/" + id + "/images")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("filename", "a.jpg", "contentType", "image/jpeg", "byteSize", 1000))))
+                .andExpect(status().isCreated());
+
+        assertThat(moderationOf(id)).isEqualTo(ModerationStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("editing a listing nobody has reviewed leaves it where it is, without the 'edited' mark")
+    void editingAnUnreviewedListing() throws Exception {
+        JsonNode seller = register(uniqueEmail("still-queued"), UserRole.PARTICULIER);
+        String id = publishedListing(seller);
+        JsonNode admin = admin();
+
+        mockMvc.perform(patch("/api/v1/listings/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\": \"Retitled before anyone looked\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.moderationStatus").value("NOT_REVIEWED"));
+
+        mockMvc.perform(get(ADMIN_LISTINGS + "/" + id).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(jsonPath("$.editedSinceReview").value(false));
+    }
+
+    @Test
+    @DisplayName("a reinstated listing is covered too: editing it sends it back to the queue")
+    void editAfterReinstatement() throws Exception {
+        JsonNode seller = register(uniqueEmail("second-chance"), UserRole.PARTICULIER);
+        String id = publishedListing(seller);
+        JsonNode admin = admin();
+        decide(admin, id, "reject", Map.of("reasonCode", "MISLEADING_INFORMATION")).andExpect(status().isOk());
+        decide(admin, id, "reinstate", null).andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/listings/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"description\": \"Back to what it said before.\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(ADMIN_LISTINGS + "/" + id).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(jsonPath("$.listing.moderationStatus").value("NOT_REVIEWED"))
+                .andExpect(jsonPath("$.editedSinceReview").value(true));
+    }
+
     // --- the transition table ---------------------------------------------
 
     @Test
@@ -628,6 +819,42 @@ class ListingModerationIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/v1/listings/" + id + "/publish").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
                 .andExpect(status().isOk());
         return id;
+    }
+
+    /** A real photo, through the real flow: a slot, the bytes to storage, the confirmation. */
+    private String uploadPhoto(JsonNode seller, String listingId) throws Exception {
+        java.awt.image.BufferedImage picture =
+                new java.awt.image.BufferedImage(800, 600, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.io.ByteArrayOutputStream encoded = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(picture, "jpg", encoded);
+        byte[] content = encoded.toByteArray();
+
+        JsonNode ticket = json(mockMvc.perform(post("/api/v1/listings/" + listingId + "/images")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "filename", "photo.jpg", "contentType", "image/jpeg", "byteSize", content.length))))
+                .andExpect(status().isCreated())
+                .andReturn());
+
+        java.net.http.HttpRequest.Builder put = java.net.http.HttpRequest
+                .newBuilder(java.net.URI.create(ticket.get("uploadUrl").asText()))
+                .PUT(java.net.http.HttpRequest.BodyPublishers.ofByteArray(content));
+        ticket.get("requiredHeaders").fields().forEachRemaining(header -> {
+            // The JDK client computes Content-Length itself and refuses to be told it.
+            if (!"Content-Length".equalsIgnoreCase(header.getKey())) {
+                put.header(header.getKey(), header.getValue().asText());
+            }
+        });
+        assertThat(java.net.http.HttpClient.newHttpClient()
+                .send(put.build(), java.net.http.HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(200);
+
+        String imageId = ticket.get("imageId").asText();
+        mockMvc.perform(post("/api/v1/listings/" + listingId + "/images/" + imageId + "/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY"));
+        return imageId;
     }
 
     private ResultActions decide(JsonNode admin, String id, String action, Map<String, Object> body) throws Exception {

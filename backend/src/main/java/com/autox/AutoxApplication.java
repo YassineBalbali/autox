@@ -2,6 +2,7 @@ package com.autox;
 
 import com.autox.auth.password.PasswordResetProperties;
 import com.autox.auth.throttle.LoginThrottleProperties;
+import com.autox.auth.throttle.RegistrationThrottleProperties;
 import com.autox.config.AuthProperties;
 import com.autox.listing.ListingProperties;
 import com.autox.listing.image.ImageProperties;
@@ -18,6 +19,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableConfigurationProperties({
         AuthProperties.class,
         LoginThrottleProperties.class,
+        RegistrationThrottleProperties.class,
         PasswordResetProperties.class,
         MailProperties.class,
         ListingProperties.class,

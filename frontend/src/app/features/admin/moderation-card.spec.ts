@@ -214,6 +214,27 @@ describe('ModerationCard', () => {
       expect(lines[1]).not.toContain('SUSPECTED_FRAUD');
     });
 
+    it('explains a listing that is back in the queue because its seller edited it', async () => {
+      // Without this the card says "approuvée par Camille" and "à vérifier" at once.
+      await render(
+        item([APPROVE, REJECT, REMOVE], {
+          editedSinceReview: true,
+          trail: [{ id: 't1', action: APPROVE, moderatorName: 'Camille', at: '2026-10-02T08:30:00Z' }],
+        }),
+      );
+
+      expect(el().querySelector('[data-note=edited]')?.textContent).toContain(
+        'Le vendeur a modifié cette annonce depuis la dernière décision',
+      );
+      expect(actions()).toEqual(['Approuver', 'Refuser']);
+    });
+
+    it('says nothing of the kind about a listing that was not edited', async () => {
+      await render(item([APPROVE]));
+
+      expect(el().querySelector('[data-note=edited]')).toBeNull();
+    });
+
     it('still prints a line whose reason code this build does not know', async () => {
       // The API sends no reason for a retired code. The action, the person and the date
       // are still the record.

@@ -1,0 +1,20 @@
+# Advisories the dependency scan in CI reports and this application is not exposed to.
+#
+# Every entry needs a reason a reviewer can check against the code, and is a debt: the
+# dependency is still vulnerable, we have only established that the vulnerable part is not
+# reachable here. Remove an entry as soon as a fixed version can be adopted.
+#
+# The scan itself is in .github/workflows/backend.yml.
+
+# spring-webmvc 6.2.x — reported fixed only in Spring Framework 7.0.9; no 6.2 release
+# carries a fix, and Spring Boot 3.5 cannot move to Framework 7. The real remedy is the
+# migration to Spring Boot 4, which is tracked in docs/deferred.md.
+#
+# CVE-2026-47884: remote code execution through XsltView. This application registers no
+# XsltView and no view resolver at all: every controller is a @RestController returning
+# JSON, and there is no XSLT stylesheet on the classpath.
+CVE-2026-47884
+
+# CVE-2026-47890: stream corruption in Server-Sent Events combined with view rendering.
+# No endpoint produces text/event-stream and none renders a view.
+CVE-2026-47890

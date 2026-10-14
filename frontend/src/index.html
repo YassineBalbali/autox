@@ -4,12 +4,42 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <title>AutoX</title>
+    <!-- The default. Every route sets its own once it is displayed. -->
+    <title>AutoX — voitures d’occasion (site de démonstration)</title>
     <base href="/" />
     <!-- No maximum-scale and no user-scalable=no: pinch-zoom is how a lot of people read a
          phone screen, and taking it away is an accessibility failure, not a design choice. -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Achetez et vendez votre voiture sur AutoX." />
+    <meta
+      name="description"
+      content="AutoX est la démonstration d’une place de marché automobile : recherche, annonces, dépôt d’annonce et modération. Les annonces et les vendeurs sont fictifs."
+    />
+
+    <!-- What a pasted link shows in a message or a post. Static, because the site is
+         rendered in the browser and the crawlers that build a preview do not run script:
+         every address previews as the site, not as the page. The image and the address
+         are relative here and made absolute by the build once AUTOX_SITE_URL is known —
+         those crawlers do not resolve a relative one. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AutoX" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:title" content="AutoX — place de marché automobile (démonstration)" />
+    <meta
+      property="og:description"
+      content="Recherche de voitures d’occasion, annonces, dépôt en quatre étapes et modération. Projet de démonstration : les annonces sont fictives."
+    />
+    <meta property="og:url" content="/" />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="AutoX — démonstration d’une place de marché automobile" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AutoX — place de marché automobile (démonstration)" />
+    <meta
+      name="twitter:description"
+      content="Recherche de voitures d’occasion, annonces, dépôt en quatre étapes et modération. Projet de démonstration : les annonces sont fictives."
+    />
+    <meta name="twitter:image" content="/og-image.png" />
     <!-- Paints the browser chrome to match the app on mobile. -->
     <meta name="theme-color" content="#14181f" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />

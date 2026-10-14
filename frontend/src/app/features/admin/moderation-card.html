@@ -12,6 +12,15 @@
     <span class="tag" data-tag="verdict">{{ verdictLabel() }}</span>
   </header>
 
+  @if (item().editedSinceReview) {
+    <!-- Why a listing whose trail ends in "approuvée" is in the queue again. -->
+    <app-alert kind="info" data-note="edited">
+      <ng-container i18n="@@moderationEdited">
+        Le vendeur a modifié cette annonce depuis la dernière décision : elle est à vérifier de nouveau.
+      </ng-container>
+    </app-alert>
+  }
+
   <div class="card__body">
     <div class="card__photos">
       @if (images().length) {

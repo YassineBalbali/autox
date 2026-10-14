@@ -34,6 +34,9 @@ server, from a registry that serves it. Two consequences:
 - `:latest` is a moving tag. Chainguard's free tier does not publish version tags, so this
   cannot be pinned by tag.
 
+> **Done since:** pinned by digest in both places, and `.github/dependabot.yml` proposes
+> the next digest when Chainguard rebuilds the image. The note below is kept for why.
+>
 > **⚠ To pin before anyone else works on this repo.** Your call was to accept the moving tag
 > while this is dev-only, which is right, but it means two developers can get different MinIO
 > builds and a CI run can break with no commit behind it. Two ways to fix it when that matters:

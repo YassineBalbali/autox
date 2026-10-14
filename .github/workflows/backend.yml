@@ -1,11 +1,12 @@
 name: backend
 
-# Every push, on every branch, plus pull requests into main. The suite is the only thing
+# Every push, on every branch, plus pull requests into the default branch (named both ways:
+# the repository is on master today, and main is where it is likely to end up). The suite is the only thing
 # standing between a change and production, so it runs on all of them rather than on a
 # curated list of branches somebody has to remember to update.
 #
-# Path-filtered now that frontend/ exists: an Angular-only change should not pay for 231
-# backend tests and five minutes of containers. Two of the paths are deliberately not
+# Path-filtered now that frontend/ exists: an Angular-only change should not pay for the
+# backend's integration tests and five minutes of containers. Two of the paths are deliberately not
 # under backend/:
 #
 #   frontend/openapi.json — the committed API contract the frontend generates its client
@@ -19,11 +20,16 @@ on:
       - 'frontend/openapi.json'
       - '.github/workflows/backend.yml'
   pull_request:
-    branches: [main]
+    branches: [main, master]
     paths:
       - 'backend/**'
       - 'frontend/openapi.json'
       - '.github/workflows/backend.yml'
+  # Weekly, whatever has been pushed: an advisory published on Tuesday about a dependency
+  # nobody touched should not wait for the next commit to be noticed.
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
 
 # A second push to the same branch makes the first run's answer irrelevant. Cancelling it
 # keeps the queue honest about what is actually being tested.
@@ -60,7 +66,7 @@ jobs:
       # Not a setup step — an assertion. Every test in this suite talks to a real
       # PostgreSQL and a real S3-compatible store through Testcontainers, so a runner
       # without a working Docker daemon cannot run any of them. Checking here fails with
-      # the actual reason instead of 231 identical ExceptionInInitializerErrors.
+      # the actual reason instead of hundreds of identical ExceptionInInitializerErrors.
       - name: Check Docker is available
         run: docker info --format 'Docker {{.ServerVersion}}'
 
@@ -73,6 +79,26 @@ jobs:
       # cannot produce a runnable jar fails here rather than at deploy time.
       - name: Build and test
         run: mvn -B --no-transfer-progress clean verify
+
+      # Known vulnerabilities in what ships: the libraries inside the jar `verify` just
+      # built, not the pom — scanning the pom means resolving it again against Maven
+      # Central, which rate-limits scanners. HIGH and CRITICAL with a fixed version
+      # available fail the build; an advisory with no fix cannot be acted on by a version
+      # bump and is reported elsewhere (Dependabot) rather than blocking every push.
+      #
+      # Trivy runs from its image, pinned by digest: a scanner that pulls whatever was
+      # published last is itself a supply-chain risk. Findings judged not to apply are in
+      # backend/.trivyignore, each with its reason.
+      - name: Scan dependencies for known vulnerabilities
+        run: |
+          mkdir -p target/scan
+          cp target/*.jar target/scan/
+          docker run --rm \
+            -v "$PWD/target/scan:/scan:ro" \
+            -v "$PWD/.trivyignore:/.trivyignore:ro" \
+            aquasec/trivy@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa \
+            rootfs --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+            --ignorefile /.trivyignore --exit-code 1 /scan
 
       # Surefire's XML is the only place the actual assertion failure is written down. The
       # log above is truncated and interleaved; without this a red run says "tests failed"

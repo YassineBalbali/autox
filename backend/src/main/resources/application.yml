@@ -95,6 +95,14 @@ autox:
       ip-max-delay: PT30M
       reset-after: PT24H
 
+    # Registration is the one unauthenticated endpoint that writes a row and hashes a
+    # password, so it is capped per client address: every attempt counts, successful or
+    # not. Five an hour is far beyond a household and far below a script.
+    registration-throttle:
+      enabled: ${AUTOX_REGISTRATION_THROTTLE_ENABLED:true}
+      max-attempts-per-window: ${AUTOX_REGISTRATION_MAX_ATTEMPTS:5}
+      window: PT1H
+
     # A reset link is a bearer credential sitting in an inbox, so it is short-lived and
     # single-use. Both caps exist because the caller need not own the address they submit:
     # one stops the endpoint being used to bury someone's inbox, the other bounds a sweep

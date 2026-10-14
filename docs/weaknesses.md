@@ -1,198 +1,325 @@
-# Where the backend is weakest
+# Where AutoX is weakest
 
-An honest assessment, written at the point the MVP API is complete and before the frontend
-starts. Ordered by how much damage each would actually do, not by how hard it is to fix.
+An honest assessment, written when the MVP is feature-complete — backend and frontend —
+and before any deployment work. It replaces the backend-only version written before the
+frontend existed; what became of that version's ten items is in the table at the end.
 
-Things already catalogued as deliberately deferred are in `docs/deferred.md` and are not
-repeated here, with one exception: moderation, because calling it "deferred scope" undersells
-what its absence means.
+Two lists, kept apart on purpose:
 
-> **Updated after the session that followed.** Five of the ten below were acted on, and the
-> entries are marked **FIXED** or **PARTLY FIXED** in place rather than deleted — what was
-> wrong and why is worth more than a shorter document. In short: the account lifecycle (3),
-> the quota race (6), the sweeper coordination (7) and the IPv6 rate-limit key (9) are
-> closed, and a health endpoint closed part of (4). Items **1, 2, 5 and 8 stand unchanged**,
-> and 1 and 2 are still the two that carry legal exposure. See
-> `docs/account-and-correctness-decisions.md`.
+1. **Risks** — what would hurt a person, or the operator, if this were public tomorrow.
+2. **Weaknesses** — where the product is incomplete or unproven, with nobody harmed by it.
 
----
+Each is ordered by how much damage it would do, not by how hard it is to fix. Things that
+were knowingly left out of scope are in `docs/deferred.md`; they are repeated here only
+where "deferred" undersells what their absence means.
 
-## 1. There is no way to take a listing down
+> **Direction since this was written:** AutoX is deployed as a public portfolio demo — no
+> real users, invented listings, labelled as such on every page. The risks that only matter
+> with real users (dealer verification, legal pages, account deletion, email verification)
+> are knowingly left open for that reason. `docs/deployment.md` says what the demo will and
+> will not do.
 
-The single worst thing about the current state.
-
-Listings are **public and unauthenticated** the moment a seller publishes. Nothing in the API
-can remove one. The schema for it is complete and unused — `listing.moderation_status`,
-`moderation_action`, `ModerationActionType` — but there is no endpoint, so a fraudulent,
-illegal or abusive listing can only be dealt with by someone connecting to the database and
-writing SQL.
-
-Combined with the next item, this is the gap that carries legal exposure rather than just
-product incompleteness.
-
-**Why it is worse than it looks:** the schema being ready makes it *feel* handled. It is not.
-
-## 2. No content safety on uploads, on a public gallery
-
-Anything that decodes as an image can be uploaded and is then publicly readable at a signed
-URL. No virus scanning, no image moderation, no hash-matching against known illegal content.
-
-The privacy half is done properly — EXIF including GPS is stripped from the variants *and* the
-stored original, so a seller's home coordinates do not sit in the bucket. The content half is
-absent entirely.
-
-This and the point above are the same project and should be built together.
-
-## 3. A user who forgets their password is permanently locked out — FIXED
-
-*Was:* no password reset, no password change, and no way to list or revoke sessions, so a
-user who lost a phone could not end that session — even though `refresh_token` recorded the
-device label, user agent and IP for exactly that purpose. **Registration was the only account
-operation that worked.** Called a defect rather than a deferral at the time, and treated as
-one.
-
-*Now:* change password (requires the current one, replaces every session), forgotten-password
-reset by emailed single-use token, and a session list with per-session revocation. 22 tests.
-
-**One gap remains, and it is a deployment step rather than a defect:** there is no real mail
-provider. `EmailSender` has a logging implementation that prints the reset link to the
-console, which is how the flow is usable in development and is a **credential leak in
-production** — anyone who can read the log can take over any account. It warns at every
-startup. A provider is one bean and one property.
-
-Also still missing: email verification is never *sent* (the column and the status exist, and
-nothing populates them), and there is no "sign out everywhere" button — though changing the
-password does exactly that.
-
-## 4. The backend is operationally blind — PARTLY FIXED
-
-- ~~No health or readiness endpoint.~~ **Fixed:** `/actuator/health`, plus separate
-  `/liveness` and `/readiness` probes, public, status only, with everything else actuator
-  offers shut off and a test asserting so.
-- **No metrics.** No request rate, no latency percentiles, no count of how often the rate
-  limiter or login throttle fires. The actuator dependency is now present, so this is a
-  configuration change and a scrape target away — but it is not done.
-- **Plain-text logs**, and no request correlation id except on 500s. This is now the largest
-  remaining piece of the item.
-- ~~**No CI.**~~ **Fixed:** `.github/workflows/backend.yml` runs `clean verify` — the full
-  228-test suite plus packaging — on every push and on pull requests into `main`.
-
-Still true that **if this were deployed tomorrow, the second indication of a problem would be
-a user complaining** — the first is now a load balancer noticing.
-
-## 5. Login is a CPU exhaustion vector
-
-BCrypt at cost 12 is deliberate and right — roughly 250 ms per hash. The login endpoint also
-hashes against a dummy value when the email is unknown, which is correct: it keeps the response
-constant-time and stops the endpoint being an account-enumeration oracle.
-
-The consequence is that **every login attempt costs ~250 ms of CPU, including the ones that
-were never going to succeed.** The throttle counts *failures*, and the per-IP threshold is 20
-before any delay. An attacker spraying distinct addresses from distinct sources burns a core at
-about four requests a second each, without ever tripping a counter.
-
-This is a known trade — removing the dummy hash would reintroduce enumeration, and lowering the
-cost weakens every stored password. The right fixes are elsewhere: a proof-of-work or CAPTCHA
-on repeated failures, and rate limiting at the proxy. Worth being aware of rather than
-surprised by.
-
-## 6. The active-listing quota has a race — FIXED
-
-*Was:* `requireQuotaAvailable` counted the seller's active listings and then published, at
-READ COMMITTED. Two concurrent publications from one seller both read `active = 4` against a
-limit of 5, both passed, and both committed — leaving six.
-
-*Now:* a row lock on the seller is taken before the count, so the pair is atomic for that
-seller. The test was validated against the unfixed code: with the lock removed, four
-simultaneous publications all succeed against a cap of two.
-
-**It remains the only concurrency test in the suite** — see item 8.
-
-## 7. Three scheduled jobs with no coordination between instances — FIXED
-
-*Was:* `ListingExpirySweeper` (10 min), `ListingImageSweeper` (15 min) and
-`LoginThrottleSweeper` (hourly) were plain `@Scheduled` methods, so **every instance ran all
-of them**. The image sweeper deletes storage objects as well as rows.
-
-*Now:* all three run under a PostgreSQL session-level advisory lock via
-`ScheduledTaskCoordinator`. A second instance skips the run rather than queueing to repeat
-it, and an instance that crashes mid-sweep releases the lock when its socket closes.
-`LoginThrottleSweeper` became `AuthMaintenanceSweeper` and now also purges the two tables
-nothing was purging — expired refresh tokens and spent reset tokens.
-
-## 8. Search is correct but has only been proven at 20,000 rows
-
-The query plans are measured rather than assumed, which is the right standard and found four
-real index defects across two tasks. All four sorts are plain index scans with no sort nodes,
-and page 500 costs what page 1 costs. That part is solid.
-
-What has *not* been established:
-
-- **20,000 rows is a small marketplace.** La Centrale carries hundreds of thousands. The plans
-  should hold — keyset pagination over a partial index is the shape that scales — but "should"
-  is doing work in that sentence, and the one honest claim is that it is untested above 20k.
-- **The free-text make/model name filter scans the whole visible set** (16,000 rows removed by
-  filter, of 20,000). A direct consequence of the deferred catalogue, and it resolves itself
-  when the frontend sends `makeId` — but if free-text search gets real traffic first, this is
-  the first thing to hurt.
-- **Almost no concurrency testing.** One test now covers the quota race; everything else is
-  sequential. Nothing is known about behaviour under parallel load, which is how item 6 went
-  unnoticed in the first place.
-
-## 9. Rate limiting is weaker than it looks against a determined scraper — PARTLY FIXED
-
-Detail in `docs/reference-decisions.md` and
-`docs/account-and-correctness-decisions.md`, but the summary belongs here:
-
-- ~~The key is a single IP address, so a scraper on IPv6 rotates within its own /64 and is
-  never limited.~~ **Fixed:** IPv6 is keyed on the /64 prefix, for the public rate limit and
-  the login throttle both. Verified live — the recorded key is now
-  `0:0:0:0:0:0:0:0/64`.
-- **It still trusts `X-Forwarded-For`**, so without a proxy that overwrites the header a
-  caller forges the key and sidesteps both this and the login throttle. The README says so
-  under "Deploying behind a proxy"; it is a deployment requirement, not something the
-  application can fix on its own.
-- **It still costs one database write per public read** — fine now, and the wrong place for
-  this at volume.
-
-It raises the cost of casual scraping, which is worth having. It is not a defence against
-someone who wants the data.
-
-## 10. Smaller things that will be felt
-
-- **Pre-signed read URLs are generated per response and expire in six hours**, so listing
-  responses do signing work and image URLs cannot be cached by a CDN or across sessions. One
-  environment variable (`AUTOX_S3_PUBLIC_BASE_URL`) switches to stable CDN URLs; until it is
-  set, image delivery is the least efficient part of the system.
-- **The MinIO dev image is an unpinned moving tag**, so two developers can get different builds
-  and CI can break with no commit behind it.
-- **Accents are not normalised in location matching**, so "Saint-Étienne" and "Saint-Etienne"
-  are different places. `GeoPlace.normalize` exists and is unreachable until the gazetteer
-  lands.
-- ~~**Price is mutated in place with no history.**~~ **Fixed** — it was the one gap that got
-  more expensive every day, so it went first. `listing_price_history` records the opening
-  price at publication and every change after it. Not exposed by any endpoint; it exists as
-  the input to price estimation.
+Nothing below is legal advice. Where a law is named, it is to say *a lawyer needs to look
+at this*, not to say what the answer is.
 
 ---
 
-## What is actually solid
+## 1. Security and privacy risks if this went public tomorrow
 
-Stated for balance, and because knowing what not to re-examine is useful.
+### R1. Email does not exist, and three things rest on it — blocker
 
-- **The error contract.** One RFC 9457 shape everywhere, with a stable `code` and a flat
-  `errors` array. Consistent across every endpoint, and tested as such.
+`autox.mail.provider=log` is the only sender. Consequences, in order of severity:
+
+- **The password reset link is written to the application log.** Anyone who can read the
+  log can take over any account. It warns at every startup; it does not refuse to start.
+- **A user who forgets their password cannot recover it**, because nothing is sent.
+- **No address is ever verified.** `email_verified` is never set. Anyone can register with
+  an address that is not theirs and publish under it, and a seller's address may reach
+  nobody. A comment in `AuthService.requireLoginAllowed` says verification "attaches to
+  publishing a listing instead" — **it does not; nothing checks it.**
+
+*Before going public:* a real `EmailSender`, a startup failure (not a warning) when the
+provider is `log` outside development, and verification enforced at publication.
+
+### R2. "Professionnel" is self-declared, uncapped, and displayed as fact — blocker
+
+Anyone can register as a dealer by typing a company name and a registration number.
+Neither is checked. That account then:
+
+- has **no cap on live listings** (`professionnel-active-limit: 0`) — the private cap of
+  five is the only flood control there is, and choosing the other radio button removes it;
+- is shown to buyers with a **"Professionnel" tag** and its company name on every listing.
+
+So the cheapest way to flood the site and the cheapest way to look trustworthy are the
+same checkbox. In France a trade seller also carries legal obligations a private one does
+not, so presenting an unverified account as one is a consumer-protection question as well.
+
+*Before going public:* cap unverified dealers like private sellers (the per-account
+`active_listing_limit` override already exists), and either verify the registration
+number or stop displaying the tag until someone has.
+
+### R3. A moderator can remove a listing but cannot stop the person — high
+
+Moderation is post-publication: a listing is public the moment it is published and
+reviewed afterwards. That was a deliberate MVP choice and is workable only with the things
+around it, which are missing:
+
+- **No account suspension.** `UserStatus.SUSPENDED` exists, blocks sign-in, and **no
+  endpoint sets it.** A seller whose listing was refused publishes the next one.
+- **A suspended seller's listings would stay public anyway**: the search's visibility rule
+  checks the listing, not its seller. An access token already issued keeps working for up
+  to 15 minutes.
+- **Nobody can report a listing.** The footer's "Signaler une annonce" is declared and
+  omitted because the page does not exist. A marketplace hosting user content is expected
+  to offer notice-and-action (in the EU, under the Digital Services Act).
+- **Uploads are not scanned.** Anything that decodes as an image is public until a
+  moderator sees it: no hash-matching against known illegal material, no malware scan.
+- **Nothing alerts anyone** that the queue is growing, and it is worked oldest-first.
+
+Re-review after an edit (added in the last change) closes the approve-then-swap hole. It
+does not shorten the window in which unreviewed content is public — that window is the
+design.
+
+*Before going public:* suspension (endpoint, UI, and seller status in the visibility
+predicate), a report button feeding the queue, and a decision about whether first
+publications by a new account should wait for review. `PENDING_REVIEW` is reserved in the
+schema for exactly that.
+
+### R4. A 90-day credential in `localStorage` — medium (was high: the policy now exists)
+
+The refresh token is readable by any script on the origin, so one XSS is a durable account
+takeover — including an administrator's, who can read every seller's email address.
+`docs/frontend-decisions.md` accepted this *on the condition of a Content-Security-Policy*.
+
+**That condition is now met.** The production build writes a policy into the page and into
+`_headers`: scripts from the site's own origin only, no `eval`, `connect-src` and
+`img-src` limited to the API and photo storage, no framing, plus `nosniff`,
+`Referrer-Policy`, `Permissions-Policy` and HSTS on https. Verified in a browser against
+the production build: no violation in normal use, and an injected inline script, an inline
+handler, a third-party script, `eval`, and an attempt to send the session to another
+origin by `fetch`, image or form were all refused. The API sends its own strict policy.
+
+What remains: **`style-src` allows inline styles**, which Angular needs without a
+per-response nonce; and on a host that does not read `_headers`, only the `<meta>` form
+applies — no `frame-ancestors`, no HSTS — unless the headers are configured by hand.
+
+### R5. Abuse controls stop at the login form — high
+
+- ~~**Registration is not rate-limited.**~~ **Fixed:** five attempts per hour per client
+  address, successful or not, counted before the lookup and the hash, on the same counter
+  table as the other throttles.
+- **Login has the same CPU cost per attempt**, by design (the dummy hash that prevents
+  account enumeration). The throttle counts failures per address and per IP; a spray
+  across addresses and sources burns a core without tripping it.
+- **Every throttle trusts `X-Forwarded-For` — its first value.** A platform proxy that
+  appends to the header leaves that value to the client, who then chooses their own key and
+  none of the limits apply. A configuration change (`docs/deployment.md` §5.2), depending
+  on the host; the most important item on the deployment list.
+- **No CAPTCHA or proof-of-work anywhere.**
+
+### R6. The legal surface of a public site is absent — high, and not an engineering call
+
+No legal notice, terms, or privacy policy (the footer omits the links because the pages do
+not exist), and no acceptance of terms at registration. For personal data specifically:
+
+- **A user cannot delete their account or export their data.** There is no endpoint.
+  `UserStatus.DELETED` exists and nothing sets it.
+- **A private seller's display name, city and postal code are public** on every listing,
+  with the month they joined. Normal for classifieds, but nothing tells the seller so at
+  registration, and the display name defaults to whatever they typed.
+- **A seller is not notified when a listing is taken down** — the reason appears on their
+  dashboard, and no message is sent.
+
+### R7. Administrator accounts are ordinary accounts — medium
+
+Same login, single factor, no IP restriction, no audit of what an administrator *reads*
+(only of moderation decisions). A demoted administrator keeps the role for up to 15
+minutes, because it travels in the access token. Promotion is a SQL statement, which is a
+strength (no endpoint to attack) and a process gap (no record of who promoted whom).
+
+### R8. Smaller, and worth knowing
+
+- **Registration reveals whether an address has an account**
+  (`EMAIL_ALREADY_REGISTERED`). The forgotten-password endpoint is careful not to; this
+  one is not.
+- **The full OpenAPI document and Swagger UI are public**, administrator endpoints
+  included. Deliberate — the endpoints are discoverable anyway — but worth a conscious
+  yes for production.
+- ~~**No dependency scanning in CI.**~~ **Fixed:** the backend jar is scanned with Trivy and
+  production npm dependencies are audited on every push and weekly; Dependabot proposes
+  upgrades. Still no secret scanning, and GitHub Actions are pinned by tag, not by commit.
+- **Spring Framework 6.2 carries two CRITICAL advisories with no fixed 6.2 release** —
+  `XsltView` and server-sent events with views, neither of which this API uses. Accepted in
+  `backend/.trivyignore` with that reasoning. The remedy is the move to Spring Boot 4.
+- ~~**Errors leaked internals in three places.**~~ **Fixed.** A type-conversion failure
+  echoed Java class names in its message, the framework's own 405/406/415 had no `code`, and
+  the HTTP parser's refusals were Tomcat's HTML page. Now asserted by a test that listens on
+  a real port and sends thirty
+  malformed requests.
+- **`.env.example` sets `AUTOX_LOG_LEVEL=DEBUG`**; copied to a server, that logs more than
+  it should.
+- **The `demo` profile on a production database** would publish sixty invented listings.
+  It is profile-gated and removable by ledger, but nothing refuses it.
+
+### Checked and found sound
+
+Stated so they are not re-examined for nothing: ADMIN cannot be self-assigned at
+registration; a listing someone else owns answers 404, not 403; the VIN, the seller's email
+and a moderator's note never reach a public or seller-facing response; EXIF including GPS
+is stripped from stored originals and variants; uploads go to storage with no bearer token
+attached; a moderator's removal cannot be undone through the seller's endpoints, by the
+seller or by an administrator; secrets come from the environment with no defaults, and
+`.env` is not tracked; `health` is the only actuator endpoint exposed.
+
+---
+
+## 2. Where the product is weakest
+
+### W1. A buyer cannot contact a seller — frontend and backend
+
+The one transaction a marketplace exists for is not there. The listing page has a contact
+button that is disabled and says so; no phone number is shown; there is no messaging.
+The brief put messaging out of the MVP, and that was right for building — but it means the
+MVP demonstrates a catalogue, not a marketplace. **Everything else on this list is
+secondary to this.**
+
+### W2. There is no vehicle catalogue outside the demo — backend, data
+
+`vehicle_make`, `vehicle_model` and `vehicle_trim` are empty in a real database. The ten
+makes seen in development come from the demo seed. Without them the seller's form falls
+back to free text for everyone ("BMW", "bmw" and "B.M.W." become three manufacturers), the
+search's make filter has nothing to offer, and a make typed as text is filtered by a scan
+rather than an index. It is a data-sourcing task, and it is the largest single thing
+between this and a usable site.
+
+### W3. Location is a typed string — backend, data
+
+No gazetteer, so **no "within 50 km"** — the most-used filter on a car site — and
+"Saint-Étienne" and "Saint-Etienne" are different places. The bounding-box query is built
+and tested and matches nothing, because no listing has coordinates.
+
+### W4. The seller's form covers a fraction of what a listing can hold — frontend
+
+The API accepts, and the public page displays, power, doors, seats, colour, equipment,
+previous owners, service history, warranty, inspection date, CO₂ and emission class. The
+create/edit form asks for none of them. Only demo listings have a full specification
+table; a real seller's listing will look thin beside them. Likewise the form never sends a
+first-registration month or a VIN.
+
+### W5. It has never been designed for a phone — frontend
+
+Desktop-first at 1440px was the instruction, and mobile was held to "does not overflow".
+It does not overflow. Nobody has designed the search filters, the gallery, the four-step
+form or the moderation card for a thumb, and on a classifieds site most visits are on a
+phone.
+
+### W6. It is invisible to search engines — frontend
+
+A client-rendered single-page app: no server rendering, no sitemap, no structured data.
+A pasted link now previews as **the site** — a title, a description and an image, from
+static Open Graph tags — but every address previews the same, because the crawlers that
+build previews do not run script: a listing link does not show that listing. Per-page
+previews need server rendering or a prerender step.
+
+### W7. Nothing is ever sent to a seller — backend
+
+Beyond R1's reset email: no notice that a listing is about to expire, has expired, was
+taken down, or was reinstated. Everything is discoverable on the dashboard and nowhere
+else, and listings expire silently after 60 days.
+
+### W8. Moderation works for one moderator and a short queue — frontend and backend
+
+Enough to do the job, and no more: no search or filter (finding one listing means paging
+to it), no view of a seller's other listings, no user administration screen although
+`GET /admin/users` exists, no reports inbox (R3), and when a listing returns to the queue
+after an edit the card says so but cannot show *what* changed.
+
+### W9. The backend is operationally blind, and so is the frontend — both
+
+No metrics, plain-text logs with no correlation id except on a 500, no error tracking in
+the browser, no analytics. A health endpoint exists, so a load balancer would notice an
+outage; the next indication of any subtler problem would be a user complaining.
+
+### W10. The browser flows are verified by hand-run scripts that are not in the repository — tests
+
+1154 automated tests (341 backend integration, 813 frontend unit) and none of them drives
+a real browser against a real API. Each screen *was* exercised that way while it was
+built — real upload to object storage, real publish, real moderation — by throwaway
+scripts that were never committed. So the most valuable class of test this project has run
+is the one CI cannot repeat. There is also no load test: search is proven at 20 000 rows,
+and one test covers concurrency.
+
+### W11. CI — resolved
+
+Both workflows have run on GitHub and passed, and now also scan dependencies weekly. The
+MinIO image is pinned by digest, with Dependabot proposing the next one.
+
+### W12. Images cannot be cached — backend, configuration
+
+Read URLs are signed per response and expire in six hours, so no CDN and no browser cache
+across sessions can hold them, and every listing response does signing work. One variable
+(`AUTOX_S3_PUBLIC_BASE_URL`) fixes it. JPEG and PNG only; no WebP.
+
+### W13. One language, by construction — frontend
+
+The data model is multi-country and the API is language-neutral, as designed. The Angular
+app has `i18n` markers on most template text and no extraction or second locale; strings
+built in TypeScript (confirmations, notices, validation sentences) are French literals.
+Adding a language is a real project, not a translation file.
+
+### W14. Smaller things that will be felt
+
+- **A seller cannot remove a listing a moderator took down** from their dashboard: the row
+  has no buttons, although the API would accept their delete.
+- **The editor opens for a listing that can no longer be edited** (sold, removed) and only
+  says so when saving is refused.
+- **Accessibility was built carefully and never audited** — no screen-reader pass, no
+  automated checker in CI.
+- **Validation failures from the API carry no machine-readable constraint**, so when the
+  client's own rules and the server's disagree, the user is told a field was refused and
+  not why.
+- **The result count is capped at 10 000** and cross-currency price sorting is meaningless
+  — both correct while one market is open.
+- **Reference data is cached by the browser for an hour**, so a catalogue change is slow
+  to appear.
+
+---
+
+## 3. What became of the earlier ten
+
+| Earlier item | Now |
+|---|---|
+| 1. No way to take a listing down | **Fixed.** Moderation: queue, approve, reject, takedown, reinstate, trail, re-review after edit. What is missing around it is R3. |
+| 2. No content safety on uploads | **Unchanged.** Now part of R3. |
+| 3. Forgotten password locks the user out | **Fixed in code, not in fact** — see R1. |
+| 4. Operationally blind | **Partly fixed** (health, CI written). See W9, W11. |
+| 5. Login is a CPU exhaustion vector | **Unchanged**, and registration shares it. R5. |
+| 6. Quota race | **Fixed**, and the rule now lives in one class shared with reinstatement. |
+| 7. Uncoordinated scheduled jobs | **Fixed.** |
+| 8. Search proven only at 20 000 rows | **Unchanged.** W10. |
+| 9. Rate limiting weaker than it looks | **Partly fixed** (IPv6 /64). Still trusts `X-Forwarded-For`. R5. |
+| 10. Smaller things | Price history fixed, MinIO pinned; signed image URLs (W12) and accents (W3) stand. |
+
+---
+
+## 4. What is actually solid
+
+For balance, and because knowing what not to re-examine is useful.
+
+- **The contract.** One OpenAPI document, a client generated from it on every build, and a
+  backend test that fails when the committed copy falls behind. It caught real bugs —
+  most recently two DTOs sharing a schema name, which had silently given the public seller
+  type an email field in the document.
+- **Rules live in one place and the client is told the answer.** Listings carry
+  `allowedTransitions`, `editable`, `renewable`; moderated listings carry
+  `allowedActions`. No screen keeps its own copy of the state machine.
+- **The error contract.** One RFC 9457 shape, a stable `code`, French keyed on the code
+  and typed so a new code breaks the frontend build until someone writes its sentence.
 - **Token handling.** Rotation on every use, family revocation on replay, hashed storage,
-  nothing reversible in the database. The replay detection is correct *and* tested to actually
-  fire, which is the part most implementations get wrong.
-- **The language-neutral API.** Audited: no `@JsonValue` overrides, no translatable display
-  strings in any response, and a test asserting two different `Accept-Language` headers return
-  byte-identical bodies. The French frontend can be built without fighting the API.
-- **Schema integrity.** Flyway owns it, Hibernate validates against it and refuses to start on
-  drift. The XOR constraints, composite foreign keys and deferred unique constraints do real
-  work that application code would otherwise have to be trusted to do.
-- **The test suite.** 231 integration tests against real PostgreSQL and real S3-compatible
-  storage. No mocked authentication, no mocked SQL, no in-memory database pretending to be
-  Postgres. Several real bugs were found by tests that a mock would have passed — the EXIF
-  orientation failure most recently, which 132 tests had missed because every generated test
-  image happened to have no EXIF at all.
+  a single in-flight refresh in the client.
+- **Schema integrity.** Flyway owns it; Hibernate validates and refuses to start on drift.
+- **The test suites.** Backend tests run against real PostgreSQL and real S3-compatible
+  storage with nothing mocked. Frontend tests address fields by label and assert the
+  French a user reads.
+- **The moderation trail.** Append-only, written in the same transaction as the decision,
+  and not bypassable through any other endpoint.

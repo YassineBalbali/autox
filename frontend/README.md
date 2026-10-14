@@ -204,6 +204,8 @@ component; the step is in `?etape=vehicule|offre|photos|apercu`.
   also needs a note. The form says who reads what: the seller sees the reason, only
   moderators see the note. The labels are in `shared/listing/moderation.fr.ts`, shared
   with the seller's dashboard, which shows the reason on a listing that was taken down.
+- **A listing edited after approval comes back to the queue**, and its card says so
+  (`editedSinceReview`): otherwise it would read "approuvée" and "à vérifier" at once.
 - **After every decision the page refetches** instead of patching its list — two people
   can work the same queue. A decision the API refuses (someone else got there first) is
   explained in French on the card, or above the list if the card has gone.

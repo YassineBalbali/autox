@@ -136,7 +136,7 @@ public class ListingImageService {
      */
     @Transactional
     public ImageResponse confirmUpload(UUID callerId, boolean admin, UUID listingId, UUID imageId) {
-        accessGuard.require(callerId, admin, listingId);
+        Listing listing = accessGuard.require(callerId, admin, listingId);
 
         ListingImage image = images.findByIdAndListing(imageId, listingId)
                 .orElseThrow(() -> ApiException.notFound("Image"));
@@ -201,6 +201,12 @@ public class ListingImageService {
         image.setChecksumSha256(com.autox.common.Sha256.hex(content));
         image.setUploadedAt(Instant.now());
         image.setStatus(ImageStatus.READY);
+
+        // A photo nobody has seen is now on the listing: an approval given before it
+        // arrived does not cover it. See Listing#contentChanged.
+        if (listing.contentChanged()) {
+            log.info("Listing {} gained a photo after approval and is back in the moderation queue", listingId);
+        }
 
         log.info("Image {} confirmed for listing {} ({}x{}, {} variants)",
                 imageId, listingId, decoded.getWidth(), decoded.getHeight(), image.getVariants().size());
@@ -270,10 +276,17 @@ public class ListingImageService {
      */
     @Transactional
     public void delete(UUID callerId, boolean admin, UUID listingId, UUID imageId) {
-        accessGuard.require(callerId, admin, listingId);
+        Listing listing = accessGuard.require(callerId, admin, listingId);
 
         ListingImage image = images.findByIdAndListing(imageId, listingId)
                 .orElseThrow(() -> ApiException.notFound("Image"));
+
+        // Removing a photo that was part of what was approved changes what the listing
+        // shows — the one honest picture of the damage, say. Reordering does not: the same
+        // photos, all already seen. An upload that never completed was never a photo.
+        if (image.getStatus() == ImageStatus.READY && listing.contentChanged()) {
+            log.info("Listing {} lost a photo after approval and is back in the moderation queue", listingId);
+        }
 
         List<String> keys = image.allStorageKeys();
         images.delete(image);

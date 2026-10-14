@@ -154,8 +154,87 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem;
     }
 
+    /**
+     * The reason a field was refused.
+     *
+     * <p>A <em>validation</em> failure carries the constraint's own message ("must not be
+     * blank"), which was written to be read. A <em>binding</em> failure — "abc" where a
+     * number belongs, an enum value that does not exist — carries Spring's conversion
+     * message, which names Java classes and echoes the offending value back. That one is
+     * replaced: it describes this server's internals, not the caller's mistake.
+     */
     private static String message(FieldError error) {
+        if (error.isBindingFailure()) {
+            return NOT_A_VALID_VALUE;
+        }
         return error.getDefaultMessage() == null ? "is invalid" : error.getDefaultMessage();
+    }
+
+    private static final String NOT_A_VALID_VALUE = "is not a valid value for this field";
+
+    /**
+     * Every error Spring MVC raises by itself — an unsupported method or content type, a
+     * path variable that is not a UUID, a missing parameter — arrives here.
+     *
+     * <p>Left alone, these were the responses that broke the contract: a problem document
+     * with no {@code code} and no {@code timestamp}, and a {@code detail} written by the
+     * framework ("Failed to convert 'id' with value: …", "Acceptable representations:
+     * [application/json, …]"). A client branching on {@code code} had nothing to branch
+     * on, and the text described the server rather than the request.
+     *
+     * <p>So the framework's body is discarded and ours is built from the status alone. The
+     * headers are kept: {@code Allow} on a 405 and {@code Accept} on a 415 are part of
+     * HTTP, and say what the caller needs to know without a sentence.
+     */
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(
+            Exception exception, Object body, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+
+        int value = status.value();
+        ErrorCode code;
+        String detail;
+        if (value >= 500) {
+            // The handler above logs unexpected failures with an incident id; these are the
+            // framework's own (an async timeout, say) and are logged here for the same reason.
+            log.error("Framework error {} on {}", value, path(request), exception);
+            code = ErrorCode.INTERNAL_ERROR;
+            detail = "An unexpected error occurred.";
+        } else if (value == 404) {
+            code = ErrorCode.NOT_FOUND;
+            detail = "No endpoint matches this request.";
+        } else if (value == 405) {
+            code = ErrorCode.METHOD_NOT_ALLOWED;
+            detail = "This method is not supported on this endpoint.";
+        } else if (value == 415 || value == 406) {
+            code = ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+            detail = value == 415
+                    ? "This content type is not supported. Send application/json."
+                    : "This response format is not available. Accept application/json.";
+        } else if (value == 400) {
+            code = ErrorCode.VALIDATION_FAILED;
+            detail = "Request validation failed.";
+        } else {
+            code = ErrorCode.MALFORMED_REQUEST;
+            detail = "The request could not be processed.";
+        }
+
+        ProblemDetail problem = problem(status, detail, code, path(request));
+
+        // Which parameter, when the framework knows — the name only, never the value or
+        // the type it failed to become.
+        String field = null;
+        if (exception instanceof org.springframework.web.method.annotation.MethodArgumentTypeMismatchException mismatch) {
+            field = mismatch.getName();
+        } else if (exception instanceof org.springframework.web.bind.MissingServletRequestParameterException missing) {
+            field = missing.getParameterName();
+        }
+        if (field != null) {
+            String reason = exception instanceof org.springframework.web.bind.MissingServletRequestParameterException
+                    ? "is required" : NOT_A_VALID_VALUE;
+            problem.setProperty("errors", List.of(new FieldViolation(field, reason)));
+        }
+
+        return new ResponseEntity<>(problem, headers, status);
     }
 
     private static String path(WebRequest request) {

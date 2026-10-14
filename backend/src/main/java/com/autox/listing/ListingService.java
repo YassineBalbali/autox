@@ -247,6 +247,7 @@ public class ListingService {
         // asking a moment ago, and by the end of this method that value is gone.
         long priceBefore = listing.getPriceAmount();
         Currency currencyBefore = listing.getPriceCurrency();
+        List<Object> contentBefore = contentOf(listing);
 
         if (request.title() != null) {
             listing.setTitle(request.title().trim());
@@ -364,6 +365,12 @@ public class ListingService {
         }
 
         recordPriceChange(listing, priceBefore, currencyBefore);
+
+        // Compared, not assumed: a client that saves a form sends every field of it, and
+        // a listing must not go back to the queue because its seller pressed "save".
+        if (!contentBefore.equals(contentOf(listing)) && listing.contentChanged()) {
+            log.info("Listing {} was edited after approval and is back in the moderation queue", listing.getId());
+        }
         return respond(listing);
     }
 
@@ -511,6 +518,65 @@ public class ListingService {
             throw ApiException.photoRequired(
                     "Add at least one photo before publishing. Uploads that have not been confirmed do not count.");
         }
+    }
+
+    /**
+     * Everything about a listing that a moderator's approval covers — which is everything
+     * a buyer reads except the price.
+     *
+     * <p>The price, whether it is negotiable and the VAT flag are left out on purpose. A
+     * seller lowering their price is the most ordinary edit there is, it cannot turn an
+     * acceptable listing into an unacceptable one, and sending every price drop back
+     * through review would bury the queue. {@code hideExactLocation} is left out too: it
+     * is a privacy preference, not something the listing says.
+     *
+     * <p>Photos are not here because they are not changed through this service; adding or
+     * removing one withdraws the approval where that happens, in
+     * {@code ListingImageService}.
+     */
+    private static List<Object> contentOf(Listing listing) {
+        List<Object> content = new java.util.ArrayList<>();
+        content.add(listing.getTitle());
+        content.add(listing.getDescription());
+
+        content.add(listing.getCountry() == null ? null : listing.getCountry().getCode());
+        content.add(listing.getGeoPlace() == null ? null : listing.getGeoPlace().getId());
+        content.add(listing.getPostalCode());
+        content.add(listing.getCity());
+
+        content.add(listing.getMake() == null ? null : listing.getMake().getId());
+        content.add(listing.getModel() == null ? null : listing.getModel().getId());
+        content.add(listing.getTrim() == null ? null : listing.getTrim().getId());
+        content.add(listing.getMakeText());
+        content.add(listing.getModelText());
+        content.add(listing.getVersionText());
+
+        content.add(listing.getFirstRegistrationYear());
+        content.add(listing.getFirstRegistrationMonth());
+        content.add(listing.getMileageKm());
+        content.add(listing.getFuelType());
+        content.add(listing.getGearbox());
+        content.add(listing.getBodyType());
+        content.add(listing.getDrivetrain());
+        content.add(listing.getPowerHp());
+        content.add(listing.getPowerKw());
+        content.add(listing.getEngineDisplacementCc());
+        content.add(listing.getDoors());
+        content.add(listing.getSeats());
+        content.add(listing.getVehicleCondition());
+        content.add(listing.getExteriorColor());
+        content.add(listing.getColorText());
+        content.add(listing.getMetallicPaint());
+        content.add(listing.getInteriorMaterial());
+        content.add(listing.getOwnerCount());
+        content.add(listing.getServiceHistory());
+        content.add(listing.getWarrantyMonths());
+        content.add(listing.getTechnicalInspectionValidUntil());
+        content.add(listing.getCo2EmissionsGKm());
+        content.add(listing.getEmissionClass());
+        content.add(listing.getVin());
+        content.add(listing.getFeatures().stream().map(VehicleFeature::getCode).sorted().toList());
+        return content;
     }
 
     /** The active-listing cap, checked under the seller's row lock. See {@link ListingQuotaPolicy}. */
