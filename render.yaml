@@ -1,5 +1,5 @@
-# Render Blueprint for the API. The database (Neon), photo storage (Cloudflare R2) and the
-# site (Cloudflare Pages) are not on Render; docs/deployment.md is the full procedure.
+# Render Blueprint for the API. The database (Neon), photo storage (Supabase Storage) and the
+# site (Netlify) are not on Render; docs/deployment.md is the full procedure.
 #
 # Values marked `sync: false` are secrets or depend on the other services: Render asks for
 # them once, when the Blueprint is first applied, and never reads them from this file.
@@ -9,7 +9,7 @@ services:
     name: autox-api
     runtime: docker
     plan: free
-    # Frankfurt: next to Neon's and R2's European regions, and to the site's audience.
+    # Frankfurt: next to Neon's, close to Supabase's eu-west-1, and to the site's audience.
     region: frankfurt
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -29,15 +29,15 @@ services:
         sync: false
       - key: AUTOX_DB_PASSWORD             # Neon
         sync: false
-      - key: AUTOX_S3_ENDPOINT             # R2: https://<account id>.r2.cloudflarestorage.com
+      - key: AUTOX_S3_ENDPOINT             # Supabase: https://<project ref>.supabase.co/storage/v1/s3
         sync: false
-      - key: AUTOX_S3_ACCESS_KEY           # R2 API token
+      - key: AUTOX_S3_ACCESS_KEY           # Supabase S3 access key: Access key ID
         sync: false
-      - key: AUTOX_S3_SECRET_KEY           # R2 API token
+      - key: AUTOX_S3_SECRET_KEY           # Supabase S3 access key: Secret access key
         sync: false
-      - key: AUTOX_CORS_ALLOWED_ORIGINS    # the Pages site: https://<project>.pages.dev
+      - key: AUTOX_CORS_ALLOWED_ORIGINS    # the Netlify site: https://<site>.netlify.app
         sync: false
-      - key: AUTOX_PASSWORD_RESET_URL      # https://<project>.pages.dev/reinitialiser-mot-de-passe
+      - key: AUTOX_PASSWORD_RESET_URL      # https://<site>.netlify.app/reinitialiser-mot-de-passe
         sync: false
       - key: AUTOX_JWT_ISSUER              # this service's URL: https://<service>.onrender.com
         sync: false
@@ -46,8 +46,10 @@ services:
         generateValue: true
 
       # ---- fixed for these four services ----
+      # The Supabase project's region, as its S3 settings page shows it — Supabase's
+      # documentation asks for the project's own region here.
       - key: AUTOX_S3_REGION
-        value: auto
+        value: eu-west-1
       - key: AUTOX_S3_BUCKET
         value: autox-photos
       - key: AUTOX_S3_PATH_STYLE

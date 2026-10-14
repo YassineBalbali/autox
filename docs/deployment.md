@@ -4,13 +4,14 @@ The public demo runs on four free services:
 
 | Part | Service | What it is |
 |---|---|---|
-| API | **Render**, free web service | The Docker image in `backend/Dockerfile`, 512 MB, a tenth of a CPU |
 | Database | **Neon**, free plan | PostgreSQL 16 that sleeps after five idle minutes |
-| Photos | **Cloudflare R2** | A private bucket; the browser uploads to it with URLs the API signs |
-| Site | **Cloudflare Pages** | The Angular build, with its security headers in `_headers` |
+| Photos | **Supabase Storage**, free plan | A private bucket, reached over Supabase's S3-compatible endpoint; the browser uploads to it with URLs the API signs |
+| API | **Render**, free web service | The Docker image in `backend/Dockerfile`, 512 MB, a tenth of a CPU |
+| Site | **Netlify**, free plan | The Angular build, with its security headers in `_headers` and its single-page fallback in `_redirects` |
 
-The steps below are in the order to do them. Each service needs a value from one created
-before it, and the one circular dependency is closed in step 6, which goes back to fix it.
+Do the steps below in order. Each service needs values from those created before it. The
+one circular dependency (the API and the site each need the other's URL) is closed in
+step 6, which goes back to fix it.
 
 ## Before you start: the values you will collect
 
@@ -19,21 +20,22 @@ committed, pasted in an issue, or put anywhere but the service that needs them.
 
 | Name used below | Where it comes from | Example |
 |---|---|---|
-| `SITE` | The Pages project name you choose (step 5) | `https://autox-demo.pages.dev` |
-| `API` | The Render service name (step 3) | `https://autox-api.onrender.com` |
 | `NEON_HOST` | Neon (step 1) | `ep-quiet-sun-a1b2c3d4.eu-central-1.aws.neon.tech` |
 | `NEON_USER` | Neon (step 1) | `neondb_owner` |
 | `NEON_PASSWORD` | Neon (step 1) — **secret** | |
-| `R2_ENDPOINT` | Cloudflare (step 2) | `https://<account id>.r2.cloudflarestorage.com` |
-| `R2_ACCESS_KEY_ID` | Cloudflare (step 2) — **secret** | |
-| `R2_SECRET_ACCESS_KEY` | Cloudflare (step 2) — **secret** | |
+| `S3_ENDPOINT` | Supabase (step 2) | `https://abcdefghijklmnopqrst.supabase.co/storage/v1/s3` |
+| `S3_REGION` | Supabase (step 2) | `eu-west-1` |
+| `S3_ACCESS_KEY_ID` | Supabase (step 2) — **secret** | |
+| `S3_SECRET_ACCESS_KEY` | Supabase (step 2) — **secret** | |
+| `API` | The Render service name (step 3) | `https://autox-api.onrender.com` |
+| `SITE` | The Netlify project name (step 5) | `https://autox-demo.netlify.app` |
 
-**Choose the two names now**: a Pages project name (it becomes `<name>.pages.dev`) and a
-Render service name (it becomes `<name>.onrender.com`). Both are first-come, first-served:
-if one is taken, the service appends a few characters, and the real URL is the one it
-shows you. Step 6 is where any difference gets corrected.
+**Choose the two names now**: a Render service name (it becomes `<name>.onrender.com`) and
+a Netlify project name (it becomes `<name>.netlify.app`). Both are first-come,
+first-served. If one is taken, the service changes it, and the real URL is the one the
+service shows you. Step 6 corrects any difference.
 
-**Commit and push first.** Render and Pages build from GitHub, so they deploy what is on
+**Commit and push first.** Render and Netlify build from GitHub, so they deploy what is on
 `main`, not what is on your machine.
 
 ---
@@ -68,42 +70,53 @@ jdbc:postgresql://NEON_HOST/neondb?sslmode=require
 
 There is nothing to create in the database. The API builds the schema on its first start.
 
-## Step 2 — Cloudflare R2: photo storage
+## Step 2 — Supabase Storage: photos
 
-1. Cloudflare dashboard → **R2 Object Storage**. Enabling R2 asks for a payment method even
-   on the free allowance (10 GB stored, a million writes and ten million reads a month — far
-   above what the demo uses).
-2. **Create bucket**:
+AutoX uses Supabase for storage only. Its database, auth and APIs go unused, and the S3
+keys below can reach every bucket in the project, so **give AutoX a project of its own**.
+
+1. supabase.com → **New project**:
+   - name: `autox`, on the free plan;
+   - a database password: Supabase requires one. AutoX never uses it, but keep it;
+   - **region: West EU (Ireland)**, which is `eu-west-1`.
+2. **Storage → New bucket**:
    - name **`autox-photos`** (the name `render.yaml` expects);
-   - location: **Automatic**, with the hint **Western Europe**;
-   - **default storage class**, and **not** an EU jurisdiction bucket — that one has a
-     different endpoint (`…eu.r2.cloudflarestorage.com`) from the one used below.
-   - Leave **public access off**. The API hands out signed URLs that expire.
-3. **R2 → Manage API tokens → Create API token**:
-   - permission **Object Read & Write**;
-   - **Specify bucket: `autox-photos` only**;
-   - no expiry.
+   - **Public bucket: off.** The API hands out signed URLs that expire.
+3. **Storage → S3 settings.** Depending on the dashboard version this is under Storage →
+   Settings or Project Settings → Storage.
+   - Make sure **S3 protocol connection is enabled**.
+   - Note the **Endpoint** as `S3_ENDPOINT` and the **Region** as `S3_REGION`. Use the
+     endpoint exactly as the page shows it, `/storage/v1/s3` included.
+   - **S3 access keys → New access key**, described as `autox-api`. Note the **Access key ID**
+     as `S3_ACCESS_KEY_ID` and the **Secret access key** as `S3_SECRET_ACCESS_KEY`. The
+     secret is shown once.
+4. **Check that browsers may upload to it.** The browser sends each photo straight to this
+   endpoint, from the site's domain, so the endpoint has to answer the browser's CORS
+   preflight. Supabase has no CORS setting to configure: its gateway answers for itself.
+   Check it now, before anything depends on it (Git Bash works):
 
-   The page shows the **Access Key ID** and **Secret Access Key** once — note them as
-   `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` — and the S3 endpoint,
-   `https://<account id>.r2.cloudflarestorage.com`: that is `R2_ENDPOINT`.
-4. **The CORS rule** — bucket → Settings → CORS policy → Add. The browser uploads straight to
-   the bucket, so without this rule every photo upload fails in the browser, and the server
-   never finds out:
-
-   ```json
-   [
-     {
-       "AllowedOrigins": ["https://autox-demo.pages.dev"],
-       "AllowedMethods": ["GET", "PUT"],
-       "AllowedHeaders": ["Content-Type"],
-       "MaxAgeSeconds": 3600
-     }
-   ]
+   ```bash
+   curl -s -i -X OPTIONS "S3_ENDPOINT/autox-photos/cors-check.jpg" \
+     -H "Origin: https://autox-demo.netlify.app" \
+     -H "Access-Control-Request-Method: PUT" \
+     -H "Access-Control-Request-Headers: content-type" | grep -i -E '^HTTP|^access-control'
    ```
 
-   Use your planned `SITE` value; step 6 corrects it if Pages gives you a different one.
-   `Content-Type` is needed because the upload URL is signed over it and the browser sends it.
+   **Expected:** a `200` or `204` status, `access-control-allow-origin` naming the origin
+   or `*`, and `access-control-allow-methods` including `PUT`. If any is missing, stop:
+   photo upload cannot work from a browser, and no AutoX setting changes that.
+
+**The free project pauses after a week without database activity.** The storage server
+records every bucket and object in the project's database, so photo traffic counts as
+activity. The API also checks the bucket every twelve hours
+(`AUTOX_SCHEDULE_STORAGE_CHECK`), which runs a query there even when nobody visits.
+Supabase does not document exactly what it counts, so treat this as likely rather than
+certain. Supabase emails a warning before pausing. **If it pauses**, every photo and every
+upload fails until you press **Resume project** in the dashboard. The rest of the site
+keeps working.
+
+Free allowances: 1 GB stored (the demo seed uses about 36 MB) and 5 GB of egress a month.
+Every photo a visitor views is egress.
 
 ## Step 3 — Render: the API
 
@@ -115,30 +128,34 @@ There is nothing to create in the database. The API builds the schema on its fir
    another name.
 3. It asks for the values the file leaves blank (`sync: false`). Enter:
 
-   | Variable | Value |
-   |---|---|
-   | `AUTOX_DB_URL` | `jdbc:postgresql://NEON_HOST/neondb?sslmode=require` |
-   | `AUTOX_DB_USERNAME` | `NEON_USER` |
-   | `AUTOX_DB_PASSWORD` | `NEON_PASSWORD` |
-   | `AUTOX_S3_ENDPOINT` | `R2_ENDPOINT` |
-   | `AUTOX_S3_ACCESS_KEY` | `R2_ACCESS_KEY_ID` |
-   | `AUTOX_S3_SECRET_KEY` | `R2_SECRET_ACCESS_KEY` |
-   | `AUTOX_CORS_ALLOWED_ORIGINS` | `SITE` — e.g. `https://autox-demo.pages.dev`, no trailing slash |
-   | `AUTOX_PASSWORD_RESET_URL` | `SITE` + `/reinitialiser-mot-de-passe` |
-   | `AUTOX_JWT_ISSUER` | `API` — e.g. `https://autox-api.onrender.com` |
+   | Variable | Value | From |
+   |---|---|---|
+   | `AUTOX_DB_URL` | `jdbc:postgresql://NEON_HOST/neondb?sslmode=require` | Neon |
+   | `AUTOX_DB_USERNAME` | `NEON_USER` | Neon |
+   | `AUTOX_DB_PASSWORD` | `NEON_PASSWORD` | Neon |
+   | `AUTOX_S3_ENDPOINT` | `S3_ENDPOINT` — `https://<ref>.supabase.co/storage/v1/s3` | Supabase |
+   | `AUTOX_S3_ACCESS_KEY` | `S3_ACCESS_KEY_ID` | Supabase |
+   | `AUTOX_S3_SECRET_KEY` | `S3_SECRET_ACCESS_KEY` | Supabase |
+   | `AUTOX_CORS_ALLOWED_ORIGINS` | `SITE` — e.g. `https://autox-demo.netlify.app`, no trailing slash | Netlify (planned) |
+   | `AUTOX_PASSWORD_RESET_URL` | `SITE` + `/reinitialiser-mot-de-passe` | Netlify (planned) |
+   | `AUTOX_JWT_ISSUER` | `API` — e.g. `https://autox-api.onrender.com` | Render (planned) |
 
    Render asks for these **only this once**. Later changes go through the service's
    **Environment** page, never through `render.yaml`.
-4. **Apply.** The first build takes several minutes: Maven downloads every dependency. Then
+4. **Check `AUTOX_S3_REGION`** before applying. `render.yaml` sets it to `eu-west-1`. If
+   Supabase showed a different region, change it on the Environment page once the service
+   exists.
+5. **Apply.** The first build takes several minutes: Maven downloads every dependency. Then
    the API starts, which at a tenth of a CPU takes **two and a half to three and a half
    minutes**. Render shows "Deploy live" once `/actuator/health/liveness` answers.
-5. Open `API/actuator/health/readiness`. It should say `{"status":"UP"}`, which means the API
-   reaches Neon. The log should also say `Object storage is ready`, which means it reaches R2.
-   Flyway created the schema during that first start.
+6. Open `API/actuator/health/readiness`. It should say `{"status":"UP"}`, which means the
+   API reaches Neon. The log should also say `Object storage is ready`, which means it
+   reaches Supabase with those keys. If it says `Object storage is not usable` instead, the
+   endpoint, keys, region or bucket name is wrong.
 
 ### Everything the service is configured with
 
-`render.yaml` sets the rest. For reference — and if you would rather enter the settings by
+`render.yaml` sets the rest. For reference, and if you would rather enter the settings by
 hand (New → Web Service → the repository), these are all of them:
 
 | Setting | Value |
@@ -157,10 +174,10 @@ hand (New → Web Service → the repository), these are all of them:
 |---|---|---|
 | the nine in the table above | | |
 | `AUTOX_JWT_SECRET` | generated by Render (Blueprint) — by hand, `openssl rand -base64 48` | Signs access tokens. Never the local one. |
-| `AUTOX_S3_REGION` | `auto` | R2's region name |
+| `AUTOX_S3_REGION` | `eu-west-1` | The Supabase project's region |
 | `AUTOX_S3_BUCKET` | `autox-photos` | |
-| `AUTOX_S3_PATH_STYLE` | `true` | One storage host, so one origin in the site's policy |
-| `AUTOX_S3_CREATE_BUCKET` | `false` | The bucket exists, with its CORS rule |
+| `AUTOX_S3_PATH_STYLE` | `true` | Supabase requires it: the bucket goes in the path, on one host |
+| `AUTOX_S3_CREATE_BUCKET` | `false` | The bucket exists |
 | `AUTOX_CLIENT_IP_HEADER` | `True-Client-IP` | Where Render puts the real client address (see step 8) |
 | `AUTOX_LOG_LEVEL` | `INFO` | |
 | `AUTOX_DB_POOL_SIZE` | `5` | |
@@ -173,6 +190,7 @@ hand (New → Web Service → the repository), these are all of them:
 | `AUTOX_LISTING_EXPIRYDAYS` | `3650` | The default 60 days would expire every seeded listing two months in |
 | `AUTOX_LISTING_PROFESSIONNELACTIVELIMIT` | `3` | Dealers are uncapped by default, and anyone can register as one |
 
+`AUTOX_SCHEDULE_STORAGE_CHECK` is not set, so its default applies: twelve hours (see step 2).
 `PORT` is set by Render, and the image listens on it. Do not set `AUTOX_PORT`.
 
 There is no `.env` in the image. If a required variable is missing, the API stops at
@@ -201,10 +219,10 @@ shell and no one-off jobs, so the profile goes on for one deploy and comes off a
 
 The seeded sellers' passwords are random and never shown, so nobody can sign in as them.
 
-**If the seed fails** — the log shows `Application run failed` with the reason, usually
-storage (wrong key, endpoint or bucket name). Storage is checked before anything is written,
-so a misconfiguration fails cleanly. If it fails partway regardless, the next start reports
-"Demo data is already present" and skips it. Then do one deploy with
+**If the seed fails**, the log shows `Application run failed` with the reason. It is
+usually storage: a wrong key, endpoint, region or bucket name. Storage is checked before
+anything is written, so a misconfiguration fails cleanly. If it fails partway regardless,
+the next start reports "Demo data is already present" and skips it. Then do one deploy with
 `AUTOX_DEMO_ACTION=remove` added, and one without it.
 
 **To reset the demo later** (once visitors have filled it with test listings): deploy once
@@ -212,56 +230,77 @@ with `SPRING_PROFILES_ACTIVE=demo` **and** `AUTOX_DEMO_ACTION=remove`, then once
 the profile (seed again), then remove both. Removal deletes exactly what the seed recorded.
 Listings visitors created are left alone; remove those from the moderation screen.
 
-## Step 5 — Cloudflare Pages: the site
+## Step 5 — Netlify: the site
 
-1. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git** → choose
+`netlify.toml` at the repository root holds the build settings: base directory
+`frontend`, build command `npm run build`, publish directory `dist/frontend/browser`,
+and Node 24.20.0. Netlify itself skips the build when a commit changes nothing under
+`frontend/`, so a backend-only commit costs no credits. A change to `netlify.toml` alone
+does not rebuild either, for the same reason.
+
+1. app.netlify.com → **Add new project → Import an existing project → GitHub** → choose
    `YassineBalbali/autox`.
-2. Set up the build:
-
-   | Setting | Value |
-   |---|---|
-   | Project name | your chosen name, e.g. `autox-demo` |
-   | Production branch | `main` |
-   | Framework preset | None |
-   | Build command | `npm run build` |
-   | Build output directory | `dist/frontend/browser` |
-   | Root directory | `frontend` |
-
-3. **Environment variables** (Production). These are compiled into the site: a static site has no
+2. Netlify reads `netlify.toml`, so the build fields arrive filled in. Leave them. Set the
+   **project name** you chose.
+3. **Add environment variables** (on the same screen, or later under Project configuration →
+   Environment variables). They are compiled into the site, because a static site has no
    server to read them at run time. Changing one means rebuilding.
 
-   | Variable | Value |
-   |---|---|
-   | `NODE_VERSION` | `24.20.0` — CI's version. Angular 22 refuses older ones. |
-   | `AUTOX_API_BASE_URL` | `API` — e.g. `https://autox-api.onrender.com` |
-   | `AUTOX_STORAGE_ORIGINS` | `R2_ENDPOINT` — e.g. `https://<account id>.r2.cloudflarestorage.com` |
-   | `AUTOX_SITE_URL` | `SITE` — e.g. `https://autox-demo.pages.dev` |
+   | Variable | Value | From |
+   |---|---|---|
+   | `AUTOX_API_BASE_URL` | `API` — e.g. `https://autox-api.onrender.com` | Render |
+   | `AUTOX_STORAGE_ORIGINS` | `S3_ENDPOINT` — the full endpoint is fine; the build keeps its origin, `https://<ref>.supabase.co` | Supabase |
+   | `AUTOX_SITE_URL` | `SITE` — e.g. `https://autox-demo.netlify.app` | Netlify |
 
-4. **Save and deploy.** At the end, the build log prints the API, storage and site URLs it used,
+4. **Deploy.** At the end, the build log prints the API, storage and site URLs it used,
    and the security policy. Check them there.
-5. Settings → Builds → **Build watch paths**: include `frontend/*`, so a backend-only commit
-   does not rebuild the site.
 
-No `_redirects` or `404.html` is needed. Without a `404.html`, Pages serves the app for
-every path itself, with a 200 status. A `404.html` would switch that off, and every shared
-link to a listing would then come back with a 404 status, which link previews take at its word.
+**The build needs Java as well as Node.** The API client is generated from
+`frontend/openapi.json` on every build, by OpenAPI Generator, a Java program. It is not
+committed. Netlify's current build image ships Java 25. The generator this repository pins
+(7.26.0) was run on Java 25 and produced the full client. If a Netlify build fails at
+`api:generate` with `java: not found`, that is the cause.
+
+`npm run build` writes two files into the published folder, and Netlify reads both:
+
+- **`_redirects`**, containing `/*  /index.html  200`: every path with no file behind it is
+  served the app, **with a 200**. A shared link to a listing therefore previews and loads,
+  instead of 404ing. Netlify never lets this rule shadow a real file, so scripts,
+  `robots.txt` and the preview image are served as themselves.
+- **`_headers`**: the Content-Security-Policy, HSTS and the other security headers for every
+  path, plus long caching for the hashed scripts and styles.
+
+Both were checked with Netlify's own tooling: its local server answered `/annonces/…`,
+`/recherche` and `/admin/moderation` with the app, a 200 and the full set of security
+headers, while `robots.txt`, the preview image and the scripts were served as files.
+Netlify's `_headers` parser read every rule without error.
+
+**Credits.** The free plan has 300 credits a month. A production deploy costs 15 and
+bandwidth 20 per GB; deploy previews are free. That allows about fifteen to twenty
+production deploys a month. Backend-only commits do not count: their builds are skipped.
+Photos are served by Supabase, not Netlify, so the site's own bandwidth is small.
 
 ## Step 6 — Close the loop
 
-Open the site. If Pages or Render gave you a different URL from the one you planned:
+Open the site. If Netlify or Render gave you a different URL from the one you planned:
 
 - **Render → Environment**: correct `AUTOX_CORS_ALLOWED_ORIGINS`, `AUTOX_PASSWORD_RESET_URL`
   and `AUTOX_JWT_ISSUER`, then save (it redeploys).
-- **R2 → bucket → CORS policy**: correct `AllowedOrigins`.
-- **Pages → Environment variables**: correct `AUTOX_API_BASE_URL` / `AUTOX_SITE_URL`, then
-  **retry the deployment** — that is the only way a build-time value changes.
+- **Netlify → Environment variables**: correct `AUTOX_API_BASE_URL` / `AUTOX_SITE_URL`, then
+  **Deploys → Trigger deploy → Clear cache and deploy project**. A rebuild is the only way a
+  build-time value changes. Check that the log ends with the `[build]` lines showing the new
+  values. If it says instead that no changes were detected in the base directory, rebuild
+  through a **build hook**: Project configuration → Build & deploy → Build hooks → Add, then
+  `curl -X POST -d {} <hook URL>`. Netlify never skips a build a hook triggers.
 
-A custom domain later means the same three edits, with the new origin.
+Supabase needs no change: it has no origin list.
+
+A custom domain later means the same edits, with the new origin.
 
 ## Step 7 — The uptime monitor
 
-Render puts a free service to sleep after 15 minutes without a request; waking it is a
-full cold start (about three minutes). A monitor keeps it awake:
+Render puts a free service to sleep after 15 minutes without a request. Waking it is a
+full cold start, about three minutes. A monitor keeps it awake:
 
 - **URL: `API/actuator/health/liveness`** — not `/actuator/health`. The full health check
   queries the database, so a ping every ten minutes would wake Neon every ten minutes, all
@@ -271,14 +310,16 @@ full cold start (about three minutes). A monitor keeps it awake:
 A month of one service always on is about 730 of the 750 free instance-hours Render gives a
 workspace. Anything else free in the same workspace will run out of hours.
 
+Keeping the API awake also keeps its twelve-hourly storage check running (step 2).
+
 ## Step 8 — Check that the rate limits cannot be dodged
 
-Every throttle — registration, sign-in, password reset, the public read limit — keys on
-the client's address. Render passes requests through Cloudflare and then its own proxy.
-Its `X-Forwarded-For` keeps whatever the client wrote at the front, and its last
-untrusted entry is a Cloudflare edge shared by thousands of visitors. Neither is
-usable. Render overwrites `True-Client-IP` with the real address, and the API reads that
-(`AUTOX_CLIENT_IP_HEADER`), only when the connection comes from a private-network proxy.
+Every throttle keys on the client's address: registration, sign-in, password reset and the
+public read limit. Render passes requests through Cloudflare and then its own proxy.
+Neither part of its `X-Forwarded-For` can be used: the front holds whatever the client
+wrote, and the last untrusted entry is a Cloudflare edge that thousands of visitors share.
+Render overwrites `True-Client-IP` with the real address. The API reads that header
+(`AUTOX_CLIENT_IP_HEADER`), and only on connections from a private-network proxy.
 `ClientAddressIntegrationTest` covers this locally; this check proves it on Render.
 
 From a terminal (Git Bash works), with your `API`:
@@ -317,8 +358,8 @@ If instead:
   and every visitor shares one bucket. Nothing can be dodged, but the limits would trip for
   everyone together. Check `AUTOX_CLIENT_IP_HEADER` is set exactly as above. If it is,
   Render's proxy is reaching the API from an address outside the private ranges Tomcat
-  trusts by default; the log of a request shows it. Name it in
-  `SERVER_TOMCAT_REMOTEIP_INTERNALPROXIES` (a regular expression).
+  trusts by default. Name that address in `SERVER_TOMCAT_REMOTEIP_INTERNALPROXIES`, as a
+  regular expression.
 
 Then clean up, so your own registration is not blocked for an hour:
 
@@ -346,10 +387,11 @@ There is no endpoint that makes an administrator, on purpose:
 ## Step 10 — Check from outside
 
 - `https://securityheaders.com/?q=SITE` — expect an A, with a Content-Security-Policy.
+- Open a listing link directly in a new tab, and paste one into a messaging app. It should
+  load, and the preview should show the AutoX card.
 - The browser console on the home page, a listing, and the photo step of "Vendre": no
-  red. The photo step is the only place that touches R2 from the browser, so it is the
-  test of the CORS rule and of `AUTOX_STORAGE_ORIGINS`.
-- Paste a listing link into a messaging app: the preview should show the AutoX card.
+  red. The photo step is the only place the browser uploads to Supabase, so it is the real
+  test of step 2's CORS check and of `AUTOX_STORAGE_ORIGINS`.
 
 ---
 
@@ -364,6 +406,8 @@ has 730. **Neon must therefore sleep for most of the month**, and three things w
 | The background sweeps, every 10 and 15 minutes | Every 6 hours (`AUTOX_SCHEDULE_*`) |
 | Health checks that query the database | Render and the uptime monitor both use `/actuator/health/liveness`, which does not |
 
+The storage check does not touch Neon: it talks to Supabase only.
+
 With all three in place, Neon wakes for visitors and a handful of sweeps a day. Check
 **Neon → Billing/Usage** after the first week. If compute hours climb by a few each day
 with no visitors, something is holding a connection open.
@@ -371,9 +415,9 @@ with no visitors, something is holding a connection open.
 The first request after Neon has slept waits under a second while it resumes. That is
 the price, and on a demo it is the right one.
 
-## Render-specific: what would have broken, and what changed
+## What would have broken, and what changed
 
-These are the parts of the previous configuration that would have failed, or quietly
+These are the parts of the earlier configuration that would have failed, or quietly
 misbehaved, on these services. Each is fixed in the repository. The list is here so the
 reason for each setting is not lost.
 
@@ -382,19 +426,39 @@ reason for each setting is not lost.
 | The API listened on `AUTOX_PORT` (8080). Render routes to `PORT` (10000) | The image passes `PORT` to the server |
 | The client address came from the **first** value of `X-Forwarded-For` — client-written on Render, so every rate limit could be dodged | Tomcat's own proxy handling (`native`), trusting private-network proxies only, reading Render's `True-Client-IP` |
 | Hikari's idle connections, the sweeps and a database health check would have kept Neon awake and spent its month's compute in about two weeks | The settings above |
-| R2 rejects the AWS SDK's default chunked upload signing with a 403. Every photo would have failed processing — invisible locally, where MinIO accepts it | Chunked encoding off in `StorageConfig` |
-| The site build wrote a `404.html`, which turns off Pages' single-page fallback: every deep link would have been served with a 404 status | No `404.html` or `_redirects` is written |
+| A free Supabase project pauses after a week without database activity, which a quiet demo can reach | A bucket check every twelve hours (step 2) |
+| Without a fallback rule, every deep link (`/annonces/…`) would have been a 404 on Netlify | `npm run build` writes `_redirects` with `/*  /index.html  200` |
 | The JVM's defaults in 512 MB: a heap too small for image work, and nothing bounding the rest | Memory flags in the Dockerfile, measured below |
 | 200 Tomcat threads | `SERVER_TOMCAT_THREADS_MAX=20` |
 | The demo seed, run against the demo's dealer cap of 3, stopped at the first dealer's fourth listing and left a half-seed that later starts skipped | The seed's own accounts are uncapped |
 | The seed wrote rows before checking storage, so a storage fault failed it halfway | Storage is checked first |
 | A missing variable's startup error told the operator to create a `.env` | It says to set the variable in the service's environment, then gives the local advice |
 
+**Storage client settings, checked against Supabase.** Supabase's documentation lists
+checksums (`x-amz-checksum-*`) as unsupported, and current AWS SDKs send them by default,
+alongside a chunked upload encoding some S3-compatible stores reject. Both were tested
+against Supabase's own storage server (`supabase/storage-api` v1.74.0, the version its
+self-hosted setup pins). The test ran with the SDK version AutoX ships, over HTTPS, behind
+a gateway that strips `/storage/v1` and sets `X-Forwarded-Prefix` as Supabase's gateway does:
+
+- Put, get, head, delete and batch delete all worked, with chunked encoding on or off and
+  with checksums at the default or only when required. Every object read back byte for byte.
+- Presigned PUT signed over `Content-Type` and `Content-Length`, as AutoX signs it, and
+  presigned GET both worked, with `/storage/v1/s3` inside the signed path.
+
+The configuration keeps chunked encoding off, the one setting that works on every store
+tried. What the local test cannot reproduce is hosted Supabase's gateway, and with it CORS;
+step 2's check covers that.
+
 **Measured locally** with Render's limits (`--memory=512m --cpus=0.1`, no `.env`, the
-variables above): startup in 145–195 seconds; the full seed in about twelve minutes, at
-roughly twelve seconds a listing; memory peaking at about 340 MB of the 512 during the seed;
-the pool down to zero database connections a minute after the last request; a liveness ping
-opening none; and the forged-header check of step 8 answering 201, 409 ×4, 429.
+variables above):
+
+- startup in 145–195 seconds;
+- the full seed in about twelve minutes, at roughly twelve seconds a listing;
+- memory peaking at about 340 MB of the 512 during the seed;
+- the pool down to zero database connections a minute after the last request, and a
+  liveness ping opening none;
+- the forged-header check of step 8 answering 201, 409 ×4, 429.
 
 ## What the demo will and will not do
 
@@ -404,10 +468,12 @@ opening none; and the forged-header check of step 8 answering 201, 409 ×4, 429.
 - **Anything a visitor publishes is public at once**, photos included, and is reviewed
   afterwards. The caps bound how much; the moderation screen removes it. There is no
   setting that turns publishing off.
-- **Cold starts.** If the monitor stops, the first visitor waits for a full start
-  (about three minutes). If Neon is asleep, the first query waits about a second.
-- **Pages preview deployments** (every non-`main` branch) get their own URLs. They are not in
-  `AUTOX_CORS_ALLOWED_ORIGINS`, so they load but cannot reach the API. That is deliberate.
+- **Cold starts.** If the monitor stops, the first visitor waits for a full start (about
+  three minutes). If Neon is asleep, the first query waits about a second. If Supabase has
+  paused, photos are missing until it is resumed.
+- **Netlify deploy previews** (pull requests) get their own URLs. Those URLs are not in
+  `AUTOX_CORS_ALLOWED_ORIGINS`, so the previews load but cannot reach the API. That is
+  deliberate.
 - **Swagger UI** is public at `API/swagger-ui.html`, which for a portfolio is arguably the
   point.
 
