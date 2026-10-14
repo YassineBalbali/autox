@@ -29,11 +29,13 @@ public class StorageConfig {
                 .httpClientBuilder(ApacheHttpClient.builder())
                 .serviceConfiguration(S3Configuration.builder()
                         .pathStyleAccessEnabled(properties.pathStyleAccess())
-                        // The SDK signs a putObject body in aws-chunked form by default.
-                        // MinIO and AWS accept that; Cloudflare R2 rejects the signature
-                        // with a 403, which would fail every photo variant written there.
-                        // A signed plain body works everywhere, and the bodies written here
-                        // are a few hundred kilobytes already in memory.
+                        // The SDK sends a putObject body in aws-chunked form by default.
+                        // MinIO, AWS and Supabase Storage accept that; Cloudflare R2 rejects
+                        // it with a 403, and other S3-compatible stores answer 501. A plain
+                        // body works on every one of them, and the bodies written here are a
+                        // few hundred kilobytes already in memory. Checked against Supabase's
+                        // storage server, over HTTPS and behind its /storage/v1 prefix: every
+                        // call this application makes, with byte-identical round trips.
                         .chunkedEncodingEnabled(false)
                         .build());
 

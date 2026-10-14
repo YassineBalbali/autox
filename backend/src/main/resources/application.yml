@@ -170,6 +170,9 @@ autox:
     listing-expiry-interval: ${AUTOX_SCHEDULE_LISTING_EXPIRY:PT10M}
     image-cleanup-interval: ${AUTOX_SCHEDULE_IMAGE_CLEANUP:PT15M}
     auth-maintenance-cron: ${AUTOX_SCHEDULE_AUTH_MAINTENANCE:0 17 * * * *}
+    # A HEAD on the bucket. Reports a storage outage that starts after startup, and keeps a
+    # free Supabase project from pausing for inactivity (see StorageReadinessCheck).
+    storage-check-interval: ${AUTOX_SCHEDULE_STORAGE_CHECK:PT12H}
 
   listing:
     # A published listing stays live for this long, then the sweeper expires it.

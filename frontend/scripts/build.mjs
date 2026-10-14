@@ -103,12 +103,15 @@ html = withAbsoluteUrls(html, siteUrl);
 writeFileSync(index, html);
 writeFileSync(join(dist, '_headers'), headersFile(options));
 
-// A single-page app answers every path with the same document. Cloudflare Pages does that
-// by itself — with a 200 — for any build that has no top-level 404.html, so nothing is
-// written for it. Deliberately not a 404.html "for the other hosts": its mere presence
-// switches Pages' fallback off, and every deep link (/annonces/…) is then served with a 404
-// status, which link previews and crawlers take at its word. Another host needs its own
-// rewrite rule (Netlify: `/*  /index.html  200` in _redirects).
+// A single-page app answers every path with the same document, and with a 200: a shared
+// link to /annonces/… served with a 404 status is one link previews and crawlers take at its
+// word. Netlify's rule for that is a rewrite in _redirects. Netlify never lets a rewrite
+// shadow a file that exists, so scripts, robots.txt and the preview image are still served
+// as themselves; only paths with no file behind them get index.html.
+//
+// Deliberately no 404.html: with the rewrite in place it would never be served on Netlify,
+// and on a host that falls back to it the deep links would carry a 404 status.
+writeFileSync(join(dist, '_redirects'), '/*  /index.html  200\n');
 
 const bytes = readdirSync(dist)
   .filter((name) => /\.(js|css)$/.test(name))

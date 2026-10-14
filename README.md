@@ -246,7 +246,7 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 386 tests, needs Docker running
+mvn clean verify         # 388 tests, needs Docker running
 
 cd ../frontend
 npm run lint
@@ -483,8 +483,9 @@ Secrets have no defaults, on purpose. Everything else does.
 | `AUTOX_S3_CREATE_BUCKET` | `false` | Local convenience. Leave off in production. |
 | `AUTOX_S3_PUBLIC_BASE_URL` | empty | A CDN or public-bucket origin. **Empty means read URLs are signed and expire in 6 hours** — correct but uncacheable; see `docs/image-decisions.md`. |
 
-One interface, five methods, no vendor type: MinIO, Cloudflare R2, Scaleway, Backblaze B2 and
-AWS S3 all speak this protocol, so the provider is configuration rather than code.
+One interface, five methods, no vendor type: MinIO, Supabase Storage, Cloudflare R2, Scaleway,
+Backblaze B2 and AWS S3 all speak this protocol, so the provider is configuration rather than
+code.
 
 ### Transactional email
 
@@ -506,6 +507,7 @@ AWS S3 all speak this protocol, so the provider is configuration rather than cod
 | `AUTOX_DB_IDLE_TIMEOUT_MS` | `600000` | How long an unused connection is kept, above the minimum |
 | `AUTOX_SCHEDULE_LISTING_EXPIRY`, `AUTOX_SCHEDULE_IMAGE_CLEANUP` | `PT10M`, `PT15M` | Intervals of the two background sweeps |
 | `AUTOX_SCHEDULE_AUTH_MAINTENANCE` | `0 17 * * * *` | Cron of the token and counter purge |
+| `AUTOX_SCHEDULE_STORAGE_CHECK` | `PT12H` | How often the API checks the bucket: reports a storage outage, and keeps a free Supabase project from pausing |
 | `AUTOX_CLIENT_IP_HEADER` | `X-Forwarded-For` | Which proxy header carries the client address; `True-Client-IP` on Render. See below |
 | `AUTOX_JWT_ISSUER` | `https://api.autox.local` | |
 | `AUTOX_CORS_ALLOWED_ORIGINS` | `http://localhost:4200` | Comma-separated. Browsers only — a native app is not subject to CORS. |
@@ -534,14 +536,15 @@ has to name the API and the photo storage, so three variables are read **at buil
 
 With none set, the policy allows the site's own origin only, which is what CI builds. The
 build fails if Angular ever emits inline script, which the policy would block in production.
-On Cloudflare Pages no `404.html` is written, on purpose: Pages serves the app for every path
-only when there is none. `docs/deployment.md` is the step-by-step deployment.
+It also writes `_redirects` with `/*  /index.html  200`, Netlify's single-page fallback, so a
+shared link to a listing is served the app with a 200 rather than a 404. There is no
+`404.html`, on purpose. `netlify.toml` holds the build settings.
 
 ### Deploying
 
-`docs/deployment.md` walks through the demo's deployment step by step: Render for the API
-(`backend/Dockerfile`, `render.yaml`), Neon for PostgreSQL, Cloudflare R2 for photos and
-Cloudflare Pages for the site. It lists every variable, says which service each value comes
+`docs/deployment.md` walks through the demo's deployment step by step: Neon for PostgreSQL,
+Supabase Storage for photos, Render for the API (`backend/Dockerfile`, `render.yaml`) and
+Netlify for the site (`netlify.toml`). It lists every variable, says which service each value comes
 from, and covers seeding, the first administrator and the checks to run afterwards.
 
 ### Deploying behind a proxy
@@ -624,6 +627,7 @@ frontend/
 .github/workflows/frontend.yml   CI: install, lint, build, test, on frontend/**
 .github/dependabot.yml           weekly upgrade proposals for every ecosystem
 render.yaml                      the API service on Render (Blueprint); see docs/deployment.md
+netlify.toml                     the site's build on Netlify; see docs/deployment.md
 
 docs/            why things are the way they are — read these before changing them
 ```
@@ -643,7 +647,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
 | `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |
-| `docs/deployment.md` | **Deploying the demo**, step by step: Neon, R2, Render, Pages — every variable, seeding, the first admin, the checks afterwards. |
+| `docs/deployment.md` | **Deploying the demo**, step by step: Neon, Supabase Storage, Render, Netlify — every variable, seeding, the first admin, the checks afterwards. |
 | `docs/frontend-decisions.md` | The generated API client, the single in-flight refresh, token storage, guards, error translation, design tokens |
 
 ---

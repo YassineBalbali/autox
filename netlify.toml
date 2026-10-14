@@ -1,0 +1,24 @@
+# The site on Netlify. docs/deployment.md, step 5, is the full procedure.
+#
+# Only the build is described here. The security headers and the single-page fallback are
+# written into the published folder by `npm run build` (scripts/build.mjs) as _headers and
+# _redirects, because the Content-Security-Policy has to name the API and the storage
+# origins, which are only known at build time. Nothing in this file repeats them.
+#
+# The three AUTOX_* build variables (API, storage, site URL) are set in the Netlify UI, not
+# here: they name this deployment's services, and the same commit should build for another.
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  # Relative to base.
+  publish = "dist/frontend/browser"
+  # No `ignore` command: Netlify already skips a build when nothing under the base directory
+  # changed, so a backend-only commit costs no credits. A custom one comparing commits would
+  # also cancel the manual rebuild a changed build variable needs, since the commit is the
+  # same. The flip side: a commit that changes only this file does not rebuild either —
+  # trigger one by hand (docs/deployment.md, step 6).
+
+[build.environment]
+  # CI's version. Angular 22 refuses older ones.
+  NODE_VERSION = "24.20.0"
