@@ -1,18 +1,32 @@
 # AutoX
 
+**Live demo: [autox-demo.netlify.app](https://autox-demo.netlify.app)**
+
+A used-car marketplace in French, built as a **portfolio project**. The listings, sellers
+and prices on the live site are invented — none of those cars is for sale — and accounts
+created there are for trying it out, not for real use. Search and filter cars, open a
+listing, or register and publish one of your own, photos included.
+
+The first request after a quiet spell can take a few minutes: the API runs on a free
+instance that sleeps.
+
+---
+
 A vehicle marketplace — buying and selling cars — built for the French market first and
 multi-country from the data model up. Competitors are La Centrale, Leboncoin and Mobile.de.
 
-**The MVP is feature-complete, and not deployed.** A visitor can search and filter used
+**The MVP is feature-complete and deployed as a demo.** A visitor can search and filter used
 cars and open a listing. A seller can register, create a listing in four steps with photos
 uploaded straight to object storage, publish it, and pause, renew, mark as sold or delete
 it. An administrator reviews what was published, refuses or takes down a listing with a
-reason, and reinstates it. The interface is French and designed for a desktop screen.
+reason, and reinstates it. The interface is French and designed for a desktop screen. The
+demo runs on Netlify (site), Render (API), Neon (PostgreSQL) and Supabase Storage (photos);
+`docs/deployment.md` is how.
 
-**What it is not yet:** a buyer cannot contact a seller, there is no real vehicle catalogue
-or location data, no email is ever sent, and it has never run anywhere but a developer's
-machine. `docs/weaknesses.md` ranks all of that, and separates what is merely unfinished
-from what would be a risk if the site were public; **read it before deploying anything.**
+**What it is not:** a real marketplace. A buyer cannot contact a seller, there is no real
+vehicle catalogue or location data, and no email is ever sent. `docs/weaknesses.md` ranks
+all of that, and separates what is merely unfinished from what would be a risk with real
+users.
 
 | | |
 |---|---|

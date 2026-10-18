@@ -27,13 +27,15 @@ committed, pasted in an issue, or put anywhere but the service that needs them.
 | `S3_REGION` | Supabase (step 2) | `eu-west-1` |
 | `S3_ACCESS_KEY_ID` | Supabase (step 2) — **secret** | |
 | `S3_SECRET_ACCESS_KEY` | Supabase (step 2) — **secret** | |
-| `API` | The Render service name (step 3) | `https://autox-api.onrender.com` |
+| `API` | The Render service name (step 3) | `https://autox-api-kyuo.onrender.com` |
 | `SITE` | The Netlify project name (step 5) | `https://autox-demo.netlify.app` |
 
-**Choose the two names now**: a Render service name (it becomes `<name>.onrender.com`) and
-a Netlify project name (it becomes `<name>.netlify.app`). Both are first-come,
-first-served. If one is taken, the service changes it, and the real URL is the one the
-service shows you. Step 6 corrects any difference.
+**Choose the two names now**: a Render service name and a Netlify project name (it becomes
+`<name>.netlify.app`). **Expect Render to add a suffix.** The real deployment asked for
+`autox-api` and got `https://autox-api-kyuo.onrender.com`, because Render appends random
+characters when a name is taken, which short names usually are. Netlify kept
+`autox-demo`. Either way, the real URL is the one the service shows you once it exists, and
+step 6 corrects everything that used the planned one.
 
 **Commit and push first.** Render and Netlify build from GitHub, so they deploy what is on
 `main`, not what is on your machine.
@@ -138,10 +140,24 @@ Every photo a visitor views is egress.
    | `AUTOX_S3_SECRET_KEY` | `S3_SECRET_ACCESS_KEY` | Supabase |
    | `AUTOX_CORS_ALLOWED_ORIGINS` | `SITE` — e.g. `https://autox-demo.netlify.app`, no trailing slash | Netlify (planned) |
    | `AUTOX_PASSWORD_RESET_URL` | `SITE` + `/reinitialiser-mot-de-passe` | Netlify (planned) |
-   | `AUTOX_JWT_ISSUER` | `API` — e.g. `https://autox-api.onrender.com` | Render (planned) |
+   | `AUTOX_JWT_ISSUER` | `API` — e.g. `https://autox-api-kyuo.onrender.com` | Render (planned) |
 
    Render asks for these **only this once**. Later changes go through the service's
    **Environment** page, never through `render.yaml`.
+
+   **Check every key, character by character.** A mistyped key (`AUTOX_DB_PASWORD`,
+   `AUTOX_S3_ENDPONT`) was the easiest mistake to make in the real deployment, and the
+   hardest to see. Nothing rejects an unknown variable: it is simply never read, and the
+   setting it was meant for keeps its default. The keys `render.yaml` creates are spelled
+   right. Keys typed by hand on the Environment page are not checked by anything. Copy
+   them from this guide rather than typing them. What a typo looks like:
+   - a **required** variable (the database URL or password, the JWT secret, the storage
+     keys): the API stops at startup and the log names the variable it cannot find. Look
+     for a near-miss of that name on the Environment page;
+   - an **optional** one: the API starts normally and quietly uses the default. A
+     mistyped `AUTOX_CORS_ALLOWED_ORIGINS` leaves only `http://localhost:4200` allowed,
+     so every call from the site fails in the browser with a CORS error. A mistyped
+     `AUTOX_CLIENT_IP_HEADER` makes step 8 show a `10.x` address.
 4. **Check `AUTOX_S3_REGION`** before applying. `render.yaml` sets it to `eu-west-1`. If
    Supabase showed a different region, change it on the Environment page once the service
    exists.
@@ -248,7 +264,7 @@ does not rebuild either, for the same reason.
 
    | Variable | Value | From |
    |---|---|---|
-   | `AUTOX_API_BASE_URL` | `API` — e.g. `https://autox-api.onrender.com` | Render |
+   | `AUTOX_API_BASE_URL` | `API` — e.g. `https://autox-api-kyuo.onrender.com` | Render |
    | `AUTOX_STORAGE_ORIGINS` | `S3_ENDPOINT` — the full endpoint is fine; the build keeps its origin, `https://<ref>.supabase.co` | Supabase |
    | `AUTOX_SITE_URL` | `SITE` — e.g. `https://autox-demo.netlify.app` | Netlify |
 
@@ -325,7 +341,7 @@ Render overwrites `True-Client-IP` with the real address. The API reads that hea
 From a terminal (Git Bash works), with your `API`:
 
 ```bash
-API=https://autox-api.onrender.com
+API=https://autox-api-kyuo.onrender.com
 curl -s https://api64.ipify.org; echo     # your own address, as the internet sees it
 
 for i in 1 2 3 4 5 6; do
@@ -349,6 +365,12 @@ SELECT scope, scope_key, event_count FROM throttle_counter WHERE scope = 'REGIST
 
 **Expected:** one row whose `scope_key` is **your address** from the first command. An
 IPv6 address appears as its /64 (`2a01:e0a:1:2:0:0:0:0/64`). There is no row for `198.51.100.x`.
+
+**On the live deployment** (2026-10-18), against `https://autox-api-kyuo.onrender.com`, the
+answers were `201`, `409`, `409`, `409`, `429`, `429`: refused on the fifth attempt, not the
+sixth, because one registration from the same address had already counted that hour. The
+forged addresses changed nothing. If they had been believed, each attempt would have been
+counted under a different address and none would have been refused.
 
 If instead:
 
@@ -379,8 +401,15 @@ There is no endpoint that makes an administrator, on purpose:
    UPDATE app_user SET role = 'ADMIN' WHERE email = 'you@example.com';
    ```
 
-   It should report `UPDATE 1`. Emails are stored in lower case. If it says `UPDATE 0`,
-   type the address in lower case.
+   **The SQL Editor answers "No result"** for an `UPDATE`. That is not a failure: the
+   editor shows rows, and an `UPDATE` returns none. To see that it worked, run:
+
+   ```sql
+   SELECT email, role FROM app_user WHERE email = 'you@example.com';
+   ```
+
+   It should show `ADMIN`. If it shows no row, the address does not match as typed:
+   emails are stored in lower case, so type it in lower case.
 3. **Sign out and in again**: the role travels in the access token. "Administration" then
    appears in the account menu, with the seeded listings waiting in the moderation queue.
 
