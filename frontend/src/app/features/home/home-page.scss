@@ -1,0 +1,132 @@
+@use '../../../styles/tokens' as t;
+
+// The home page. Desktop-first in what it was designed at (1440px), mobile-first in how
+// it is written: the base rules are one column, wider screens add columns.
+
+:host {
+  display: block;
+  // The hero sits flush under the header; sections below keep the page rhythm.
+  padding-bottom: var(--s-7);
+}
+
+// ---- sections ---------------------------------------------------------------
+
+.home-section {
+  margin-top: var(--s-7);
+}
+
+.home-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.home-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+}
+
+.home-section__all {
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: var(--c-accent);
+  }
+}
+
+// ---- tiles ------------------------------------------------------------------
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: t.$bp-md) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.tiles--makes {
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.tiles--five {
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.tiles--six {
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+// ---- why AutoX --------------------------------------------------------------
+
+.why__points {
+  display: grid;
+  gap: var(--s-4);
+  margin: 0;
+  padding: var(--s-5);
+  list-style: none;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+
+  @media (min-width: t.$bp-md) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-6);
+    padding: var(--s-6);
+  }
+}
+
+.why__point {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  // The icon spans both rows; without this it would stretch the title's row.
+  grid-template-rows: auto 1fr;
+  column-gap: var(--s-3);
+  row-gap: var(--s-1);
+  align-items: start;
+}
+
+.why__icon {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--c-navy);
+  color: #fff;
+}
+
+.why__title {
+  margin: 0;
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+}
+
+.why__body {
+  margin: 0;
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  color: var(--c-ink-soft);
+}

@@ -11,11 +11,15 @@ import { SearchMemory, isSearchUrl } from './search-memory';
  * another site, possibly — when they asked for the results.
  */
 describe('isSearchUrl', () => {
-  it.each(['/', '/?carburant=diesel', '/?q=golf%20tdi&tri=prix-croissant'])('accepts %s', (url) => {
+  it.each(['/recherche', '/recherche?carburant=diesel', '/recherche?q=golf%20tdi&tri=prix-croissant'])('accepts %s', (url) => {
     expect(isSearchUrl(url)).toBe(true);
   });
 
   it.each([
+    // The home page, and an old search link it would forward: neither is the results.
+    '/',
+    '/?carburant=diesel',
+    '/recherches',
     '/annonces/01a1306d-db66-7b93-b280-f3992929d5d3',
     '/mon-compte',
     '/connexion?suivant=%2F',
@@ -36,19 +40,19 @@ describe('SearchMemory', () => {
 
   it('remembers the last search', () => {
     const memory = TestBed.inject(SearchMemory);
-    memory.remember('/?carburant=diesel');
-    memory.remember('/?marque=tesla');
+    memory.remember('/recherche?carburant=diesel');
+    memory.remember('/recherche?marque=tesla');
 
-    expect(memory.lastUrl()).toBe('/?marque=tesla');
+    expect(memory.lastUrl()).toBe('/recherche?marque=tesla');
   });
 
   it('ignores a URL that is not a search, keeping the one it had', () => {
     // Otherwise "back to the results" could be made to lead anywhere at all.
     const memory = TestBed.inject(SearchMemory);
-    memory.remember('/?carburant=diesel');
+    memory.remember('/recherche?carburant=diesel');
     memory.remember('/mon-compte');
     memory.remember('https://ailleurs.example/');
 
-    expect(memory.lastUrl()).toBe('/?carburant=diesel');
+    expect(memory.lastUrl()).toBe('/recherche?carburant=diesel');
   });
 });

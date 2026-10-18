@@ -1,0 +1,23 @@
+<ul class="recent">
+  @for (card of recentCards(); track card.id) {
+    <li class="recent__card">
+      <ul class="recent__chips" aria-label="Critères" i18n-aria-label="@@homeRecentCriteria">
+        @for (chip of card.chips; track $index) {
+          <li class="recent__chip">{{ chip }}</li>
+        }
+      </ul>
+      <a class="recent__open" [routerLink]="searchPath" [queryParams]="card.params">
+        <span i18n="@@homeRecentOpen">Voir les annonces</span>
+        <app-icon name="arrow-right" [size]="16" />
+      </a>
+      <button
+        class="recent__remove"
+        type="button"
+        [attr.aria-label]="'Retirer cette recherche : ' + card.chips.join(', ')"
+        (click)="recent.remove(card.query)"
+      >
+        <app-icon name="x" [size]="16" />
+      </button>
+    </li>
+  }
+</ul>

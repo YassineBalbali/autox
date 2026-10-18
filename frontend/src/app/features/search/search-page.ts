@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Observable, catchError, combineLatest, distinctUntilChanged, map, of, switchMap, take } from 'rxjs';
+import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import { PublicListingSummary, ResultCount, SearchSort } from '../../core/api';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
@@ -14,27 +14,18 @@ import { FUEL_LABELS, GEARBOX_LABELS, SORT_OPTIONS, labelOf } from '../../shared
 import { SearchBar } from './search-bar';
 import { SearchFilters } from './search-filters';
 import {
-  ResolvedVehicle,
   SearchQuery,
   activeFilterCount,
   parseQuery,
-  toCriteria,
   toQueryParams,
   withoutFilters,
 } from './search-query';
+import { RecentSearches } from './recent-searches';
+import { SearchResolver } from './search-resolver';
 import { SearchMemory } from './search-memory';
 import { SearchResultsStore } from './search-results.store';
 import { ResultsView, ViewPreference } from './view-preference';
 import { ViewToggle } from './view-toggle';
-
-/**
- * The currency the price filter is expressed in.
- *
- * <p>One market is open, and its currency is the euro; the filter's label says "€". When
- * a second currency is enabled this becomes a choice the user makes, and the constant is
- * the one place that has to learn about it.
- */
-const PRICE_FILTER_CURRENCY = 'EUR';
 
 /**
  * The search screen, and the home page.
@@ -75,6 +66,8 @@ export class SearchPage {
   protected readonly results = inject(SearchResultsStore);
   private readonly preference = inject(ViewPreference);
   private readonly memory = inject(SearchMemory);
+  private readonly resolver = inject(SearchResolver);
+  private readonly recent = inject(RecentSearches);
 
   /**
    * True when this page was reached by going back or forward in history.
@@ -120,24 +113,16 @@ export class SearchPage {
         // switchMap: a query that arrives while the previous one is still resolving its
         // make against the catalogue replaces it, rather than racing it.
         switchMap((query) =>
-          combineLatest([this.resolveVehicle(query), this.reference.minorUnits()]).pipe(
-            take(1),
-            map(([vehicle, units]) => ({
-              sort: query.sort,
-              criteria: toCriteria(
-                query,
-                vehicle,
-                PRICE_FILTER_CURRENCY,
-                units[PRICE_FILTER_CURRENCY] ?? DEFAULT_MINOR_UNIT,
-              ),
-            })),
-          ),
+          this.resolver.criteria(query).pipe(map((criteria) => ({ query, criteria }))),
         ),
         takeUntilDestroyed(),
       )
-      .subscribe(({ criteria, sort }) => {
+      .subscribe(({ query, criteria }) => {
+        const sort = query.sort;
         // So a listing opened from here knows which search to lead back to.
         this.memory.remember(this.router.url);
+        // And so the home page can offer it again. Ignores a search with no filters.
+        this.recent.record(query);
 
         if (this.returning) {
           // Only the search the page arrived with. Every later one on this page is a
@@ -195,43 +180,6 @@ export class SearchPage {
     });
   }
 
-  /**
-   * Works out whether the make and model in the URL are catalogue entries or free text.
-   *
-   * <p>The URL carries a slug — `marque=peugeot` — because that is what belongs in a link;
-   * the API filters on an id. If the slug is in the catalogue the id is sent, which
-   * matches exactly. If it is not — an empty catalogue, an old link, something typed — the
-   * text is sent instead and the API matches it against the displayed name. Either way the
-   * search runs: a catalogue that fails to load costs precision, not the page.
-   */
-  private resolveVehicle(query: SearchQuery): Observable<ResolvedVehicle> {
-    if (!query.make) {
-      return of({});
-    }
-    const asText: ResolvedVehicle = { makeText: query.make, modelText: query.model ?? undefined };
-
-    return this.reference.makes().pipe(
-      switchMap((makes) => {
-        const make = makes.find((candidate) => candidate.slug === query.make);
-        if (!make?.id) {
-          return of(asText);
-        }
-        if (!query.model) {
-          return of<ResolvedVehicle>({ makeId: make.id });
-        }
-        return this.reference.models(make.id).pipe(
-          map((models): ResolvedVehicle => {
-            const model = models.find((candidate) => candidate.slug === query.model);
-            return model?.id
-              ? { makeId: make.id, modelId: model.id }
-              : { makeId: make.id, modelText: query.model ?? undefined };
-          }),
-          catchError(() => of<ResolvedVehicle>({ makeId: make.id, modelText: query.model ?? undefined })),
-        );
-      }),
-      catchError(() => of(asText)),
-    );
-  }
 }
 
 function canonical(query: SearchQuery): string {

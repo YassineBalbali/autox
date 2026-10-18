@@ -64,10 +64,11 @@ describe('SiteFooter', () => {
     return fixture.nativeElement;
   }
 
-  it('has the four columns a marketplace footer carries', async () => {
+  it('has the columns a marketplace footer carries, the working pages first', async () => {
     const root = await render();
 
     expect(Array.from(root.querySelectorAll('.footer__title')).map((title) => title.textContent?.trim())).toEqual([
+      'AutoX',
       'À propos',
       'Aide',
       'Informations légales',

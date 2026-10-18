@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard, roleGuard } from './core/auth/auth.guard';
 import { UserRole } from './core/api';
+import { legacySearchRedirect } from './features/search/legacy-search-redirect';
 
 /**
  * Route table.
@@ -15,18 +16,28 @@ import { UserRole } from './core/api';
  * page — has to match `autox.mail.password-reset-url` on the backend exactly, since that is
  * what the emailed link points at.
  *
- * <p>The home page is the search. A marketplace has no better thing to show a visitor
- * than what is for sale, and a landing page in front of it is a click nobody asked for.
+ * <p>The home page is a way in to the search — a short form, the visitor's recent
+ * searches, and shortcuts by make, budget and kind of car — and the results are at
+ * `/recherche`. Every search link from before the split started with `/?`; those still
+ * work, forwarded by `legacySearchRedirect`.
  */
 export const routes: Routes = [
   // ---- the shop window ----------------------------------------------------
 
   {
+    // A bare `/` is the home page; `/?marque=…` is an old search link, and the guard
+    // forwards it to the results.
+    path: '',
+    pathMatch: 'full',
+    canActivate: [legacySearchRedirect],
+    title: 'AutoX · Voitures d’occasion',
+    loadComponent: () => import('./features/home/home-page').then((m) => m.HomePage),
+  },
+  {
     // Filters, sort order and nothing else live in this route's query string — see
     // features/search/search-query.ts for the parameter names, which are a contract once
     // a link has been shared.
-    path: '',
-    pathMatch: 'full',
+    path: 'recherche',
     title: 'Voitures d’occasion · AutoX',
     loadComponent: () => import('./features/search/search-page').then((m) => m.SearchPage),
   },

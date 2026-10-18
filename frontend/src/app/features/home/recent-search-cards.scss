@@ -1,0 +1,87 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+// ---- recent searches --------------------------------------------------------
+
+.recent {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: t.$bp-md) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.recent__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  padding-right: calc(var(--s-4) + 28px);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-raised);
+}
+
+.recent__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent__chip {
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--c-accent-soft);
+  color: var(--c-ink);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.recent__open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  align-self: flex-start;
+  font-weight: var(--fw-semibold);
+  color: var(--c-accent);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--c-accent-strong);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.recent__remove {
+  position: absolute;
+  top: var(--s-2);
+  right: var(--s-2);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--c-ink-faint);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--c-surface-sunk);
+    color: var(--c-ink);
+  }
+}

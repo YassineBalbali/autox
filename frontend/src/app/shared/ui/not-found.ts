@@ -61,7 +61,7 @@ export class NotFound {
    * `/%3Fmarque%3Dpeugeot`, which matches nothing. So the `href` is the URL as written,
    * and a plain click is handed to the router as a URL.
    */
-  readonly linkUrl = input('/');
+  readonly linkUrl = input('/recherche');
   readonly linkLabel = input('Voir les annonces');
 
   private readonly router = inject(Router);

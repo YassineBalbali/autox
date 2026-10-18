@@ -23,6 +23,10 @@ body {
   // Stops a long unbroken string — a VIN, a pasted URL — from widening the page.
   overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
+  // A full-width band (the home page's hero photo) is 100vw wide, and 100vw includes the
+  // vertical scrollbar. Clip, not hidden: hidden would make body a scroll container and
+  // break position: sticky everywhere below it.
+  overflow-x: clip;
 }
 
 // Headings carry no margin of their own; spacing belongs to the layout that places them.

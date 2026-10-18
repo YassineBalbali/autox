@@ -264,7 +264,7 @@ mvn clean verify         # 388 tests, needs Docker running
 
 cd ../frontend
 npm run lint
-npm test -- --no-watch   # 814 tests, jsdom
+npm test -- --no-watch   # 850 tests, jsdom
 npm run test:scripts     # 21 tests of the build scripts: the security policy
 npm run build            # the production build, with the policy and headers written in
 ```
@@ -345,7 +345,8 @@ of the interface.
 
 | Path | Who | What |
 |---|---|---|
-| `/` | anyone | Search: filters, sort and view in the query string |
+| `/` | anyone | Home: search card with a live count, recent searches, make, budget and category shortcuts. An old search link (`/?marque=…`) is forwarded to `/recherche` |
+| `/recherche` | anyone | Search results: filters, sort and view in the query string |
 | `/annonces/:id` | anyone | One listing |
 | `/connexion`, `/inscription` | anyone | Sign in, register (private seller or dealer) |
 | `/mot-de-passe-oublie`, `/reinitialiser-mot-de-passe` | anyone | Reset by emailed link |
@@ -627,9 +628,12 @@ frontend/
     format/                     dates and numbers, through Intl rather than a pipe
     listing/                    row, card, price, spec line, gallery; French labels for enums
                                 and for moderation reasons
-    ui/                         the alert banner, filter chip, not-found block
+    ui/                         the alert banner, filter chip, not-found block; the icon
+                                component and its Lucide data (scripts/icons.mjs)
   src/app/features/
-    search/                     the home page: filters, results, URL <-> query
+    home/                       the home page: hero search card, recent searches, shortcuts
+    search/                     the results: filters, URL <-> query, the shared resolver
+                                and count, recent searches (per browser)
     listing/                    one listing: gallery, specification, equipment, seller
     auth/                       sign in, register, forgot password, reset password
     account/                    sidebar layout, profile, company, change password, sessions
@@ -657,6 +661,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/auth-decisions.md` | Tokens, rotation, throttling |
 | `docs/listing-decisions.md` | The state machine, quotas, expiry |
 | `docs/image-decisions.md` | The upload handshake, variants, EXIF |
+| `docs/third-party-assets.md` | The home page photo and the icons: source, licence, notices |
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |

@@ -18,7 +18,7 @@ export interface NavItem {
  * appears the day its route does, with no change here.
  */
 export const PRIMARY_NAV: readonly NavItem[] = [
-  { label: 'Acheter', path: '' },
+  { label: 'Acheter', path: 'recherche' },
   { label: 'Vendre', path: 'vendre' },
 ];
 

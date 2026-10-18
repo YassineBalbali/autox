@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { routes } from './app.routes';
 import { authGuard } from './core/auth/auth.guard';
+import { legacySearchRedirect } from './features/search/legacy-search-redirect';
 import { ACCOUNT_ROUTE, FORBIDDEN_ROUTE, SIGN_IN_ROUTE } from './core/auth/auth.routes';
 
 /**
@@ -113,14 +114,22 @@ describe('routes', () => {
     expect(listing.canActivate).toBeUndefined();
   });
 
-  it('serves the search as the home page, publicly', () => {
+  it('serves the home page publicly, forwarding only old search links', () => {
     const home = top('');
     expect(home.loadComponent).toBeTypeOf('function');
     expect(home.redirectTo).toBeUndefined();
-    // The shop window has to be reachable without an account, and crawlable.
-    expect(home.canActivate).toBeUndefined();
+    // Reachable without an account, and crawlable: its one guard forwards `/?marque=…`
+    // to the results and lets everything else through. home-page.spec.ts tests it.
+    expect(home.canActivate).toEqual([legacySearchRedirect]);
     // Without this an empty path would also prefix-match every other URL.
     expect(home.pathMatch).toBe('full');
+  });
+
+  it('serves the search results at /recherche, publicly', () => {
+    const results = top('recherche');
+    expect(results.loadComponent).toBeTypeOf('function');
+    // The shop window has to be reachable without an account, and crawlable.
+    expect(results.canActivate).toBeUndefined();
   });
 
   it('guards the administration by role, and sends /admin to its one screen', () => {
