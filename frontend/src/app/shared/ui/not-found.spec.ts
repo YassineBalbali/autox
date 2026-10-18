@@ -88,7 +88,7 @@ describe('NotFound', () => {
     const root = await render(NotFoundPage);
 
     expect(root.querySelector('h1')?.textContent?.trim()).toBe('Cette page n’existe pas');
-    expect(root.querySelector('a')?.getAttribute('href')).toBe('/');
+    expect(root.querySelector('a')?.getAttribute('href')).toBe('/recherche');
     expect(TestBed.inject(Title).getTitle()).toBe('Page introuvable · AutoX');
   });
 });

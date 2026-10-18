@@ -1,0 +1,128 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+// ---- the search card --------------------------------------------------------
+
+.finder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-overlay);
+}
+
+.finder__tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: var(--divider);
+}
+
+.finder__tab {
+  padding: var(--s-2) 0 var(--s-3);
+  text-align: center;
+  font-size: var(--t-md);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink-soft);
+  text-decoration: none;
+  // The underline is a border, so the active tab's bar sits on the tab row's own rule.
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+
+  &:hover {
+    color: var(--c-ink);
+    border-bottom-color: var(--c-line-strong);
+  }
+}
+
+.finder__tab--active,
+.finder__tab--active:hover {
+  color: var(--c-accent);
+  border-bottom-color: var(--c-accent);
+}
+
+.finder__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-2);
+  margin-top: var(--s-1);
+}
+
+.finder__field {
+  position: relative;
+  display: block;
+}
+
+// One look for the selects and the postal code: a tall, quiet box with its adornment on
+// the right. Taller than --h-control: this is the page's one form, and it is the target.
+.finder__control {
+  width: 100%;
+  height: 48px;
+  padding: 0 2.25rem 0 var(--s-3);
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
+  font: inherit;
+  font-size: 1rem;
+  color: var(--c-ink);
+  appearance: none;
+  cursor: pointer;
+
+  &::placeholder {
+    color: var(--c-ink-soft);
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--c-ink-faint);
+  }
+
+  &:focus-visible {
+    border-color: var(--c-accent);
+    outline-offset: 0;
+  }
+
+  &:disabled {
+    background: var(--c-surface-sunk);
+    color: var(--c-ink-faint);
+    cursor: not-allowed;
+  }
+}
+
+input.finder__control {
+  cursor: text;
+}
+
+.finder__adornment {
+  position: absolute;
+  right: var(--s-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--c-ink-soft);
+  pointer-events: none;
+}
+
+.finder__submit {
+  height: 52px;
+  margin-top: var(--s-1);
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+  border-radius: var(--r-md);
+  // The count changes while the label is on screen; tabular figures keep the button
+  // from jittering as the number does.
+  font-variant-numeric: tabular-nums;
+}
+
+.finder__more {
+  align-self: center;
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-accent);
+
+  &:hover {
+    color: var(--c-accent-strong);
+  }
+}

@@ -78,7 +78,7 @@ export class ListingPage {
   );
 
   /** Where "back to the results" leads when it cannot simply go back. */
-  protected readonly resultsUrl = this.memory.lastUrl() ?? '/';
+  protected readonly resultsUrl = this.memory.lastUrl() ?? '/recherche';
 
   private readonly features = toSignal(
     this.reference.features().pipe(catchError(() => of([] as Feature[]))),

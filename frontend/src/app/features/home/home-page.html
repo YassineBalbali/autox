@@ -1,0 +1,75 @@
+<app-home-hero />
+
+<!-- ===== Recent searches: only when there are some ========================= -->
+@if (!recent.isEmpty()) {
+  <section class="home-section" aria-labelledby="recent-title">
+    <header class="home-section__head">
+      <h2 id="recent-title" class="home-section__title">
+        <app-icon name="history" [size]="20" />
+        <span i18n="@@homeRecentTitle">Vos recherches récentes</span>
+      </h2>
+    </header>
+    <app-recent-search-cards />
+  </section>
+}
+
+<!-- ===== Popular makes: names only — a manufacturer's logo is its trademark ===== -->
+@if (popularMakes().length > 0) {
+  <section class="home-section" aria-labelledby="makes-title">
+    <header class="home-section__head">
+      <h2 id="makes-title" class="home-section__title" i18n="@@homeMakesTitle">Marques populaires</h2>
+      <a class="home-section__all" [routerLink]="searchPath" i18n="@@homeAllMakes">Toutes les annonces</a>
+    </header>
+    <ul class="tiles tiles--makes">
+      @for (make of popularMakes(); track make.id) {
+        <li>
+          <app-shortcut-tile variant="make" [label]="make.name ?? ''" [params]="{ marque: make.slug }" />
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+<!-- ===== Budgets ============================================================ -->
+<section class="home-section" aria-labelledby="budget-title">
+  <header class="home-section__head">
+    <h2 id="budget-title" class="home-section__title" i18n="@@homeBudgetTitle">Par budget</h2>
+  </header>
+  <ul class="tiles tiles--five">
+    @for (budget of budgets(); track budget.id) {
+      <li>
+        <app-shortcut-tile [label]="budget.label" [params]="budget.params" [count]="budget.count" />
+      </li>
+    }
+  </ul>
+</section>
+
+<!-- ===== Categories ========================================================= -->
+<section class="home-section" aria-labelledby="category-title">
+  <header class="home-section__head">
+    <h2 id="category-title" class="home-section__title" i18n="@@homeCategoryTitle">Trouvez votre voiture idéale</h2>
+  </header>
+  <ul class="tiles tiles--six">
+    @for (category of categories(); track category.id) {
+      <li>
+        <app-shortcut-tile variant="category" [label]="category.label" [icon]="category.icon" [params]="category.params" [count]="category.count" />
+      </li>
+    }
+  </ul>
+</section>
+
+<!-- ===== Why AutoX ========================================================== -->
+<section class="home-section why" aria-labelledby="why-title">
+  <header class="home-section__head">
+    <h2 id="why-title" class="home-section__title" i18n="@@homeWhyTitle">Pourquoi AutoX</h2>
+  </header>
+  <ul class="why__points">
+    @for (point of trustPoints; track point.title) {
+      <li class="why__point">
+        <span class="why__icon"><app-icon [name]="point.icon" [size]="22" /></span>
+        <h3 class="why__title">{{ point.title }}</h3>
+        <p class="why__body">{{ point.body }}</p>
+      </li>
+    }
+  </ul>
+</section>

@@ -56,6 +56,6 @@ describe('availableNav', () => {
     // The real route table. "Vendre" was declared long before its route existed and was
     // left out until it did; this is the test that used to assert its absence.
     expect(availableNav(routes).map((item) => item.label)).toEqual(['Acheter', 'Vendre']);
-    expect(PRIMARY_NAV.map((item) => item.path)).toEqual(['', 'vendre']);
+    expect(PRIMARY_NAV.map((item) => item.path)).toEqual(['recherche', 'vendre']);
   });
 });

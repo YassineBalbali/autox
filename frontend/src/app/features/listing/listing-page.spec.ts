@@ -82,7 +82,7 @@ describe('ListingPage', () => {
         provideHttpClientTesting(),
         provideRouter(
           [
-            { path: '', pathMatch: 'full', component: SearchStub },
+            { path: 'recherche', component: SearchStub },
             { path: 'annonces/:id', component: ListingPage },
           ],
           withComponentInputBinding(),
@@ -295,7 +295,7 @@ describe('ListingPage', () => {
       await settle();
 
       const link = root.querySelector('app-not-found a') as HTMLAnchorElement;
-      expect(link.getAttribute('href')).toBe('/');
+      expect(link.getAttribute('href')).toBe('/recherche');
       expect(link.textContent?.trim()).toBe('Voir les annonces');
     });
 
@@ -367,7 +367,7 @@ describe('ListingPage', () => {
       // History, not a fresh navigation: that is what brings the list back as it was,
       // with the pages already loaded and the scroll position.
       configure();
-      harness = await RouterTestingHarness.create('/?carburant=diesel');
+      harness = await RouterTestingHarness.create('/recherche?carburant=diesel');
       await harness.navigateByUrl(`/annonces/${ID}`);
       root = harness.fixture.nativeElement;
       answerReference();
@@ -391,19 +391,19 @@ describe('ListingPage', () => {
       plainClick();
 
       expect(back).not.toHaveBeenCalled();
-      expect(navigate).toHaveBeenCalledWith('/');
+      expect(navigate).toHaveBeenCalledWith('/recherche');
     });
 
     it('returns to the last search made in this tab, when it knows one', async () => {
       configure();
-      TestBed.inject(SearchMemory).remember('/?marque=peugeot&prix_max=20000');
+      TestBed.inject(SearchMemory).remember('/recherche?marque=peugeot&prix_max=20000');
       harness = await RouterTestingHarness.create(`/annonces/${ID}`);
       root = harness.fixture.nativeElement;
       answerReference();
       open(DETAIL)[0].flush(LISTING);
       await settle();
 
-      expect(backLink().getAttribute('href')).toBe('/?marque=peugeot&prix_max=20000');
+      expect(backLink().getAttribute('href')).toBe('/recherche?marque=peugeot&prix_max=20000');
     });
 
     it('is a real link, so it can be opened in a new tab', async () => {
@@ -416,7 +416,7 @@ describe('ListingPage', () => {
       // Left to the browser: the href does the work.
       expect(event.defaultPrevented).toBe(false);
       expect(back).not.toHaveBeenCalled();
-      expect(backLink().getAttribute('href')).toBe('/');
+      expect(backLink().getAttribute('href')).toBe('/recherche');
     });
   });
 

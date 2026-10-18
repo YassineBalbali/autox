@@ -87,7 +87,7 @@ describe('SearchPage', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([
-          { path: '', pathMatch: 'full', component: SearchPage },
+          { path: 'recherche', component: SearchPage },
           { path: 'annonces/:id', component: ListingStub },
         ]),
         { provide: BASE_PATH, useValue: BASE },
@@ -117,7 +117,7 @@ describe('SearchPage', () => {
   }
 
   const rows = () => Array.from(root.querySelectorAll('app-listing-row')) as HTMLElement[];
-  /** The address as the router sees it: `/` for the bare home page. */
+  /** The address as the router sees it: `/recherche` for the bare results page. */
   const url = () => TestBed.inject(Router).url;
   const chip = (label: string) =>
     Array.from(root.querySelectorAll('app-filter-chip button')).find((button) =>
@@ -126,7 +126,7 @@ describe('SearchPage', () => {
 
   describe('the URL drives the search', () => {
     it('searches for everything, newest first, on the bare home page', async () => {
-      await visit('/');
+      await visit('/recherche');
       const page = await answer([listing('a'), listing('b')]);
 
       expect(page.request.params.get('sort')).toBe('NEWEST');
@@ -135,7 +135,7 @@ describe('SearchPage', () => {
     });
 
     it('reproduces a shared link exactly', async () => {
-      await visit('/?carburant=diesel,electric&boite=automatic&km_max=90000&annee_min=2019&lieu=Lyon&tri=prix-croissant');
+      await visit('/recherche?carburant=diesel,electric&boite=automatic&km_max=90000&annee_min=2019&lieu=Lyon&tri=prix-croissant');
       const page = await answer([listing('a')]);
       const params = page.request.params;
 
@@ -149,7 +149,7 @@ describe('SearchPage', () => {
 
     it('sends prices in the minor unit the API compares, with their currency', async () => {
       // The URL says 15000 because that is what a person types. The API compares cents.
-      await visit('/?prix_max=15000');
+      await visit('/recherche?prix_max=15000');
       const page = await answer([]);
 
       expect(page.request.params.get('priceMax')).toBe('1500000');
@@ -157,7 +157,7 @@ describe('SearchPage', () => {
     });
 
     it('resolves a make slug to its catalogue id', async () => {
-      await visit('/?marque=tesla');
+      await visit('/recherche?marque=tesla');
       const page = await answer([]);
 
       expect(page.request.params.get('makeId')).toBe('m-tesla');
@@ -165,7 +165,7 @@ describe('SearchPage', () => {
     });
 
     it('resolves a model slug too, once the make is known', async () => {
-      await visit('/?marque=peugeot&modele=308');
+      await visit('/recherche?marque=peugeot&modele=308');
       open(`${BASE}/api/v1/reference/makes/m-peugeot/models`).forEach((request) =>
         request.flush([{ id: 'mo-308', slug: '308', name: '308' }]),
       );
@@ -179,7 +179,7 @@ describe('SearchPage', () => {
     it('searches by name when the make is not in the catalogue', async () => {
       // An empty catalogue, or a link older than it. The search still runs — it loses
       // precision, not the page.
-      await visit('/?marque=Peugeot', []);
+      await visit('/recherche?marque=Peugeot', []);
       const page = await answer([]);
 
       expect(page.request.params.get('make')).toBe('Peugeot');
@@ -187,7 +187,7 @@ describe('SearchPage', () => {
     });
 
     it('ignores rubbish in the address rather than failing on it', async () => {
-      await visit('/?prix_max=beaucoup&carburant=vapeur&tri=au-hasard&annee_min=12');
+      await visit('/recherche?prix_max=beaucoup&carburant=vapeur&tri=au-hasard&annee_min=12');
       const page = await answer([listing('a')]);
 
       expect(page.request.params.keys().sort()).toEqual(['size', 'sort']);
@@ -197,30 +197,30 @@ describe('SearchPage', () => {
 
   describe('a filter change is a navigation', () => {
     it('puts the filter in the address and searches again', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a'), listing('b')]);
 
       chip('Diesel').click();
       await settle();
 
-      expect(url()).toBe('/?carburant=diesel');
+      expect(url()).toBe('/recherche?carburant=diesel');
       const page = await answer([listing('a')]);
       expect(page.request.params.getAll('fuelType')).toEqual(['DIESEL']);
       expect(chip('Diesel').getAttribute('aria-pressed')).toBe('true');
     });
 
     it('removes a cleared filter from the address instead of leaving it behind', async () => {
-      await visit('/?carburant=diesel&km_max=90000');
+      await visit('/recherche?carburant=diesel&km_max=90000');
       await answer([listing('a')]);
 
       chip('Diesel').click();
       await settle();
 
-      expect(url()).toBe('/?km_max=90000');
+      expect(url()).toBe('/recherche?km_max=90000');
     });
 
     it('steps back through the filters with the back button', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a'), listing('b')]);
       chip('Diesel').click();
       await settle();
@@ -230,12 +230,12 @@ describe('SearchPage', () => {
       TestBed.inject(Location).back();
       // The popstate is delivered asynchronously, and the router then navigates: wait for
       // the address to actually change rather than for a fixed delay.
-      for (let attempt = 0; attempt < 50 && url() !== '/'; attempt++) {
+      for (let attempt = 0; attempt < 50 && url() !== '/recherche'; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 5));
         await settle();
       }
 
-      expect(url()).toBe('/');
+      expect(url()).toBe('/recherche');
       const page = await answer([listing('a'), listing('b')]);
       expect(page.request.params.has('fuelType')).toBe(false);
       expect(chip('Diesel').getAttribute('aria-pressed')).toBe('false');
@@ -243,7 +243,7 @@ describe('SearchPage', () => {
     });
 
     it('sorts through the address too', async () => {
-      await visit('/?carburant=diesel');
+      await visit('/recherche?carburant=diesel');
       await answer([listing('a')]);
 
       const sort = root.querySelector('#tri') as HTMLSelectElement;
@@ -252,13 +252,13 @@ describe('SearchPage', () => {
       await settle();
 
       // The filter survives a change of order.
-      expect(url()).toBe('/?carburant=diesel&tri=prix-decroissant');
+      expect(url()).toBe('/recherche?carburant=diesel&tri=prix-decroissant');
       const page = await answer([listing('a')]);
       expect(page.request.params.get('sort')).toBe('PRICE_DESC');
     });
 
     it('offers the four sort orders, with the current one selected', async () => {
-      await visit('/?tri=km-croissant');
+      await visit('/recherche?tri=km-croissant');
       await answer([]);
       const sort = root.querySelector('#tri') as HTMLSelectElement;
 
@@ -272,10 +272,10 @@ describe('SearchPage', () => {
     });
 
     it('does not search twice for a navigation that changes nothing', async () => {
-      await visit('/?carburant=diesel');
+      await visit('/recherche?carburant=diesel');
       await answer([listing('a')]);
 
-      await TestBed.inject(Router).navigateByUrl('/?carburant=diesel');
+      await TestBed.inject(Router).navigateByUrl('/recherche?carburant=diesel');
       await settle();
 
       expect(open(LIST)).toHaveLength(0);
@@ -284,14 +284,14 @@ describe('SearchPage', () => {
 
   describe('the result count', () => {
     it('is shown above the list', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a'), listing('b')], { count: 1284 });
 
       expect(root.querySelector('.search__count')?.textContent?.trim()).toBe(`1${NBSP}284 annonces`);
     });
 
     it('says "more than" when the API stopped counting', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')], { count: 10000, capped: true });
 
       expect(root.querySelector('.search__count')?.textContent?.trim()).toBe(`Plus de 10${NBSP}000 annonces`);
@@ -307,7 +307,7 @@ describe('SearchPage', () => {
 
   describe('each row', () => {
     it('shows the price as 12 500 €, the labels in French, and a French date', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')]);
       const text = rows()[0].textContent ?? '';
 
@@ -320,7 +320,7 @@ describe('SearchPage', () => {
     });
 
     it('divides by the listing currency exponent, not by an assumed 100', async () => {
-      await visit('/');
+      await visit('/recherche');
       open(`${BASE}/api/v1/reference/countries`).forEach((request) => request.flush(COUNTRIES));
       await answer([listing('yen', { priceAmount: 2500000, currencyCode: 'JPY' })]);
 
@@ -332,7 +332,7 @@ describe('SearchPage', () => {
 
   describe('states', () => {
     it('shows placeholder rows while the first page loads', async () => {
-      await visit('/');
+      await visit('/recherche');
 
       expect(root.querySelector('[aria-busy="true"]')).not.toBeNull();
       expect(root.querySelectorAll('.skeleton').length).toBeGreaterThan(0);
@@ -340,7 +340,7 @@ describe('SearchPage', () => {
     });
 
     it('explains an empty result and offers a way out when filters are set', async () => {
-      await visit('/?prix_max=100');
+      await visit('/recherche?prix_max=100');
       await answer([]);
 
       expect(root.querySelector('.search__empty')?.textContent).toContain('Aucune annonce ne correspond');
@@ -351,11 +351,11 @@ describe('SearchPage', () => {
       reset.click();
       await settle();
 
-      expect(url()).toBe('/');
+      expect(url()).toBe('/recherche');
     });
 
     it('does not blame the filters when there are none', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([]);
 
       expect(root.querySelector('.search__empty')?.textContent).toContain('Aucune annonce n’est en ligne');
@@ -363,7 +363,7 @@ describe('SearchPage', () => {
     });
 
     it('reports a failure in French and retries the same search', async () => {
-      await visit('/?carburant=diesel');
+      await visit('/recherche?carburant=diesel');
       open(LIST)[0].flush(
         { code: ErrorCode.INTERNAL_ERROR, detail: 'NullPointerException at …' },
         { status: 500, statusText: 'Server Error' },
@@ -386,7 +386,7 @@ describe('SearchPage', () => {
 
     it('keeps the sidebar usable while the list is in an error state', async () => {
       // Otherwise a filter that provokes an error cannot be removed.
-      await visit('/');
+      await visit('/recherche');
       open(LIST)[0].error(new ProgressEvent('offline'));
       await settle();
 
@@ -396,7 +396,7 @@ describe('SearchPage', () => {
 
   describe('voir plus', () => {
     it('appends the next page in place, without touching the address', async () => {
-      await visit('/?carburant=diesel');
+      await visit('/recherche?carburant=diesel');
       await answer([listing('a'), listing('b')], { hasMore: true, count: 3 });
 
       const more = Array.from(root.querySelectorAll('button')).find((button) =>
@@ -412,12 +412,12 @@ describe('SearchPage', () => {
 
       expect(rows()).toHaveLength(3);
       // The cursor is not shareable state: a link must open at the top of the list.
-      expect(url()).toBe('/?carburant=diesel');
+      expect(url()).toBe('/recherche?carburant=diesel');
       expect(root.textContent).toContain('Vous avez vu toutes les annonces');
     });
 
     it('has no numbered pages', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')], { hasMore: true });
 
       expect(root.querySelector('nav[aria-label*="agination"]')).toBeNull();
@@ -425,7 +425,7 @@ describe('SearchPage', () => {
     });
 
     it('offers nothing more when the list is complete', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')]);
 
       expect(
@@ -447,7 +447,7 @@ describe('SearchPage', () => {
     };
 
     it('sits above the filters and the results, across the full width', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')]);
       const bar = root.querySelector('app-search-bar') as HTMLElement;
       const body = root.querySelector('.search__body') as HTMLElement;
@@ -458,17 +458,17 @@ describe('SearchPage', () => {
     });
 
     it('searches free text through the address, and the API receives it', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a'), listing('b')]);
 
       await typeInto('b-q', 'golf tdi');
       // Typing alone searched nothing.
       expect(open(LIST)).toHaveLength(0);
-      expect(url()).toBe('/');
+      expect(url()).toBe('/recherche');
 
       await submitBar();
 
-      expect(url()).toBe('/?q=golf%20tdi');
+      expect(url()).toBe('/recherche?q=golf%20tdi');
       const page = await answer([listing('a')]);
       // The generated client percent-encodes each value itself and gives HttpClient an
       // identity codec, so what is held here is the wire form — encoded exactly once.
@@ -478,7 +478,7 @@ describe('SearchPage', () => {
     });
 
     it('applies text, make, price and year as one navigation', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')]);
 
       await typeInto('b-q', 'tdi');
@@ -490,7 +490,7 @@ describe('SearchPage', () => {
       await typeInto('b-prix', '30000');
       await submitBar();
 
-      expect(url()).toBe('/?q=tdi&marque=tesla&prix_max=30000');
+      expect(url()).toBe('/recherche?q=tdi&marque=tesla&prix_max=30000');
       const page = await answer([]);
       expect(page.request.params.get('makeId')).toBe('m-tesla');
       expect(page.request.params.get('priceMax')).toBe('3000000');
@@ -499,17 +499,17 @@ describe('SearchPage', () => {
     it('keeps the sidebar filters when the bar is submitted', async () => {
       // The bar owns five fields. Submitting it must not wipe the fuel filter chosen in
       // the sidebar a moment earlier.
-      await visit('/?carburant=diesel&km_max=90000');
+      await visit('/recherche?carburant=diesel&km_max=90000');
       await answer([listing('a')]);
 
       await typeInto('b-q', 'golf');
       await submitBar();
 
-      expect(url()).toBe('/?q=golf&km_max=90000&carburant=diesel');
+      expect(url()).toBe('/recherche?q=golf&km_max=90000&carburant=diesel');
     });
 
     it('reads a search that arrived by link', async () => {
-      await visit('/?q=clio%20automatique&prix_max=12000');
+      await visit('/recherche?q=clio%20automatique&prix_max=12000');
       await answer([]);
 
       expect((root.querySelector('#b-q') as HTMLInputElement).value).toBe('clio automatique');
@@ -521,14 +521,14 @@ describe('SearchPage', () => {
     const appliedChips = () => Array.from(root.querySelectorAll('.applied__chip')) as HTMLButtonElement[];
 
     it('show nothing when no filter is set', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')]);
 
       expect(root.querySelector('.applied')).toBeNull();
     });
 
     it('list what the address applies, between the bar and the results', async () => {
-      await visit('/?q=tdi&marque=tesla&prix_max=30000&carburant=diesel,electric&lieu=Lyon');
+      await visit('/recherche?q=tdi&marque=tesla&prix_max=30000&carburant=diesel,electric&lieu=Lyon');
       await answer([]);
 
       expect(appliedChips().map((chip) => chip.textContent?.replace('×', '').trim())).toEqual([
@@ -547,7 +547,7 @@ describe('SearchPage', () => {
     });
 
     it('remove exactly one filter each, through the address', async () => {
-      await visit('/?carburant=diesel,electric&lieu=Lyon');
+      await visit('/recherche?carburant=diesel,electric&lieu=Lyon');
       await answer([listing('a')]);
 
       appliedChips()
@@ -556,20 +556,20 @@ describe('SearchPage', () => {
       await settle();
 
       // The other fuel and the location are untouched.
-      expect(url()).toBe('/?carburant=electric&lieu=Lyon');
+      expect(url()).toBe('/recherche?carburant=electric&lieu=Lyon');
       const page = await answer([]);
       expect(page.request.params.getAll('fuelType')).toEqual(['ELECTRIC']);
       expect(appliedChips()).toHaveLength(2);
     });
 
     it('clear everything at once, keeping the sort order', async () => {
-      await visit('/?q=tdi&carburant=diesel&tri=prix-croissant');
+      await visit('/recherche?q=tdi&carburant=diesel&tri=prix-croissant');
       await answer([listing('a')]);
 
       (root.querySelector('.applied__clear') as HTMLButtonElement).click();
       await settle();
 
-      expect(url()).toBe('/?tri=prix-croissant');
+      expect(url()).toBe('/recherche?tri=prix-croissant');
       await answer([listing('a'), listing('b')]);
       expect(root.querySelector('.applied')).toBeNull();
       expect((root.querySelector('#b-q') as HTMLInputElement).value).toBe('');
@@ -584,7 +584,7 @@ describe('SearchPage', () => {
     const cards = () => Array.from(root.querySelectorAll('app-listing-card')) as HTMLElement[];
 
     it('shows rows by default', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a'), listing('b')]);
 
       expect(rows()).toHaveLength(2);
@@ -594,7 +594,7 @@ describe('SearchPage', () => {
     });
 
     it('switches to cards, showing the same results in the same order', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a'), listing('b'), listing('c')]);
 
       toggle('Grille').click();
@@ -611,24 +611,24 @@ describe('SearchPage', () => {
 
     it('does not search again, and does not touch the address, to change the view', async () => {
       // A layout choice is not a search: no request, no history entry, nothing to share.
-      await visit('/?carburant=diesel');
+      await visit('/recherche?carburant=diesel');
       await answer([listing('a')]);
 
       toggle('Grille').click();
       await settle();
 
       expect(open(LIST)).toHaveLength(0);
-      expect(url()).toBe('/?carburant=diesel');
+      expect(url()).toBe('/recherche?carburant=diesel');
     });
 
     it('remembers the choice on the next visit', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')]);
       toggle('Grille').click();
       await settle();
 
       // A fresh application, the same browser.
-      await visit('/', MAKES, true);
+      await visit('/recherche', MAKES, true);
       await answer([listing('a'), listing('b')]);
 
       expect(cards()).toHaveLength(2);
@@ -636,7 +636,7 @@ describe('SearchPage', () => {
     });
 
     it('keeps the view across a new search', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')]);
       toggle('Grille').click();
       await settle();
@@ -649,7 +649,7 @@ describe('SearchPage', () => {
     });
 
     it('loads more into the grid as it does into the list', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a'), listing('b')], { hasMore: true, count: 3 });
       toggle('Grille').click();
       await settle();
@@ -666,14 +666,14 @@ describe('SearchPage', () => {
 
     it('shows card-shaped placeholders while a grid is loading', async () => {
       localStorage.setItem('autox.search.view', 'grille');
-      await visit('/', MAKES, true);
+      await visit('/recherche', MAKES, true);
 
       expect(root.querySelectorAll('.skeleton-card').length).toBeGreaterThan(0);
       expect(root.querySelector('.search__grid[aria-busy="true"]')).not.toBeNull();
     });
 
     it('labels the two buttons as one control', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([]);
       const group = root.querySelector('.view-toggle') as HTMLElement;
 
@@ -693,7 +693,7 @@ describe('SearchPage', () => {
     const pageRows = () => Array.from(page().querySelectorAll('app-listing-row')) as HTMLElement[];
 
     async function loadTwoPagesThenOpenAListing(): Promise<void> {
-      await visit('/?carburant=diesel');
+      await visit('/recherche?carburant=diesel');
       await answer([listing('a'), listing('b')], { hasMore: true, count: 3 });
       (Array.from(root.querySelectorAll('button')).find((button) =>
         button.textContent?.includes('Voir plus'),
@@ -708,7 +708,7 @@ describe('SearchPage', () => {
     }
 
     it('makes each row a link to its listing', async () => {
-      await visit('/');
+      await visit('/recherche');
       await answer([listing('a')]);
 
       expect(rows()[0].querySelector('a')?.getAttribute('href')).toBe('/annonces/a');
@@ -721,7 +721,7 @@ describe('SearchPage', () => {
       expect(url()).toBe('/annonces/c');
 
       TestBed.inject(Location).back();
-      await waitFor(() => url() === '/?carburant=diesel');
+      await waitFor(() => url() === '/recherche?carburant=diesel');
 
       expect(pageRows()).toHaveLength(3);
       expect(open(LIST)).toHaveLength(0);
@@ -735,7 +735,7 @@ describe('SearchPage', () => {
       // Held rows are for a return, not a cache. Arriving by a link must show today's list.
       await loadTwoPagesThenOpenAListing();
 
-      await harness.navigateByUrl('/?carburant=diesel');
+      await harness.navigateByUrl('/recherche?carburant=diesel');
       await settle();
 
       expect(open(LIST)).toHaveLength(1);
@@ -744,7 +744,7 @@ describe('SearchPage', () => {
     it('searches normally after a return, when a filter is then changed', async () => {
       await loadTwoPagesThenOpenAListing();
       TestBed.inject(Location).back();
-      await waitFor(() => url() === '/?carburant=diesel');
+      await waitFor(() => url() === '/recherche?carburant=diesel');
 
       (Array.from(page().querySelectorAll('app-filter-chip button')).find((button) =>
         button.textContent?.includes('Automatique'),

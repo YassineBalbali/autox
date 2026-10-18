@@ -27,6 +27,16 @@ export interface FooterColumn {
  */
 export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   {
+    // The pages that exist today, first: until the others do, this is the column that
+    // takes the reader somewhere.
+    title: 'AutoX',
+    items: [
+      { label: 'Voitures d’occasion', path: 'recherche' },
+      { label: 'Déposer une annonce', path: 'vendre' },
+      { label: 'Mes annonces', path: 'mes-annonces' },
+    ],
+  },
+  {
     title: 'À propos',
     items: [
       { label: 'Qui sommes-nous', path: 'a-propos' },
@@ -165,8 +175,12 @@ export function resolveFooter(
       padding-block: var(--s-5) var(--s-4);
 
       @media (min-width: t.$bp-md) {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: var(--s-5);
+      }
+
+      @media (min-width: t.$bp-lg) {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
       }
     }
 
@@ -190,8 +204,13 @@ export function resolveFooter(
 
     .footer__link {
       font-size: var(--t-sm);
+      line-height: var(--lh-snug);
       color: var(--c-ink-soft);
       text-decoration: none;
+    }
+
+    a.footer__link {
+      color: var(--c-ink);
     }
 
     a.footer__link:hover {

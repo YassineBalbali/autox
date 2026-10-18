@@ -1,0 +1,103 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+// ---- hero -------------------------------------------------------------------
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  // Pulled up over main's top padding (app.scss), so the photo meets the header.
+  margin-top: calc(-1 * var(--s-5));
+  padding-block: var(--s-6);
+
+  @media (min-width: t.$bp-md) {
+    margin-top: calc(-1 * var(--s-6));
+  }
+
+  @media (min-width: t.$bp-lg) {
+    min-height: 30rem;
+    display: flex;
+    align-items: center;
+    padding-block: var(--s-7);
+  }
+}
+
+// The photo breaks out of the page container to the full width of the window. body
+// clips horizontal overflow (see _base.scss), so 100vw's scrollbar allowance never
+// becomes a horizontal scroll.
+.hero__backdrop {
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  z-index: -1;
+  overflow: hidden;
+  background: var(--c-navy);
+
+  // Navy from the left, where the card is, thinning to the right: the headline stays
+  // legible on any part of the photo, and the photo is still a photo.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgb(11 31 58 / 78%) 0%, rgb(11 31 58 / 45%) 55%, rgb(11 31 58 / 30%) 100%),
+      linear-gradient(0deg, rgb(11 31 58 / 35%) 0%, transparent 40%);
+  }
+}
+
+.hero__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 60%;
+}
+
+.hero__inner {
+  display: grid;
+  gap: var(--s-6);
+  width: 100%;
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: 26rem 1fr;
+    align-items: center;
+    gap: var(--s-7);
+  }
+}
+
+.hero__headline {
+  color: #fff;
+  // Under the card on a narrow screen, where the card is what matters.
+  order: -1;
+
+  @media (min-width: t.$bp-lg) {
+    order: 0;
+    justify-self: end;
+    max-width: 32rem;
+    text-align: right;
+  }
+}
+
+.hero__title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: var(--fw-heavy);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 30%);
+
+  @media (min-width: t.$bp-lg) {
+    font-size: 2.75rem;
+  }
+}
+
+.hero__lede {
+  margin: var(--s-3) 0 0;
+  font-size: var(--t-md);
+  line-height: var(--lh-body);
+  color: rgb(255 255 255 / 90%);
+}

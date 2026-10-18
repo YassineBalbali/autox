@@ -1,0 +1,73 @@
+<form class="finder" (submit)="submit($event)" aria-label="Rechercher une voiture" i18n-aria-label="@@homeFinderLabel">
+  <nav class="finder__tabs" aria-label="Acheter ou vendre" i18n-aria-label="@@homeFinderTabs">
+    <a class="finder__tab finder__tab--active" routerLink="/" aria-current="page" i18n="@@homeTabBuy">Acheter</a>
+    <a class="finder__tab" routerLink="/vendre" i18n="@@homeTabSell">Vendre</a>
+  </nav>
+
+  <div class="finder__fields">
+    <label class="finder__field">
+      <span class="visually-hidden" i18n="@@homeMake">Marque</span>
+      <select class="finder__control" [value]="draft().make" (change)="setField('make', $event)">
+        <option value="" i18n="@@homeAnyMake">Marque</option>
+        @for (make of makes(); track make.id) {
+          <option [value]="make.slug" [selected]="make.slug === draft().make">{{ make.name }}</option>
+        }
+      </select>
+      <app-icon class="finder__adornment" name="chevron-down" [size]="16" />
+    </label>
+
+    <label class="finder__field">
+      <span class="visually-hidden" i18n="@@homeModel">Modèle</span>
+      <select
+        class="finder__control"
+        [value]="draft().model"
+        [disabled]="!draft().make"
+        (change)="setField('model', $event)"
+      >
+        <option value="" i18n="@@homeAnyModel">Modèle</option>
+        @for (model of models(); track model.id) {
+          <option [value]="model.slug" [selected]="model.slug === draft().model">{{ model.name }}</option>
+        }
+      </select>
+      <app-icon class="finder__adornment" name="chevron-down" [size]="16" />
+    </label>
+
+    <label class="finder__field">
+      <span class="visually-hidden" i18n="@@homePriceMax">Prix maximum</span>
+      <select class="finder__control" [value]="draft().priceMax" (change)="setField('priceMax', $event)">
+        <option value="" i18n="@@homeAnyPrice">Prix max</option>
+        @for (price of priceOptions; track price) {
+          <option [value]="price" [selected]="'' + price === draft().priceMax">
+            {{ formatPrice(price) }}
+          </option>
+        }
+      </select>
+      <app-icon class="finder__adornment" name="chevron-down" [size]="16" />
+    </label>
+
+    <label class="finder__field">
+      <span class="visually-hidden" i18n="@@homePostalCode">Code postal ou département</span>
+      <input
+        class="finder__control"
+        type="text"
+        inputmode="numeric"
+        autocomplete="postal-code"
+        maxlength="5"
+        placeholder="Code postal"
+        i18n-placeholder="@@homePostalCodePlaceholder"
+        [value]="draft().postalCode"
+        (input)="setField('postalCode', $event)"
+      />
+      <app-icon class="finder__adornment" name="map-pin" [size]="16" />
+    </label>
+  </div>
+
+  <button class="btn btn--primary btn--block finder__submit" type="submit">
+    <app-icon name="search" [size]="18" />
+    <span aria-live="polite">{{ searchLabel() }}</span>
+  </button>
+
+  <a class="finder__more" [routerLink]="searchPath" [queryParams]="queryParams()" i18n="@@homeMoreCriteria">
+    Plus de critères
+  </a>
+</form>

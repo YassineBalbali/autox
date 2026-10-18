@@ -25,12 +25,12 @@ export class SearchMemory {
 }
 
 /**
- * Whether a URL is the search page: the root path, with or without a query string.
+ * Whether a URL is the search page: `/recherche`, with or without a query string.
  *
  * <p>Deliberately strict. This decides whether a listing's back link may call
  * `history.back()`, and stepping back from a listing reached some other way would take
  * the visitor somewhere they did not ask to go — possibly off the site.
  */
 export function isSearchUrl(url: string | null | undefined): boolean {
-  return typeof url === 'string' && (url === '/' || url.startsWith('/?'));
+  return typeof url === 'string' && (url === '/recherche' || url.startsWith('/recherche?'));
 }

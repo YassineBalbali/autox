@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, map, of, switchMap } from 'rxjs';
+import { switchMap } from 'rxjs';
 
-import { ReferenceStore } from '../../core/reference/reference.store';
 import { formatIntegerFr } from '../../shared/format/number';
 import { BODY_LABELS, CONDITION_LABELS, FUEL_LABELS, GEARBOX_LABELS, labelOf } from '../../shared/listing/labels.fr';
 import { SearchQuery } from './search-query';
+import { SearchResolver } from './search-resolver';
 
 /** One filter currently applied, in words, with what removing it means. */
 export interface AppliedFilter {
@@ -220,44 +220,17 @@ function range(
   `,
 })
 export class ActiveFilters {
-  private readonly reference = inject(ReferenceStore);
+  private readonly resolver = inject(SearchResolver);
 
   readonly query = input.required<SearchQuery>();
 
   readonly changed = output<Partial<SearchQuery>>();
   readonly cleared = output<void>();
 
-  /**
-   * The make and model as the catalogue names them — "Citroën", not "citroen".
-   *
-   * <p>The URL carries slugs, and a slug is not a label. Until the catalogue answers, and
-   * if it never does, the chip shows the slug: wrong in its accents, right in what it
-   * removes.
-   */
+  /** The make and model as the catalogue names them; see {@link SearchResolver.names}. */
   private readonly names = toSignal(
     toObservable(computed(() => `${this.query().make ?? ''}\n${this.query().model ?? ''}`)).pipe(
-      switchMap(() => {
-        const { make, model } = this.query();
-        if (!make) {
-          return of<VehicleNames>({});
-        }
-        return this.reference.makes().pipe(
-          switchMap((makes) => {
-            const found = makes.find((candidate) => candidate.slug === make);
-            if (!found?.id || !model) {
-              return of<VehicleNames>({ make: found?.name });
-            }
-            return this.reference.models(found.id).pipe(
-              map((models): VehicleNames => ({
-                make: found.name,
-                model: models.find((candidate) => candidate.slug === model)?.name,
-              })),
-              catchError(() => of<VehicleNames>({ make: found.name })),
-            );
-          }),
-          catchError(() => of<VehicleNames>({})),
-        );
-      }),
+      switchMap(() => this.resolver.names(this.query())),
     ),
     { initialValue: {} as VehicleNames },
   );
