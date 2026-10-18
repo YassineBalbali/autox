@@ -94,3 +94,4 @@ $RECYCLE.BIN/
 logs/
 /data/
 docker-compose.override.yml
+
