@@ -1,38 +1,47 @@
-# Update pull requests for every ecosystem in the repository, weekly.
+# Update pull requests for every ecosystem in the repository, monthly.
 #
 # The CI scans block a push on a known HIGH or CRITICAL advisory in what ships; this is the
-# other half — it proposes the upgrades, including for the build tools the scans leave out
-# and for advisories that have no fix yet when they are published.
+# other half — it proposes the upgrades, including for the build tools the scans leave out.
 #
-# Minor and patch updates are grouped into one pull request per ecosystem, so a week's
-# worth of version bumps is one review rather than twenty. Major versions arrive one by
-# one, because each is a migration.
+# Three rules, the same for every ecosystem:
+#   - Monthly. A portfolio demo does not need a weekly review queue.
+#   - No major versions. Each is a migration (Spring Boot 4, Java 25, PostgreSQL 18), done
+#     on purpose, by hand, not proposed by a bot on a schedule. Security fixes in a newer
+#     major are still caught: the CI scans fail on them.
+#   - One pull request per ecosystem. Majors being ignored, the group "everything" is
+#     exactly "minor and patch" — and, for the Docker images, the digest refreshes, which
+#     carry no version number for a minor/patch filter to match.
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /backend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
-      backend-minor-and-patch:
-        update-types: [minor, patch]
+      backend:
+        patterns: ['*']
 
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
-      angular:
-        patterns: ['@angular/*', '@angular-devkit/*']
-      frontend-minor-and-patch:
-        update-types: [minor, patch]
+      frontend:
+        patterns: ['*']
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       actions:
         patterns: ['*']
@@ -42,10 +51,22 @@ updates:
   - package-ecosystem: docker-compose
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+    groups:
+      compose-images:
+        patterns: ['*']
 
   # backend/Dockerfile pins both base images (Maven build, Temurin JRE) by digest.
   - package-ecosystem: docker
     directory: /backend
     schedule:
-      interval: weekly
+      interval: monthly
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+    groups:
+      dockerfile-images:
+        patterns: ['*']
