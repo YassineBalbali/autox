@@ -1,0 +1,41 @@
+// The two arrangements of search results, as mixins: the results page and its loading
+// placeholders both use them, so the placeholders are the shape of what replaces them.
+@use '../../../styles/tokens' as t;
+
+// One result after another, each on its own raised surface.
+@mixin list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Three across at the width this is designed for. Explicit column counts rather than
+// auto-fill: "three columns at 1440" is a decision, and auto-fill would make it an
+// accident of the container width and the gap.
+@mixin grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: t.$bp-sm) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: t.$bp-xl) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+// The surface a result sits on, in either arrangement.
+@mixin surface {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-raised);
+}

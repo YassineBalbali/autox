@@ -260,11 +260,11 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 388 tests, needs Docker running
+mvn clean verify         # 389 tests, needs Docker running
 
 cd ../frontend
 npm run lint
-npm test -- --no-watch   # 857 tests, jsdom
+npm test -- --no-watch   # 896 tests, jsdom
 npm run test:scripts     # 21 tests of the build scripts: the security policy
 npm run build            # the production build, with the policy and headers written in
 ```
@@ -346,7 +346,7 @@ of the interface.
 | Path | Who | What |
 |---|---|---|
 | `/` | anyone | Home: search card with a live count, recent searches, make, budget and category shortcuts. An old search link (`/?marque=…`) is forwarded to `/recherche` |
-| `/recherche` | anyone | Search results: filters, sort and view in the query string |
+| `/recherche` | anyone | Search results: filters, sort and view in the query string; a heart on each result marks it in this browser only |
 | `/annonces/:id` | anyone | One listing |
 | `/connexion`, `/inscription` | anyone | Sign in, register (private seller or dealer) |
 | `/mot-de-passe-oublie`, `/reinitialiser-mot-de-passe` | anyone | Reset by emailed link |

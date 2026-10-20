@@ -19,13 +19,19 @@
     <section class="search__results" aria-labelledby="titre-resultats">
       <header class="search__head">
         <div>
-          <h1 id="titre-resultats" class="search__title" i18n="@@searchTitle">
-            Voitures d’occasion
-          </h1>
-          <!-- Polite: read out when a filter changes the figure, without interrupting. -->
-          <p class="search__count" aria-live="polite">
+          <!-- The figure is the heading: it is what a buyer reads first, and how they know
+               whether a filter helped. Until it is known, what the page is. -->
+          <h1 id="titre-resultats" class="search__title">
             @if (countText()) {
               {{ countText() }}
+            } @else {
+              <ng-container i18n="@@searchTitle">Voitures d’occasion</ng-container>
+            }
+          </h1>
+          <!-- Polite: read out when a filter changes the figure, without interrupting. -->
+          <p class="search__range" aria-live="polite">
+            @if (rangeText()) {
+              {{ rangeText() }}
             } @else if (results.status() === 'loading') {
               <ng-container i18n="@@searchCounting">Recherche en cours…</ng-container>
             }
@@ -50,45 +56,7 @@
 
       @switch (results.status()) {
         @case ('loading') {
-          @if (view() === 'grille') {
-            <ul
-              class="search__grid"
-              aria-busy="true"
-              aria-label="Chargement des annonces"
-              i18n-aria-label="@@searchLoading"
-            >
-              @for (row of skeletons; track row) {
-                <li class="skeleton-card" aria-hidden="true">
-                  <div class="skeleton-card__photo"></div>
-                  <div class="skeleton__lines skeleton-card__lines">
-                    <span class="skeleton__line skeleton__price"></span>
-                    <span class="skeleton__line skeleton__line--title"></span>
-                    <span class="skeleton__line"></span>
-                  </div>
-                </li>
-              }
-            </ul>
-          } @else {
-            <!-- Rows of the real height, so the list does not jump when the results land. -->
-            <ul
-              class="rows"
-              aria-busy="true"
-              aria-label="Chargement des annonces"
-              i18n-aria-label="@@searchLoading"
-            >
-              @for (row of skeletons; track row) {
-                <li class="search__row skeleton" aria-hidden="true">
-                  <div class="skeleton__photo"></div>
-                  <div class="skeleton__lines">
-                    <span class="skeleton__line skeleton__line--title"></span>
-                    <span class="skeleton__line"></span>
-                    <span class="skeleton__line skeleton__line--short"></span>
-                  </div>
-                  <span class="skeleton__line skeleton__price"></span>
-                </li>
-              }
-            </ul>
-          }
+          <app-results-skeleton [view]="view()" />
         }
 
         @case ('error') {
@@ -144,9 +112,9 @@
                 }
               </ul>
             } @else {
-              <ul class="rows">
+              <ul class="search__list">
                 @for (listing of results.items(); track listing.id; let index = $index) {
-                  <li class="search__row">
+                  <li class="search__item">
                     <app-listing-row
                       [listing]="listing"
                       [minorUnit]="minorUnitOf(listing)"

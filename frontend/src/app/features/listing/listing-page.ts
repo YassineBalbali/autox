@@ -11,7 +11,7 @@ import { asApiError } from '../../core/errors/api-error';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
 import { FUEL_LABELS, GEARBOX_LABELS, SELLER_ROLE_LABELS, labelOf } from '../../shared/listing/labels.fr';
-import { departmentOf } from '../../shared/listing/listing-row';
+import { departmentOf } from '../../shared/listing/summary';
 import { PhotoGallery } from '../../shared/listing/photo-gallery';
 import { Price } from '../../shared/listing/price';
 import { SpecLine } from '../../shared/listing/spec-line';

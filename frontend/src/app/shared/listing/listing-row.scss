@@ -6,40 +6,70 @@
 
 // Three columns from the small breakpoint up: photo, facts, price. Below it the price
 // drops under the facts, still right-aligned, rather than squeezing the title.
+//
+// The article is the positioning context for the title link's ::after, which is stretched
+// over all of it: the row is the link's target.
 .listing {
+  position: relative;
   display: grid;
-  grid-template-columns: 7.5rem minmax(0, 1fr);
+  grid-template-columns: 8.5rem minmax(0, 1fr);
   gap: var(--s-2) var(--s-3);
-  padding: var(--s-2) var(--s-3);
+  padding: var(--s-3);
 
   @media (min-width: t.$bp-sm) {
-    // The photo is sized so the row is as tall as its three lines of text need and no
-    // taller: a bigger picture would only add empty space beside it, and rows per screen
-    // is the number this layout exists to maximise.
-    grid-template-columns: 9rem minmax(0, 1fr) auto;
-    gap: var(--s-3);
-    padding: var(--s-2) var(--s-3);
+    // A photo big enough to judge the car by, at the cost of rows per screen: at this
+    // size the photo is the first thing compared, and a thumbnail cannot carry that.
+    // It runs to the edges of the row; the text columns carry the padding.
+    grid-template-columns: 14rem minmax(0, 1fr) auto;
+    gap: var(--s-4);
+    padding: 0;
   }
 }
 
-// The row is the link's target. The article is the positioning context; the link's
-// ::after is stretched over all of it.
-.listing {
-  position: relative;
+.listing__thumb {
+  align-self: start;
+  border-radius: var(--r-md);
+  overflow: hidden;
+
+  @media (min-width: t.$bp-sm) {
+    border-radius: var(--r-lg) 0 0 var(--r-lg);
+  }
+}
+
+.listing__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+
+  @media (min-width: t.$bp-sm) {
+    padding-block: var(--s-3);
+  }
+}
+
+.listing__title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-0);
+  margin: 0;
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-snug);
 }
 
 .listing__link {
   color: inherit;
   text-decoration: none;
 
+  // Anywhere on the row: the whole row is the target, so the whole row lights the title.
+  .listing:hover & {
+    color: var(--c-accent);
+  }
+
   &::after {
     content: '';
     position: absolute;
     inset: 0;
-  }
-
-  &:hover {
-    color: var(--c-accent);
   }
 
   // The ring goes round the row, since the row is what will be activated.
@@ -49,84 +79,77 @@
     &::after {
       outline: 2px solid var(--c-focus);
       outline-offset: -2px;
+      border-radius: var(--r-md);
     }
   }
 }
 
-.listing__photo {
-  aspect-ratio: 4 / 3;
+// The version can be long ("BlueHDi 130 S&S EAT8 Allure Pack"): one line, then cut, so
+// every row keeps its rhythm.
+.listing__version {
   overflow: hidden;
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-regular);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Pinned to the foot of the facts column, whatever is above it.
+.listing__foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  background: var(--c-surface-sunk);
-  border: var(--divider);
-  border-radius: var(--r-sm);
-}
-
-.listing__img {
-  width: 100%;
-  height: 100%;
-  // Sellers upload every ratio there is. Cover crops to the box, so a portrait photo
-  // does not leave the row with a stripe of grey on either side.
-  object-fit: cover;
-}
-
-.listing__nophoto {
-  font-size: var(--t-xs);
-  color: var(--c-ink-faint);
-}
-
-.listing__main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  min-width: 0;
-}
-
-.listing__head {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--s-1) var(--s-2);
-}
-
-.listing__title {
-  // A seller's title can be 140 characters. Two lines, then cut: the row keeps its
-  // height and the list keeps its rhythm.
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
-.listing__meta {
-  display: flex;
-  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-3);
   margin-top: auto;
   font-size: var(--t-xs);
   color: var(--c-ink-faint);
   line-height: var(--lh-snug);
-
-  span + span::before {
-    content: '·';
-    margin-inline: var(--s-1);
-  }
 }
 
 .listing__place {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
   color: var(--c-ink-soft);
+  font-size: var(--t-sm);
   font-weight: var(--fw-semibold);
 }
 
-.listing__price {
+.listing__seller {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.listing__name {
+  overflow: hidden;
+  color: var(--c-ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Price at the top, date at the foot, both right-aligned.
+.listing__aside {
   grid-column: 2;
-  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-1);
 
   @media (min-width: t.$bp-sm) {
     grid-column: auto;
+    padding: var(--s-3) var(--s-4) var(--s-3) 0;
     // A minimum width, so a five-figure and a six-figure price start a column of the
     // same width and the facts beside them do not shift from row to row.
-    min-width: 7.5rem;
+    min-width: 8.5rem;
   }
+}
+
+.listing__date {
+  color: var(--c-ink-faint);
+  font-size: var(--t-xs);
+  white-space: nowrap;
 }

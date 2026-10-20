@@ -43,6 +43,8 @@ public record PublicListingSummary(
 
         SellerCard seller,
         Map<String, ImageVariantView> coverImage,
+        /** How many photos the listing shows: confirmed uploads only, the cover included. */
+        int photoCount,
 
         Instant publishedAt) {
 

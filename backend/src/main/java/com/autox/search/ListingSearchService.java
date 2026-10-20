@@ -128,6 +128,7 @@ public class ListingSearchService {
         // One query for every cover image on the page, rather than one per card.
         Map<UUID, Map<String, ListingSearchRepository.CoverVariant>> covers =
                 searchRepository.findCoverImages(ids);
+        Map<UUID, Integer> photoCounts = searchRepository.countPhotos(ids);
 
         List<PublicListingSummary> summaries = new ArrayList<>(rows.size());
         for (ListingSearchRepository.SearchRow row : rows) {
@@ -154,6 +155,7 @@ public class ListingSearchService {
                     row.postalCode(),
                     new PublicListingSummary.SellerCard(row.sellerId(), row.sellerName(), row.sellerRole()),
                     coverOf(covers.get(row.id())),
+                    photoCounts.getOrDefault(row.id(), 0),
                     row.publishedAt()));
         }
         return summaries;
