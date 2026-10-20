@@ -17,11 +17,13 @@
     margin-top: calc(-1 * var(--s-6));
   }
 
+  // A band, not a screen: at desktop width the top of the next section shows below it,
+  // so the page reads as more than a search box.
   @media (min-width: t.$bp-lg) {
-    min-height: 30rem;
+    height: 420px;
     display: flex;
     align-items: center;
-    padding-block: var(--s-7);
+    padding-block: var(--s-5);
   }
 }
 
@@ -38,15 +40,21 @@
   overflow: hidden;
   background: var(--c-navy);
 
-  // Navy from the left, where the card is, thinning to the right: the headline stays
-  // legible on any part of the photo, and the photo is still a photo.
+  // Only as much navy as the white headline needs, and only where it is: the photo is a
+  // bright one and should stay bright. On a narrow screen the headline sits at the top,
+  // above the card; on a wide one it sits on the right, and the card — opaque — needs
+  // nothing behind it.
   &::after {
     content: '';
     position: absolute;
     inset: 0;
-    background:
-      linear-gradient(90deg, rgb(11 31 58 / 78%) 0%, rgb(11 31 58 / 45%) 55%, rgb(11 31 58 / 30%) 100%),
-      linear-gradient(0deg, rgb(11 31 58 / 35%) 0%, transparent 40%);
+    background: linear-gradient(180deg, rgb(11 31 58 / 70%) 0%, rgb(11 31 58 / 25%) 45%, rgb(11 31 58 / 10%) 100%);
+
+    @media (min-width: t.$bp-lg) {
+      background:
+        linear-gradient(270deg, rgb(11 31 58 / 72%) 0%, rgb(11 31 58 / 45%) 30%, rgb(11 31 58 / 0%) 62%),
+        linear-gradient(0deg, rgb(11 31 58 / 20%) 0%, transparent 30%);
+    }
   }
 }
 
@@ -54,7 +62,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 60%;
+  // The band of the photo with the road, the forest and the peaks in it.
+  object-position: 50% 55%;
 }
 
 .hero__inner {
@@ -63,7 +72,7 @@
   width: 100%;
 
   @media (min-width: t.$bp-lg) {
-    grid-template-columns: 26rem 1fr;
+    grid-template-columns: 24rem 1fr;
     align-items: center;
     gap: var(--s-7);
   }

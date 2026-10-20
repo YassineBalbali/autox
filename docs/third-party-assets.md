@@ -8,23 +8,34 @@ for the assets copied into the repository.
 
 | | |
 |---|---|
-| File | `frontend/public/images/hero-street-1920.jpg`, `hero-street-1280.jpg` (two widths of one photo) |
-| Subject | A street of cars at dusk, headlights on |
-| Author | Nabeel Syed |
-| Original | Unsplash, photo `Jk3-Uhdwjcs` (https://unsplash.com/photos/Jk3-Uhdwjcs), 2014 |
-| Copied from | Wikimedia Commons, [File:Rows of car headlights (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Rows_of_car_headlights_(Unsplash).jpg) — the 1920 and 1280 pixel renditions Commons serves |
+| Files | `frontend/public/images/hero-road-1920.jpg` (1920 × 800), `hero-road-1280.jpg` (1280 × 855) |
+| Subject | A highway curving towards snow-capped mountains near Banff, Canada, a car on the road, in daylight |
+| Author | Ezra Jeffrey |
+| Original | Unsplash, photo `TKC0896qVDg` (https://unsplash.com/photos/TKC0896qVDg), 2016 |
+| Copied from | Wikimedia Commons, [File:Gray SUV mountains banff (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Gray_SUV_mountains_banff_(Unsplash).jpg) — the 1920 and 1280 pixel renditions Commons serves |
 | Licence | **CC0 1.0** — public domain dedication (https://creativecommons.org/publicdomain/zero/1.0/) |
 
 CC0 asks nothing in return: no attribution, no notice, no share-alike. The credit above is
 given because it is right to, not because it is required.
 
+**Changed from the original**, all of which CC0 permits:
+
+- **The car's number plate is pixelated**, in both files. It was legible in the original,
+  and a real person's plate has no business in the middle of the home page.
+- The 1920 file is cropped to a 1920 × 800 band — the road, the forest and the peaks — since
+  the hero shows a wide strip of the photo and the cropped sky was never seen. The 1280
+  file, used on narrower screens where the hero is taller, is the full frame.
+- Both were re-encoded as JPEG (quality 0.78) with no metadata, which also removed the
+  camera's EXIF data.
+
 Taken from Commons rather than Unsplash for the licence. Photos uploaded to Unsplash
 before mid-2017 were published under CC0, and Commons keeps that licence on record with each
 file. Unsplash's later licence also permits this use, but it is Unsplash's own and is
 recorded nowhere outside Unsplash. If the photo is replaced, keep to CC0 or an equally
-plain licence, and update this section.
+plain licence, check it for legible plates and faces, and update this section.
 
-The photo is decorative (`alt=""`) and shown under a navy gradient.
+The photo is decorative (`alt=""`) and shown under a navy gradient behind the headline.
+It replaced an earlier CC0 photo (Nabeel Syed, a city street at dusk), judged too dark.
 
 ## Icons — Lucide
 

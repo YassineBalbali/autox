@@ -6,11 +6,12 @@
 
 // ---- the search card --------------------------------------------------------
 
+// Compact: everything the card holds, and nothing under the last line but its padding.
 .finder {
   display: flex;
   flex-direction: column;
-  gap: var(--s-3);
-  padding: var(--s-4) var(--s-5) var(--s-5);
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-4) var(--s-3);
   background: var(--c-surface);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-overlay);
@@ -23,7 +24,7 @@
 }
 
 .finder__tab {
-  padding: var(--s-2) 0 var(--s-3);
+  padding: var(--s-2) 0;
   text-align: center;
   font-size: var(--t-md);
   font-weight: var(--fw-semibold);
@@ -49,7 +50,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--s-2);
-  margin-top: var(--s-1);
+  margin-top: var(--s-2);
 }
 
 .finder__field {
@@ -61,7 +62,7 @@
 // the right. Taller than --h-control: this is the page's one form, and it is the target.
 .finder__control {
   width: 100%;
-  height: 48px;
+  height: 44px;
   padding: 0 2.25rem 0 var(--s-3);
   background: var(--c-surface);
   border: var(--border);
@@ -106,7 +107,7 @@ input.finder__control {
 }
 
 .finder__submit {
-  height: 52px;
+  height: 48px;
   margin-top: var(--s-1);
   font-size: var(--t-md);
   font-weight: var(--fw-bold);
