@@ -1,0 +1,91 @@
+@use '../../../styles/tokens' as t;
+@use 'results';
+
+.list {
+  @include results.list;
+}
+
+.grid {
+  @include results.grid;
+}
+
+// The same columns and padding as app-listing-row.
+.item {
+  @include results.surface;
+
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-3);
+
+  @media (min-width: t.$bp-sm) {
+    grid-template-columns: 14rem minmax(0, 1fr) 8.5rem;
+    gap: var(--s-4);
+    padding: 0 var(--s-4) 0 0;
+    overflow: hidden;
+
+    .lines {
+      padding-block: var(--s-3);
+    }
+
+    .line--price {
+      margin-top: var(--s-3);
+    }
+  }
+}
+
+.card {
+  @include results.surface;
+
+  overflow: hidden;
+}
+
+.photo {
+  aspect-ratio: 4 / 3;
+  background: var(--c-line);
+}
+
+.item__photo {
+  border-radius: var(--r-md);
+
+  @media (min-width: t.$bp-sm) {
+    border-radius: 0;
+  }
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding-top: var(--s-1);
+}
+
+.card__lines {
+  padding: var(--s-3) var(--s-4) var(--s-5);
+}
+
+.line {
+  display: block;
+  height: 0.75rem;
+  width: 55%;
+  background: var(--c-line);
+  border-radius: var(--r-sm);
+}
+
+.line--title {
+  height: 1rem;
+  width: 75%;
+}
+
+.line--short {
+  width: 30%;
+}
+
+.line--price {
+  height: 1.5rem;
+  width: 100%;
+
+  .card__lines & {
+    width: 40%;
+  }
+}

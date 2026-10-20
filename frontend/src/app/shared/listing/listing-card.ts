@@ -1,82 +1,78 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { PublicListingSummary } from '../../core/api';
-import { coverOf, listingLink, placeOf } from './listing-row';
+import { Icon } from '../ui/icon';
+import { ListingThumb } from './listing-thumb';
 import { Price } from './price';
-import { SpecLine } from './spec-line';
+import { SellerBadge } from './seller-badge';
+import { SpecFacts } from './spec-facts';
+import { headlineOf, listingLink, placeOf } from './summary';
 
 /**
- * One vehicle as a card: photo on top, then price, title, the spec line, and who is
- * selling it from where.
+ * One vehicle as a card: photo on top, then make and model, the version, the facts two
+ * by two, the price, and where it is and who sells it.
  *
  * <p>The alternative to {@link ListingRow} for the same result, for a buyer who chooses by
  * looking rather than by comparing. It is deliberately the same information in a
- * different arrangement — same price component, same spec line, same picture — so that
+ * different arrangement — same picture, same heading, same facts, same price — so that
  * switching views changes how the list is laid out and nothing about what it says.
  *
- * <p>The price comes first under the photo, above the title. In a column of rows the price
- * has its own place on the right; in a card there is no right, so it takes the next most
- * prominent position, and it is in that position on every card.
+ * <p>The price sits under the facts, at the same height on every card in a row: the
+ * heading is clamped to its lines and the facts are a fixed grid, so the prices line up
+ * across the row and can be compared at a glance.
  */
 @Component({
   selector: 'app-listing-card',
-  imports: [Price, SpecLine, RouterLink],
+  imports: [Price, SpecFacts, SellerBadge, ListingThumb, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card">
-      <div class="card__photo">
-        @if (photo(); as image) {
-          <img
-            class="card__img"
-            [src]="image.url"
-            [attr.width]="image.width"
-            [attr.height]="image.height"
-            [attr.loading]="eager() ? 'eager' : 'lazy'"
-            decoding="async"
-            [alt]="listing().title"
-            (error)="photoBroken.set(true)"
-          />
-        } @else {
-          <span class="card__nophoto" i18n="@@listingNoPhoto">Pas de photo</span>
-        }
-      </div>
+      <app-listing-thumb
+        [listing]="listing()"
+        [alt]="listing().title ?? headline().title"
+        [eager]="eager()"
+      />
 
       <div class="card__body">
+        <h2 class="card__title">
+          @if (link(); as target) {
+            <a class="card__link" [routerLink]="target">{{ headline().title }}</a>
+          } @else {
+            {{ headline().title }}
+          }
+          <!-- Always present, empty or not, so the facts start at the same height on every card. -->
+          <span class="card__version">{{ headline().subtitle }}</span>
+        </h2>
+
+        <app-spec-facts
+          layout="grid"
+          [year]="listing().firstRegistrationYear"
+          [mileage]="listing().mileageKm"
+          [fuel]="fuelLabel()"
+          [electric]="electric()"
+          [gearbox]="gearboxLabel()"
+        />
+
         @if (listing().priceAmount !== undefined) {
           <app-price
+            class="card__price"
+            size="result"
             [amountMinor]="listing().priceAmount!"
             [currency]="listing().currencyCode ?? 'EUR'"
             [minorUnit]="minorUnit()"
           />
         }
 
-        <h2 class="card__title">
-          @if (link(); as target) {
-            <a class="card__link" [routerLink]="target">{{ listing().title }}</a>
-          } @else {
-            {{ listing().title }}
-          }
-        </h2>
-
-        <app-spec-line
-          [year]="listing().firstRegistrationYear"
-          [mileage]="listing().mileageKm"
-          [fuel]="fuelLabel()"
-          [gearbox]="gearboxLabel()"
-        />
-
-        <p class="card__seller">
-          @if (isProfessional()) {
-            <span class="tag" i18n="@@listingPro">Pro</span>
-          }
-          @if (sellerName()) {
-            <span class="card__name">{{ sellerName() }}</span>
-          }
+        <div class="card__foot">
           @if (place()) {
-            <span class="card__place">{{ place() }}</span>
+            <span class="card__place">
+              <app-icon name="map-pin" [size]="15" />
+              {{ place() }}
+            </span>
           }
-        </p>
+          <app-seller-badge [role]="listing().seller?.role" />
+        </div>
       </div>
     </article>
   `,
@@ -94,52 +90,54 @@ import { SpecLine } from './spec-line';
       flex-direction: column;
       height: 100%;
       background: var(--c-surface);
-      border: var(--border);
-      border-radius: var(--r-md);
+      border: 1px solid var(--c-line);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-raised);
       overflow: hidden;
+      transition:
+        box-shadow 150ms ease,
+        transform 150ms ease;
 
       &:hover {
-        border-color: var(--c-ink-faint);
+        box-shadow: var(--shadow-raised-hover);
+        transform: translateY(-2px);
       }
-    }
 
-    .card__photo {
-      aspect-ratio: 4 / 3;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--c-surface-sunk);
-      border-bottom: var(--divider);
-    }
+      @media (prefers-reduced-motion: reduce) {
+        transition: none;
 
-    .card__img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .card__nophoto {
-      font-size: var(--t-xs);
-      color: var(--c-ink-faint);
+        &:hover {
+          transform: none;
+        }
+      }
     }
 
     .card__body {
       display: flex;
       flex: 1;
       flex-direction: column;
-      gap: var(--s-1);
-      padding: var(--s-2) var(--s-3) var(--s-3);
+      gap: var(--s-3);
+      padding: var(--s-3) var(--s-4) var(--s-4);
     }
 
     .card__title {
-      font-size: var(--t-body);
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-0);
+      margin: 0;
+      font-size: var(--t-md);
       font-weight: var(--fw-bold);
       line-height: var(--lh-snug);
-      // Two lines, then cut, so cards in a row keep their text on the same baselines.
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
+    }
+
+    .card__version {
+      min-height: 1lh;
       overflow: hidden;
+      color: var(--c-ink-soft);
+      font-size: var(--t-sm);
+      font-weight: var(--fw-regular);
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     // The title is the link; its ::after covers the card, so the card is the target.
@@ -147,14 +145,14 @@ import { SpecLine } from './spec-line';
       color: inherit;
       text-decoration: none;
 
+      .card:hover & {
+        color: var(--c-accent);
+      }
+
       &::after {
         content: '';
         position: absolute;
         inset: 0;
-      }
-
-      &:hover {
-        color: var(--c-accent);
       }
 
       &:focus-visible {
@@ -163,31 +161,34 @@ import { SpecLine } from './spec-line';
         &::after {
           outline: 2px solid var(--c-focus);
           outline-offset: -2px;
+          border-radius: var(--r-lg);
         }
       }
     }
 
-    // Pinned to the foot of the card, whatever the title's length.
-    .card__seller {
+    // Pinned to the foot of the card, whatever is above it.
+    .card__price {
+      margin-top: auto;
+    }
+
+    .card__foot {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 0 var(--s-1);
-      margin-top: auto;
-      padding-top: var(--s-1);
-      font-size: var(--t-xs);
-      color: var(--c-ink-faint);
-      line-height: var(--lh-snug);
+      justify-content: space-between;
+      gap: var(--s-1) var(--s-2);
+      padding-top: var(--s-3);
+      border-top: var(--divider);
     }
 
-    .card__name {
+    .card__place {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-1);
+      min-width: 0;
       color: var(--c-ink-soft);
+      font-size: var(--t-sm);
       font-weight: var(--fw-semibold);
-    }
-
-    .card__name + .card__place::before {
-      content: '·';
-      margin-right: var(--s-1);
     }
   `,
 })
@@ -198,13 +199,8 @@ export class ListingCard {
   readonly gearboxLabel = input<string | null>(null);
   readonly eager = input(false);
 
-  protected readonly photoBroken = signal(false);
-
-  protected readonly photo = computed(() => (this.photoBroken() ? null : coverOf(this.listing())));
+  protected readonly headline = computed(() => headlineOf(this.listing()));
+  protected readonly electric = computed(() => this.listing().fuelType === 'ELECTRIC');
   protected readonly place = computed(() => placeOf(this.listing()));
-  protected readonly sellerName = computed(() => this.listing().seller?.displayName ?? null);
-  protected readonly isProfessional = computed(
-    () => this.listing().seller?.role === 'PROFESSIONNEL',
-  );
   protected readonly link = computed(() => listingLink(this.listing().id));
 }

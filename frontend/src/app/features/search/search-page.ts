@@ -21,6 +21,7 @@ import {
   withoutFilters,
 } from './search-query';
 import { RecentSearches } from './recent-searches';
+import { ResultsSkeleton } from './results-skeleton';
 import { SearchResolver } from './search-resolver';
 import { SearchMemory } from './search-memory';
 import { SearchResultsStore } from './search-results.store';
@@ -28,7 +29,7 @@ import { ResultsView, ViewPreference } from './view-preference';
 import { ViewToggle } from './view-toggle';
 
 /**
- * The search screen, and the home page.
+ * The search screen, at `/recherche`.
  *
  * <p>The flow is one direction, round a loop:
  *
@@ -54,7 +55,16 @@ import { ViewToggle } from './view-toggle';
  */
 @Component({
   selector: 'app-search-page',
-  imports: [SearchBar, ActiveFilters, SearchFilters, ViewToggle, ListingRow, ListingCard, Alert],
+  imports: [
+    SearchBar,
+    ActiveFilters,
+    SearchFilters,
+    ViewToggle,
+    ListingRow,
+    ListingCard,
+    ResultsSkeleton,
+    Alert,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './search-page.html',
   styleUrl: './search-page.scss',
@@ -86,8 +96,6 @@ export class SearchPage {
   protected readonly view = this.preference.view;
 
   protected readonly sortOptions = SORT_OPTIONS;
-  /** Placeholder rows shown while the first page loads — about one screenful. */
-  protected readonly skeletons = [0, 1, 2, 3, 4, 5];
 
   private readonly query$ = this.route.queryParamMap.pipe(map(parseQuery));
 
@@ -103,6 +111,13 @@ export class SearchPage {
 
   /** "22 annonces", "Plus de 10 000 annonces", or nothing while the count is unknown. */
   protected readonly countText = computed(() => countLabel(this.results.count()));
+
+  /** "Annonces 1 à 24 sur 60", growing as "Voir plus" extends the list. */
+  protected readonly rangeText = computed(() =>
+    this.results.status() === 'ready'
+      ? rangeLabel(this.results.items().length, this.results.count())
+      : null,
+  );
 
   constructor() {
     this.query$
@@ -200,4 +215,24 @@ export function countLabel(count: ResultCount | null): string | null {
     return `Plus de ${formatIntegerFr(count.count)} annonces`;
   }
   return `${formatIntegerFr(count.count)} ${count.count < 2 ? 'annonce' : 'annonces'}`;
+}
+
+/**
+ * Which results are on the page, out of how many: "Annonces 1 à 24 sur 60".
+ *
+ * <p>The list is extended in place rather than paged, so it always starts at 1 and ends at
+ * however many are loaded. The total is left off while it is unknown — the count is asked
+ * separately and may be late or fail — rather than shown as a guess. A capped count says
+ * so: "sur plus de 10 000".
+ */
+export function rangeLabel(shown: number, count: ResultCount | null): string | null {
+  if (shown < 1) {
+    return null;
+  }
+  const range = shown === 1 ? 'Annonce 1' : `Annonces 1 à ${formatIntegerFr(shown)}`;
+  if (count === null || typeof count.count !== 'number') {
+    return range;
+  }
+  const total = formatIntegerFr(count.count);
+  return count.capped ? `${range} sur plus de ${total}` : `${range} sur ${total}`;
 }

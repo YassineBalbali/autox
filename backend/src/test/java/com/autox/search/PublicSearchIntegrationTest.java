@@ -354,6 +354,27 @@ class PublicSearchIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.items[0].coverImage.THUMBNAIL.width").value(320));
     }
 
+    @Test
+    @DisplayName("results count the confirmed photos, not uploads still in progress")
+    void resultsCountConfirmedPhotos() throws Exception {
+        JsonNode seller = register(uniqueEmail("photos"), UserRole.PROFESSIONNEL);
+        String id = publishedListing(seller, Map.of("title", "Three photos, one pending"));
+        for (int position = 1; position <= 2; position++) {
+            UUID imageId = com.autox.common.UuidV7.generate();
+            jdbcTemplate.update("""
+                    INSERT INTO listing_image (id, listing_id, position, status, storage_key,
+                                               content_type, byte_size, width, height, uploaded_at,
+                                               upload_expires_at)
+                    VALUES (?, ?::uuid, ?, ?, ?, 'image/jpeg', 12345, 1600, 1200, now(), now() + interval '1 hour')
+                    """, imageId, id, position, position == 1 ? "READY" : "PENDING",
+                    "listings/" + id + "/" + imageId + "/original.jpg");
+        }
+
+        mockMvc.perform(get("/api/v1/listings"))
+                .andExpect(jsonPath("$.items[0].title").value("Three photos, one pending"))
+                .andExpect(jsonPath("$.items[0].photoCount").value(2));
+    }
+
     // --- language neutrality ----------------------------------------------
 
     @Test

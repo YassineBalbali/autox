@@ -383,4 +383,28 @@ public class ListingSearchRepository {
 
     public record CoverVariant(String storageKey, int width, int height) {
     }
+
+    /**
+     * How many confirmed photos each listing on a page has, in one query. A listing with none
+     * is absent from the map. Served by {@code ix_listing_image_listing}.
+     */
+    public Map<UUID, Integer> countPhotos(List<UUID> listingIds) {
+        if (listingIds.isEmpty()) {
+            return Map.of();
+        }
+
+        String sql = """
+                SELECT listing_id, count(*) AS photos
+                  FROM listing_image
+                 WHERE listing_id IN (:ids)
+                   AND status = 'READY'
+                 GROUP BY listing_id
+                """;
+
+        Map<UUID, Integer> counts = new java.util.HashMap<>();
+        jdbc.query(sql, new MapSqlParameterSource("ids", listingIds), rs -> {
+            counts.put(rs.getObject("listing_id", UUID.class), rs.getInt("photos"));
+        });
+        return counts;
+    }
 }

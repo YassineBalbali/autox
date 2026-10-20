@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { PublicListingSummary } from '../../core/api';
 import { NBSP } from '../format/number';
@@ -10,7 +10,10 @@ import { ListingRow } from './listing-row';
 
 const LISTING: PublicListingSummary = {
   id: 'l-1',
-  title: 'Peugeot 308 BlueHDi 130 Allure Pack',
+  title: 'Peugeot 308 BlueHDi 130 Allure Pack, première main',
+  make: 'Peugeot',
+  model: '308',
+  version: 'BlueHDi 130 Allure Pack',
   priceAmount: 1250000,
   currencyCode: 'EUR',
   firstRegistrationYear: 2021,
@@ -20,6 +23,7 @@ const LISTING: PublicListingSummary = {
   countryCode: 'FR',
   publishedAt: '2026-10-11T12:44:20Z',
   seller: { id: 's-1', displayName: 'Garage Bellevue', role: 'PROFESSIONNEL' },
+  photoCount: 5,
   coverImage: { CARD: { url: 'http://img.test/card.jpg', width: 800, height: 600 } },
 };
 
@@ -45,6 +49,8 @@ class Host {
 describe('ListingCard', () => {
   let fixture: ComponentFixture<Host>;
 
+  afterEach(() => localStorage.clear());
+
   async function render(listing: PublicListingSummary = LISTING) {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
@@ -58,72 +64,75 @@ describe('ListingCard', () => {
     };
   }
 
-  it('reads photo, price, title, spec line, seller — in that order', async () => {
+  it('reads photo, heading, facts, price, then place and seller — in that order', async () => {
     const { card } = await render();
     const body = card.querySelector('.card__body') as HTMLElement;
 
-    expect((card.querySelector('article') as HTMLElement).firstElementChild?.className).toBe('card__photo');
+    expect((card.querySelector('article') as HTMLElement).firstElementChild?.tagName.toLowerCase()).toBe(
+      'app-listing-thumb',
+    );
     expect(Array.from(body.children).map((child) => child.tagName.toLowerCase())).toEqual([
-      'app-price',
       'h2',
-      'app-spec-line',
-      'p',
+      'app-spec-facts',
+      'app-price',
+      'div',
     ]);
   });
 
-  it('puts the price above the title, the most prominent place a card has', async () => {
-    // A row gives the price its own column on the right. A card has no right, so the
-    // price takes the first line under the photo — on every card.
+  it('lays the facts out two by two, and the price large', async () => {
     const { card } = await render();
-    const price = card.querySelector('app-price') as HTMLElement;
-    const title = card.querySelector('h2') as HTMLElement;
 
-    expect(price.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(price.textContent?.trim()).toBe(`12${NBSP}500${NBSP}€`);
+    expect(card.querySelector('.facts')?.classList).toContain('facts--grid');
+    expect(card.querySelector('app-price')?.textContent?.trim()).toBe(`12${NBSP}500${NBSP}€`);
+    expect(card.querySelector('.price')?.classList).toContain('price--result');
   });
 
-  it('says who is selling, and from where', async () => {
+  it('says where the car is, and what kind of seller has it', async () => {
     const { card } = await render();
-    const seller = card.querySelector('.card__seller') as HTMLElement;
+    const foot = card.querySelector('.card__foot') as HTMLElement;
 
-    expect(seller.textContent).toContain('Garage Bellevue');
-    expect(seller.textContent).toContain('Lyon (69)');
-    expect(seller.querySelector('.tag')?.textContent).toContain('Pro');
+    expect(foot.querySelector('.card__place')?.textContent?.trim()).toBe('Lyon (69)');
+    expect(foot.querySelector('app-seller-badge')?.textContent?.trim()).toBe('Pro');
+
+    const { card: private_ } = await render({ ...LISTING, seller: { role: 'PARTICULIER' } });
+    expect(private_.querySelector('app-seller-badge')?.textContent?.trim()).toBe('Particulier');
   });
 
-  it('does not mark a private seller as a professional', async () => {
-    const { card } = await render({ ...LISTING, seller: { displayName: 'Camille R.', role: 'PARTICULIER' } });
+  it('keeps the version line when there is no version, so the facts line up across a row', async () => {
+    const { card } = await render({ ...LISTING, version: undefined });
 
-    expect(card.querySelector('.tag')).toBeNull();
-    expect(card.textContent).toContain('Camille R.');
+    expect(card.querySelector('.card__version')).not.toBeNull();
+    expect(card.querySelector('.card__version')?.textContent?.trim()).toBe('');
   });
 
   describe('agrees with the row about the same listing', () => {
-    it('shows the same price, the same facts and the same picture', async () => {
+    it('shows the same heading, price, facts, picture, count and place', async () => {
+      const { card, row } = await render();
+      const same = (selector: string) =>
+        expect(card.querySelector(selector)?.textContent?.trim()).toBe(row.querySelector(selector)?.textContent?.trim());
+
+      same('h2 a');
+      same('app-price');
+      same('.thumb__count');
+      same('app-seller-badge');
+      expect(card.querySelector('.card__place')?.textContent?.trim()).toBe(
+        row.querySelector('.listing__place')?.textContent?.trim(),
+      );
+      // The card has room for four facts; the row adds the power.
+      const facts = (root: HTMLElement) =>
+        Array.from(root.querySelectorAll('.facts__text')).map((fact) => fact.textContent);
+      expect(facts(row).slice(0, 4)).toEqual(facts(card));
+      expect(card.querySelector('img')?.getAttribute('src')).toBe(row.querySelector('img')?.getAttribute('src'));
+    });
+
+    it('shares the heart: marking one marks the other', async () => {
       const { card, row } = await render();
 
-      expect(card.querySelector('app-price')?.textContent).toBe(row.querySelector('app-price')?.textContent);
-      expect(card.querySelector('app-spec-line')?.textContent).toBe(
-        row.querySelector('app-spec-line')?.textContent,
-      );
-      expect(card.querySelector('img')?.getAttribute('src')).toBe(row.querySelector('img')?.getAttribute('src'));
-      expect(card.querySelector('h2')?.textContent?.trim()).toBe(row.querySelector('h2')?.textContent?.trim());
+      (card.querySelector('app-favourite-button button') as HTMLButtonElement).click();
+      await fixture.whenStable();
+
+      expect(row.querySelector('app-favourite-button button')?.getAttribute('aria-pressed')).toBe('true');
     });
-  });
-
-  it('shows a placeholder in the same box when there is no photo', async () => {
-    const { card } = await render({ ...LISTING, coverImage: {} });
-
-    expect(card.querySelector('img')).toBeNull();
-    expect(card.querySelector('.card__photo')?.textContent).toContain('Pas de photo');
-  });
-
-  it('falls back to the placeholder when the image fails to load', async () => {
-    const { card } = await render();
-    (card.querySelector('img') as HTMLImageElement).dispatchEvent(new Event('error'));
-    await fixture.whenStable();
-
-    expect(card.querySelector('img')).toBeNull();
   });
 
   it('survives a listing with almost nothing on it', async () => {
@@ -131,6 +140,7 @@ describe('ListingCard', () => {
 
     expect(card.querySelector('h2')?.textContent).toContain('Sans détail');
     expect(card.querySelector('app-price')).toBeNull();
+    expect(card.querySelector('.card__place')).toBeNull();
     expect(card.textContent).not.toContain('undefined');
     expect(card.textContent).not.toContain('null');
   });

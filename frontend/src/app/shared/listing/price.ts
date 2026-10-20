@@ -2,8 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 import { visibleSpaces } from '../format/number';
 
-/** `list` for a row in a list of vehicles; `detail` for the one price on a listing page. */
-export type PriceSize = 'list' | 'detail';
+/**
+ * `list` for a compact list of vehicles; `result` for a search result, where the price is
+ * what the eye goes to after the photo; `detail` for the one price on a listing page.
+ */
+export type PriceSize = 'list' | 'result' | 'detail';
 
 /**
  * A price. The most prominent thing wherever it appears.
@@ -24,7 +27,12 @@ export type PriceSize = 'list' | 'detail';
 @Component({
   selector: 'app-price',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="price" [class.price--detail]="size() === 'detail'">{{ text() }}</span>`,
+  template: `<span
+    class="price"
+    [class.price--result]="size() === 'result'"
+    [class.price--detail]="size() === 'detail'"
+    >{{ text() }}</span
+  >`,
   styles: `
     :host {
       display: inline-block;
@@ -39,6 +47,10 @@ export type PriceSize = 'list' | 'detail';
       font-variant-numeric: tabular-nums;
       // A price never breaks: "18 990" on one line and "€" on the next is not a price.
       white-space: nowrap;
+    }
+
+    .price--result {
+      font-size: 1.5rem;
     }
 
     .price--detail {

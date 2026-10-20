@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { BASE_PATH, ErrorCode, PublicListingSummary } from '../../core/api';
 import { NBSP } from '../../shared/format/number';
-import { SearchPage, countLabel } from './search-page';
+import { SearchPage, countLabel, rangeLabel } from './search-page';
 
 const BASE = 'http://api.test';
 const LIST = `${BASE}/api/v1/listings`;
@@ -283,18 +283,61 @@ describe('SearchPage', () => {
   });
 
   describe('the result count', () => {
-    it('is shown above the list', async () => {
+    it('is the page heading', async () => {
       await visit('/recherche');
       await answer([listing('a'), listing('b')], { count: 1284 });
 
-      expect(root.querySelector('.search__count')?.textContent?.trim()).toBe(`1${NBSP}284 annonces`);
+      expect(root.querySelector('h1')?.textContent?.trim()).toBe(`1${NBSP}284 annonces`);
     });
 
     it('says "more than" when the API stopped counting', async () => {
       await visit('/recherche');
       await answer([listing('a')], { count: 10000, capped: true });
 
-      expect(root.querySelector('.search__count')?.textContent?.trim()).toBe(`Plus de 10${NBSP}000 annonces`);
+      expect(root.querySelector('h1')?.textContent?.trim()).toBe(`Plus de 10${NBSP}000 annonces`);
+      expect(root.querySelector('.search__range')?.textContent?.trim()).toBe(
+        `Annonce 1 sur plus de 10${NBSP}000`,
+      );
+    });
+
+    it('leaves the heading as what the page is until the figure is known', async () => {
+      await visit('/recherche');
+
+      expect(root.querySelector('h1')?.textContent?.trim()).toBe('Voitures d’occasion');
+      expect(root.querySelector('.search__range')?.textContent?.trim()).toBe('Recherche en cours…');
+    });
+
+    it('says which results are showing, out of how many', async () => {
+      await visit('/recherche');
+      await answer([listing('a'), listing('b')], { count: 60 });
+
+      expect(root.querySelector('.search__range')?.textContent?.trim()).toBe('Annonces 1 à 2 sur 60');
+    });
+
+    it('extends the range as "Voir plus" extends the list', async () => {
+      await visit('/recherche');
+      await answer([listing('a'), listing('b')], { count: 3, hasMore: true });
+
+      (Array.from(root.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Voir plus'),
+      ) as HTMLButtonElement).click();
+      await settle();
+      open(LIST)[0].flush({ items: [listing('c')], hasMore: false });
+      await settle();
+
+      expect(root.querySelector('.search__range')?.textContent?.trim()).toBe('Annonces 1 à 3 sur 3');
+    });
+
+    it('words the range for one result, a missing count and a capped one', () => {
+      expect(rangeLabel(24, { count: 60, capped: false })).toBe('Annonces 1 à 24 sur 60');
+      expect(rangeLabel(1, { count: 1, capped: false })).toBe('Annonce 1 sur 1');
+      // The count is asked separately and may fail: the range is shown without a total
+      // rather than with a guess.
+      expect(rangeLabel(24, null)).toBe('Annonces 1 à 24');
+      expect(rangeLabel(1200, { count: 10000, capped: true })).toBe(
+        `Annonces 1 à 1${NBSP}200 sur plus de 10${NBSP}000`,
+      );
+      expect(rangeLabel(0, { count: 0, capped: false })).toBeNull();
     });
 
     it('agrees the noun with the number, the French way', () => {
@@ -335,7 +378,7 @@ describe('SearchPage', () => {
       await visit('/recherche');
 
       expect(root.querySelector('[aria-busy="true"]')).not.toBeNull();
-      expect(root.querySelectorAll('.skeleton').length).toBeGreaterThan(0);
+      expect(root.querySelectorAll('app-results-skeleton .item').length).toBeGreaterThan(0);
       expect(rows()).toHaveLength(0);
     });
 
@@ -668,8 +711,8 @@ describe('SearchPage', () => {
       localStorage.setItem('autox.search.view', 'grille');
       await visit('/recherche', MAKES, true);
 
-      expect(root.querySelectorAll('.skeleton-card').length).toBeGreaterThan(0);
-      expect(root.querySelector('.search__grid[aria-busy="true"]')).not.toBeNull();
+      expect(root.querySelectorAll('app-results-skeleton .card').length).toBeGreaterThan(0);
+      expect(root.querySelector('app-results-skeleton .grid[aria-busy="true"]')).not.toBeNull();
     });
 
     it('labels the two buttons as one control', async () => {
@@ -726,7 +769,8 @@ describe('SearchPage', () => {
       expect(pageRows()).toHaveLength(3);
       expect(open(LIST)).toHaveLength(0);
       expect(open(COUNT)).toHaveLength(0);
-      expect(page().querySelector('.search__count')?.textContent?.trim()).toBe('3 annonces');
+      expect(page().querySelector('h1')?.textContent?.trim()).toBe('3 annonces');
+      expect(page().querySelector('.search__range')?.textContent?.trim()).toBe('Annonces 1 à 3 sur 3');
       // And the filter is still shown as applied.
       expect(page().querySelector('.applied__chip')?.textContent).toContain('Diesel');
     });
