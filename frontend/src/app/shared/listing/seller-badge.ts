@@ -18,7 +18,11 @@ import { Icon } from '../ui/icon';
       @case ('pro') {
         <span class="badge badge--pro">
           <app-icon name="store" [size]="13" [strokeWidth]="2" />
-          <ng-container i18n="@@listingPro">Pro</ng-container>
+          @if (full()) {
+            <ng-container i18n="@@listingProFull">Professionnel</ng-container>
+          } @else {
+            <ng-container i18n="@@listingPro">Pro</ng-container>
+          }
         </span>
       }
       @case ('private') {
@@ -61,6 +65,8 @@ import { Icon } from '../ui/icon';
 export class SellerBadge {
   /** `SellerCard.role`, as the API sends it. */
   readonly role = input<string | null | undefined>();
+  /** "Professionnel" rather than "Pro", where there is room: a listing's own page. */
+  readonly full = input(false);
 
   protected readonly kind = computed(() => {
     switch (this.role()) {

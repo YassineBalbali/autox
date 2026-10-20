@@ -45,10 +45,10 @@ It replaced an earlier CC0 photo (Nabeel Syed, a city street at dusk), judged to
 | Source | `lucide-static` 1.59.0, https://lucide.dev |
 | Licence | ISC, plus MIT for the icons Lucide inherited from Feather (notices below) |
 
-The icon shapes are copied in as data, not installed: the site uses about twenty-five of
+The icon shapes are copied in as data, not installed: the site uses about thirty of
 Lucide's icons, and `scripts/icons.mjs` explains how to add one. Of those in use,
-`arrow-right`, `calendar`, `chevron-down`, `search` and `x` are among those Lucide lists as
-derived from Feather.
+`arrow-left`, `arrow-right`, `calendar`, `check`, `chevron-down`, `clock`, `search` and `x`
+are among those Lucide lists as derived from Feather.
 
 Both licences require their notice to accompany copies, which is what this section is for.
 

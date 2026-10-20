@@ -10,21 +10,19 @@ import { ErrorCode, Feature, ListingsPublicService, PublicListingDetail } from '
 import { asApiError } from '../../core/errors/api-error';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
-import { FUEL_LABELS, GEARBOX_LABELS, SELLER_ROLE_LABELS, labelOf } from '../../shared/listing/labels.fr';
-import { departmentOf } from '../../shared/listing/summary';
+import { FUEL_LABELS, GEARBOX_LABELS, labelOf } from '../../shared/listing/labels.fr';
 import { PhotoGallery } from '../../shared/listing/photo-gallery';
-import { Price } from '../../shared/listing/price';
-import { SpecLine } from '../../shared/listing/spec-line';
 import { Alert } from '../../shared/ui/alert';
+import { Icon } from '../../shared/ui/icon';
 import { NotFound } from '../../shared/ui/not-found';
 import { SearchMemory, isSearchUrl } from '../search/search-memory';
+import { KeyFacts } from './key-facts';
+import { ListingSummary } from './listing-summary';
 import { galleryImages, groupFeatures, specificationRows } from './listing-view';
 
 type PageState = 'loading' | 'ready' | 'missing' | 'error';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const MONTH_AND_YEAR = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
 
 /**
  * One listing, as a buyer sees it.
@@ -44,7 +42,7 @@ const MONTH_AND_YEAR = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: '
  */
 @Component({
   selector: 'app-listing-page',
-  imports: [PhotoGallery, Price, SpecLine, Alert, NotFound],
+  imports: [PhotoGallery, KeyFacts, ListingSummary, Icon, Alert, NotFound],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-page.html',
   styleUrl: './listing-page.scss',
@@ -109,26 +107,6 @@ export class ListingPage {
 
   protected readonly fuelLabel = computed(() => labelOf(FUEL_LABELS, this.listing()?.vehicle?.fuelType));
   protected readonly gearboxLabel = computed(() => labelOf(GEARBOX_LABELS, this.listing()?.vehicle?.gearbox));
-
-  /** "Lyon (69)" */
-  protected readonly place = computed(() => {
-    const location = this.listing()?.location;
-    if (!location?.city) {
-      return null;
-    }
-    const department = departmentOf(location.postalCode, location.countryCode);
-    return department ? `${location.city} (${department})` : location.city;
-  });
-
-  protected readonly sellerKind = computed(() => labelOf(SELLER_ROLE_LABELS, this.listing()?.seller?.role));
-  protected readonly isProfessional = computed(() => this.listing()?.seller?.role === 'PROFESSIONNEL');
-
-  /** "mars 2026" */
-  protected readonly memberSince = computed(() => {
-    const since = this.listing()?.seller?.memberSince;
-    const date = since ? new Date(since) : null;
-    return date && !Number.isNaN(date.getTime()) ? MONTH_AND_YEAR.format(date) : null;
-  });
 
   constructor() {
     toObservable(this.id)

@@ -208,8 +208,9 @@ describe('ListingPage', () => {
       await load();
       const seller = root.querySelector('.seller') as HTMLElement;
 
-      expect(seller.textContent).toContain('Garage Bellevue');
-      expect(seller.querySelector('.tag')?.textContent?.trim()).toBe('Professionnel');
+      expect(seller.querySelector('.seller__name')?.textContent?.trim()).toBe('Garage Bellevue');
+      // In full here, where there is room: "Professionnel", not the results' "Pro".
+      expect(seller.querySelector('app-seller-badge')?.textContent?.trim()).toBe('Professionnel');
       expect(seller.textContent).toContain('Lyon (69)');
       expect(seller.textContent).toContain('mars 2026');
     });
@@ -217,7 +218,50 @@ describe('ListingPage', () => {
     it('labels a private seller as one', async () => {
       await load({ ...LISTING, seller: { displayName: 'Camille R.', role: 'PARTICULIER' } });
 
-      expect(root.querySelector('.seller .tag')?.textContent?.trim()).toBe('Particulier');
+      expect(root.querySelector('.seller app-seller-badge')?.textContent?.trim()).toBe('Particulier');
+    });
+
+    it('keeps title, price, contact and seller together in the one panel that follows the page', async () => {
+      await load({ ...LISTING, publishedAt: '2026-10-11T12:44:20Z' });
+      const panel = root.querySelector('.listing__aside app-listing-summary') as HTMLElement;
+
+      expect(panel.querySelector('h1')).not.toBeNull();
+      expect(panel.querySelector('app-price')).not.toBeNull();
+      expect(panel.querySelector('.summary__contact')).not.toBeNull();
+      expect(panel.querySelector('.seller')).not.toBeNull();
+      expect(panel.textContent).toContain('Publiée le 11 octobre 2026');
+    });
+
+    it('sums the car up in five facts under the photos, each named', async () => {
+      await load();
+      const facts = Array.from(root.querySelectorAll('app-key-facts .facts__tile')).map((tile) => [
+        tile.querySelector('dt')?.textContent?.trim(),
+        tile.querySelector('dd')?.textContent?.trim(),
+      ]);
+
+      expect(facts.map(([label]) => label)).toEqual([
+        'Année',
+        'Kilométrage',
+        'Énergie',
+        'Boîte de vitesses',
+        'Puissance',
+      ]);
+      expect(Object.fromEntries(facts)).toMatchObject({
+        Kilométrage: `62${NBSP}400${NBSP}km`,
+        Énergie: 'Diesel',
+        'Boîte de vitesses': 'Manuelle',
+        Puissance: `130${NBSP}ch`,
+      });
+      // The icon only repeats the label, so it is hidden from a screen reader.
+      expect(root.querySelectorAll('app-key-facts svg[aria-hidden="true"]')).toHaveLength(5);
+    });
+
+    it('ticks each piece of equipment', async () => {
+      await load();
+      const items = Array.from(root.querySelectorAll('.equipment__group li'));
+
+      expect(items.length).toBeGreaterThan(0);
+      expect(items.every((item) => item.querySelector('app-icon svg[aria-hidden="true"]'))).toBe(true);
     });
   });
 
