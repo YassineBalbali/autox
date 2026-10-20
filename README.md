@@ -264,7 +264,7 @@ mvn clean verify         # 388 tests, needs Docker running
 
 cd ../frontend
 npm run lint
-npm test -- --no-watch   # 850 tests, jsdom
+npm test -- --no-watch   # 857 tests, jsdom
 npm run test:scripts     # 21 tests of the build scripts: the security policy
 npm run build            # the production build, with the policy and headers written in
 ```

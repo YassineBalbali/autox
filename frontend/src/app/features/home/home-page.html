@@ -4,10 +4,7 @@
 @if (!recent.isEmpty()) {
   <section class="home-section" aria-labelledby="recent-title">
     <header class="home-section__head">
-      <h2 id="recent-title" class="home-section__title">
-        <app-icon name="history" [size]="20" />
-        <span i18n="@@homeRecentTitle">Vos recherches récentes</span>
-      </h2>
+      <h2 id="recent-title" class="home-section__title" i18n="@@homeRecentTitle">Vos recherches récentes</h2>
     </header>
     <app-recent-search-cards />
   </section>

@@ -53,7 +53,8 @@ describe('HomePage', () => {
     Object.fromEntries(request.request.params.keys().map((key) => [key, request.request.params.getAll(key)!.join(',')]));
 
   const settle = async () => {
-    await vi.advanceTimersByTimeAsync(300);
+    // Past the typing debounce (250 ms) and a count retry's pause (400 ms, then 800 ms).
+    await vi.advanceTimersByTimeAsync(900);
     await harness.fixture.whenStable();
   };
 
@@ -83,7 +84,7 @@ describe('HomePage', () => {
   /** Answers every open count with a figure derived from its criteria, or with `answer`. */
   async function answerCounts(answer: (criteria: Record<string, string>) => number | 'fail' = () => 7): Promise<void> {
     // The counts resolve the catalogue and currency first, so they arrive in waves.
-    for (let wave = 0; wave < 4; wave++) {
+    for (let wave = 0; wave < 6; wave++) {
       for (const request of open(COUNT)) {
         const result = answer(criteriaOf(request));
         if (result === 'fail') {

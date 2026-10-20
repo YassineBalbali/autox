@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, combineLatest, map, of, switchMap, take } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Observable, catchError, combineLatest, map, of, retry, switchMap, take, throwError, timer } from 'rxjs';
 
 import { ListingSearchCriteria, ListingsPublicService, ResultCount } from '../../core/api';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
@@ -14,6 +15,18 @@ import { ResolvedVehicle, SearchQuery, toCriteria } from './search-query';
  * where that starts.
  */
 export const PRICE_FILTER_CURRENCY = 'EUR';
+
+/** How often a failed count is tried again, and the pause before the first retry. */
+export const COUNT_RETRIES = 2;
+export const COUNT_RETRY_DELAY_MS = 400;
+
+/** No answer at all, a server fault, or "too many requests": worth asking again. */
+function isTransient(error: unknown): boolean {
+  if (!(error instanceof HttpErrorResponse)) {
+    return false;
+  }
+  return error.status === 0 || error.status === 429 || error.status >= 500;
+}
 
 /**
  * Everything that turns a search as the URL describes it into what the API and the screen
@@ -117,10 +130,24 @@ export class SearchResolver {
    *
    * <p>Never an error: every caller shows a count as a nicety beside something that works
    * without it, and a failed count must cost the number, not the tile or the button.
+   *
+   * <p>A failure that may pass — no connection, a server error, a rate-limit refusal — is
+   * tried again, twice, after a short pause. Without that, one dropped request on arrival
+   * left the home page's button saying "Rechercher" with no number for the whole visit,
+   * since the count is only asked again when the form changes. A refusal that will not
+   * pass (a 400) is not retried.
    */
   count(query: SearchQuery): Observable<ResultCount | null> {
     return this.criteria(query).pipe(
-      switchMap((criteria) => this.api.count({ criteria })),
+      switchMap((criteria) =>
+        this.api.count({ criteria }).pipe(
+          retry({
+            count: COUNT_RETRIES,
+            delay: (error: unknown, attempt) =>
+              isTransient(error) ? timer(COUNT_RETRY_DELAY_MS * attempt) : throwError(() => error),
+          }),
+        ),
+      ),
       catchError(() => of(null)),
     );
   }

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { catchError, debounceTime, map, of, startWith, switchMap } from 'rxjs';
+import { catchError, debounceTime, map, merge, of, skip, startWith, switchMap, take } from 'rxjs';
 
 import { Make, Model, ResultCount } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
@@ -91,14 +91,16 @@ export class HomeFinder {
 
   protected readonly queryParams = computed(() => toQueryParams(this.query()));
 
+  private readonly query$ = toObservable(this.query);
+
   /**
-   * The count on the button, following the form. Debounced, so typing a postal code asks
-   * once when the typing stops rather than once per key; switchMap, so an answer to an
-   * older form never overwrites a newer one.
+   * The count on the button, following the form. The first is asked at once — the page
+   * has only just arrived, and nothing is being typed. Every later one is debounced, so
+   * typing a postal code asks once when the typing stops rather than once per key.
+   * switchMap, so an answer to an older form never overwrites a newer one.
    */
   private readonly count = toSignal(
-    toObservable(this.query).pipe(
-      debounceTime(250),
+    merge(this.query$.pipe(take(1)), this.query$.pipe(skip(1), debounceTime(250))).pipe(
       switchMap((query) => this.resolver.count(query).pipe(startWith(undefined))),
     ),
     { initialValue: undefined as ResultCount | null | undefined },
