@@ -11,14 +11,17 @@ import java.util.List;
 /**
  * What the demo seed contains. Data only — nothing here touches a database.
  *
- * <p>Invented for local development, so the search screen has something to show. Sixty
- * listings: fourteen written by hand, the rest generated from model templates with a
- * fixed seed. Sixty because a page of results is twenty-four — it takes more than two
- * pages before "voir plus" and keyset pagination can be exercised in a browser at all.
- * Chosen to exercise every filter rather than to look like a real dealer's stock: seven
- * fuels, both gearboxes, four body shapes, new and used, eight sellers in a dozen towns,
- * and posting dates spread over ten weeks so the four sort orders give four different
+ * <p>Invented, so the site has something to show. A hundred and twenty listings: fourteen
+ * written by hand, the rest generated from model templates with a fixed seed. Enough for
+ * five pages of results, and enough of the eight most common models that their listings
+ * have the comparables the price indicator needs. Chosen to exercise every filter: seven
+ * fuels, both gearboxes, four body shapes, new and used, ten sellers in fifteen towns,
+ * and posting dates spread over three months so the four sort orders give four different
  * lists.
+ *
+ * <p><b>Plausible to someone who knows cars.</b> Every version is one that was sold in
+ * France, in the years it was sold, with the power its name states; prices follow the new
+ * price, the age and the mileage. The site is judged on details like these.
  *
  * <p>The makes and models are a stand-in for the real vehicle catalogue, which is a
  * dataset this project does not have yet. Ten makes is enough to make the make and model
@@ -77,10 +80,12 @@ final class DemoCatalogue {
             new Seller("nord-vo", UserRole.PROFESSIONNEL, "Nord VO",
                     "Nord Véhicules d’Occasion SAS", "00000000000042"),
             new Seller("ines", UserRole.PARTICULIER, "Inès M.", null, null),
-            new Seller("julien", UserRole.PARTICULIER, "Julien P.", null, null));
+            new Seller("julien", UserRole.PARTICULIER, "Julien P.", null, null),
+            new Seller("sarah", UserRole.PARTICULIER, "Sarah B.", null, null),
+            new Seller("karim", UserRole.PARTICULIER, "Karim D.", null, null));
 
     /** The sellers a generated listing may belong to who are private individuals. */
-    private static final java.util.Set<String> PRIVATE_SELLERS = java.util.Set.of("ines", "julien");
+    private static final java.util.Set<String> PRIVATE_SELLERS = java.util.Set.of("ines", "julien", "sarah", "karim");
 
     /**
      * How many listings a generated private seller is given. Below the API's limit of
@@ -106,82 +111,133 @@ final class DemoCatalogue {
             new Base("nord-vo", "Roubaix", "59100"),
             new Base("garage-bellevue", "Lyon", "69003"),
             new Base("ines", "Toulouse", "31000"),
-            new Base("julien", "Rennes", "35000"));
+            new Base("julien", "Rennes", "35000"),
+            new Base("sarah", "Montpellier", "34000"),
+            new Base("karim", "Grenoble", "38000"));
 
     /** How many of {@link #BASES}, from the start, are dealers. */
     private static final int DEALER_BASES = 7;
 
-    /** One engine-and-gearbox combination a model is sold with. */
-    private record Variant(String version, FuelType fuel, Gearbox gearbox, int powerHp) {
+    /**
+     * One engine, gearbox and trim a model was sold with in France, and when.
+     *
+     * <p>{@code firstYear} to {@code lastYear} are the years this exact version was on sale; a
+     * generated listing is never registered outside them. The power is the one the version's
+     * name states ("TCe 90" is 90 ch), and the new price is roughly what it listed for — the
+     * starting point of its depreciation.
+     */
+    record Variant(String version, FuelType fuel, Gearbox gearbox, int powerHp,
+                   int newPriceEuros, int firstYear, int lastYear) {
     }
 
-    /** A model, what it costs new, and the variants to pick from. */
-    private record Template(String makeSlug, String modelSlug, String name, BodyType body,
-                            int newPriceEuros, List<Variant> variants) {
+    /**
+     * A model and the versions to pick from. {@code weight} is how many listings it is
+     * given: the volume models get about ten each, so that most of their listings have the
+     * five comparables the price indicator needs, and the rest a few, which shows the
+     * indicator staying silent when there is too little to compare with.
+     */
+    record Template(String makeSlug, String modelSlug, String name, BodyType body,
+                    int weight, List<Variant> variants) {
     }
 
-    private static final List<Template> TEMPLATES = List.of(
-            new Template("peugeot", "208", "Peugeot 208", BodyType.HATCHBACK, 21_000, List.of(
-                    new Variant("PureTech 100 Allure", FuelType.PETROL, Gearbox.MANUAL, 100),
-                    new Variant("e-208 136 GT", FuelType.ELECTRIC, Gearbox.AUTOMATIC, 136))),
-            new Template("renault", "captur", "Renault Captur", BodyType.SUV, 27_000, List.of(
-                    new Variant("TCe 90 Evolution", FuelType.PETROL, Gearbox.MANUAL, 90),
-                    new Variant("E-Tech Plug-in 160 Intens", FuelType.PLUGIN_HYBRID, Gearbox.AUTOMATIC, 160))),
-            new Template("volkswagen", "polo", "Volkswagen Polo", BodyType.HATCHBACK, 22_000, List.of(
-                    new Variant("1.0 TSI 95 Life", FuelType.PETROL, Gearbox.MANUAL, 95),
-                    new Variant("1.0 TSI 110 DSG7 Style", FuelType.PETROL, Gearbox.AUTOMATIC, 110))),
-            new Template("bmw", "x1", "BMW X1", BodyType.SUV, 44_000, List.of(
-                    new Variant("sDrive18i 136 xLine", FuelType.PETROL, Gearbox.AUTOMATIC, 136),
-                    new Variant("sDrive18d 150 M Sport", FuelType.DIESEL, Gearbox.AUTOMATIC, 150))),
-            new Template("toyota", "yaris", "Toyota Yaris", BodyType.HATCHBACK, 23_000, List.of(
-                    new Variant("116h Design", FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC, 116))),
-            new Template("citroen", "c5-aircross", "Citroën C5 Aircross", BodyType.SUV, 36_000, List.of(
-                    new Variant("BlueHDi 130 EAT8 Shine", FuelType.DIESEL, Gearbox.AUTOMATIC, 130),
-                    new Variant("Hybrid 225 e-EAT8 Shine Pack", FuelType.PLUGIN_HYBRID, Gearbox.AUTOMATIC, 225))),
-            new Template("dacia", "sandero", "Dacia Sandero", BodyType.HATCHBACK, 14_000, List.of(
-                    new Variant("TCe 90 Expression", FuelType.PETROL, Gearbox.MANUAL, 90),
-                    new Variant("ECO-G 100 Stepway", FuelType.LPG, Gearbox.MANUAL, 100))),
-            new Template("peugeot", "308", "Peugeot 308", BodyType.HATCHBACK, 30_000, List.of(
-                    new Variant("PureTech 130 EAT8 Allure", FuelType.PETROL, Gearbox.AUTOMATIC, 130),
-                    new Variant("BlueHDi 130 Active Pack", FuelType.DIESEL, Gearbox.MANUAL, 130))),
-            new Template("tesla", "model-3", "Tesla Model 3", BodyType.SEDAN, 43_000, List.of(
-                    new Variant("Propulsion", FuelType.ELECTRIC, Gearbox.AUTOMATIC, 283),
-                    new Variant("Performance AWD", FuelType.ELECTRIC, Gearbox.AUTOMATIC, 513))),
-            new Template("renault", "megane", "Renault Mégane", BodyType.HATCHBACK, 29_000, List.of(
-                    new Variant("TCe 140 Techno", FuelType.PETROL, Gearbox.MANUAL, 140),
-                    new Variant("Estate Blue dCi 115 EDC Intens", FuelType.DIESEL, Gearbox.AUTOMATIC, 115))),
-            new Template("volkswagen", "tiguan", "Volkswagen Tiguan", BodyType.SUV, 42_000, List.of(
-                    new Variant("2.0 TDI 150 DSG7 Elegance", FuelType.DIESEL, Gearbox.AUTOMATIC, 150),
-                    new Variant("1.5 TSI 150 Life", FuelType.PETROL, Gearbox.MANUAL, 150))),
-            new Template("fiat", "500", "Fiat 500", BodyType.HATCHBACK, 17_500, List.of(
-                    new Variant("1.2 69 Lounge", FuelType.PETROL, Gearbox.MANUAL, 69),
-                    new Variant("e 118 Icône", FuelType.ELECTRIC, Gearbox.AUTOMATIC, 118))),
-            new Template("bmw", "serie-3", "BMW Série 3", BodyType.SEDAN, 48_000, List.of(
-                    new Variant("318d 150 Business Design", FuelType.DIESEL, Gearbox.AUTOMATIC, 150),
-                    new Variant("330e 292 M Sport", FuelType.PLUGIN_HYBRID, Gearbox.AUTOMATIC, 292))),
-            new Template("citroen", "c3", "Citroën C3", BodyType.HATCHBACK, 18_500, List.of(
-                    new Variant("PureTech 83 Feel", FuelType.PETROL, Gearbox.MANUAL, 83),
-                    new Variant("BlueHDi 100 Shine", FuelType.DIESEL, Gearbox.MANUAL, 100))),
-            new Template("mercedes-benz", "classe-a", "Mercedes Classe A", BodyType.HATCHBACK, 38_000, List.of(
-                    new Variant("A 180 d 116 Progressive Line", FuelType.DIESEL, Gearbox.AUTOMATIC, 116),
-                    new Variant("A 250 e 218 AMG Line", FuelType.PLUGIN_HYBRID, Gearbox.AUTOMATIC, 218))),
-            new Template("dacia", "duster", "Dacia Duster", BodyType.SUV, 22_000, List.of(
-                    new Variant("Blue dCi 115 4x4 Prestige", FuelType.DIESEL, Gearbox.MANUAL, 115),
-                    new Variant("ECO-G 100 Expression", FuelType.LPG, Gearbox.MANUAL, 100))),
-            new Template("renault", "clio", "Renault Clio", BodyType.HATCHBACK, 20_000, List.of(
-                    new Variant("E-Tech 145 Techno", FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC, 145),
-                    new Variant("Blue dCi 100 Business", FuelType.DIESEL, Gearbox.MANUAL, 100))),
-            new Template("volkswagen", "golf", "Volkswagen Golf", BodyType.HATCHBACK, 32_000, List.of(
-                    new Variant("1.5 TSI 130 Life", FuelType.PETROL, Gearbox.MANUAL, 130),
-                    new Variant("2.0 TDI 115 Life Plus", FuelType.DIESEL, Gearbox.MANUAL, 115))),
-            new Template("toyota", "corolla", "Toyota Corolla", BodyType.ESTATE, 31_000, List.of(
-                    new Variant("Touring Sports 122h Dynamic", FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC, 122),
-                    new Variant("Touring Sports 196h GR Sport", FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC, 196))),
-            new Template("peugeot", "3008", "Peugeot 3008", BodyType.SUV, 39_000, List.of(
-                    new Variant("BlueHDi 130 EAT8 Allure", FuelType.DIESEL, Gearbox.AUTOMATIC, 130),
-                    new Variant("PureTech 130 Active", FuelType.PETROL, Gearbox.MANUAL, 130))),
-            new Template("tesla", "model-y", "Tesla Model Y", BodyType.SUV, 47_000, List.of(
-                    new Variant("Grande Autonomie AWD", FuelType.ELECTRIC, Gearbox.AUTOMATIC, 514))));
+    private static Variant v(String version, FuelType fuel, Gearbox gearbox, int powerHp,
+                             int newPriceEuros, int firstYear, int lastYear) {
+        return new Variant(version, fuel, gearbox, powerHp, newPriceEuros, firstYear, lastYear);
+    }
+
+    private static final Gearbox MANUAL = Gearbox.MANUAL;
+    private static final Gearbox AUTO = Gearbox.AUTOMATIC;
+
+    static final List<Template> TEMPLATES = List.of(
+            // ---- the volume models: about ten listings each, hand-written ones included
+            new Template("renault", "clio", "Renault Clio", BodyType.HATCHBACK, 9, List.of(
+                    v("TCe 90 Evolution", FuelType.PETROL, MANUAL, 90, 19_500, 2022, 2025),
+                    v("E-Tech 145 Techno", FuelType.HYBRID_PETROL, AUTO, 145, 25_500, 2022, 2025),
+                    v("Blue dCi 100 Business", FuelType.DIESEL, MANUAL, 100, 21_500, 2020, 2022))),
+            new Template("peugeot", "208", "Peugeot 208", BodyType.HATCHBACK, 10, List.of(
+                    v("PureTech 100 Allure", FuelType.PETROL, MANUAL, 100, 22_500, 2020, 2025),
+                    v("e-208 136 GT", FuelType.ELECTRIC, AUTO, 136, 39_000, 2020, 2022),
+                    v("PureTech 75 Active", FuelType.PETROL, MANUAL, 75, 17_500, 2020, 2023))),
+            new Template("peugeot", "308", "Peugeot 308", BodyType.HATCHBACK, 9, List.of(
+                    v("PureTech 130 EAT8 Allure", FuelType.PETROL, AUTO, 130, 33_500, 2022, 2025),
+                    v("BlueHDi 130 EAT8 Allure Pack", FuelType.DIESEL, AUTO, 130, 36_500, 2022, 2025),
+                    v("Hybrid 180 e-EAT8 GT", FuelType.PLUGIN_HYBRID, AUTO, 180, 45_000, 2022, 2024))),
+            new Template("peugeot", "3008", "Peugeot 3008", BodyType.SUV, 9, List.of(
+                    v("BlueHDi 130 EAT8 Allure", FuelType.DIESEL, AUTO, 130, 38_500, 2018, 2023),
+                    v("PureTech 130 Active", FuelType.PETROL, MANUAL, 130, 31_500, 2018, 2020),
+                    v("Hybrid 225 e-EAT8 Allure", FuelType.PLUGIN_HYBRID, AUTO, 225, 46_000, 2020, 2023))),
+            new Template("volkswagen", "golf", "Volkswagen Golf", BodyType.HATCHBACK, 9, List.of(
+                    v("1.5 TSI 130 Life", FuelType.PETROL, MANUAL, 130, 30_500, 2020, 2024),
+                    v("2.0 TDI 115 Life", FuelType.DIESEL, MANUAL, 115, 31_500, 2020, 2024),
+                    v("1.5 eTSI 150 DSG7 R-Line", FuelType.PETROL, AUTO, 150, 38_000, 2020, 2025))),
+            new Template("renault", "captur", "Renault Captur", BodyType.SUV, 10, List.of(
+                    v("TCe 90 Evolution", FuelType.PETROL, MANUAL, 90, 24_500, 2022, 2025),
+                    v("E-Tech 145 Techno", FuelType.HYBRID_PETROL, AUTO, 145, 30_000, 2022, 2025),
+                    v("E-Tech Plug-in 160 Intens", FuelType.PLUGIN_HYBRID, AUTO, 160, 35_500, 2020, 2021))),
+            new Template("tesla", "model-3", "Tesla Model 3", BodyType.SEDAN, 9, List.of(
+                    v("Propulsion", FuelType.ELECTRIC, AUTO, 283, 44_000, 2021, 2025),
+                    v("Grande Autonomie AWD", FuelType.ELECTRIC, AUTO, 440, 52_000, 2021, 2023),
+                    v("Performance AWD", FuelType.ELECTRIC, AUTO, 513, 60_000, 2021, 2023))),
+            new Template("dacia", "sandero", "Dacia Sandero", BodyType.HATCHBACK, 9, List.of(
+                    v("TCe 90 Expression", FuelType.PETROL, MANUAL, 90, 15_500, 2021, 2025),
+                    v("Stepway ECO-G 100 Expression", FuelType.LPG, MANUAL, 100, 17_500, 2021, 2025))),
+            // ---- the rest: a few each
+            new Template("volkswagen", "tiguan", "Volkswagen Tiguan", BodyType.SUV, 4, List.of(
+                    v("2.0 TDI 150 DSG7 Elegance", FuelType.DIESEL, AUTO, 150, 46_000, 2021, 2023),
+                    v("1.5 TSI 150 Life", FuelType.PETROL, MANUAL, 150, 37_500, 2021, 2023))),
+            new Template("citroen", "c5-aircross", "Citroën C5 Aircross", BodyType.SUV, 4, List.of(
+                    v("BlueHDi 130 EAT8 Shine", FuelType.DIESEL, AUTO, 130, 37_000, 2019, 2025),
+                    v("Hybrid 225 e-EAT8 Shine", FuelType.PLUGIN_HYBRID, AUTO, 225, 45_000, 2020, 2024))),
+            new Template("tesla", "model-y", "Tesla Model Y", BodyType.SUV, 3, List.of(
+                    v("Grande Autonomie AWD", FuelType.ELECTRIC, AUTO, 514, 52_000, 2021, 2025),
+                    v("Propulsion", FuelType.ELECTRIC, AUTO, 299, 46_000, 2022, 2025))),
+            new Template("toyota", "yaris", "Toyota Yaris", BodyType.HATCHBACK, 3, List.of(
+                    v("116h Design", FuelType.HYBRID_PETROL, AUTO, 116, 23_500, 2020, 2023))),
+            new Template("volkswagen", "polo", "Volkswagen Polo", BodyType.HATCHBACK, 2, List.of(
+                    v("1.0 TSI 95 Life", FuelType.PETROL, MANUAL, 95, 21_500, 2021, 2025),
+                    v("1.0 TSI 110 DSG7 Style", FuelType.PETROL, AUTO, 110, 26_000, 2021, 2025))),
+            new Template("bmw", "x1", "BMW X1", BodyType.SUV, 2, List.of(
+                    v("sDrive18i 136 xLine", FuelType.PETROL, AUTO, 136, 45_500, 2023, 2025),
+                    v("sDrive18d 150 M Sport", FuelType.DIESEL, AUTO, 150, 50_000, 2023, 2025))),
+            new Template("bmw", "serie-3", "BMW Série 3", BodyType.SEDAN, 2, List.of(
+                    v("318d 150 Business Design", FuelType.DIESEL, AUTO, 150, 43_000, 2019, 2024),
+                    v("330e 292 M Sport", FuelType.PLUGIN_HYBRID, AUTO, 292, 56_000, 2020, 2025))),
+            new Template("mercedes-benz", "classe-a", "Mercedes Classe A", BodyType.HATCHBACK, 2, List.of(
+                    v("A 180 d 116 Progressive Line", FuelType.DIESEL, AUTO, 116, 36_000, 2019, 2024),
+                    v("A 250 e 218 AMG Line", FuelType.PLUGIN_HYBRID, AUTO, 218, 47_000, 2020, 2025))),
+            new Template("renault", "megane", "Renault Mégane", BodyType.HATCHBACK, 2, List.of(
+                    v("TCe 140 Techno", FuelType.PETROL, MANUAL, 140, 30_000, 2022, 2023),
+                    v("Estate Blue dCi 115 EDC Intens", FuelType.DIESEL, AUTO, 115, 31_000, 2019, 2021))),
+            new Template("citroen", "c3", "Citroën C3", BodyType.HATCHBACK, 2, List.of(
+                    v("PureTech 83 Feel", FuelType.PETROL, MANUAL, 83, 16_500, 2017, 2023),
+                    v("BlueHDi 100 Shine", FuelType.DIESEL, MANUAL, 100, 20_500, 2017, 2023))),
+            new Template("dacia", "duster", "Dacia Duster", BodyType.SUV, 2, List.of(
+                    v("Blue dCi 115 4x4 Prestige", FuelType.DIESEL, MANUAL, 115, 25_000, 2018, 2023),
+                    v("ECO-G 100 Expression", FuelType.LPG, MANUAL, 100, 19_500, 2022, 2025))),
+            new Template("toyota", "corolla", "Toyota Corolla", BodyType.ESTATE, 2, List.of(
+                    v("Touring Sports 122h Dynamic", FuelType.HYBRID_PETROL, AUTO, 122, 31_000, 2019, 2022),
+                    v("Touring Sports 196h GR Sport", FuelType.HYBRID_PETROL, AUTO, 196, 39_000, 2023, 2025))),
+            new Template("fiat", "500", "Fiat 500", BodyType.HATCHBACK, 2, List.of(
+                    v("1.2 69 Lounge", FuelType.PETROL, MANUAL, 69, 15_500, 2015, 2019),
+                    v("e 118 Icône", FuelType.ELECTRIC, AUTO, 118, 33_000, 2021, 2025))));
+
+    /**
+     * The first year each model was sold in France under its name. Every listing, hand-written
+     * or generated, is registered in or after it: a 2017 Model Y is the kind of thing anyone
+     * who knows cars notices at once.
+     */
+    static final java.util.Map<String, Integer> LAUNCH_YEARS = java.util.Map.ofEntries(
+            java.util.Map.entry("peugeot/208", 2012), java.util.Map.entry("peugeot/308", 2007),
+            java.util.Map.entry("peugeot/3008", 2009), java.util.Map.entry("renault/clio", 1990),
+            java.util.Map.entry("renault/captur", 2013), java.util.Map.entry("renault/megane", 1995),
+            java.util.Map.entry("citroen/c3", 2002), java.util.Map.entry("citroen/c5-aircross", 2019),
+            java.util.Map.entry("volkswagen/golf", 1974), java.util.Map.entry("volkswagen/polo", 1975),
+            java.util.Map.entry("volkswagen/tiguan", 2007), java.util.Map.entry("bmw/serie-3", 1975),
+            java.util.Map.entry("bmw/x1", 2009), java.util.Map.entry("mercedes-benz/classe-a", 1997),
+            java.util.Map.entry("tesla/model-3", 2019), java.util.Map.entry("tesla/model-y", 2021),
+            java.util.Map.entry("toyota/yaris", 1999), java.util.Map.entry("toyota/corolla", 1966),
+            java.util.Map.entry("dacia/sandero", 2008), java.util.Map.entry("dacia/duster", 2010),
+            java.util.Map.entry("fiat/500", 2007));
 
     private static final List<String> TITLE_NOTES = List.of(
             "", "", " — première main", ", entretien à jour", "", ", garantie 12 mois",
@@ -192,32 +248,51 @@ final class DemoCatalogue {
         ExteriorColor.RED, ExteriorColor.SILVER, ExteriorColor.GREEN, ExteriorColor.BEIGE,
     };
 
-    /** How many listings the full seed has. Enough for three pages of results. */
-    static final int SIZE = 60;
+    /**
+     * How far a seller's asking price strays from what the car is worth: a few listed
+     * keenly, a few hopefully, most near the value. Without the spread every car would be
+     * priced at its value and the price indicator would call them all "Prix du marché".
+     */
+    static final double[] ASKING = {0.84, 0.90, 0.95, 0.98, 1.0, 1.02, 1.05, 1.10, 1.16};
 
-    /** The year generated ages are counted back from. Fixed, so the set never drifts. */
-    private static final int REFERENCE_YEAR = 2026;
+    /** How many listings the full seed has. */
+    static final int SIZE = 120;
+
+    /** The date ages are counted back from: October 2026. Fixed, so the set never drifts. */
+    static final int REFERENCE_YEAR = 2026;
+    private static final int REFERENCE_MONTH = 10;
+
+    /** Kilometres a year an average car in France covers. */
+    private static final int KM_PER_YEAR = 13_000;
 
     /**
      * Every demo listing: the hand-written ones, then generated ones up to {@link #SIZE}.
      *
      * <p>Generated from a fixed seed, so the set is the same on every machine and on every
-     * run — two developers looking at the search page are looking at the same sixty cars,
-     * and a screenshot in a bug report can be reproduced. The values are plausible rather
-     * than random: mileage follows age, and price follows both.
+     * run. The values follow the market rather than chance:
+     * <ul>
+     *   <li>the year is one the version was sold in, never before the model existed;</li>
+     *   <li>mileage follows age, at 10 000 to 17 000 km a year;</li>
+     *   <li>the value is the new price less depreciation — a fifth in the first year, then
+     *       11 % a year, 15 % for an electric car, whose prices have fallen faster — adjusted
+     *       for mileage above or below the average, and the asking price strays from it as
+     *       sellers' prices do.</li>
+     * </ul>
      */
     static List<Vehicle> vehicles() {
         List<Vehicle> all = new java.util.ArrayList<>(VEHICLES);
-        java.util.Random random = new java.util.Random(20_261_012L);
+        java.util.Random random = new java.util.Random(20_261_020L);
         java.util.Map<String, Integer> generatedFor = new java.util.HashMap<>();
+        java.util.Map<Template, Integer> taken = new java.util.HashMap<>();
 
-        for (int index = 0; all.size() < SIZE; index++) {
-            Template template = TEMPLATES.get(index % TEMPLATES.size());
-            // Variants in turn, not at random: each pass through the templates takes the
-            // next one, so every fuel and gearbox the templates offer is certain to appear.
-            // Left to chance, one fuel type came out with no listing and its filter was dead.
-            Variant variant = template.variants().get(
-                    (index / TEMPLATES.size()) % template.variants().size());
+        List<Template> order = interleaved();
+        for (int index = 0; all.size() < SIZE && index < order.size(); index++) {
+            Template template = order.get(index);
+            // Versions in turn, not at random, so every fuel and gearbox a model offers is
+            // certain to appear: left to chance, one fuel came out with no listing and its
+            // filter was dead.
+            int turn = taken.merge(template, 1, Integer::sum) - 1;
+            Variant variant = template.variants().get(turn % template.variants().size());
 
             Base base = BASES.get(index % BASES.size());
             if (PRIVATE_SELLERS.contains(base.sellerKey())
@@ -226,23 +301,64 @@ final class DemoCatalogue {
             }
             generatedFor.merge(base.sellerKey(), 1, Integer::sum);
 
-            int age = 1 + random.nextInt(9);
-            int mileage = roundTo(age * (9_000 + random.nextInt(9_000)), 100);
-            // About 14 % a year off the remaining value, less a little more for mileage.
-            double value = template.newPriceEuros() * Math.pow(0.86, age)
-                    * (1 - Math.min(0.15, mileage / 2_000_000.0));
-            long price = Math.max(3_500, roundTo((int) value, 500) - 10);
+            int lastYear = Math.min(variant.lastYear(), REFERENCE_YEAR - 1);
+            // Two draws averaged: the years in the middle of a version's life are the
+            // commonest on the used market, as they are here.
+            int span = lastYear - variant.firstYear();
+            int year = variant.firstYear()
+                    + (int) Math.round((random.nextDouble() + random.nextDouble()) / 2 * span);
+            int month = 1 + random.nextInt(12);
+            double age = ageInYears(year, month);
+            int mileage = Math.max(1_500, roundTo((int) (age * (10_000 + random.nextInt(7_000))), 100));
+            double asking = ASKING[random.nextInt(ASKING.length)];
+            long price = askingPrice(variant.newPriceEuros(), variant.fuel(), age, mileage, asking);
 
             all.add(new Vehicle(
                     base.sellerKey(), template.makeSlug(), template.modelSlug(), variant.version(),
                     template.name() + " " + variant.version()
                             + TITLE_NOTES.get(random.nextInt(TITLE_NOTES.size())),
-                    price, REFERENCE_YEAR - age, 1 + random.nextInt(12), mileage,
+                    price, year, month, mileage,
                     variant.fuel(), variant.gearbox(), template.body(), variant.powerHp(),
                     VehicleCondition.USED, COLOURS[random.nextInt(COLOURS.length)],
-                    base.city(), base.postalCode(), random.nextInt(75)));
+                    base.city(), base.postalCode(), random.nextInt(90)));
         }
         return List.copyOf(all);
+    }
+
+    /**
+     * The templates repeated by weight and dealt round-robin, so a model's listings are
+     * spread through the posting dates and the sellers instead of arriving in a block.
+     */
+    private static List<Template> interleaved() {
+        List<Template> order = new java.util.ArrayList<>();
+        int rounds = TEMPLATES.stream().mapToInt(Template::weight).max().orElse(0);
+        for (int round = 0; round < rounds; round++) {
+            for (Template template : TEMPLATES) {
+                if (round < template.weight()) {
+                    order.add(template);
+                }
+            }
+        }
+        return order;
+    }
+
+    /** Years from first registration to the reference date. */
+    static double ageInYears(int year, int month) {
+        return (REFERENCE_YEAR + (REFERENCE_MONTH - 1) / 12.0) - (year + (month - 1) / 12.0);
+    }
+
+    /**
+     * What a seller would ask: the value after depreciation and mileage, times how keen
+     * they are, ending in 90 as dealers' prices do.
+     */
+    static long askingPrice(int newPriceEuros, FuelType fuel, double age, int mileageKm, double asking) {
+        double yearly = fuel == FuelType.ELECTRIC ? 0.85 : 0.89;
+        double retained = age <= 1 ? 1 - 0.20 * age : 0.80 * Math.pow(yearly, age - 1);
+        // 1.5 % per 10 000 km off the average for the age, within reason either way.
+        double extraKm = mileageKm - age * KM_PER_YEAR;
+        double forMileage = Math.max(0.80, Math.min(1.08, 1 - 0.015 * extraKm / 10_000));
+        double value = newPriceEuros * retained * forMileage * asking;
+        return Math.max(3_490, roundTo((int) value, 100) - 10);
     }
 
     private static int roundTo(int value, int step) {
@@ -281,15 +397,15 @@ final class DemoCatalogue {
                     FuelType.PETROL, Gearbox.MANUAL, BodyType.HATCHBACK, 90, VehicleCondition.USED,
                     ExteriorColor.RED, "Lyon", "69003", 2),
             new Vehicle("garage-bellevue", "volkswagen", "golf", "2.0 TDI 150 DSG7 Style",
-                    "Volkswagen Golf VIII TDI 150 DSG Style", 26_490, 2020, 11, 104_300,
+                    "Volkswagen Golf VIII TDI 150 DSG Style", 20_490, 2020, 11, 104_300,
                     FuelType.DIESEL, Gearbox.AUTOMATIC, BodyType.HATCHBACK, 150, VehicleCondition.USED,
                     ExteriorColor.BLACK, "Villeurbanne", "69100", 4),
             new Vehicle("garage-bellevue", "tesla", "model-3", "Grande Autonomie AWD",
-                    "Tesla Model 3 Grande Autonomie — TVA récupérable", 31_990, 2022, 2, 47_800,
+                    "Tesla Model 3 Grande Autonomie — TVA récupérable", 27_990, 2022, 2, 47_800,
                     FuelType.ELECTRIC, Gearbox.AUTOMATIC, BodyType.SEDAN, 440, VehicleCondition.USED,
                     ExteriorColor.WHITE, "Lyon", "69007", 6),
             new Vehicle("garage-bellevue", "peugeot", "3008", "Hybrid 225 e-EAT8 GT",
-                    "Peugeot 3008 Hybrid 225 GT", 34_900, 2023, 1, 21_600,
+                    "Peugeot 3008 Hybrid 225 GT", 29_900, 2023, 1, 21_600,
                     FuelType.PLUGIN_HYBRID, Gearbox.AUTOMATIC, BodyType.SUV, 225, VehicleCondition.USED,
                     ExteriorColor.BLUE, "Lyon", "69003", 9),
             new Vehicle("garage-bellevue", "dacia", "duster", "TCe 130 Journey",
@@ -297,19 +413,19 @@ final class DemoCatalogue {
                     FuelType.PETROL, Gearbox.MANUAL, BodyType.SUV, 130, VehicleCondition.NEW,
                     ExteriorColor.GREEN, "Lyon", "69003", 12),
             new Vehicle("garage-bellevue", "toyota", "corolla", "Touring Sports 140h Dynamic",
-                    "Toyota Corolla Touring Sports Hybride 140h", 24_800, 2022, 9, 55_200,
+                    "Toyota Corolla Touring Sports Hybride 140h", 23_900, 2023, 3, 41_200,
                     FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC, BodyType.ESTATE, 140, VehicleCondition.USED,
                     ExteriorColor.SILVER, "Bron", "69500", 17),
             new Vehicle("garage-bellevue", "bmw", "serie-3", "320d xDrive 190 M Sport",
-                    "BMW Série 3 320d xDrive M Sport", 36_750, 2021, 5, 78_900,
+                    "BMW Série 3 320d xDrive M Sport", 29_900, 2021, 5, 78_900,
                     FuelType.DIESEL, Gearbox.AUTOMATIC, BodyType.SEDAN, 190, VehicleCondition.USED,
                     ExteriorColor.BLUE, "Lyon", "69006", 23),
             new Vehicle("garage-bellevue", "mercedes-benz", "classe-a", "A 200 163 AMG Line",
-                    "Mercedes Classe A 200 AMG Line", 29_900, 2021, 10, 49_300,
+                    "Mercedes Classe A 200 AMG Line", 25_490, 2021, 10, 49_300,
                     FuelType.PETROL, Gearbox.AUTOMATIC, BodyType.HATCHBACK, 163, VehicleCondition.USED,
                     ExteriorColor.WHITE, "Lyon", "69002", 31),
             new Vehicle("garage-bellevue", "tesla", "model-y", "Propulsion",
-                    "Tesla Model Y Propulsion — neuve", 48_990, 2026, 8, 25,
+                    "Tesla Model Y Propulsion — neuve", 44_990, 2026, 8, 25,
                     FuelType.ELECTRIC, Gearbox.AUTOMATIC, BodyType.SUV, 299, VehicleCondition.NEW,
                     ExteriorColor.GREY, "Lyon", "69007", 38),
             new Vehicle("camille", "fiat", "500", "1.0 Hybrid 70 Dolcevita",
@@ -321,7 +437,7 @@ final class DemoCatalogue {
                     FuelType.PETROL, Gearbox.MANUAL, BodyType.HATCHBACK, 83, VehicleCondition.USED,
                     ExteriorColor.ORANGE, "Nantes", "44300", 14),
             new Vehicle("thomas", "renault", "megane", "Estate 1.5 Blue dCi 115 Business",
-                    "Renault Mégane Estate dCi 115 Business", 12_300, 2019, 2, 142_000,
+                    "Renault Mégane Estate dCi 115 Business", 9_900, 2019, 2, 142_000,
                     FuelType.DIESEL, Gearbox.MANUAL, BodyType.ESTATE, 115, VehicleCondition.USED,
                     ExteriorColor.GREY, "Strasbourg", "67000", 8),
             new Vehicle("thomas", "dacia", "sandero", "SCe 75 Essentiel",

@@ -146,6 +146,130 @@ class DemoCatalogueTest {
         });
     }
 
+    // ---- plausible to someone who knows cars -------------------------------------------
+
+    @Test
+    @DisplayName("no car is registered before its model went on sale in France")
+    void noCarPredatesItsModel() {
+        // The bug that prompted these checks: a 2017 Tesla Model Y, three years before there
+        // was one.
+        assertThat(vehicles).allSatisfy(vehicle -> {
+            String model = vehicle.makeSlug() + "/" + vehicle.modelSlug();
+            assertThat(DemoCatalogue.LAUNCH_YEARS).as("launch year known for " + model).containsKey(model);
+            assertThat(vehicle.year()).as(vehicle.title()).isGreaterThanOrEqualTo(DemoCatalogue.LAUNCH_YEARS.get(model));
+        });
+    }
+
+    @Test
+    @DisplayName("a generated car is registered in a year its version was sold, and not in the future")
+    void generatedYearsAreThoseTheVersionWasSold() {
+        assertThat(generated()).allSatisfy(vehicle -> {
+            DemoCatalogue.Variant variant = variantOf(vehicle);
+            assertThat(vehicle.year()).as(vehicle.title())
+                    .isBetween(variant.firstYear(), Math.min(variant.lastYear(), DemoCatalogue.REFERENCE_YEAR - 1));
+        });
+    }
+
+    @Test
+    @DisplayName("the power is the one the version's name states")
+    void powerMatchesTheVersion() {
+        // "TCe 90" is 90 ch, "330e 292" is 292. A number glued to letters ("sDrive18i",
+        // "318d") or with a decimal point ("1.5") is a model or an engine size, not a power.
+        java.util.regex.Pattern figure = java.util.regex.Pattern.compile("(?<![\\w.])(\\d{2,3})h?(?![\\w.])");
+        assertThat(vehicles).allSatisfy(vehicle -> {
+            List<Integer> stated = figure.matcher(vehicle.version()).results()
+                    .map(match -> Integer.parseInt(match.group(1))).toList();
+            if (!stated.isEmpty()) {
+                assertThat(stated).as(vehicle.version()).contains(vehicle.powerHp());
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("a used car is priced below its version new, and above a scrap price")
+    void pricesAreBelievable() {
+        assertThat(generated()).allSatisfy(vehicle -> {
+            double share = vehicle.priceEuros() / (double) variantOf(vehicle).newPriceEuros();
+            assertThat(share).as(vehicle.title() + " " + vehicle.year() + ", " + vehicle.mileageKm() + " km")
+                    .isBetween(0.20, 0.95);
+        });
+    }
+
+    @Test
+    @DisplayName("an older or more driven car of the same version is asked less for")
+    void depreciationRunsTheRightWay() {
+        double newer = DemoCatalogue.askingPrice(30_000, FuelType.PETROL, 2, 26_000, 1.0);
+        double older = DemoCatalogue.askingPrice(30_000, FuelType.PETROL, 5, 65_000, 1.0);
+        double driven = DemoCatalogue.askingPrice(30_000, FuelType.PETROL, 2, 80_000, 1.0);
+
+        assertThat(older).isLessThan(newer);
+        assertThat(driven).isLessThan(newer);
+        // An electric car loses value faster than the same price of petrol car.
+        assertThat(DemoCatalogue.askingPrice(30_000, FuelType.ELECTRIC, 5, 65_000, 1.0)).isLessThan((long) older);
+    }
+
+    @Test
+    @DisplayName("the volume models give the price indicator enough to work with, at all three levels")
+    void priceIndicatorHasSomethingToShow() {
+        // The rule of com.autox.search.MarketPrice, applied to the seed in memory: same
+        // model, year within two, same mileage band, not new, at least five others.
+        Map<String, Long> levels = new java.util.HashMap<>();
+        for (DemoCatalogue.Vehicle vehicle : vehicles) {
+            if (vehicle.condition() == com.autox.listing.VehicleCondition.NEW) {
+                continue;
+            }
+            List<Long> comparables = vehicles.stream()
+                    .filter(other -> other != vehicle)
+                    .filter(other -> other.condition() != com.autox.listing.VehicleCondition.NEW)
+                    .filter(other -> other.makeSlug().equals(vehicle.makeSlug())
+                            && other.modelSlug().equals(vehicle.modelSlug()))
+                    .filter(other -> Math.abs(other.year() - vehicle.year()) <= 2)
+                    .filter(other -> band(other.mileageKm()) == band(vehicle.mileageKm()))
+                    .map(DemoCatalogue.Vehicle::priceEuros).sorted().toList();
+            if (comparables.size() < 5) {
+                continue;
+            }
+            int n = comparables.size();
+            double median = n % 2 == 1 ? comparables.get(n / 2)
+                    : (comparables.get(n / 2 - 1) + comparables.get(n / 2)) / 2.0;
+            String level = vehicle.priceEuros() <= 0.9 * median ? "GOOD_DEAL"
+                    : vehicle.priceEuros() >= 1.1 * median ? "ABOVE_MARKET" : "MARKET";
+            levels.merge(level, 1L, Long::sum);
+        }
+
+        assertThat(levels.values().stream().mapToLong(Long::longValue).sum())
+                .as("listings with an indicator").isGreaterThanOrEqualTo(30);
+        assertThat(levels).as("each level appears").containsKeys("GOOD_DEAL", "MARKET", "ABOVE_MARKET");
+        assertThat(levels.get("GOOD_DEAL")).isGreaterThanOrEqualTo(4);
+        assertThat(levels.get("ABOVE_MARKET")).isGreaterThanOrEqualTo(4);
+    }
+
+    private static int band(int mileageKm) {
+        if (mileageKm < 30_000) {
+            return 0;
+        }
+        if (mileageKm < 60_000) {
+            return 1;
+        }
+        if (mileageKm < 100_000) {
+            return 2;
+        }
+        return mileageKm < 150_000 ? 3 : 4;
+    }
+
+    private List<DemoCatalogue.Vehicle> generated() {
+        return vehicles.subList(DemoCatalogue.VEHICLES.size(), vehicles.size());
+    }
+
+    private static DemoCatalogue.Variant variantOf(DemoCatalogue.Vehicle vehicle) {
+        return DemoCatalogue.TEMPLATES.stream()
+                .filter(template -> template.makeSlug().equals(vehicle.makeSlug())
+                        && template.modelSlug().equals(vehicle.modelSlug()))
+                .flatMap(template -> template.variants().stream())
+                .filter(variant -> variant.version().equals(vehicle.version()))
+                .findFirst().orElseThrow(() -> new AssertionError("no version for " + vehicle.title()));
+    }
+
     @Test
     @DisplayName("posting dates and prices are spread, so each sort order gives a different list")
     void sortOrdersDiffer() {

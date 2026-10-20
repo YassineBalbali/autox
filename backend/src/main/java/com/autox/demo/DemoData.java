@@ -81,7 +81,7 @@ class DemoData {
     /**
      * How many of the demo listings to create. All of them, unless told otherwise: every
      * listing is a real image upload with three resizes, so a test that only needs "some
-     * listings" asks for a dozen instead of waiting for sixty.
+     * listings" asks for a dozen instead of waiting for all of them.
      */
     private final int limit;
 
@@ -91,7 +91,7 @@ class DemoData {
              ImageResizer resizer, ObjectStorage storage, PasswordEncoder passwordEncoder,
              JdbcTemplate jdbc, PlatformTransactionManager transactionManager,
              @Value("${autox.demo.photo-dir:}") String photoDirectory,
-             @Value("${autox.demo.listings:60}") int limit) {
+             @Value("${autox.demo.listings:" + DemoCatalogue.SIZE + "}") int limit) {
         this.ledger = ledger;
         this.users = users;
         this.proProfiles = proProfiles;
