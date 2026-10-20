@@ -8,7 +8,7 @@ import { Router, provideRouter, withComponentInputBinding } from '@angular/route
 import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import { BASE_PATH, ErrorCode, FuelType, Gearbox, PublicListingDetail } from '../../core/api';
+import { BASE_PATH, ErrorCode, FuelType, Gearbox, PriceLevel, PublicListingDetail } from '../../core/api';
 import { NBSP } from '../../shared/format/number';
 import { SearchMemory } from '../search/search-memory';
 import { ListingPage } from './listing-page';
@@ -254,6 +254,27 @@ describe('ListingPage', () => {
       });
       // The icon only repeats the label, so it is hidden from a screen reader.
       expect(root.querySelectorAll('app-key-facts svg[aria-hidden="true"]')).toHaveLength(5);
+    });
+
+    it('gives the price verdict with what it rests on', async () => {
+      await load({
+        ...LISTING,
+        vehicle: { ...LISTING.vehicle, make: 'Peugeot', model: '308' },
+        priceIndicator: { level: PriceLevel.GOOD_DEAL, medianPriceAmount: 2149000, comparableCount: 7 },
+      });
+      const market = root.querySelector('.summary__market') as HTMLElement;
+
+      expect(market.querySelector('app-price-badge')?.textContent).toContain('Bonne affaire');
+      expect(market.querySelector('.summary__basis')?.textContent?.trim()).toBe(
+        `Comparé à 7 Peugeot 308 de 2019 à 2023 au kilométrage proche, prix médian 21${NBSP}490${NBSP}€.`,
+      );
+    });
+
+    it('says nothing about the market when the API has no verdict', async () => {
+      await load();
+
+      expect(root.querySelector('.summary__market')).toBeNull();
+      expect(root.textContent).not.toContain('Comparé à');
     });
 
     it('ticks each piece of equipment', async () => {

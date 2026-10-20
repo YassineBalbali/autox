@@ -100,10 +100,19 @@ describe('describeFilters', () => {
         body: [BodyType.SUV],
         condition: [VehicleCondition.USED],
         location: 'Lille',
+        goodDeals: true,
       });
 
       expect(new Set(filters.map((filter) => filter.key)).size).toBe(filters.length);
-      expect(filters).toHaveLength(12);
+      expect(filters).toHaveLength(13);
+    });
+
+    it('says "Bonnes affaires" for the price-level filter, and removing it turns it off', () => {
+      const [chip] = describeFilters({ ...EMPTY_QUERY, goodDeals: true });
+
+      expect(chip.label).toBe('Bonnes affaires');
+      expect(chip.remove).toEqual({ goodDeals: false });
+      expect(describeFilters(EMPTY_QUERY)).toHaveLength(0);
     });
   });
 

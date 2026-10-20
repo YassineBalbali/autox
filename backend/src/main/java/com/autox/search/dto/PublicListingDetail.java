@@ -50,10 +50,14 @@ public record PublicListingDetail(
         List<String> featureCodes,
         List<ImageResponse> images,
 
+        /** Against comparable listings; null when there is not enough to compare with. */
+        PriceIndicator priceIndicator,
+
         Instant publishedAt,
         Instant updatedAt) {
 
-    public static PublicListingDetail from(Listing listing, List<ImageResponse> images) {
+    public static PublicListingDetail from(Listing listing, List<ImageResponse> images,
+                                           PriceIndicator priceIndicator) {
         return new PublicListingDetail(
                 listing.getId(),
                 listing.getTitle(),
@@ -79,6 +83,7 @@ public record PublicListingDetail(
                 name(listing.getEmissionClass()),
                 listing.getFeatures().stream().map(VehicleFeature::getCode).sorted().toList(),
                 images,
+                priceIndicator,
                 listing.getPublishedAt(),
                 listing.getUpdatedAt());
     }

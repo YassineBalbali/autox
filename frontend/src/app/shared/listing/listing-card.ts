@@ -5,6 +5,7 @@ import { PublicListingSummary } from '../../core/api';
 import { Icon } from '../ui/icon';
 import { ListingThumb } from './listing-thumb';
 import { Price } from './price';
+import { PriceBadge } from './price-badge';
 import { SellerBadge } from './seller-badge';
 import { SpecFacts } from './spec-facts';
 import { headlineOf, listingLink, placeOf } from './summary';
@@ -24,7 +25,7 @@ import { headlineOf, listingLink, placeOf } from './summary';
  */
 @Component({
   selector: 'app-listing-card',
-  imports: [Price, SpecFacts, SellerBadge, ListingThumb, Icon, RouterLink],
+  imports: [Price, PriceBadge, SpecFacts, SellerBadge, ListingThumb, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card">
@@ -54,15 +55,17 @@ import { headlineOf, listingLink, placeOf } from './summary';
           [gearbox]="gearboxLabel()"
         />
 
-        @if (listing().priceAmount !== undefined) {
-          <app-price
-            class="card__price"
-            size="result"
-            [amountMinor]="listing().priceAmount!"
-            [currency]="listing().currencyCode ?? 'EUR'"
-            [minorUnit]="minorUnit()"
-          />
-        }
+        <div class="card__price">
+          @if (listing().priceAmount !== undefined) {
+            <app-price
+              size="result"
+              [amountMinor]="listing().priceAmount!"
+              [currency]="listing().currencyCode ?? 'EUR'"
+              [minorUnit]="minorUnit()"
+            />
+          }
+          <app-price-badge [indicator]="listing().priceIndicator" />
+        </div>
 
         <div class="card__foot">
           @if (place()) {
@@ -166,8 +169,13 @@ import { headlineOf, listingLink, placeOf } from './summary';
       }
     }
 
-    // Pinned to the foot of the card, whatever is above it.
+    // Pinned to the foot of the card, whatever is above it; the verdict beside the price.
     .card__price {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s-1) var(--s-2);
       margin-top: auto;
     }
 

@@ -99,6 +99,9 @@ export function describeFilters(query: SearchQuery, names: VehicleNames = {}): A
   if (query.location) {
     filters.push({ key: 'location', label: query.location, remove: { location: null } });
   }
+  if (query.goodDeals) {
+    filters.push({ key: 'goodDeals', label: 'Bonnes affaires', remove: { goodDeals: false } });
+  }
   return filters;
 }
 

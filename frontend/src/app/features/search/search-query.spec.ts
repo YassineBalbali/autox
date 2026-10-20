@@ -44,6 +44,7 @@ describe('parseQuery', () => {
         carrosserie: 'suv',
         etat: 'used',
         lieu: 'Lyon',
+        bonnes_affaires: '1',
         tri: 'prix-croissant',
       }),
     ).toEqual<SearchQuery>({
@@ -61,8 +62,17 @@ describe('parseQuery', () => {
       body: [BodyType.SUV],
       condition: [VehicleCondition.USED],
       location: 'Lyon',
+      goodDeals: true,
       sort: SearchSort.PRICE_ASC,
     });
+  });
+
+  it('reads the good-deals flag as on only when it is 1', () => {
+    // A flag in a link is on or absent; "true", "oui" or "0" are not guesses worth making.
+    expect(parse({ bonnes_affaires: '1' }).goodDeals).toBe(true);
+    for (const value of ['0', 'true', 'oui', '']) {
+      expect(parse({ bonnes_affaires: value }).goodDeals).toBe(false);
+    }
   });
 
   describe('treats the address bar as untrusted', () => {
@@ -181,6 +191,7 @@ describe('toQueryParams', () => {
       body: [],
       condition: [VehicleCondition.USED],
       location: 'Villeurbanne',
+      goodDeals: true,
       sort: SearchSort.PRICE_DESC,
     };
 
@@ -242,6 +253,11 @@ describe('toCriteria', () => {
       eur({ ...EMPTY_QUERY, fuel: [FuelType.ELECTRIC], body: [BodyType.SUV, BodyType.ESTATE] }),
     ).toEqual({ fuelType: ['ELECTRIC'], bodyType: ['SUV', 'ESTATE'] });
   });
+
+  it('asks for the good deals as a price level, and for no level otherwise', () => {
+    expect(eur({ ...EMPTY_QUERY, goodDeals: true })).toEqual({ priceLevel: ['GOOD_DEAL'] });
+    expect(eur({ ...EMPTY_QUERY, goodDeals: false }).priceLevel).toBeUndefined();
+  });
 });
 
 describe('activeFilterCount', () => {
@@ -261,6 +277,11 @@ describe('activeFilterCount', () => {
 
   it('counts the free text', () => {
     expect(activeFilterCount({ ...EMPTY_QUERY, text: 'golf' })).toBe(1);
+  });
+
+  it('counts the good-deals flag when it is on', () => {
+    expect(activeFilterCount({ ...EMPTY_QUERY, goodDeals: true })).toBe(1);
+    expect(activeFilterCount({ ...EMPTY_QUERY, goodDeals: false })).toBe(0);
   });
 
   it('counts a lower bound of zero', () => {

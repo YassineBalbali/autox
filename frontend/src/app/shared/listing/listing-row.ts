@@ -6,6 +6,7 @@ import { formatDateFr } from '../format/date';
 import { Icon } from '../ui/icon';
 import { ListingThumb } from './listing-thumb';
 import { Price } from './price';
+import { PriceBadge } from './price-badge';
 import { SellerBadge } from './seller-badge';
 import { SpecFacts } from './spec-facts';
 import { headlineOf, listingLink, placeOf } from './summary';
@@ -33,7 +34,7 @@ import { headlineOf, listingLink, placeOf } from './summary';
  */
 @Component({
   selector: 'app-listing-row',
-  imports: [Price, SpecFacts, SellerBadge, ListingThumb, Icon, RouterLink],
+  imports: [Price, PriceBadge, SpecFacts, SellerBadge, ListingThumb, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-row.html',
   styleUrl: './listing-row.scss',

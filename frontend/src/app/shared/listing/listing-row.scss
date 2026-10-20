@@ -133,14 +133,13 @@
   white-space: nowrap;
 }
 
-// Price at the top, date at the foot, both right-aligned.
+// Price at the top with its verdict under it, date at the foot, all right-aligned.
 .listing__aside {
   grid-column: 2;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s-1);
+  gap: var(--s-2);
 
   @media (min-width: t.$bp-sm) {
     grid-column: auto;
@@ -152,6 +151,7 @@
 }
 
 .listing__date {
+  margin-top: auto;
   color: var(--c-ink-faint);
   font-size: var(--t-xs);
   white-space: nowrap;

@@ -7,6 +7,7 @@ import com.autox.listing.ListingRepository;
 import com.autox.listing.ListingStatus;
 import com.autox.listing.ModerationStatus;
 import com.autox.listing.dto.ImageResponse;
+import com.autox.search.dto.PriceIndicator;
 import com.autox.search.dto.PublicListingDetail;
 import com.autox.search.dto.PublicListingSummary;
 import com.autox.storage.ObjectStorage;
@@ -33,15 +34,18 @@ public class ListingSearchService {
     private final ListingRepository listings;
     private final ListingImageRepository images;
     private final ObjectStorage storage;
+    private final MarketPrice marketPrice;
 
     public ListingSearchService(ListingSearchRepository searchRepository,
                                 ListingRepository listings,
                                 ListingImageRepository images,
-                                ObjectStorage storage) {
+                                ObjectStorage storage,
+                                MarketPrice marketPrice) {
         this.searchRepository = searchRepository;
         this.listings = listings;
         this.images = images;
         this.storage = storage;
+        this.marketPrice = marketPrice;
     }
 
     @Transactional(readOnly = true)
@@ -104,7 +108,7 @@ public class ListingSearchService {
                 .map(image -> ImageResponse.from(image, storage::readUrl))
                 .toList();
 
-        return PublicListingDetail.from(listing, gallery);
+        return PublicListingDetail.from(listing, gallery, marketPrice.indicators(List.of(listingId)).get(listingId));
     }
 
     /**
@@ -129,6 +133,7 @@ public class ListingSearchService {
         Map<UUID, Map<String, ListingSearchRepository.CoverVariant>> covers =
                 searchRepository.findCoverImages(ids);
         Map<UUID, Integer> photoCounts = searchRepository.countPhotos(ids);
+        Map<UUID, PriceIndicator> indicators = marketPrice.indicators(ids);
 
         List<PublicListingSummary> summaries = new ArrayList<>(rows.size());
         for (ListingSearchRepository.SearchRow row : rows) {
@@ -156,6 +161,7 @@ public class ListingSearchService {
                     new PublicListingSummary.SellerCard(row.sellerId(), row.sellerName(), row.sellerRole()),
                     coverOf(covers.get(row.id())),
                     photoCounts.getOrDefault(row.id(), 0),
+                    indicators.get(row.id()),
                     row.publishedAt()));
         }
         return summaries;

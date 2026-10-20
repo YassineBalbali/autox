@@ -3761,8 +3761,23 @@
             "type": "string",
             "maxLength": 120,
             "minLength": 0
+          },
+          "priceLevel": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceLevel"
+            }
           }
         }
+      },
+      "PriceLevel": {
+        "type": "string",
+        "description": "Where a listing's price sits against comparable listings. See {@link MarketPrice MarketPrice} for what\n \"comparable\" means and where the lines are drawn.",
+        "enum": [
+          "GOOD_DEAL",
+          "MARKET",
+          "ABOVE_MARKET"
+        ]
       },
       "SearchSort": {
         "type": "string",
@@ -3812,6 +3827,26 @@
           "height": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "PriceIndicator": {
+        "type": "object",
+        "description": "How a listing's price compares with the market, and what the comparison rests on.\n\n <p>Absent (null on the listing) when there is nothing honest to say: fewer comparable\n listings than the threshold, a new car, or a vehicle not identified from the catalogue.\n The median and the count are given with the level so a buyer can see what it is based on\n — \"Bonne affaire\" with no evidence behind it is a sales pitch.",
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/PriceLevel",
+            "description": "the stable code; the frontend words it"
+          },
+          "medianPriceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "median price of the comparable listings, in minor units of the\n                          listing's currency"
+          },
+          "comparableCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "how many listings the median was taken over, the listing itself\n                          not included"
           }
         }
       },
@@ -3897,6 +3932,9 @@
           "photoCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "priceIndicator": {
+            "$ref": "#/components/schemas/PriceIndicator"
           },
           "publishedAt": {
             "type": "string",
@@ -4008,6 +4046,9 @@
             "items": {
               "$ref": "#/components/schemas/ImageResponse"
             }
+          },
+          "priceIndicator": {
+            "$ref": "#/components/schemas/PriceIndicator"
           },
           "publishedAt": {
             "type": "string",

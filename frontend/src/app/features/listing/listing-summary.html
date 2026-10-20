@@ -17,6 +17,13 @@
         [currency]="listing().currencyCode ?? 'EUR'"
         [minorUnit]="minorUnit()"
       />
+      @if (listing().priceIndicator; as indicator) {
+        <div class="summary__market">
+          <app-price-badge [indicator]="indicator" />
+          <!-- What the verdict rests on, so it can be weighed rather than taken on trust. -->
+          <p class="summary__basis">{{ basis() }}</p>
+        </div>
+      }
       @if (listing().priceNegotiable || listing().vatDeductible) {
         <div class="summary__terms">
           @if (listing().priceNegotiable) {

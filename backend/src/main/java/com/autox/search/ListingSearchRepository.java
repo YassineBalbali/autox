@@ -39,12 +39,17 @@ public class ListingSearchRepository {
      * planner can use them. The expiry check is additional: the sweeper runs every ten
      * minutes, and a listing must not be publicly visible in the gap.
      */
-    private static final String VISIBLE = """
-            l.status = 'ACTIVE'
-              AND l.moderation_status <> 'REJECTED'
-              AND l.deleted_at IS NULL
-              AND (l.expires_at IS NULL OR l.expires_at > now())
-            """;
+    private static final String VISIBLE = visible("l");
+
+    /** {@link #VISIBLE} for a listing table under another alias: {@link MarketPrice}'s comparables. */
+    static String visible(String alias) {
+        return """
+                %1$s.status = 'ACTIVE'
+                  AND %1$s.moderation_status <> 'REJECTED'
+                  AND %1$s.deleted_at IS NULL
+                  AND (%1$s.expires_at IS NULL OR %1$s.expires_at > now())
+                """.formatted(alias);
+    }
 
     private static final String SELECT = """
             SELECT l.id,
@@ -86,7 +91,7 @@ public class ListingSearchRepository {
 
     public List<SearchRow> search(ListingSearchCriteria criteria, SearchSort sort, SearchCursor cursor, int limit) {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
-        StringBuilder sql = new StringBuilder(SELECT).append(" WHERE ").append(VISIBLE);
+        StringBuilder sql = new StringBuilder(SELECT).append(marketJoin(criteria)).append(" WHERE ").append(VISIBLE);
 
         appendFilters(criteria, sql, parameters);
         appendKeyset(sort, cursor, sql, parameters);
@@ -121,7 +126,7 @@ public class ListingSearchRepository {
                       LEFT JOIN vehicle_make mk  ON mk.id = l.make_id
                       LEFT JOIN vehicle_model mo ON mo.id = l.model_id
                       LEFT JOIN geo_place gp     ON gp.id = l.geo_place_id
-                     WHERE""").append(' ').append(VISIBLE);
+                    """).append(marketJoin(criteria)).append(" WHERE ").append(VISIBLE);
 
         appendFilters(criteria, sql, parameters);
         sql.append(" LIMIT :limit) bounded");
@@ -134,7 +139,7 @@ public class ListingSearchRepository {
     /** The statement the search would run, for diagnostics and plan checks. */
     public String explain(ListingSearchCriteria criteria, SearchSort sort, SearchCursor cursor, int limit) {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
-        StringBuilder sql = new StringBuilder(SELECT).append(" WHERE ").append(VISIBLE);
+        StringBuilder sql = new StringBuilder(SELECT).append(marketJoin(criteria)).append(" WHERE ").append(VISIBLE);
         appendFilters(criteria, sql, parameters);
         appendKeyset(sort, cursor, sql, parameters);
         sql.append(" ORDER BY ").append(sort.orderByClause()).append(" LIMIT :limit");
@@ -221,6 +226,11 @@ public class ListingSearchRepository {
             parameters.addValue("locationPrefix", criteria.location().trim() + "%");
         }
 
+        if (filtersOnPriceLevel(criteria)) {
+            sql.append(" AND ").append(MarketPrice.LEVEL).append(" IN (:priceLevels)");
+            parameters.addValue("priceLevels", criteria.priceLevel().stream().map(Enum::name).toList());
+        }
+
         if (criteria.hasBoundingBox()) {
             sql.append(" AND l.latitude BETWEEN :latMin AND :latMax"
                     + " AND l.longitude BETWEEN :lonMin AND :lonMax");
@@ -293,6 +303,19 @@ public class ListingSearchRepository {
                 .append(" (:cursorValue, :cursorId)");
         parameters.addValue("cursorValue", cursor.typedSortValue());
         parameters.addValue("cursorId", cursor.id());
+    }
+
+    /**
+     * The comparables join, only when the price level is filtered on: it is the one costly
+     * part of the indicator, and a search that does not ask for it should not pay for it.
+     * The levels of the rows returned are read separately, for the page alone.
+     */
+    private static String marketJoin(ListingSearchCriteria criteria) {
+        return filtersOnPriceLevel(criteria) ? MarketPrice.LATERAL : "";
+    }
+
+    private static boolean filtersOnPriceLevel(ListingSearchCriteria criteria) {
+        return criteria.priceLevel() != null && !criteria.priceLevel().isEmpty();
     }
 
     private static boolean hasText(String value) {

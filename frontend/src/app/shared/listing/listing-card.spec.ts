@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { PublicListingSummary } from '../../core/api';
+import { PriceLevel, PublicListingSummary } from '../../core/api';
 import { NBSP } from '../format/number';
 import { ListingCard } from './listing-card';
 import { ListingRow } from './listing-row';
@@ -71,11 +71,11 @@ describe('ListingCard', () => {
     expect((card.querySelector('article') as HTMLElement).firstElementChild?.tagName.toLowerCase()).toBe(
       'app-listing-thumb',
     );
-    expect(Array.from(body.children).map((child) => child.tagName.toLowerCase())).toEqual([
-      'h2',
+    expect(Array.from(body.children).map((child) => child.classList[0] ?? child.tagName.toLowerCase())).toEqual([
+      'card__title',
       'app-spec-facts',
-      'app-price',
-      'div',
+      'card__price',
+      'card__foot',
     ]);
   });
 
@@ -133,6 +133,16 @@ describe('ListingCard', () => {
 
       expect(row.querySelector('app-favourite-button button')?.getAttribute('aria-pressed')).toBe('true');
     });
+  });
+
+  it('puts the price verdict beside the price, and the row puts it under it', async () => {
+    const { card, row } = await render({
+      ...LISTING,
+      priceIndicator: { level: PriceLevel.ABOVE_MARKET, medianPriceAmount: 1100000, comparableCount: 5 },
+    });
+
+    expect(card.querySelector('.card__price app-price-badge')?.textContent).toContain('Au-dessus du marché');
+    expect(row.querySelector('.listing__aside app-price-badge')?.textContent).toContain('Au-dessus du marché');
   });
 
   it('survives a listing with almost nothing on it', async () => {

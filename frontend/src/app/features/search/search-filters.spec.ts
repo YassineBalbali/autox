@@ -130,6 +130,18 @@ describe('SearchFilters', () => {
       expect(pressed.map((chip) => chip.textContent?.trim())).toEqual(['Électrique']);
     });
 
+    it('shows the good-deals chip pressed when the query asks for good deals, and toggles it', async () => {
+      const root = await render({ ...EMPTY_QUERY, goodDeals: true });
+      const [chip] = chips(root, 'Prix du marché');
+
+      expect(chip.textContent?.trim()).toBe('Bonnes affaires uniquement');
+      expect(chip.getAttribute('aria-pressed')).toBe('true');
+
+      chip.click();
+      await fixture.whenStable();
+      expect(host.patches.at(-1)).toEqual({ goodDeals: false });
+    });
+
     it('follows the query when it changes from outside — the back button', async () => {
       const root = await render({ ...EMPTY_QUERY, priceMax: 30000 });
       const price = root.querySelector('[aria-label="Prix maximum en euros"]') as HTMLInputElement;
@@ -217,6 +229,7 @@ describe('SearchFilters', () => {
         'Année',
         'Prix (€)',
         'Kilométrage (km)',
+        'Prix du marché',
         'Carburant',
         'Boîte de vitesses',
         'Carrosserie',

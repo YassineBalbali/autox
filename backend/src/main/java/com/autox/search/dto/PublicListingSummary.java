@@ -45,6 +45,8 @@ public record PublicListingSummary(
         Map<String, ImageVariantView> coverImage,
         /** How many photos the listing shows: confirmed uploads only, the cover included. */
         int photoCount,
+        /** Against comparable listings; null when there is not enough to compare with. */
+        PriceIndicator priceIndicator,
 
         Instant publishedAt) {
 

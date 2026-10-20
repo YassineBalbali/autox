@@ -53,6 +53,7 @@
         [minorUnit]="minorUnit()"
       />
     }
+    <app-price-badge class="listing__verdict" [indicator]="listing().priceIndicator" />
     @if (published()) {
       <span class="listing__date">
         <ng-container i18n="@@listingPublished">Publiée le</ng-container> {{ published() }}

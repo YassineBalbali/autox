@@ -5,6 +5,7 @@ import {
   FuelType,
   Gearbox,
   ListingSearchCriteria,
+  PriceLevel,
   SearchSort,
   VehicleCondition,
 } from '../../core/api';
@@ -39,6 +40,8 @@ export interface SearchQuery {
   readonly body: readonly BodyType[];
   readonly condition: readonly VehicleCondition[];
   readonly location: string | null;
+  /** Only listings the price indicator calls a good deal. */
+  readonly goodDeals: boolean;
   readonly sort: SearchSort;
 }
 
@@ -59,6 +62,7 @@ export const EMPTY_QUERY: SearchQuery = {
   body: [],
   condition: [],
   location: null,
+  goodDeals: false,
   sort: DEFAULT_SORT,
 };
 
@@ -85,6 +89,7 @@ export const PARAM = {
   body: 'carrosserie',
   condition: 'etat',
   location: 'lieu',
+  goodDeals: 'bonnes_affaires',
   sort: 'tri',
 } as const;
 
@@ -147,6 +152,8 @@ export function parseQuery(params: ParamMap): SearchQuery {
     body: enumList(params.get(PARAM.body), BodyType),
     condition: enumList(params.get(PARAM.condition), VehicleCondition),
     location: text(params.get(PARAM.location)),
+    // "1" and nothing else: a flag in a link is on or absent.
+    goodDeals: params.get(PARAM.goodDeals) === '1',
     sort: sortFromSlug(params.get(PARAM.sort)),
   };
 }
@@ -181,6 +188,7 @@ export function toQueryParams(query: SearchQuery): Params {
   put(PARAM.body, enumSlugs(query.body));
   put(PARAM.condition, enumSlugs(query.condition));
   put(PARAM.location, query.location);
+  put(PARAM.goodDeals, query.goodDeals ? '1' : null);
   put(PARAM.sort, query.sort === DEFAULT_SORT ? null : SORT_SLUGS[query.sort]);
 
   return params;
@@ -232,6 +240,7 @@ export function toCriteria(
     bodyType: query.body.length ? [...query.body] : undefined,
     condition: query.condition.length ? [...query.condition] : undefined,
     location: query.location ?? undefined,
+    priceLevel: query.goodDeals ? [PriceLevel.GOOD_DEAL] : undefined,
   });
 }
 
@@ -249,6 +258,7 @@ export function activeFilterCount(query: SearchQuery): number {
     query.body.length || null,
     query.condition.length || null,
     query.location,
+    query.goodDeals || null,
   ].filter((value) => value !== null && value !== undefined).length;
 }
 
