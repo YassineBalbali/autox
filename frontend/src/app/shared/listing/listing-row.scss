@@ -17,10 +17,11 @@
   padding: var(--s-3);
 
   @media (min-width: t.$bp-sm) {
-    // A photo big enough to judge the car by, at the cost of rows per screen: at this
-    // size the photo is the first thing compared, and a thumbnail cannot carry that.
-    // It runs to the edges of the row; the text columns carry the padding.
-    grid-template-columns: 14rem minmax(0, 1fr) auto;
+    // A photo big enough to judge the car by, and no taller than the text beside it:
+    // at 12rem (144px high) the heading, the facts and the foot fill the row, so it
+    // reads as full rather than as a photo with some text near it. It runs to the edges
+    // of the row; the text columns carry the padding.
+    grid-template-columns: 12rem minmax(0, 1fr) auto;
     gap: var(--s-4);
     padding: 0;
   }
@@ -95,13 +96,15 @@
   white-space: nowrap;
 }
 
-// Pinned to the foot of the facts column, whatever is above it.
+// Directly under the facts, not pinned to the bottom: heading, facts and foot read as one
+// block, and if a row is ever taller than its text, the space falls below it rather than
+// opening a gap in the middle.
 .listing__foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s-1) var(--s-3);
-  margin-top: auto;
+  margin-top: var(--s-1);
   font-size: var(--t-xs);
   color: var(--c-ink-faint);
   line-height: var(--lh-snug);

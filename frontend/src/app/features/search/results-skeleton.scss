@@ -19,7 +19,7 @@
   padding: var(--s-3);
 
   @media (min-width: t.$bp-sm) {
-    grid-template-columns: 14rem minmax(0, 1fr) 8.5rem;
+    grid-template-columns: 12rem minmax(0, 1fr) 8.5rem;
     gap: var(--s-4);
     padding: 0 var(--s-4) 0 0;
     overflow: hidden;

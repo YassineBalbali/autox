@@ -2,26 +2,39 @@
 // placeholders both use them, so the placeholders are the shape of what replaces them.
 @use '../../../styles/tokens' as t;
 
-// One result after another, each on its own raised surface.
-@mixin list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
+// No bullets, whatever else applies. The list's own `list-style` is not enough on its own:
+// an item that is still a list item can be given a marker back by any later rule. A
+// block is never given one. (Safari then drops the list's semantics, which is why the
+// templates say role="list".)
+@mixin bare {
   margin: 0;
   padding: 0;
   list-style: none;
+
+  > li {
+    display: block;
+    list-style: none;
+  }
+}
+
+// One result after another, each on its own raised surface.
+@mixin list {
+  @include bare;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
 }
 
 // Three across at the width this is designed for. Explicit column counts rather than
 // auto-fill: "three columns at 1440" is a decision, and auto-fill would make it an
 // accident of the container width and the gap.
 @mixin grid {
+  @include bare;
+
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--s-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
 
   @media (min-width: t.$bp-sm) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
