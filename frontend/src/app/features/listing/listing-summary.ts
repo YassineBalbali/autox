@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 import { PublicListingDetail } from '../../core/api';
 import { formatDateFr } from '../../shared/format/date';
-import { Price } from '../../shared/listing/price';
+import { Price, formatPrice } from '../../shared/listing/price';
+import { PriceBadge } from '../../shared/listing/price-badge';
 import { SellerBadge } from '../../shared/listing/seller-badge';
 import { departmentOf } from '../../shared/listing/summary';
 import { Icon } from '../../shared/ui/icon';
@@ -20,7 +21,7 @@ const MONTH_AND_YEAR = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: '
  */
 @Component({
   selector: 'app-listing-summary',
-  imports: [Price, SellerBadge, Icon],
+  imports: [Price, PriceBadge, SellerBadge, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-summary.html',
   styleUrl: './listing-summary.scss',
@@ -51,4 +52,32 @@ export class ListingSummary {
   protected readonly published = computed(() => formatDateFr(this.listing().publishedAt));
 
   protected readonly isProfessional = computed(() => this.listing().seller?.role === 'PROFESSIONNEL');
+
+  /** "Comparé à 7 Peugeot 308 de 2019 à 2023 au kilométrage proche, prix médian 18 490 €." */
+  protected readonly basis = computed(() => marketBasis(this.listing(), this.minorUnit()));
 }
+
+/**
+ * The sentence under the price verdict: how many listings it compares with, which ones,
+ * and their median price. Null when the listing has no verdict.
+ *
+ * <p>The years are the listing's own two either side, the window `MarketPrice` uses on the
+ * backend. "Au kilométrage proche" stands for the mileage band, which is more exact than a
+ * buyer needs to read here.
+ */
+export function marketBasis(listing: PublicListingDetail, minorUnit: number): string | null {
+  const indicator = listing.priceIndicator;
+  if (!indicator?.level || indicator.comparableCount == null || indicator.medianPriceAmount == null) {
+    return null;
+  }
+  const count = indicator.comparableCount;
+  const vehicle = [listing.vehicle?.make, listing.vehicle?.model].filter(Boolean).join(' ');
+  const year = listing.vehicle?.firstRegistrationYear;
+  const years = year == null ? '' : ` de ${year - YEAR_SPAN} à ${year + YEAR_SPAN}`;
+  const what = vehicle ? `${count} ${vehicle}` : `${count} annonces comparables`;
+  const median = formatPrice(indicator.medianPriceAmount, listing.currencyCode ?? 'EUR', minorUnit);
+  return `Comparé à ${what}${years} au kilométrage proche, prix médian ${median}.`;
+}
+
+/** `MarketPrice.YEAR_SPAN` on the backend. */
+const YEAR_SPAN = 2;

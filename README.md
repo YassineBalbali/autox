@@ -260,11 +260,11 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 389 tests, needs Docker running
+mvn clean verify         # 403 tests, needs Docker running
 
 cd ../frontend
 npm run lint
-npm test -- --no-watch   # 906 tests, jsdom
+npm test -- --no-watch   # 920 tests, jsdom
 npm run test:scripts     # 21 tests of the build scripts: the security policy
 npm run build            # the production build, with the policy and headers written in
 ```
@@ -663,6 +663,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/image-decisions.md` | The upload handshake, variants, EXIF |
 | `docs/third-party-assets.md` | The home page photo and the icons: source, licence, notices |
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
+| `docs/price-indicator.md` | "Bonne affaire" and the rest: the comparables rule, why, and how it is computed |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
 | `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |

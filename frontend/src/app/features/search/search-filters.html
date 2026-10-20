@@ -63,6 +63,16 @@
     </div>
   </fieldset>
 
+  <!-- The price indicator: listings priced well below comparable ones. -->
+  <fieldset class="filters__group">
+    <legend i18n="@@filterMarket">Prix du marché</legend>
+    <div class="filters__chips">
+      <app-filter-chip [active]="query().goodDeals" (toggled)="changed.emit({ goodDeals: $event })">
+        <ng-container i18n="@@filterGoodDeals">Bonnes affaires uniquement</ng-container>
+      </app-filter-chip>
+    </div>
+  </fieldset>
+
   <!-- ====================================================== multi-choice -->
   @for (group of groups(); track group.key) {
     <fieldset class="filters__group">

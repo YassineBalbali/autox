@@ -5,6 +5,7 @@ import {
   FeatureCategory,
   FuelType,
   Gearbox,
+  PriceLevel,
   SearchSort,
   UserRole,
   VehicleCondition,
@@ -112,6 +113,13 @@ export const SELLER_ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.PARTICULIER]: 'Particulier',
   [UserRole.PROFESSIONNEL]: 'Professionnel',
   [UserRole.ADMIN]: 'AutoX',
+};
+
+/** The price indicator's verdicts. The rule is `MarketPrice`, on the backend. */
+export const PRICE_LEVEL_LABELS: Record<PriceLevel, string> = {
+  [PriceLevel.GOOD_DEAL]: 'Bonne affaire',
+  [PriceLevel.MARKET]: 'Prix du marché',
+  [PriceLevel.ABOVE_MARKET]: 'Au-dessus du marché',
 };
 
 /** In the order the sort menu lists them. */

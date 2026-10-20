@@ -71,7 +71,13 @@ public record ListingSearchCriteria(
          * <p>Last in the record on purpose: it was added after the others, and appending
          * keeps every existing positional construction compiling.
          */
-        @Size(max = 120) String q) {
+        @Size(max = 120) String q,
+
+        /**
+         * Only listings whose price indicator is one of these: "les bonnes affaires". A
+         * listing without an indicator matches none. Appended last, like {@code q}.
+         */
+        List<PriceLevel> priceLevel) {
 
     public boolean hasBoundingBox() {
         return latMin != null && latMax != null && lonMin != null && lonMax != null;
