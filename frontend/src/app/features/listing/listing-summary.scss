@@ -1,0 +1,144 @@
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-raised);
+}
+
+.summary__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.summary__title {
+  margin: 0;
+  font-size: var(--t-lg);
+  line-height: var(--lh-snug);
+}
+
+.summary__published {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  margin: 0;
+  color: var(--c-ink-faint);
+  font-size: var(--t-xs);
+}
+
+// The price: the largest thing on the page, on its own line, in the accent.
+.summary__price {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-top: var(--s-4);
+  border-top: var(--divider);
+}
+
+.summary__terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+.summary__contact-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.summary__contact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  height: 3rem;
+  font-size: var(--t-md);
+
+  // Looks like what it is: not available. An explicit pair of colours rather than
+  // opacity, which would fail contrast on the label.
+  &[aria-disabled='true'] {
+    background: var(--c-line);
+    color: var(--c-ink-faint);
+    cursor: not-allowed;
+  }
+}
+
+// ---- the seller ------------------------------------------------------------
+
+.seller {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: var(--divider);
+}
+
+.seller__who {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.seller__avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+
+.seller__identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-1);
+  min-width: 0;
+}
+
+.seller__name {
+  margin: 0;
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-snug);
+}
+
+.seller__facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.seller__fact {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+
+  app-icon {
+    color: var(--c-ink-faint);
+  }
+
+  dt {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    color: var(--c-ink-soft);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--c-ink);
+    font-weight: var(--fw-semibold);
+  }
+}

@@ -126,6 +126,16 @@ describe('SellerBadge', () => {
     expect(badge.classList).not.toContain('badge--pro');
   });
 
+  it('spells it out where there is room', async () => {
+    TestBed.resetTestingModule();
+    const badge = TestBed.createComponent(SellerBadge);
+    badge.componentRef.setInput('role', 'PROFESSIONNEL');
+    badge.componentRef.setInput('full', true);
+    await badge.whenStable();
+
+    expect((badge.nativeElement as HTMLElement).textContent?.trim()).toBe('Professionnel');
+  });
+
   it('shows nothing for a role it does not know', async () => {
     expect((await render(undefined)).querySelector('.badge')).toBeNull();
     expect((await render('ADMIN')).querySelector('.badge')).toBeNull();

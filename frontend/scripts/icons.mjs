@@ -17,13 +17,16 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const NAMES = [
+  'arrow-left',
   'arrow-right',
   'badge-check',
   'building-2',
   'calendar',
   'camera',
   'car-front',
+  'check',
   'chevron-down',
+  'clock',
   'cog',
   'fuel',
   'gauge',
@@ -32,6 +35,7 @@ const NAMES = [
   'image',
   'leaf',
   'map-pin',
+  'message-circle',
   'mountain',
   'plug-zap',
   'search',

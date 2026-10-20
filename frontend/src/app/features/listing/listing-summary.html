@@ -1,0 +1,84 @@
+<section class="summary">
+  <div class="summary__head">
+    <h1 class="summary__title">{{ listing().title }}</h1>
+    @if (published()) {
+      <p class="summary__published">
+        <app-icon name="clock" [size]="14" />
+        <span><ng-container i18n="@@listingPublished">Publiée le</ng-container> {{ published() }}</span>
+      </p>
+    }
+  </div>
+
+  @if (listing().priceAmount !== undefined) {
+    <div class="summary__price">
+      <app-price
+        size="detail"
+        [amountMinor]="listing().priceAmount!"
+        [currency]="listing().currencyCode ?? 'EUR'"
+        [minorUnit]="minorUnit()"
+      />
+      @if (listing().priceNegotiable || listing().vatDeductible) {
+        <div class="summary__terms">
+          @if (listing().priceNegotiable) {
+            <span class="tag" i18n="@@listingNegotiable">Prix négociable</span>
+          }
+          @if (listing().vatDeductible) {
+            <span class="tag" i18n="@@listingVat">TVA récupérable</span>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Not a working button yet, and it says so. aria-disabled rather than the disabled
+       attribute, so it stays reachable by keyboard and a screen reader reads both the
+       label and the reason, instead of skipping it in silence. -->
+  <div class="summary__contact-block">
+    <button
+      class="btn btn--primary btn--block summary__contact"
+      type="button"
+      aria-disabled="true"
+      aria-describedby="contact-indisponible"
+    >
+      <app-icon name="message-circle" [size]="18" [strokeWidth]="2" />
+      <span i18n="@@listingContact">Contacter le vendeur</span>
+    </button>
+    <p class="meta" id="contact-indisponible" i18n="@@listingContactSoon">
+      La messagerie n’est pas encore ouverte. Il sera bientôt possible d’écrire au vendeur
+      depuis cette page.
+    </p>
+  </div>
+
+  <section class="seller" aria-labelledby="titre-vendeur">
+    <h2 id="titre-vendeur" class="visually-hidden" i18n="@@listingSeller">Vendeur</h2>
+    <div class="seller__who">
+      <span class="seller__avatar" aria-hidden="true">
+        <app-icon [name]="isProfessional() ? 'store' : 'user'" [size]="20" />
+      </span>
+      <div class="seller__identity">
+        <p class="seller__name">{{ listing().seller?.displayName }}</p>
+        <app-seller-badge [role]="listing().seller?.role" [full]="true" />
+      </div>
+    </div>
+    <dl class="seller__facts">
+      @if (place()) {
+        <div class="seller__fact">
+          <dt>
+            <app-icon name="map-pin" [size]="16" />
+            <span class="visually-hidden" i18n="@@listingPlace">Localisation</span>
+          </dt>
+          <dd>{{ place() }}</dd>
+        </div>
+      }
+      @if (memberSince()) {
+        <div class="seller__fact">
+          <dt>
+            <app-icon name="calendar" [size]="16" />
+            <span i18n="@@listingMemberSince">Membre depuis</span>
+          </dt>
+          <dd>{{ memberSince() }}</dd>
+        </div>
+      }
+    </dl>
+  </section>
+</section>

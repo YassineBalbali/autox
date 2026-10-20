@@ -1,11 +1,14 @@
 @use '../../../styles/tokens' as t;
 
 .listing__back {
-  margin-bottom: var(--s-2);
+  margin-bottom: var(--s-3);
   font-size: var(--t-sm);
   font-weight: var(--fw-semibold);
 
   a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
     text-decoration: none;
 
     &:hover {
@@ -22,7 +25,7 @@
   gap: var(--s-4);
 
   @media (min-width: t.$bp-lg) {
-    grid-template-columns: minmax(0, 1fr) 22rem;
+    grid-template-columns: minmax(0, 1fr) 24rem;
     gap: var(--s-5);
     align-items: start;
   }
@@ -32,7 +35,7 @@
 .listing__aside {
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
+  gap: var(--s-5);
   min-width: 0;
 }
 
@@ -48,60 +51,47 @@
   }
 }
 
-// ---- the summary ----------------------------------------------------------
+// ---- description, specification, equipment --------------------------------
+//
+// Each on the same raised surface as the facts above them, headed like the sections of
+// the home page: a short accent rule, then the title, in sentence case.
 
-.summary {
+.section {
   display: flex;
   flex-direction: column;
-  gap: var(--s-2);
-  padding-block: var(--s-4);
+  gap: var(--s-4);
+  padding: var(--s-5);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-raised);
 }
 
-.summary__title {
-  font-size: var(--t-lg);
-  line-height: var(--lh-snug);
-}
-
-// The price: the largest thing on the page, on its own line, in the accent.
-.summary__price {
+.section__title {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--s-1) var(--s-2);
-  padding-top: var(--s-2);
-  margin-top: var(--s-1);
-  border-top: var(--divider);
-}
+  gap: var(--s-3);
+  margin: 0;
+  font-size: var(--t-lg);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
 
-.summary__contact {
-  margin-top: var(--s-2);
-  height: 2.75rem;
-  font-size: var(--t-md);
-
-  // Looks like what it is: not available. An explicit pair of colours rather than
-  // opacity, which would fail contrast on the label.
-  &[aria-disabled='true'] {
-    background: var(--c-line);
-    color: var(--c-ink-faint);
-    cursor: not-allowed;
+  &::before {
+    content: '';
+    flex: none;
+    width: 4px;
+    height: 1.1em;
+    border-radius: var(--r-sm);
+    background: var(--c-accent);
   }
 }
 
-.seller__name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s-2);
-  font-size: var(--t-md);
-  font-weight: var(--fw-bold);
-}
-
-// ---- description, specification, equipment --------------------------------
-
 .listing__description {
+  margin: 0;
   // The seller's own line breaks, kept; anything they typed, shown as text.
   white-space: pre-line;
   max-width: var(--w-prose);
+  line-height: var(--lh-body);
 }
 
 // Two columns of label/value rows on a wide screen: thirteen facts in seven lines.
@@ -125,7 +115,7 @@
   display: flex;
   justify-content: space-between;
   gap: var(--s-3);
-  padding: var(--s-1) 0;
+  padding: var(--s-2) 0;
   border-bottom: var(--divider);
   font-size: var(--t-sm);
 
@@ -144,19 +134,20 @@
 .equipment {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
-  gap: var(--s-3) var(--s-5);
+  gap: var(--s-4) var(--s-5);
 }
 
 .equipment__group {
   h3 {
-    margin-bottom: var(--s-1);
-    font-size: var(--t-xs);
-    color: var(--c-ink-soft);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    margin-bottom: var(--s-2);
+    font-size: var(--t-sm);
+    font-weight: var(--fw-bold);
   }
 
   ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -165,7 +156,14 @@
   }
 
   li {
-    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+  }
+
+  app-icon {
+    flex: none;
+    color: var(--c-success);
   }
 }
 
@@ -173,7 +171,7 @@
 
 .placeholder {
   background: var(--c-line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-lg);
 }
 
 .placeholder--gallery {
@@ -185,5 +183,5 @@
 }
 
 .placeholder--summary {
-  height: 16rem;
+  height: 24rem;
 }
