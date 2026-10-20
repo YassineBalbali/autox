@@ -636,6 +636,20 @@ describe('SearchPage', () => {
       expect(toggle('Grille').getAttribute('aria-pressed')).toBe('false');
     });
 
+    it('keeps both arrangements announced as lists, without bullets', async () => {
+      // The items are blocks, so no browser draws a marker; Safari then stops calling the
+      // list a list unless it is told to.
+      await visit('/recherche');
+      await answer([listing('a')]);
+      expect(root.querySelector('.search__list')?.getAttribute('role')).toBe('list');
+      expect(getComputedStyle(root.querySelector('.search__list > li') as HTMLElement).display).toBe('block');
+
+      toggle('Grille').click();
+      await settle();
+      expect(root.querySelector('.search__grid')?.getAttribute('role')).toBe('list');
+      expect(getComputedStyle(root.querySelector('.search__grid > li') as HTMLElement).display).toBe('block');
+    });
+
     it('switches to cards, showing the same results in the same order', async () => {
       await visit('/recherche');
       await answer([listing('a'), listing('b'), listing('c')]);

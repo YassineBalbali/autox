@@ -98,7 +98,7 @@
             @if (view() === 'grille') {
               <!-- The same results, the same order, the same components inside — only the
                  arrangement differs. -->
-              <ul class="search__grid">
+              <ul class="search__grid" role="list">
                 @for (listing of results.items(); track listing.id; let index = $index) {
                   <li>
                     <app-listing-card
@@ -112,7 +112,7 @@
                 }
               </ul>
             } @else {
-              <ul class="search__list">
+              <ul class="search__list" role="list">
                 @for (listing of results.items(); track listing.id; let index = $index) {
                   <li class="search__item">
                     <app-listing-row
