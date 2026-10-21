@@ -22,8 +22,8 @@ import org.springframework.http.MediaType;
  * The price indicator against a real PostgreSQL: the rule in {@link MarketPrice}, where it is
  * written as SQL, is the thing under test.
  *
- * <p>Each test lays out a small market of Peugeot 208s — 2020, 40 000 km, 10 000 € unless
- * said otherwise — and one listing to judge against it.
+ * <p>Each test lays out a small market of Peugeot 208s — petrol, 100 ch, 2020, 40 000 km,
+ * 10 000 € unless said otherwise — and one listing to judge against it.
  */
 class MarketPriceIntegrationTest extends AbstractIntegrationTest {
 
@@ -89,12 +89,15 @@ class MarketPriceIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("only the same model, two years either side, the same mileage band, used and live count")
+    @DisplayName("only the same model and engine, two years either side, the same mileage band, used and live count")
     void whatIsComparable() throws Exception {
         market(4);
         // Each of these would be the fifth comparable if it qualified; none does.
         listing(Map.of("firstRegistrationYear", 2017));                // three years off
         listing(Map.of("mileageKm", 61_000));                          // the next band up
+        listing(Map.of("fuelType", "DIESEL"));                         // another fuel
+        listing(Map.of("powerHp", 130));                               // another engine: 30 % more
+        listing(Map.of("powerHp", 84));                                // and 16 % less
         listing(Map.of("condition", "NEW", "mileageKm", 10, "firstRegistrationYear", 2020));
         listing(Map.of("modelId", catalogue.threeSeries().getId().toString(),
                 "makeId", catalogue.bmw().getId().toString()));        // another model
@@ -105,17 +108,20 @@ class MarketPriceIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/listings/" + id))
                 .andExpect(jsonPath("$.priceIndicator").doesNotExist());
 
-        // And the edges that do qualify: two years off, the top of the band.
-        listing(Map.of("firstRegistrationYear", 2022, "mileageKm", 59_999));
+        // And the edges that do qualify: two years off, the top of the band, 15 % more power.
+        listing(Map.of("firstRegistrationYear", 2022, "mileageKm", 59_999, "powerHp", 115));
         mockMvc.perform(get("/api/v1/listings/" + id))
                 .andExpect(jsonPath("$.priceIndicator.comparableCount").value(5));
     }
 
     @Test
-    @DisplayName("a new car is not judged, and nor is a vehicle typed in by hand")
+    @DisplayName("a new car is not judged, nor a vehicle typed in by hand, nor one that states no power")
     void notJudged() throws Exception {
         market(5);
         String brandNew = listing(Map.of("condition", "NEW", "mileageKm", 10, "priceAmount", 500_000L));
+        Map<String, Object> noPower = new HashMap<>(Map.of("priceAmount", 500_000L));
+        noPower.put("powerHp", null);
+        String unstated = listing(noPower);
 
         Map<String, Object> typed = new HashMap<>(ListingTestFixtures.freeTextListingPayload());
         typed.put("priceAmount", 500_000L);
@@ -123,6 +129,7 @@ class MarketPriceIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/listings/" + brandNew)).andExpect(jsonPath("$.priceIndicator").doesNotExist());
         mockMvc.perform(get("/api/v1/listings/" + freeText)).andExpect(jsonPath("$.priceIndicator").doesNotExist());
+        mockMvc.perform(get("/api/v1/listings/" + unstated)).andExpect(jsonPath("$.priceIndicator").doesNotExist());
     }
 
     @Test
@@ -150,14 +157,14 @@ class MarketPriceIntegrationTest extends AbstractIntegrationTest {
 
     // ---- helpers ------------------------------------------------------------------------
 
-    /** {@code count} Peugeot 208s at the reference: 2020, 40 000 km, 10 000 €. */
+    /** {@code count} Peugeot 208s at the reference: petrol, 100 ch, 2020, 40 000 km, 10 000 €. */
     private void market(int count) throws Exception {
         for (int i = 0; i < count; i++) {
             listing(Map.of());
         }
     }
 
-    /** A published Peugeot 208 at the reference, with these fields changed. */
+    /** A published Peugeot 208 at the reference, with these fields changed; a null removes one. */
     private String listing(Map<String, Object> overrides) throws Exception {
         Map<String, Object> payload = new HashMap<>(ListingTestFixtures.freeTextListingPayload());
         payload.remove("makeText");
@@ -165,10 +172,13 @@ class MarketPriceIntegrationTest extends AbstractIntegrationTest {
         payload.put("makeId", catalogue.peugeot().getId().toString());
         payload.put("modelId", catalogue.twoOhEight().getId().toString());
         payload.put("title", "Peugeot 208");
+        payload.put("fuelType", "PETROL");
+        payload.put("powerHp", 100);
         payload.put("firstRegistrationYear", 2020);
         payload.put("mileageKm", 40_000);
         payload.put("priceAmount", 1_000_000L);
         payload.putAll(overrides);
+        payload.values().removeIf(java.util.Objects::isNull);
         return publish(create(payload));
     }
 

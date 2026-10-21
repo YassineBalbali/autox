@@ -15,6 +15,7 @@ A listing's **comparables** are the other live listings that have:
 | | |
 |---|---|
 | Make and model | the same catalogue make and model |
+| Engine | the same fuel, and a power within 15 % of the listing's |
 | First registration | within two years either side |
 | Mileage | the same band: under 30 000 km, 30–60 000, 60–100 000, 100–150 000, 150 000 and over |
 | Currency | the same |
@@ -32,7 +33,8 @@ With **at least five** comparables, the listing's price is set against their **m
 | 10 % or more above | Au-dessus du marché | `ABOVE_MARKET` |
 
 With fewer than five, nothing is shown: no badge, no "Prix du marché". The same applies to
-a new car, and to a vehicle identified by typed text instead of the catalogue.
+a new car, to a vehicle identified by typed text instead of the catalogue, and to a listing
+that does not state its power.
 
 ## Why these choices
 
@@ -45,11 +47,20 @@ a new car, and to a vehicle identified by typed text instead of the catalogue.
   to index. A sliding window has no edge where a car's comparables suddenly change, but it
   is harder to say what it means. Bands are narrow at low mileage, where a buyer cares
   most, and wider above.
-- **Trim, engine and options are ignored.** A Peugeot 308 PureTech 130 and a 308 Hybrid
-  180 are compared as one model. Finer matching needs a version catalogue AutoX does not
-  have (see `docs/deferred.md`). Until then the margin is 10 %, not 5 %, and the listing
-  page says exactly what the verdict was based on, as in "Comparé à 7 Peugeot 308 de
-  2019 à 2023 au kilométrage proche, prix médian 18 490 €", so a buyer can judge it.
+- **Per version, not per model.** Real valuation is per version: a Tesla Model 3
+  Performance is not an overpriced Model 3 Propulsion, and comparing them is wrong
+  whatever it does to the number of badges. Compared per model, every Propulsion came out
+  a good deal and every Performance above the market. Showing fewer verdicts that can be
+  defended beats showing many that mislead.
+- **Fuel and power stand in for the version.** AutoX has no version catalogue yet (see
+  `docs/deferred.md`), and the version text is free and spelt differently by every seller.
+  Fuel and power are structured, and together they nearly always tell a model's engines
+  apart: a 308 PureTech 130 and a 308 Hybrid 180 differ in both. 15 % is enough for the same
+  engine across a facelift (130 then 136 ch) and narrower than the gap between the engines
+  a model is sold with. Trim and options are still ignored, which is one reason the margin
+  is 10 %, not 5 %. The listing page says what the verdict rests on, as in "Comparé à
+  7 Peugeot 308 de même motorisation de 2021 à 2025 au kilométrage proche, prix médian
+  21 490 €", so a buyer can judge it.
 - **The listing itself is not one of its own comparables.** If it were, an overpriced car
   would raise its own median.
 
@@ -85,10 +96,25 @@ stale.
 
 ## The demo data
 
-Seeded at random, the indicator would have nothing to say: sixty listings over twenty-one
-models is about three a model, and almost none would reach five comparables. The seed
-(`DemoCatalogue`) therefore puts about ten listings on each of eight common models. The
-others get two to four, which shows the indicator staying silent. Asking prices are spread
-around each car's value, as sellers' prices are, so all three verdicts appear.
-`DemoCatalogueTest` applies the rule to the seed in memory, and fails if fewer than thirty
-listings get a verdict or any verdict is missing.
+Seeded at random, the indicator would have nothing to say: a hundred and twenty listings
+over twenty-one models, each in several versions, and almost none would reach five
+comparables of the same engine. The seed (`DemoCatalogue`) therefore puts about ten
+listings on each of eight common models, most or all of them in the one version that
+sells: the Clio TCe 90, the Model 3 Propulsion, the Sandero Stepway ECO-G 100. The other
+models get one to four listings, which shows the indicator staying silent. Asking prices
+are spread around each car's value, as sellers' prices are, so all three verdicts appear.
+About half the listings (57 of 120) get one.
+
+`DemoCatalogueTest` applies the rule to the seed in memory. It fails if fewer than thirty
+listings get a verdict, if any verdict is missing, or if one of the eight volume models
+gets none.
+
+## A known weakness
+
+The comparables are not adjusted for age or mileage within the window. A 2024 car is
+compared with 2022 and 2023 ones, which are worth less, so a fairly priced car at the
+young end of the window can come out "Au-dessus du marché", and one at the old end a
+"Bonne affaire". On the demo seed, where the true value of each car is known, 3 of the 24
+good-deal and above-market verdicts are of this kind. A narrower window would mean fewer
+verdicts. The better fix is to adjust each comparable's price to the listing's age and
+mileage before taking the median.

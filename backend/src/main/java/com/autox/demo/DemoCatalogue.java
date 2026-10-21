@@ -124,10 +124,11 @@ final class DemoCatalogue {
      * <p>{@code firstYear} to {@code lastYear} are the years this exact version was on sale; a
      * generated listing is never registered outside them. The power is the one the version's
      * name states ("TCe 90" is 90 ch), and the new price is roughly what it listed for — the
-     * starting point of its depreciation.
+     * starting point of its depreciation. {@code share} is how many of the model's listings
+     * it gets for each one another version of {@code share} 1 gets.
      */
     record Variant(String version, FuelType fuel, Gearbox gearbox, int powerHp,
-                   int newPriceEuros, int firstYear, int lastYear) {
+                   int newPriceEuros, int firstYear, int lastYear, int share) {
     }
 
     /**
@@ -142,45 +143,42 @@ final class DemoCatalogue {
 
     private static Variant v(String version, FuelType fuel, Gearbox gearbox, int powerHp,
                              int newPriceEuros, int firstYear, int lastYear) {
-        return new Variant(version, fuel, gearbox, powerHp, newPriceEuros, firstYear, lastYear);
+        return v(1, version, fuel, gearbox, powerHp, newPriceEuros, firstYear, lastYear);
+    }
+
+    private static Variant v(int share, String version, FuelType fuel, Gearbox gearbox, int powerHp,
+                             int newPriceEuros, int firstYear, int lastYear) {
+        return new Variant(version, fuel, gearbox, powerHp, newPriceEuros, firstYear, lastYear, share);
     }
 
     private static final Gearbox MANUAL = Gearbox.MANUAL;
     private static final Gearbox AUTO = Gearbox.AUTOMATIC;
 
     static final List<Template> TEMPLATES = List.of(
-            // ---- the volume models: about ten listings each, hand-written ones included
+            // ---- the volume models: about ten listings each, hand-written ones included,
+            // most of them one version — the one that sells — so that version has the
+            // comparables the price indicator needs, which are counted per version
             new Template("renault", "clio", "Renault Clio", BodyType.HATCHBACK, 9, List.of(
-                    v("TCe 90 Evolution", FuelType.PETROL, MANUAL, 90, 19_500, 2022, 2025),
-                    v("E-Tech 145 Techno", FuelType.HYBRID_PETROL, AUTO, 145, 25_500, 2022, 2025),
-                    v("Blue dCi 100 Business", FuelType.DIESEL, MANUAL, 100, 21_500, 2020, 2022))),
+                    v(3, "TCe 90 Evolution", FuelType.PETROL, MANUAL, 90, 19_500, 2022, 2025),
+                    v(1, "E-Tech 145 Techno", FuelType.HYBRID_PETROL, AUTO, 145, 25_500, 2022, 2025))),
             new Template("peugeot", "208", "Peugeot 208", BodyType.HATCHBACK, 10, List.of(
-                    v("PureTech 100 Allure", FuelType.PETROL, MANUAL, 100, 22_500, 2020, 2025),
-                    v("e-208 136 GT", FuelType.ELECTRIC, AUTO, 136, 39_000, 2020, 2022),
-                    v("PureTech 75 Active", FuelType.PETROL, MANUAL, 75, 17_500, 2020, 2023))),
-            new Template("peugeot", "308", "Peugeot 308", BodyType.HATCHBACK, 9, List.of(
-                    v("PureTech 130 EAT8 Allure", FuelType.PETROL, AUTO, 130, 33_500, 2022, 2025),
-                    v("BlueHDi 130 EAT8 Allure Pack", FuelType.DIESEL, AUTO, 130, 36_500, 2022, 2025),
-                    v("Hybrid 180 e-EAT8 GT", FuelType.PLUGIN_HYBRID, AUTO, 180, 45_000, 2022, 2024))),
-            new Template("peugeot", "3008", "Peugeot 3008", BodyType.SUV, 9, List.of(
-                    v("BlueHDi 130 EAT8 Allure", FuelType.DIESEL, AUTO, 130, 38_500, 2018, 2023),
-                    v("PureTech 130 Active", FuelType.PETROL, MANUAL, 130, 31_500, 2018, 2020),
-                    v("Hybrid 225 e-EAT8 Allure", FuelType.PLUGIN_HYBRID, AUTO, 225, 46_000, 2020, 2023))),
-            new Template("volkswagen", "golf", "Volkswagen Golf", BodyType.HATCHBACK, 9, List.of(
-                    v("1.5 TSI 130 Life", FuelType.PETROL, MANUAL, 130, 30_500, 2020, 2024),
-                    v("2.0 TDI 115 Life", FuelType.DIESEL, MANUAL, 115, 31_500, 2020, 2024),
-                    v("1.5 eTSI 150 DSG7 R-Line", FuelType.PETROL, AUTO, 150, 38_000, 2020, 2025))),
+                    v(4, "PureTech 100 Allure", FuelType.PETROL, MANUAL, 100, 22_500, 2020, 2025),
+                    v(1, "e-208 136 GT", FuelType.ELECTRIC, AUTO, 136, 39_000, 2020, 2022))),
+            new Template("peugeot", "308", "Peugeot 308", BodyType.HATCHBACK, 10, List.of(
+                    v("PureTech 130 EAT8 Allure", FuelType.PETROL, AUTO, 130, 33_500, 2022, 2025))),
+            new Template("peugeot", "3008", "Peugeot 3008", BodyType.SUV, 10, List.of(
+                    v("BlueHDi 130 EAT8 Allure", FuelType.DIESEL, AUTO, 130, 38_500, 2020, 2023))),
+            new Template("volkswagen", "golf", "Volkswagen Golf", BodyType.HATCHBACK, 10, List.of(
+                    v("1.5 TSI 130 Life", FuelType.PETROL, MANUAL, 130, 30_500, 2020, 2024))),
             new Template("renault", "captur", "Renault Captur", BodyType.SUV, 10, List.of(
-                    v("TCe 90 Evolution", FuelType.PETROL, MANUAL, 90, 24_500, 2022, 2025),
-                    v("E-Tech 145 Techno", FuelType.HYBRID_PETROL, AUTO, 145, 30_000, 2022, 2025),
-                    v("E-Tech Plug-in 160 Intens", FuelType.PLUGIN_HYBRID, AUTO, 160, 35_500, 2020, 2021))),
+                    v(4, "TCe 90 Evolution", FuelType.PETROL, MANUAL, 90, 24_500, 2022, 2025),
+                    v(1, "E-Tech 145 Techno", FuelType.HYBRID_PETROL, AUTO, 145, 30_000, 2022, 2025))),
             new Template("tesla", "model-3", "Tesla Model 3", BodyType.SEDAN, 9, List.of(
-                    v("Propulsion", FuelType.ELECTRIC, AUTO, 283, 44_000, 2021, 2025),
-                    v("Grande Autonomie AWD", FuelType.ELECTRIC, AUTO, 440, 52_000, 2021, 2023),
-                    v("Performance AWD", FuelType.ELECTRIC, AUTO, 513, 60_000, 2021, 2023))),
-            new Template("dacia", "sandero", "Dacia Sandero", BodyType.HATCHBACK, 9, List.of(
-                    v("TCe 90 Expression", FuelType.PETROL, MANUAL, 90, 15_500, 2021, 2025),
-                    v("Stepway ECO-G 100 Expression", FuelType.LPG, MANUAL, 100, 17_500, 2021, 2025))),
+                    v(3, "Propulsion", FuelType.ELECTRIC, AUTO, 283, 44_000, 2021, 2025),
+                    v(1, "Grande Autonomie AWD", FuelType.ELECTRIC, AUTO, 440, 52_000, 2021, 2023))),
+            new Template("dacia", "sandero", "Dacia Sandero", BodyType.HATCHBACK, 10, List.of(
+                    v(3, "Stepway ECO-G 100 Expression", FuelType.LPG, MANUAL, 100, 17_500, 2021, 2025),
+                    v(1, "TCe 90 Expression", FuelType.PETROL, MANUAL, 90, 15_500, 2021, 2025))),
             // ---- the rest: a few each
             new Template("volkswagen", "tiguan", "Volkswagen Tiguan", BodyType.SUV, 4, List.of(
                     v("2.0 TDI 150 DSG7 Elegance", FuelType.DIESEL, AUTO, 150, 46_000, 2021, 2023),
@@ -205,19 +203,19 @@ final class DemoCatalogue {
             new Template("mercedes-benz", "classe-a", "Mercedes Classe A", BodyType.HATCHBACK, 2, List.of(
                     v("A 180 d 116 Progressive Line", FuelType.DIESEL, AUTO, 116, 36_000, 2019, 2024),
                     v("A 250 e 218 AMG Line", FuelType.PLUGIN_HYBRID, AUTO, 218, 47_000, 2020, 2025))),
-            new Template("renault", "megane", "Renault Mégane", BodyType.HATCHBACK, 2, List.of(
+            new Template("renault", "megane", "Renault Mégane", BodyType.HATCHBACK, 1, List.of(
                     v("TCe 140 Techno", FuelType.PETROL, MANUAL, 140, 30_000, 2022, 2023),
                     v("Estate Blue dCi 115 EDC Intens", FuelType.DIESEL, AUTO, 115, 31_000, 2019, 2021))),
-            new Template("citroen", "c3", "Citroën C3", BodyType.HATCHBACK, 2, List.of(
+            new Template("citroen", "c3", "Citroën C3", BodyType.HATCHBACK, 1, List.of(
                     v("PureTech 83 Feel", FuelType.PETROL, MANUAL, 83, 16_500, 2017, 2023),
                     v("BlueHDi 100 Shine", FuelType.DIESEL, MANUAL, 100, 20_500, 2017, 2023))),
             new Template("dacia", "duster", "Dacia Duster", BodyType.SUV, 2, List.of(
                     v("Blue dCi 115 4x4 Prestige", FuelType.DIESEL, MANUAL, 115, 25_000, 2018, 2023),
                     v("ECO-G 100 Expression", FuelType.LPG, MANUAL, 100, 19_500, 2022, 2025))),
-            new Template("toyota", "corolla", "Toyota Corolla", BodyType.ESTATE, 2, List.of(
+            new Template("toyota", "corolla", "Toyota Corolla", BodyType.ESTATE, 1, List.of(
                     v("Touring Sports 122h Dynamic", FuelType.HYBRID_PETROL, AUTO, 122, 31_000, 2019, 2022),
                     v("Touring Sports 196h GR Sport", FuelType.HYBRID_PETROL, AUTO, 196, 39_000, 2023, 2025))),
-            new Template("fiat", "500", "Fiat 500", BodyType.HATCHBACK, 2, List.of(
+            new Template("fiat", "500", "Fiat 500", BodyType.HATCHBACK, 1, List.of(
                     v("1.2 69 Lounge", FuelType.PETROL, MANUAL, 69, 15_500, 2015, 2019),
                     v("e 118 Icône", FuelType.ELECTRIC, AUTO, 118, 33_000, 2021, 2025))));
 
@@ -239,9 +237,11 @@ final class DemoCatalogue {
             java.util.Map.entry("dacia/sandero", 2008), java.util.Map.entry("dacia/duster", 2010),
             java.util.Map.entry("fiat/500", 2007));
 
+    private static final String LOW_MILEAGE = " — faible kilométrage";
+
     private static final List<String> TITLE_NOTES = List.of(
             "", "", " — première main", ", entretien à jour", "", ", garantie 12 mois",
-            " — faible kilométrage", "", ", carnet complet");
+            LOW_MILEAGE, "", ", carnet complet");
 
     private static final ExteriorColor[] COLOURS = {
         ExteriorColor.GREY, ExteriorColor.WHITE, ExteriorColor.BLACK, ExteriorColor.BLUE,
@@ -281,7 +281,6 @@ final class DemoCatalogue {
      */
     static List<Vehicle> vehicles() {
         List<Vehicle> all = new java.util.ArrayList<>(VEHICLES);
-        java.util.Random random = new java.util.Random(20_261_020L);
         java.util.Map<String, Integer> generatedFor = new java.util.HashMap<>();
         java.util.Map<Template, Integer> taken = new java.util.HashMap<>();
 
@@ -292,7 +291,15 @@ final class DemoCatalogue {
             // certain to appear: left to chance, one fuel came out with no listing and its
             // filter was dead.
             int turn = taken.merge(template, 1, Integer::sum) - 1;
-            Variant variant = template.variants().get(turn % template.variants().size());
+            List<Variant> turns = template.variants().stream()
+                    .flatMap(variant -> java.util.Collections.nCopies(variant.share(), variant).stream())
+                    .toList();
+            Variant variant = turns.get(turn % turns.size());
+            // A generator per listing, seeded by the model and the listing's place in it, not
+            // one for the whole set: then adding a listing to one model leaves every other
+            // model's cars as they were, instead of redrawing the lot.
+            java.util.Random random = new java.util.Random(java.util.Objects.hash(
+                    20_261_020L, template.makeSlug(), template.modelSlug(), turn));
 
             Base base = BASES.get(index % BASES.size());
             if (PRIVATE_SELLERS.contains(base.sellerKey())
@@ -312,11 +319,16 @@ final class DemoCatalogue {
             int mileage = Math.max(1_500, roundTo((int) (age * (10_000 + random.nextInt(7_000))), 100));
             double asking = ASKING[random.nextInt(ASKING.length)];
             long price = askingPrice(variant.newPriceEuros(), variant.fuel(), age, mileage, asking);
+            String note = TITLE_NOTES.get(random.nextInt(TITLE_NOTES.size()));
+            if (note.equals(LOW_MILEAGE) && mileage > 0.8 * age * KM_PER_YEAR) {
+                // Only where it is true: "faible kilométrage" on an average mileage is the
+                // kind of claim a buyer checks, and the demo would be caught out.
+                note = "";
+            }
 
             all.add(new Vehicle(
                     base.sellerKey(), template.makeSlug(), template.modelSlug(), variant.version(),
-                    template.name() + " " + variant.version()
-                            + TITLE_NOTES.get(random.nextInt(TITLE_NOTES.size())),
+                    template.name() + " " + variant.version() + note,
                     price, year, month, mileage,
                     variant.fuel(), variant.gearbox(), template.body(), variant.powerHp(),
                     VehicleCondition.USED, COLOURS[random.nextInt(COLOURS.length)],
