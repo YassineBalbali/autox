@@ -196,6 +196,17 @@ class DemoCatalogueTest {
     }
 
     @Test
+    @DisplayName("a title that claims a low mileage has one")
+    void lowMileageClaimsAreTrue() {
+        // Found on a 2020 3008 with 88 700 km, an average mileage, sold as "faible kilométrage".
+        assertThat(vehicles.stream().filter(vehicle -> vehicle.title().contains("faible kilométrage")))
+                .isNotEmpty()
+                .allSatisfy(vehicle -> assertThat(vehicle.mileageKm()).as(vehicle.title())
+                        .isLessThanOrEqualTo((int) (0.8 * 13_000
+                                * DemoCatalogue.ageInYears(vehicle.year(), vehicle.month()))));
+    }
+
+    @Test
     @DisplayName("an older or more driven car of the same version is asked less for")
     void depreciationRunsTheRightWay() {
         double newer = DemoCatalogue.askingPrice(30_000, FuelType.PETROL, 2, 26_000, 1.0);
@@ -209,11 +220,13 @@ class DemoCatalogueTest {
     }
 
     @Test
-    @DisplayName("the volume models give the price indicator enough to work with, at all three levels")
+    @DisplayName("every volume model gives the price indicator enough to work with, at all three levels")
     void priceIndicatorHasSomethingToShow() {
         // The rule of com.autox.search.MarketPrice, applied to the seed in memory: same
-        // model, year within two, same mileage band, not new, at least five others.
+        // model, fuel and power within 15 %, year within two, same mileage band, not new,
+        // at least five others.
         Map<String, Long> levels = new java.util.HashMap<>();
+        Set<String> judgedModels = new java.util.HashSet<>();
         for (DemoCatalogue.Vehicle vehicle : vehicles) {
             if (vehicle.condition() == com.autox.listing.VehicleCondition.NEW) {
                 continue;
@@ -223,6 +236,8 @@ class DemoCatalogueTest {
                     .filter(other -> other.condition() != com.autox.listing.VehicleCondition.NEW)
                     .filter(other -> other.makeSlug().equals(vehicle.makeSlug())
                             && other.modelSlug().equals(vehicle.modelSlug()))
+                    .filter(other -> other.fuel() == vehicle.fuel()
+                            && Math.abs(other.powerHp() - vehicle.powerHp()) <= 0.15 * vehicle.powerHp())
                     .filter(other -> Math.abs(other.year() - vehicle.year()) <= 2)
                     .filter(other -> band(other.mileageKm()) == band(vehicle.mileageKm()))
                     .map(DemoCatalogue.Vehicle::priceEuros).sorted().toList();
@@ -235,7 +250,17 @@ class DemoCatalogueTest {
             String level = vehicle.priceEuros() <= 0.9 * median ? "GOOD_DEAL"
                     : vehicle.priceEuros() >= 1.1 * median ? "ABOVE_MARKET" : "MARKET";
             levels.merge(level, 1L, Long::sum);
+            judgedModels.add(vehicle.makeSlug() + "/" + vehicle.modelSlug());
         }
+
+        // The volume models exist for this: if one of them has no verdict at all, its
+        // listings are spread over too many versions, years or mileage bands.
+        Set<String> volumeModels = DemoCatalogue.TEMPLATES.stream()
+                .filter(template -> template.weight() >= 9)
+                .map(template -> template.makeSlug() + "/" + template.modelSlug())
+                .collect(Collectors.toSet());
+        assertThat(volumeModels).hasSize(8);
+        assertThat(judgedModels).containsAll(volumeModels);
 
         assertThat(levels.values().stream().mapToLong(Long::longValue).sum())
                 .as("listings with an indicator").isGreaterThanOrEqualTo(30);

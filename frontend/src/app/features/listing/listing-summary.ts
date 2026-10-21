@@ -62,8 +62,8 @@ export class ListingSummary {
  * and their median price. Null when the listing has no verdict.
  *
  * <p>The years are the listing's own two either side, the window `MarketPrice` uses on the
- * backend. "Au kilométrage proche" stands for the mileage band, which is more exact than a
- * buyer needs to read here.
+ * backend. "De même motorisation" stands for the same fuel and a power within 15 %, and "au
+ * kilométrage proche" for the mileage band: both more exact than a buyer needs to read here.
  */
 export function marketBasis(listing: PublicListingDetail, minorUnit: number): string | null {
   const indicator = listing.priceIndicator;
@@ -76,7 +76,7 @@ export function marketBasis(listing: PublicListingDetail, minorUnit: number): st
   const years = year == null ? '' : ` de ${year - YEAR_SPAN} à ${year + YEAR_SPAN}`;
   const what = vehicle ? `${count} ${vehicle}` : `${count} annonces comparables`;
   const median = formatPrice(indicator.medianPriceAmount, listing.currencyCode ?? 'EUR', minorUnit);
-  return `Comparé à ${what}${years} au kilométrage proche, prix médian ${median}.`;
+  return `Comparé à ${what} de même motorisation${years} au kilométrage proche, prix médian ${median}.`;
 }
 
 /** `MarketPrice.YEAR_SPAN` on the backend. */

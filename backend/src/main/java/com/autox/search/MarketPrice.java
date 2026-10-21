@@ -19,6 +19,10 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>the same catalogue make and model (a listing identified only by free text has no
  *       reliable model to compare on, and gets no indicator),</li>
+ *   <li>the same fuel and a power within 15 % ({@link #POWER_SPAN}) of the listing's — in effect
+ *       the same engine, since a car is valued by its version, not its model: a Model 3
+ *       Performance is not a dear Model 3 Propulsion. A listing that states no power gets no
+ *       indicator,</li>
  *   <li>a first registration within {@value #YEAR_SPAN} years either side,</li>
  *   <li>the same {@linkplain #BAND mileage band}: under 30 000 km, 30–60 000, 60–100 000,
  *       100–150 000, 150 000 and over,</li>
@@ -55,6 +59,14 @@ public class MarketPrice {
     /** How many years either side of the listing's first registration a comparable may be. */
     public static final int YEAR_SPAN = 2;
 
+    /**
+     * How far a comparable's power may be from the listing's, as a fraction of the listing's.
+     * Wide enough for the same engine across a facelift (a 130 that became a 136), narrow
+     * enough to keep apart the engines a model is offered with, which are rarely closer than
+     * a fifth.
+     */
+    public static final double POWER_SPAN = 0.15;
+
     /** How far from the median, as a fraction of it, before a price is no longer "the market". */
     public static final double DEAL_MARGIN = 0.10;
 
@@ -80,13 +92,15 @@ public class MarketPrice {
                    AND c.id <> l.id
                    AND c.price_currency_code = l.price_currency_code
                    AND c.vehicle_condition <> 'NEW'
+                   AND c.fuel_type = l.fuel_type
+                   AND c.power_hp BETWEEN l.power_hp * (1 - %5$s) AND l.power_hp * (1 + %5$s)
                    AND c.first_registration_year BETWEEN l.first_registration_year - %1$d
                                                      AND l.first_registration_year + %1$d
                    AND %2$s = %3$s
                    AND %4$s
-             ) mp ON l.model_id IS NOT NULL AND l.vehicle_condition <> 'NEW'
+             ) mp ON l.model_id IS NOT NULL AND l.power_hp IS NOT NULL AND l.vehicle_condition <> 'NEW'
             """.formatted(YEAR_SPAN, BAND.formatted("c"), BAND.formatted("l"),
-                    ListingSearchRepository.visible("c"));
+                    ListingSearchRepository.visible("c"), POWER_SPAN);
 
     /** The level of the listing aliased {@code l}, or null; needs {@link #LATERAL}. */
     static final String LEVEL = """

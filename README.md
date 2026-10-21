@@ -260,7 +260,7 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 403 tests, needs Docker running
+mvn clean verify         # 406 tests, needs Docker running
 
 cd ../frontend
 npm run lint

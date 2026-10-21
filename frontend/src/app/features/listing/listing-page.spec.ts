@@ -266,7 +266,7 @@ describe('ListingPage', () => {
 
       expect(market.querySelector('app-price-badge')?.textContent).toContain('Bonne affaire');
       expect(market.querySelector('.summary__basis')?.textContent?.trim()).toBe(
-        `Comparé à 7 Peugeot 308 de 2019 à 2023 au kilométrage proche, prix médian 21${NBSP}490${NBSP}€.`,
+        `Comparé à 7 Peugeot 308 de même motorisation de 2019 à 2023 au kilométrage proche, prix médian 21${NBSP}490${NBSP}€.`,
       );
     });
 

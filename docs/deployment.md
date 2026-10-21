@@ -247,6 +247,12 @@ with `SPRING_PROFILES_ACTIVE=demo` **and** `AUTOX_DEMO_ACTION=remove`, then once
 the profile (seed again), then remove both. Removal deletes exactly what the seed recorded.
 Listings visitors created are left alone; remove those from the moderation screen.
 
+A reseed creates the demo makes and models again under new ids, and browsers keep the make
+list for an hour (`Cache-Control: max-age=3600` on `/reference/makes`). For up to an hour
+afterwards, a visitor who loaded the site before the reseed gets no results when searching
+by make or model, until they reload with the cache cleared. Reseed when nobody is looking,
+or allow that hour before showing the site.
+
 ## Step 5 — Netlify: the site
 
 `netlify.toml` at the repository root holds the build settings: base directory
