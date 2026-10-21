@@ -120,18 +120,26 @@ public class S3ObjectStorage implements ObjectStorage {
                 .build());
     }
 
+    /**
+     * The most keys S3 accepts in one DeleteObjects request. One more and the whole request
+     * is refused as malformed, so nothing is deleted. Twelve objects a listing reach it at
+     * 84 listings.
+     */
+    static final int DELETE_BATCH = 1_000;
+
     @Override
     public void deleteAll(Collection<String> keys) {
-        if (keys.isEmpty()) {
-            return;
-        }
         List<ObjectIdentifier> identifiers = new ArrayList<>(keys.size());
         keys.forEach(key -> identifiers.add(ObjectIdentifier.builder().key(key).build()));
 
-        client.deleteObjects(DeleteObjectsRequest.builder()
-                .bucket(properties.bucket())
-                .delete(Delete.builder().objects(identifiers).quiet(true).build())
-                .build());
+        for (int from = 0; from < identifiers.size(); from += DELETE_BATCH) {
+            List<ObjectIdentifier> batch =
+                    identifiers.subList(from, Math.min(from + DELETE_BATCH, identifiers.size()));
+            client.deleteObjects(DeleteObjectsRequest.builder()
+                    .bucket(properties.bucket())
+                    .delete(Delete.builder().objects(batch).quiet(true).build())
+                    .build());
+        }
     }
 
     @Override
