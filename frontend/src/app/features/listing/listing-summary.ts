@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { PublicListingDetail } from '../../core/api';
+import { NBSP } from '../../shared/format/number';
 import { formatDateFr } from '../../shared/format/date';
 import { Price, formatPrice } from '../../shared/listing/price';
 import { PriceBadge } from '../../shared/listing/price-badge';
@@ -51,7 +52,9 @@ export class ListingSummary {
   /** "12 octobre 2026" */
   protected readonly published = computed(() => formatDateFr(this.listing().publishedAt));
 
-  protected readonly isProfessional = computed(() => this.listing().seller?.role === 'PROFESSIONNEL');
+  protected readonly isProfessional = computed(
+    () => this.listing().seller?.role === 'PROFESSIONNEL',
+  );
 
   /** "Comparé à 7 Peugeot 308 de 2019 à 2023 au kilométrage proche, prix médian 18 490 €." */
   protected readonly basis = computed(() => marketBasis(this.listing(), this.minorUnit()));
@@ -59,7 +62,8 @@ export class ListingSummary {
 
 /**
  * The sentence under the price verdict: how many listings it compares with, which ones,
- * and their median price. Null when the listing has no verdict.
+ * and their median price once each is brought to this car's age and mileage, which is the
+ * figure the API returns. Null when the listing has no verdict.
  *
  * <p>The years are the listing's own two either side, the window `MarketPrice` uses on the
  * backend. "De même motorisation" stands for the same fuel and a power within 15 %, and "au
@@ -67,7 +71,11 @@ export class ListingSummary {
  */
 export function marketBasis(listing: PublicListingDetail, minorUnit: number): string | null {
   const indicator = listing.priceIndicator;
-  if (!indicator?.level || indicator.comparableCount == null || indicator.medianPriceAmount == null) {
+  if (
+    !indicator?.level ||
+    indicator.comparableCount == null ||
+    indicator.medianPriceAmount == null
+  ) {
     return null;
   }
   const count = indicator.comparableCount;
@@ -75,8 +83,15 @@ export function marketBasis(listing: PublicListingDetail, minorUnit: number): st
   const year = listing.vehicle?.firstRegistrationYear;
   const years = year == null ? '' : ` de ${year - YEAR_SPAN} à ${year + YEAR_SPAN}`;
   const what = vehicle ? `${count} ${vehicle}` : `${count} annonces comparables`;
-  const median = formatPrice(indicator.medianPriceAmount, listing.currencyCode ?? 'EUR', minorUnit);
-  return `Comparé à ${what} de même motorisation${years} au kilométrage proche, prix médian ${median}.`;
+  // An estimate, not a price anyone asked: to the euro, since cents would claim a precision
+  // the adjustment does not have.
+  const unit = 10 ** minorUnit;
+  const median = formatPrice(
+    Math.round(indicator.medianPriceAmount / unit) * unit,
+    listing.currencyCode ?? 'EUR',
+    minorUnit,
+  );
+  return `Comparé à ${what} de même motorisation${years} au kilométrage proche. Prix médian, ramené à l’âge et au kilométrage de cette voiture${NBSP}: ${median}.`;
 }
 
 /** `MarketPrice.YEAR_SPAN` on the backend. */

@@ -224,14 +224,14 @@ class DemoCatalogueTest {
     void priceIndicatorHasSomethingToShow() {
         // The rule of com.autox.search.MarketPrice, applied to the seed in memory: same
         // model, fuel and power within 15 %, year within two, same mileage band, not new,
-        // at least five others.
+        // at least five others, their prices brought to the listing's age and mileage.
         Map<String, Long> levels = new java.util.HashMap<>();
         Set<String> judgedModels = new java.util.HashSet<>();
         for (DemoCatalogue.Vehicle vehicle : vehicles) {
             if (vehicle.condition() == com.autox.listing.VehicleCondition.NEW) {
                 continue;
             }
-            List<Long> comparables = vehicles.stream()
+            List<Double> comparables = vehicles.stream()
                     .filter(other -> other != vehicle)
                     .filter(other -> other.condition() != com.autox.listing.VehicleCondition.NEW)
                     .filter(other -> other.makeSlug().equals(vehicle.makeSlug())
@@ -240,7 +240,7 @@ class DemoCatalogueTest {
                             && Math.abs(other.powerHp() - vehicle.powerHp()) <= 0.15 * vehicle.powerHp())
                     .filter(other -> Math.abs(other.year() - vehicle.year()) <= 2)
                     .filter(other -> band(other.mileageKm()) == band(vehicle.mileageKm()))
-                    .map(DemoCatalogue.Vehicle::priceEuros).sorted().toList();
+                    .map(other -> adjusted(other, vehicle)).sorted().toList();
             if (comparables.size() < 5) {
                 continue;
             }
@@ -267,6 +267,16 @@ class DemoCatalogueTest {
         assertThat(levels).as("each level appears").containsKeys("GOOD_DEAL", "MARKET", "ABOVE_MARKET");
         assertThat(levels.get("GOOD_DEAL")).isGreaterThanOrEqualTo(4);
         assertThat(levels.get("ABOVE_MARKET")).isGreaterThanOrEqualTo(4);
+    }
+
+    /** {@code MarketPrice}'s adjustment: the comparable's price at the listing's age and mileage. */
+    private static double adjusted(DemoCatalogue.Vehicle comparable, DemoCatalogue.Vehicle listing) {
+        double years = (listing.year() + (listing.month() - 1) / 12.0)
+                - (comparable.year() + (comparable.month() - 1) / 12.0);
+        return comparable.priceEuros()
+                * Math.pow(1 / (1 - com.autox.search.MarketPrice.YEARLY_DEPRECIATION), years)
+                * Math.pow(1 - com.autox.search.MarketPrice.DEPRECIATION_PER_10K_KM,
+                        (listing.mileageKm() - comparable.mileageKm()) / 10_000.0);
     }
 
     private static int band(int mileageKm) {

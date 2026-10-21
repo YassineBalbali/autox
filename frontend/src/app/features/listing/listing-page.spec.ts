@@ -266,8 +266,18 @@ describe('ListingPage', () => {
 
       expect(market.querySelector('app-price-badge')?.textContent).toContain('Bonne affaire');
       expect(market.querySelector('.summary__basis')?.textContent?.trim()).toBe(
-        `Comparé à 7 Peugeot 308 de même motorisation de 2019 à 2023 au kilométrage proche, prix médian 21${NBSP}490${NBSP}€.`,
+        `Comparé à 7 Peugeot 308 de même motorisation de 2019 à 2023 au kilométrage proche. Prix médian, ramené à l’âge et au kilométrage de cette voiture${NBSP}: 21${NBSP}490${NBSP}€.`,
       );
+    });
+
+    it('gives the adjusted median to the euro', async () => {
+      await load({
+        ...LISTING,
+        vehicle: { ...LISTING.vehicle, make: 'Tesla', model: 'Model 3' },
+        priceIndicator: { level: PriceLevel.MARKET, medianPriceAmount: 2345969, comparableCount: 6 },
+      });
+
+      expect(root.querySelector('.summary__basis')?.textContent).toContain(`: 23${NBSP}460${NBSP}€.`);
     });
 
     it('says nothing about the market when the API has no verdict', async () => {
