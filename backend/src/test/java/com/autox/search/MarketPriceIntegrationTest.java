@@ -79,6 +79,49 @@ class MarketPriceIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("a comparable's price is brought to the listing's age: a year older is worth a tenth more")
+    void adjustedForAge() throws Exception {
+        // Five 2019s at 10 000 €. At the age of a 2020 car each is worth 10 000 / 0.9.
+        for (int i = 0; i < 5; i++) {
+            listing(Map.of("firstRegistrationYear", 2019));
+        }
+        String id = listing(Map.of("priceAmount", 980_000L));
+
+        mockMvc.perform(get("/api/v1/listings/" + id))
+                .andExpect(jsonPath("$.priceIndicator.medianPriceAmount").value(1_111_111))
+                // Compared raw, 9 800 € would be the market price, 2 % under. A year younger
+                // for that money is a good deal, 12 % under.
+                .andExpect(jsonPath("$.priceIndicator.level").value("GOOD_DEAL"));
+    }
+
+    @Test
+    @DisplayName("a young car is not called above the market for costing more than older ones")
+    void notAboveTheMarketForItsAge() throws Exception {
+        // The case that prompted the adjustment: two years younger than its comparables,
+        // priced for its age (10 000 / 0.81 = 12 346 €) less a little.
+        for (int i = 0; i < 5; i++) {
+            listing(Map.of("firstRegistrationYear", 2018));
+        }
+        String id = listing(Map.of("priceAmount", 1_200_000L));
+
+        mockMvc.perform(get("/api/v1/listings/" + id))
+                .andExpect(jsonPath("$.priceIndicator.level").value("MARKET"));
+    }
+
+    @Test
+    @DisplayName("a comparable's price is brought to the listing's mileage: 10 000 km less is worth 2 % more")
+    void adjustedForMileage() throws Exception {
+        // Five at 50 000 km, the listing at 40 000: the same band, 10 000 km apart.
+        for (int i = 0; i < 5; i++) {
+            listing(Map.of("mileageKm", 50_000));
+        }
+        String id = listing(Map.of());
+
+        mockMvc.perform(get("/api/v1/listings/" + id))
+                .andExpect(jsonPath("$.priceIndicator.medianPriceAmount").value(1_020_408));
+    }
+
+    @Test
     @DisplayName("with four comparables, nothing is said")
     void tooFewComparables() throws Exception {
         market(4);

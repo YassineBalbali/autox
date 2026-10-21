@@ -31,9 +31,18 @@ import org.springframework.stereotype.Component;
  *       yardstick.</li>
  * </ul>
  *
+ * <p>Each comparable's price is first <b>brought to the listing's age and mileage</b>: a
+ * comparable a year older is worth what it is asking plus a year's depreciation, one with
+ * 10 000 km more is worth its price plus that much wear. Without this, the ±2 year window
+ * compares a 2024 car with 2022 ones, and a fairly priced car at either end of the window
+ * comes out a good deal or above the market only for its age. The assumption is
+ * 10 % a year ({@link #YEARLY_DEPRECIATION}) and 2 % per 10 000 km
+ * ({@link #DEPRECIATION_PER_10K_KM}); see {@code docs/price-indicator.md} for where those come
+ * from and their limits.
+ *
  * <p>With at least {@value #MIN_COMPARABLES} comparables, the listing's price is set against
- * their <b>median</b> — not the mean, which one mistyped price would drag — and called a good
- * deal at {@value #DEAL_MARGIN} or more below it, above the market at that much above it, and
+ * the <b>median</b> of the adjusted prices — not the mean, which one mistyped price would
+ * drag — and called a good deal at {@value #DEAL_MARGIN} or more below it, above the market at that much above it, and
  * the market price in between. With fewer, nothing is said.
  *
  * <h2>Computed when read</h2>
@@ -67,6 +76,15 @@ public class MarketPrice {
      */
     public static final double POWER_SPAN = 0.15;
 
+    /**
+     * The value a used car loses in a year, as a fraction of its value at the start of that
+     * year. One rate for every fuel and every model: a rule of thumb, not fitted to data.
+     */
+    public static final double YEARLY_DEPRECIATION = 0.10;
+
+    /** The value a used car loses per 10 000 km driven, as a fraction of its value. */
+    public static final double DEPRECIATION_PER_10K_KM = 0.02;
+
     /** How far from the median, as a fraction of it, before a price is no longer "the market". */
     public static final double DEAL_MARGIN = 0.10;
 
@@ -79,14 +97,32 @@ public class MarketPrice {
                  ELSE 4 END""";
 
     /**
+     * The first registration of a listing aliased {@code %1$s}, in years with the month as a
+     * fraction. A listing that gives no month is taken as registered mid-year.
+     */
+    private static final String REGISTERED = """
+            (%1$s.first_registration_year + (coalesce(%1$s.first_registration_month, 7) - 1) / 12.0)""";
+
+    /**
+     * The price of the comparable {@code c} brought to the age and mileage of the listing
+     * {@code l}. A comparable registered earlier, or driven more, is worth more at the
+     * listing's age and mileage than it is asking, and the reverse.
+     */
+    private static final String ADJUSTED_PRICE = """
+            c.price_amount
+                * power(1 / (1 - %1$s), %3$s - %4$s)
+                * power(1 - %2$s, (l.mileage_km - c.mileage_km) / 10000.0)""".formatted(
+            YEARLY_DEPRECIATION, DEPRECIATION_PER_10K_KM, REGISTERED.formatted("l"), REGISTERED.formatted("c"));
+
+    /**
      * The comparables of the listing aliased {@code l}, as columns {@code mp.comparables} and
-     * {@code mp.median}. Joined to nothing for a listing that cannot have an indicator, so
-     * those columns are then null.
+     * {@code mp.median}, the median of their prices adjusted to the listing. Joined to
+     * nothing for a listing that cannot have an indicator, so those columns are then null.
      */
     static final String LATERAL = """
              LEFT JOIN LATERAL (
                 SELECT count(*) AS comparables,
-                       percentile_cont(0.5) WITHIN GROUP (ORDER BY c.price_amount) AS median
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY %6$s) AS median
                   FROM listing c
                  WHERE c.model_id = l.model_id
                    AND c.id <> l.id
@@ -100,7 +136,7 @@ public class MarketPrice {
                    AND %4$s
              ) mp ON l.model_id IS NOT NULL AND l.power_hp IS NOT NULL AND l.vehicle_condition <> 'NEW'
             """.formatted(YEAR_SPAN, BAND.formatted("c"), BAND.formatted("l"),
-                    ListingSearchRepository.visible("c"), POWER_SPAN);
+                    ListingSearchRepository.visible("c"), POWER_SPAN, ADJUSTED_PRICE);
 
     /** The level of the listing aliased {@code l}, or null; needs {@link #LATERAL}. */
     static final String LEVEL = """

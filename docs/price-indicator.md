@@ -24,7 +24,14 @@ A listing's **comparables** are the other live listings that have:
 "Live" means what search means by it: active, not rejected by moderation, not deleted,
 not past its expiry.
 
-With **at least five** comparables, the listing's price is set against their **median**:
+Each comparable's price is then **brought to the listing's age and mileage**, using the
+depreciation assumption below. A comparable registered a year before the listing is
+counted at its price plus a year's depreciation. One with 10 000 km more is counted at its
+price plus that much wear, and the reverse in both cases. The month of registration
+counts; a listing that gives none is taken as registered mid-year.
+
+With **at least five** comparables, the listing's price is set against the **median** of
+those adjusted prices:
 
 | Price against the median | Verdict | API code |
 |---|---|---|
@@ -35,6 +42,46 @@ With **at least five** comparables, the listing's price is set against their **m
 With fewer than five, nothing is shown: no badge, no "Prix du marché". The same applies to
 a new car, to a vehicle identified by typed text instead of the catalogue, and to a listing
 that does not state its power.
+
+## The depreciation assumption
+
+| | | Constant in `MarketPrice` |
+|---|---|---|
+| Age | a used car loses **10 % of its value a year** | `YEARLY_DEPRECIATION` |
+| Mileage | it loses **2 % of its value per 10 000 km** | `DEPRECIATION_PER_10K_KM` |
+
+Both are multiplicative. A comparable two years older than the listing is counted at its
+price ÷ 0.9², about +23 %. One with 20 000 km less is counted at its price × 0.98², about
+−4 %.
+
+**Where it comes from.** These are round rules of thumb, not fitted to data. Figures commonly
+quoted for the French used market put a car's loss at roughly a fifth to a quarter in its
+first year, then around 10 to 15 % a year, with mileage costing a few per cent of the value
+per 10 000 km. The assumption takes the low end of the yearly range and a round figure for
+mileage. It is not taken from any published table. It is deliberately not the demo
+generator's model either (11 % a year, 15 % for electric cars, 1.5 % per 10 000 km): real
+listings will not come from the generator, and an indicator checked against the model that
+generated its test data would agree with it by construction.
+
+**Its limits.**
+
+- **One rate for every car.** Electric cars have lost value faster than that in recent
+  years, and some models hold their value far better than others. For a car that really
+  loses 15 % a year, comparables two years older are under-adjusted by about 11 %, which is
+  the width of the "Prix du marché" band.
+- **No first-year cliff.** A car loses most in its first year. A comparable a year older than
+  a nearly new listing is under-adjusted. New cars are not judged, but one- and two-year-old
+  ones are.
+- **Mileage as a straight percentage.** Buyers react to thresholds: a car over 100 000 km
+  sells at a discount beyond what 2 % per 10 000 km gives. The mileage bands contain this,
+  since an adjustment never spans more than one band.
+- **Only within the window.** The adjustment is applied to differences of at most two years
+  and one band. That keeps the error of a wrong rate small. It does not make the
+  assumption right.
+
+The way to replace it is to estimate the rates from AutoX's own listings, per model or per
+segment, once there are enough of them: a regression of log price on age and mileage. The
+two constants are the only things that would change.
 
 ## Why these choices
 
@@ -59,8 +106,15 @@ that does not state its power.
   engine across a facelift (130 then 136 ch) and narrower than the gap between the engines
   a model is sold with. Trim and options are still ignored, which is one reason the margin
   is 10 %, not 5 %. The listing page says what the verdict rests on, as in "Comparé à
-  7 Peugeot 308 de même motorisation de 2021 à 2025 au kilométrage proche, prix médian
-  21 490 €", so a buyer can judge it.
+  7 Peugeot 308 de même motorisation de 2021 à 2025 au kilométrage proche. Prix médian,
+  ramené à l'âge et au kilométrage de cette voiture : 21 490 €", so a buyer can judge it.
+- **Adjusted prices, not a narrower window.** A ±1 year window and narrower mileage bands
+  would also stop a 2024 car being compared with 2022 ones. They would also leave most
+  listings without five comparables. Adjusting keeps the comparables and removes most of
+  the age and mileage differences between them.
+- **The median shown is the adjusted one.** `medianPriceAmount` is what a comparable car of
+  this age and mileage would be listed for, which is the figure the verdict compares with.
+  A median of raw prices would show a 2024 car a figure for 2023 ones.
 - **The listing itself is not one of its own comparables.** If it were, an overpriced car
   would raise its own median.
 
@@ -103,18 +157,17 @@ listings on each of eight common models, most or all of them in the one version 
 sells: the Clio TCe 90, the Model 3 Propulsion, the Sandero Stepway ECO-G 100. The other
 models get one to four listings, which shows the indicator staying silent. Asking prices
 are spread around each car's value, as sellers' prices are, so all three verdicts appear.
-About half the listings (57 of 120) get one.
+About half the listings (57 of 120) get one: 16 good deals, 29 at the market price and 12
+above it.
 
 `DemoCatalogueTest` applies the rule to the seed in memory. It fails if fewer than thirty
 listings get a verdict, if any verdict is missing, or if one of the eight volume models
 gets none.
 
-## A known weakness
-
-The comparables are not adjusted for age or mileage within the window. A 2024 car is
-compared with 2022 and 2023 ones, which are worth less, so a fairly priced car at the
-young end of the window can come out "Au-dessus du marché", and one at the old end a
-"Bonne affaire". On the demo seed, where the true value of each car is known, 3 of the 24
-good-deal and above-market verdicts are of this kind. A narrower window would mean fewer
-verdicts. The better fix is to adjust each comparable's price to the listing's age and
-mileage before taking the median.
+The seed knows each car's true value, so the verdicts can be checked against it. Without
+the age and mileage adjustment, 3 of the 24 good-deal and above-market verdicts were wrong
+way round: fairly priced cars called a good deal or above the market only because they were
+at the old or the young end of the window. With it, none of 27 is. One is stronger than the
+truth warrants: a 2023 Peugeot 208 asked 2 % under its value is called a good deal. That is
+the residue of an assumption that differs from how the seed's prices were made, which is
+what real prices will do too.
