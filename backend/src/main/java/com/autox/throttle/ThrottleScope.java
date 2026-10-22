@@ -33,5 +33,14 @@ public enum ThrottleScope {
      * Registration attempts from one client address, successful or not. Bounds how many
      * accounts — and how many password hashes — one caller can make the server produce.
      */
-    REGISTRATION_IP
+    REGISTRATION_IP,
+
+    /** Messages sent by one account. Keyed by user id: sending needs an account. */
+    MESSAGE_SEND,
+
+    /**
+     * Conversations started by one account. What a spammer writing to every seller has to
+     * do, and what a genuine buyer does a few times a day, so it gets its own, lower cap.
+     */
+    CONVERSATION_START
 }

@@ -1,0 +1,47 @@
+@if (conversation().earlierOmitted) {
+  <p class="omitted meta" i18n="@@conversationOmitted">
+    Les messages les plus anciens de cette conversation ne sont pas affichés.
+  </p>
+}
+
+@for (day of days(); track day.key) {
+  <h3 class="day">{{ day.label }}</h3>
+  <ol class="bubbles" role="list">
+    @for (message of day.messages; track message.id) {
+      <li class="bubble" [class.bubble--mine]="message.sentByMe" [class.bubble--hidden]="message.hidden">
+        <span class="visually-hidden">
+          @if (message.sentByMe) {
+            <ng-container i18n="@@conversationYouSaid">Vous :</ng-container>
+          } @else {
+            {{ conversation().counterpart?.displayName }} :
+          }
+        </span>
+        @if (message.hidden) {
+          <p class="bubble__body" i18n="@@conversationHidden">Message masqué par la modération.</p>
+        } @else {
+          <p class="bubble__body">{{ message.body }}</p>
+        }
+        <p class="bubble__meta">
+          <time [attr.datetime]="message.sentAt" [attr.title]="sentAtFull(message.sentAt)">{{ time(message.sentAt) }}</time>
+          @if (!message.sentByMe && !message.hidden) {
+            @if (message.reportedByMe) {
+              <span class="bubble__reported" i18n="@@conversationReported">· Signalé</span>
+            } @else if (reporting() !== message.id) {
+              <button class="bubble__report" type="button" (click)="reporting.set(message.id ?? null)">
+                <app-icon name="flag" [size]="12" />
+                <span i18n="@@conversationReport">Signaler</span>
+              </button>
+            }
+          }
+        </p>
+        @if (reporting() === message.id && message.id) {
+          <app-report-form
+            [messageId]="message.id"
+            (reported)="markReported(message.id)"
+            (cancelled)="reporting.set(null)"
+          />
+        }
+      </li>
+    }
+  </ol>
+}

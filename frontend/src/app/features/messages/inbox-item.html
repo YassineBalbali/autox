@@ -1,0 +1,33 @@
+<a
+  class="item"
+  [class.item--unread]="unread() > 0"
+  [class.item--selected]="selected()"
+  [attr.aria-current]="selected() ? 'page' : null"
+  [routerLink]="['/messages', item().id]"
+>
+  <span class="item__thumb" aria-hidden="true">
+    @if (item().listing?.coverUrl; as cover) {
+      <img [src]="cover" alt="" width="64" height="48" loading="lazy" />
+    } @else {
+      <app-icon name="car-front" [size]="22" />
+    }
+  </span>
+  <span class="item__text">
+    <span class="item__top">
+      <span class="item__who">{{ item().counterpart?.displayName }}</span>
+      <app-seller-badge [role]="item().counterpart?.role" />
+      <time class="item__when" [attr.datetime]="item().lastMessageAt" [attr.title]="whenFull()">{{ when() }}</time>
+    </span>
+    <span class="item__listing">
+      @if (item().role === 'SELLER') {
+        <span class="item__role" i18n="@@messagesYourListing">Votre annonce ·</span>
+      }
+      {{ item().listing?.title }}
+    </span>
+    <span class="item__preview" [class.item__preview--hidden]="item().lastMessage?.hidden">{{ preview() }}</span>
+  </span>
+  @if (unread() > 0) {
+    <span class="count-badge item__unread" aria-hidden="true">{{ unread() }}</span>
+    <span class="visually-hidden">{{ unreadLabel() }}</span>
+  }
+</a>

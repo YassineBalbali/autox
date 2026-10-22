@@ -1,0 +1,63 @@
+:host {
+  display: grid;
+  gap: var(--s-2);
+}
+
+// The page's main action, so a size above the standard button.
+.contact__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  height: 3rem;
+  font-size: var(--t-md);
+}
+
+.contact__own {
+  margin: 0;
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+}
+
+.contact__form {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.contact__title {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: var(--fw-bold);
+}
+
+.contact__input {
+  min-height: 9rem;
+  resize: vertical;
+}
+
+.contact__count {
+  justify-self: end;
+  margin: var(--s-1) 0 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+// A caution, not an error: the warning tint, kept quiet so it is read rather than feared.
+.contact__safety {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border-left: 3px solid var(--c-warn);
+  background: var(--c-warn-soft);
+  color: var(--c-ink-soft);
+}
+
+.contact__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+
+  .btn--primary {
+    flex: 1;
+    gap: var(--s-2);
+  }
+}

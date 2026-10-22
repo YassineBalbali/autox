@@ -23,8 +23,9 @@ reason, and reinstates it. The interface is French and designed for a desktop sc
 demo runs on Netlify (site), Render (API), Neon (PostgreSQL) and Supabase Storage (photos);
 `docs/deployment.md` is how.
 
-**What it is not:** a real marketplace. A buyer cannot contact a seller, there is no real
-vehicle catalogue or location data, and no email is ever sent. `docs/weaknesses.md` ranks
+**What it is not:** a real marketplace. A buyer can write to a seller through the site, but
+nobody is told by email that a message is waiting; there is no real vehicle catalogue or
+location data, and no email is ever sent. `docs/weaknesses.md` ranks
 all of that, and separates what is merely unfinished from what would be a risk with real
 users.
 
@@ -260,11 +261,11 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 409 tests, needs Docker running
+mvn clean verify         # 433 tests, needs Docker running
 
 cd ../frontend
 npm run lint
-npm test -- --no-watch   # 921 tests, jsdom
+npm test -- --no-watch   # 961 tests, jsdom
 npm run test:scripts     # 21 tests of the build scripts: the security policy
 npm run build            # the production build, with the policy and headers written in
 ```
@@ -355,7 +356,9 @@ of the interface.
 | `/vendre` | signed in | Create a listing (`?etape=`) |
 | `/mes-annonces` | signed in | The seller's listings (`?statut=`) |
 | `/mes-annonces/:id/modifier` | signed in | Edit a listing (`?etape=`) |
+| `/messages`, `/messages/:id` | signed in | Conversations with buyers and sellers, the open one beside the list |
 | `/admin` → `/admin/moderation` | admin | Moderation (`?vue=`, `?page=`) |
+| `/admin/moderation/messages` | admin | Reported messages |
 | `/guide-de-style` | anyone, unlinked | Tokens and shared components, rendered |
 | `/acces-refuse`, anything else | anyone | Refused; not found |
 
@@ -371,7 +374,8 @@ A route guard is a courtesy. The API is what refuses.
 | A seller's listings | `POST /listings`, `GET /listings/mine`, `/mine/quota`, `/mine/{id}`, `PATCH`·`DELETE /listings/{id}`, `POST /listings/{id}/publish`·`unpublish`·`renew`·`sold` | token, owner |
 | Photos | `POST`·`GET /listings/{id}/images`, `POST …/images/{imageId}/confirm`, `PUT …/images/order`, `DELETE …/images/{imageId}` | token, owner |
 | Reference | `GET /reference/countries`, `/enums`, `/makes`, `/makes/{id}/models`, `/features` | none |
-| Moderation | `GET /admin/listings`, `/admin/listings/{id}`, `POST /admin/listings/{id}/approve`·`reject`·`remove`·`reinstate` | ADMIN |
+| Messages | `POST /listings/{id}/conversation`, `GET /conversations`, `/conversations/unread`, `/conversations/{id}`, `POST /conversations/{id}/messages`·`read`, `POST /messages/{id}/report` | token, participant |
+| Moderation | `GET /admin/listings`, `/admin/listings/{id}`, `POST /admin/listings/{id}/approve`·`reject`·`remove`·`reinstate`, `GET /admin/message-reports`, `POST /admin/message-reports/{id}/hide`·`dismiss` | ADMIN |
 | Users | `GET /admin/users` | ADMIN |
 
 ### Conventions that apply everywhere
@@ -531,6 +535,7 @@ code.
 | `AUTOX_PUBLIC_RATE_LIMIT_REQUESTS` | `300` | Per minute, per address |
 | `AUTOX_REGISTRATION_THROTTLE_ENABLED` | `true` | Leave on. |
 | `AUTOX_REGISTRATION_MAX_ATTEMPTS` | `5` | Registration attempts per hour, per address — successful or not |
+| `AUTOX_MESSAGING_THROTTLE_ENABLED` | `true` | Leave on. Per account: 20 messages per 10 minutes, 10 new conversations a day |
 
 The compose file also reads `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`,
 `POSTGRES_PORT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_PORT` and
@@ -664,6 +669,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/third-party-assets.md` | The home page photo and the icons: source, licence, notices |
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
 | `docs/price-indicator.md` | "Bonne affaire" and the rest: the comparables rule, why, and how it is computed |
+| `docs/messaging.md` | Messages between buyers and sellers: who may write, what each side sees, unread, rate limits, reports |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
 | `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |

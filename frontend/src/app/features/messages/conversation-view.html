@@ -1,0 +1,121 @@
+@switch (state()) {
+  @case ('loading') {
+    <p class="conversation__state meta" aria-busy="true" i18n="@@conversationLoading">Chargement de la conversation…</p>
+  }
+
+  @case ('error') {
+    <div class="conversation__state">
+      <a class="conversation__back" routerLink="/messages">
+        <app-icon name="arrow-left" [size]="16" />
+        <span i18n="@@conversationBack">Messages</span>
+      </a>
+      <app-alert kind="error">{{ loadFailure() }}</app-alert>
+    </div>
+  }
+
+  @case ('ready') {
+    @if (conversation(); as conversation) {
+      <section class="conversation" aria-labelledby="titre-conversation">
+        <header class="conversation__head">
+          <a class="conversation__back" routerLink="/messages">
+            <app-icon name="arrow-left" [size]="16" />
+            <span i18n="@@conversationBack">Messages</span>
+          </a>
+          <div class="conversation__who">
+            <h2 id="titre-conversation" class="conversation__name">{{ conversation.counterpart?.displayName }}</h2>
+            <app-seller-badge [role]="conversation.counterpart?.role" />
+            <span class="meta">
+              @if (conversation.role === 'SELLER') {
+                <ng-container i18n="@@conversationBuyer">intéressé par votre annonce</ng-container>
+              } @else {
+                <ng-container i18n="@@conversationSeller">vendeur de cette annonce</ng-container>
+              }
+            </span>
+          </div>
+
+          @if (conversation.listing; as listing) {
+            <div class="conversation__listing">
+              <span class="conversation__thumb" aria-hidden="true">
+                @if (listing.coverUrl; as cover) {
+                  <img [src]="cover" alt="" width="72" height="54" />
+                } @else {
+                  <app-icon name="car-front" [size]="22" />
+                }
+              </span>
+              <div class="conversation__listing-text">
+                @if (listing.online) {
+                  <a class="conversation__listing-title" [routerLink]="['/annonces', listing.id]">{{ listing.title }}</a>
+                } @else {
+                  <span class="conversation__listing-title">{{ listing.title }}</span>
+                  <span class="tag" i18n="@@conversationOffline">Plus en ligne</span>
+                }
+                @if (listing.priceAmount !== undefined) {
+                  <app-price
+                    size="list"
+                    [amountMinor]="listing.priceAmount"
+                    [currency]="listing.currencyCode ?? 'EUR'"
+                    [minorUnit]="minorUnit()"
+                  />
+                }
+              </div>
+            </div>
+          }
+        </header>
+
+        <div class="conversation__thread" #thread tabindex="0" aria-label="Messages de la conversation" i18n-aria-label="@@conversationThread">
+          <app-message-thread [conversation]="conversation" (reported)="reported($event)" />
+        </div>
+
+        @if (conversation.canReply) {
+          <form class="composer" (submit)="send($event)">
+            <label class="visually-hidden" for="composer-message" i18n="@@composerLabel">Votre réponse</label>
+            <textarea
+              id="composer-message"
+              class="input composer__input"
+              rows="3"
+              placeholder="Écrire un message…"
+              i18n-placeholder="@@composerPlaceholder"
+              [value]="draft()"
+              [attr.maxlength]="maxLength"
+              (input)="edit($event)"
+              (keydown)="keydown($event)"
+              aria-describedby="composer-hint"
+            ></textarea>
+            @if (sendError()) {
+              <app-alert kind="error">{{ sendError() }}</app-alert>
+            }
+            <div class="composer__bar">
+              <!-- Each side's own risk: a buyer is asked to pay for a car that does not exist,
+                   a seller is paid with a cheque that will bounce. -->
+              <p class="meta composer__hint" id="composer-hint">
+                @if (conversation.role === 'SELLER') {
+                  <ng-container i18n="@@composerHintSeller">
+                    Ctrl + Entrée pour envoyer. Ne remettez jamais le véhicule avant que le paiement soit encaissé,
+                    et faites vérifier tout chèque de banque par la banque qui l’a émis.
+                  </ng-container>
+                } @else {
+                  <ng-container i18n="@@composerHintBuyer">
+                    Ctrl + Entrée pour envoyer. Ne payez jamais un véhicule avant de l’avoir vu.
+                  </ng-container>
+                }
+              </p>
+              <button class="btn btn--primary composer__send" type="submit" [disabled]="!canSend()">
+                <app-icon name="send" [size]="16" [strokeWidth]="2" />
+                @if (sending()) {
+                  <span i18n="@@contactSending">Envoi…</span>
+                } @else {
+                  <span i18n="@@contactSend">Envoyer</span>
+                }
+              </button>
+            </div>
+          </form>
+        } @else {
+          <p class="conversation__closed" i18n="@@conversationClosed">
+            Cette conversation est fermée : l’annonce a été retirée, ou l’un des comptes n’est plus actif. Vous
+            pouvez toujours relire les messages.
+          </p>
+        }
+      </section>
+    }
+  }
+}

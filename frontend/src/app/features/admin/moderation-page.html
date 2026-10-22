@@ -23,6 +23,10 @@
         }
       </a>
     }
+    <!-- Its own page: a reported message is not a listing, and its card is not the listing card. -->
+    <a class="moderation__view" routerLink="/admin/moderation/messages" i18n="@@moderationMessagesTab">
+      Messages signalés
+    </a>
   </nav>
 
   @if (notice()) {

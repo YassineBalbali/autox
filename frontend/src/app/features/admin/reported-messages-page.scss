@@ -1,0 +1,75 @@
+.report-card {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.report-card__head {
+  display: grid;
+  gap: var(--s-1);
+
+  p {
+    margin: 0;
+  }
+}
+
+.report-card__reason {
+  margin: 0;
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+}
+
+.report-card__note {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border-left: 3px solid var(--c-line-strong);
+  background: var(--c-surface-sunk);
+  color: var(--c-ink-soft);
+  font-style: italic;
+}
+
+.report-card__context {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-3);
+  border: var(--border);
+  border-radius: var(--r-md);
+  background: var(--c-page);
+  list-style: none;
+}
+
+.context {
+  display: block;
+  padding: var(--s-2) var(--s-3);
+  border: var(--border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+}
+
+// The one the report is about, unmistakable among the others.
+.context--reported {
+  border-color: var(--c-danger);
+  box-shadow: inset 3px 0 0 var(--c-danger);
+}
+
+.context__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+  margin: 0 0 var(--s-1);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.context__when {
+  color: var(--c-ink-faint);
+  font-size: var(--t-xs);
+  font-weight: var(--fw-regular);
+}
+
+.context__body {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

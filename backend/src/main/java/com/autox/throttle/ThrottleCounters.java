@@ -79,6 +79,42 @@ public class ThrottleCounters {
                 Timestamp.from(staleBefore), Timestamp.from(staleBefore));
     }
 
+    /**
+     * Records one event in a <b>fixed window</b> that opens with the first event and closes
+     * {@code window} later, and returns the count inside it with the time it closes.
+     *
+     * <p>{@link #recordEvent} restarts a count only after a quiet period as long as the
+     * window, which suits traffic that should stop. It does not suit an account that acts
+     * steadily: a seller answering one buyer every few minutes would never be quiet for the
+     * window and would be blocked by the end of the day at a perfectly normal rate. Here the
+     * count restarts when the window has run, however busy it was.
+     */
+    public WindowCount recordInFixedWindow(ThrottleScope scope, String key, Instant now, java.time.Duration window) {
+        Instant opensAfter = now.minus(window);
+        return jdbc.queryForObject("""
+                INSERT INTO throttle_counter
+                            (id, scope, scope_key, event_count, first_event_at, last_event_at)
+                     VALUES (?, ?, ?, 1, ?, ?)
+                ON CONFLICT (scope, scope_key) DO UPDATE
+                        SET event_count = CASE
+                                WHEN throttle_counter.first_event_at <= ? THEN 1
+                                ELSE throttle_counter.event_count + 1
+                            END,
+                            first_event_at = CASE
+                                WHEN throttle_counter.first_event_at <= ? THEN EXCLUDED.first_event_at
+                                ELSE throttle_counter.first_event_at
+                            END,
+                            last_event_at = EXCLUDED.last_event_at
+                  RETURNING event_count, first_event_at
+                """,
+                (rs, row) -> new WindowCount(
+                        rs.getInt("event_count"),
+                        rs.getTimestamp("first_event_at").toInstant().plus(window)),
+                UuidV7.generate(), scope.name(), key,
+                Timestamp.from(now), Timestamp.from(now),
+                Timestamp.from(opensAfter), Timestamp.from(opensAfter));
+    }
+
     public void applyBlock(ThrottleScope scope, String key, Instant blockedUntil) {
         jdbc.update("UPDATE throttle_counter SET blocked_until = ? WHERE scope = ? AND scope_key = ?",
                 blockedUntil == null ? null : Timestamp.from(blockedUntil), scope.name(), key);
@@ -96,6 +132,10 @@ public class ThrottleCounters {
 
     private static Instant toInstant(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toInstant();
+    }
+
+    /** The events in the current fixed window, and when that window closes. */
+    public record WindowCount(int eventCount, Instant windowEndsAt) {
     }
 
     public record Counter(int eventCount, Instant lastEventAt, Instant blockedUntil) {

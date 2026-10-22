@@ -77,7 +77,7 @@ Not built and **not scaffolded** — no dead tables, no unused endpoints.
 
 | Feature | State, and where it attaches |
 |---|---|
-| **Messaging** (buyer ↔ seller) | The listing page has a **disabled contact button that says why**. A conversation references a listing and two users; listings are soft-deleted, so a thread never dangles. Needs its own decisions: notifications, abuse reporting, whether a phone number is ever shown. Until it exists a buyer cannot reach a seller at all — see `weaknesses.md` W1. |
+| **Messaging: what is left** | **Built:** conversations per listing and buyer, an inbox for both sides, unread counts, per-account rate limits, reporting and a moderators' queue — see `messaging.md`. **Left:** email notifications (they need the real mail provider below), blocking a user, archiving a conversation, attachments, and loading messages older than the latest 200. |
 | **Favourites / saved searches** | A favourite is a user–listing pair. A saved search is the search page's own query string, which is already a stable, tested contract in both directions (`search-query.ts`). |
 | **Subscriptions and payments** | `pro_profile` exists; `app_user.active_listing_limit` overrides the per-role cap per account, which is the hook a paid tier needs. Dealers are uncapped today — which is also a risk, see `weaknesses.md` R2. |
 | **AI assistant, price estimation, AutoX Score** | Read-only consumers of listing data. `sold_at` and `listing_price_history` are being retained for them and are exposed by no endpoint. |

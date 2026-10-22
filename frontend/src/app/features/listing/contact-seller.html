@@ -1,0 +1,77 @@
+@if (!signedIn()) {
+  <a class="btn btn--primary btn--block contact__button" [routerLink]="signInRoute" [queryParams]="signInQuery()">
+    <app-icon name="message-circle" [size]="18" [strokeWidth]="2" />
+    <span i18n="@@listingContact">Contacter le vendeur</span>
+  </a>
+  <p class="meta" i18n="@@contactSignIn">
+    Connectez-vous pour écrire au vendeur. Vos échanges passent par AutoX : ni votre adresse e-mail ni
+    votre numéro ne lui sont communiqués.
+  </p>
+} @else if (ownListing()) {
+  <p class="contact__own">
+    <ng-container i18n="@@contactOwnListing">C’est votre annonce. Les messages des acheteurs arrivent dans</ng-container>
+    <a routerLink="/messages" i18n="@@contactOwnMessages">vos messages</a>.
+  </p>
+} @else if (sentTo()) {
+  <app-alert kind="success">
+    <ng-container i18n="@@contactSent">Message envoyé. La réponse du vendeur arrivera dans vos messages.</ng-container>
+  </app-alert>
+  <div class="contact__after">
+    <a class="btn btn--quiet btn--block" [routerLink]="['/messages', sentTo()]" i18n="@@contactSeeConversation">
+      Voir la conversation
+    </a>
+  </div>
+} @else if (open()) {
+  <form class="contact__form" (submit)="send($event)" aria-labelledby="contact-titre">
+    <h2 id="contact-titre" class="contact__title" i18n="@@contactFormTitle">
+      Écrire à {{ listing().seller?.displayName }}
+    </h2>
+    <div class="field">
+      <label class="visually-hidden" for="contact-message" i18n="@@contactMessageLabel">Votre message</label>
+      <textarea
+        #message
+        id="contact-message"
+        class="input contact__input"
+        rows="6"
+        [value]="body()"
+        (input)="edit($event)"
+        [attr.maxlength]="maxLength"
+        aria-describedby="contact-count contact-safety"
+      ></textarea>
+      <p class="contact__count meta" id="contact-count">{{ body().length }} / {{ maxLength }}</p>
+    </div>
+
+    @if (failure()) {
+      <app-alert kind="error">{{ failure() }}</app-alert>
+    }
+
+    <p class="contact__safety meta" id="contact-safety" i18n="@@contactSafety">
+      Votre adresse e-mail et votre numéro restent privés. Ne payez jamais un véhicule avant de l’avoir
+      vu, et méfiez-vous des demandes de virement, de mandat ou de code de carte prépayée.
+    </p>
+
+    <div class="contact__actions">
+      <button class="btn btn--primary" type="submit" [disabled]="!canSend()">
+        <app-icon name="send" [size]="16" [strokeWidth]="2" />
+        @if (sending()) {
+          <span i18n="@@contactSending">Envoi…</span>
+        } @else {
+          <span i18n="@@contactSend">Envoyer</span>
+        }
+      </button>
+      <button class="btn btn--quiet" type="button" (click)="cancel()" i18n="@@cancel">Annuler</button>
+    </div>
+  </form>
+} @else {
+  <button
+    class="btn btn--primary btn--block contact__button"
+    type="button"
+    (click)="start()"
+  >
+    <app-icon name="message-circle" [size]="18" [strokeWidth]="2" />
+    <span i18n="@@listingContact">Contacter le vendeur</span>
+  </button>
+  <p class="meta" i18n="@@contactPrivate">
+    Votre message passe par AutoX : vos coordonnées ne sont pas communiquées au vendeur.
+  </p>
+}

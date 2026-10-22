@@ -1,0 +1,60 @@
+<div class="messages" [class.messages--reading]="inbox.selectedId()">
+  <section class="messages__list" aria-labelledby="titre-messages">
+    <header class="messages__head">
+      <h1 id="titre-messages" class="messages__title" i18n="@@messagesTitle">Messages</h1>
+      <p class="meta" i18n="@@messagesLede">Vos échanges avec les vendeurs et les acheteurs.</p>
+    </header>
+
+    @switch (inbox.state()) {
+      @case ('loading') {
+        <p class="messages__state meta" aria-busy="true" i18n="@@messagesLoading">Chargement des conversations…</p>
+      }
+
+      @case ('error') {
+        <div class="messages__state">
+          <app-alert kind="error">{{ inbox.failure() }}</app-alert>
+          <button class="btn btn--quiet btn--sm" type="button" (click)="inbox.load()" i18n="@@retry">Réessayer</button>
+        </div>
+      }
+
+      @case ('ready') {
+        @if (inbox.items().length === 0) {
+          <div class="messages__state messages__empty">
+            <app-icon name="message-circle" [size]="32" />
+            <p class="messages__empty-title" i18n="@@messagesEmpty">Aucune conversation pour l’instant.</p>
+            <p class="meta" i18n="@@messagesEmptyHint">
+              Pour écrire à un vendeur, ouvrez une annonce et choisissez « Contacter le vendeur ». Les messages
+              des acheteurs sur vos annonces arrivent ici aussi.
+            </p>
+            <a class="btn btn--primary btn--sm" routerLink="/recherche" i18n="@@messagesBrowse">Voir les annonces</a>
+          </div>
+        } @else {
+          <ol class="inbox" role="list">
+            @for (item of inbox.items(); track item.id) {
+              <li>
+                <app-inbox-item [item]="item" [selected]="item.id === inbox.selectedId()" />
+              </li>
+            }
+          </ol>
+          @if (inbox.hasMore()) {
+            <div class="messages__more">
+              <button
+                class="btn btn--quiet btn--sm"
+                type="button"
+                [disabled]="inbox.loadingMore()"
+                (click)="inbox.loadMore()"
+                i18n="@@messagesMore"
+              >
+                Afficher plus de conversations
+              </button>
+            </div>
+          }
+        }
+      }
+    }
+  </section>
+
+  <div class="messages__pane">
+    <router-outlet />
+  </div>
+</div>
