@@ -1,0 +1,107 @@
+@use '../../../styles/tokens' as t;
+
+// Two panes inside one bordered surface: the list, and the conversation. On a desktop the
+// whole thing is the height of the window, and each pane scrolls on its own, so the
+// composer is always in view and the list never drags the conversation with it.
+.messages {
+  display: grid;
+  border: var(--border);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  overflow: hidden;
+
+  @media (min-width: t.$bp-md) {
+    grid-template-columns: minmax(20rem, 24rem) 1fr;
+    height: clamp(32rem, calc(100vh - var(--h-header) - 8rem), 56rem);
+  }
+}
+
+.messages__list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+
+  @media (min-width: t.$bp-md) {
+    border-right: var(--border);
+  }
+}
+
+.messages__pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+
+  // One pane at a time on a narrow screen: the list until a conversation is open.
+  @media (max-width: calc(t.$bp-md - 1px)) {
+    display: none;
+  }
+}
+
+.messages--reading {
+  @media (max-width: calc(t.$bp-md - 1px)) {
+    .messages__list {
+      display: none;
+    }
+
+    .messages__pane {
+      display: flex;
+    }
+  }
+}
+
+.messages__head {
+  padding: var(--s-4) var(--s-4) var(--s-3);
+  border-bottom: var(--border);
+
+  p {
+    margin: var(--s-1) 0 0;
+  }
+}
+
+.messages__title {
+  margin: 0;
+  font-size: var(--t-xl);
+  font-weight: var(--fw-bold);
+}
+
+.messages__state {
+  display: grid;
+  gap: var(--s-3);
+  justify-items: start;
+  padding: var(--s-4);
+}
+
+.messages__empty {
+  justify-items: center;
+  padding: var(--s-6) var(--s-4);
+  color: var(--c-ink-faint);
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+}
+
+.messages__empty-title {
+  color: var(--c-ink);
+  font-weight: var(--fw-semibold);
+}
+
+.messages__more {
+  padding: var(--s-3) var(--s-4);
+  text-align: center;
+}
+
+// ---- the list -----------------------------------------------------------------
+
+.inbox {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: block;
+    border-bottom: var(--divider);
+  }
+}

@@ -135,6 +135,8 @@ describe('ModerationPage', () => {
         ['À vérifier (1)', '/admin/moderation'],
         ['En ligne', '/admin/moderation?vue=en-ligne'],
         ['Retirées', '/admin/moderation?vue=retirees'],
+        // Reported messages are their own page, reached from the same strip.
+        ['Messages signalés', '/admin/moderation/messages'],
       ]);
       expect(root.querySelector('.moderation__view--active')?.getAttribute('aria-current')).toBe('page');
     });

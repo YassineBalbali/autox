@@ -46,6 +46,10 @@
     {
       "name": "Sessions",
       "description": "List and end the signed-in account's own sessions. Requires authentication."
+    },
+    {
+      "name": "Messages",
+      "description": "Conversations between a buyer and a seller about a listing. Requires authentication."
     }
   ],
   "paths": {
@@ -91,6 +95,57 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/messages/{id}/report": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Reports a message the caller received to the moderators.",
+        "description": "Reports a message the caller received to the moderators. Once per message: reporting it\n again is accepted and changes nothing. A message cannot be edited or deleted, by anyone.",
+        "operationId": "report",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "default": {
             "description": "Error. RFC 9457 problem+json; branch on `code`.",
@@ -437,6 +492,64 @@
         ]
       }
     },
+    "/api/v1/listings/{listingId}/conversation": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Writes to a listing's seller.",
+        "description": "Writes to a listing's seller. Starts the caller's conversation about it, or continues it\n if they already have one. 404 if the listing is not online and the caller has no\n conversation about it yet; 403 for the caller's own listing.",
+        "operationId": "contactSeller",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/listings/{id}/unpublish": {
       "post": {
         "tags": [
@@ -607,6 +720,105 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ListingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/conversations/{id}/read": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Marks every message in the conversation read for the caller.",
+        "description": "Marks every message in the conversation read for the caller.",
+        "operationId": "markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/conversations/{id}/messages": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Writes in a conversation.",
+        "description": "Writes in a conversation. 409 once it is closed: see <code>canReply</code>.",
+        "operationId": "reply",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
                 }
               }
             }
@@ -858,6 +1070,88 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/admin/message-reports/{id}/hide": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Hides the message from both sides (its text is kept) and closes its reports.",
+        "description": "Hides the message from both sides (its text is kept) and closes its reports. 409 if already dealt with.",
+        "operationId": "hide",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/message-reports/{id}/dismiss": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Closes the report and leaves the message as it is.",
+        "description": "Closes the report and leaves the message as it is. 409 if already dealt with.",
+        "operationId": "dismiss",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/listings/{id}/remove": {
@@ -1728,6 +2022,153 @@
         }
       }
     },
+    "/api/v1/conversations": {
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "The caller's conversations, as buyer and as seller, most recent first.",
+        "description": "The caller's conversations, as buyer and as seller, most recent first.",
+        "operationId": "inbox",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseConversationSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/conversations/{id}": {
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "One conversation with its latest messages.",
+        "description": "One conversation with its latest messages. Reading it does not mark it read; that is\n <code>POST /conversations/{id</code>/read}, so a GET changes nothing.",
+        "operationId": "conversation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/conversations/unread": {
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "How many conversations have a message the caller has not opened.",
+        "description": "How many conversations have a message the caller has not opened. For the header badge.",
+        "operationId": "unread",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCount"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/users": {
       "get": {
         "tags": [
@@ -1776,6 +2217,68 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PageResponseUserSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/message-reports": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Open reports, oldest first.",
+        "description": "Open reports, oldest first.",
+        "operationId": "openReports",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseReportedMessage"
                 }
               }
             }
@@ -2092,6 +2595,33 @@
             "format": "int64"
           }
         }
+      },
+      "MessageReportReason": {
+        "type": "string",
+        "description": "Why a recipient reported a message. Mirrors <code>ck_message_report_reason</code>. A closed list\n for the reason moderation reasons are one: a code can be counted, and shown in the\n moderator's language.",
+        "enum": [
+          "SCAM",
+          "ABUSIVE",
+          "SPAM",
+          "OTHER"
+        ]
+      },
+      "ReportMessageRequest": {
+        "type": "object",
+        "description": "<code>note</code> is required when the reason is <code>OTHER</code>, and optional otherwise.",
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/MessageReportReason"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "reason"
+        ]
       },
       "ChangePasswordRequest": {
         "type": "object",
@@ -2823,6 +3353,131 @@
           },
           "confirmPath": {
             "type": "string"
+          }
+        }
+      },
+      "SendMessageRequest": {
+        "type": "object",
+        "description": "One message. Plain text: it is shown as typed, never as markup.",
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "ConversationDetail": {
+        "type": "object",
+        "description": "A conversation with its messages, oldest first.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ConversationRole"
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ListingRef"
+          },
+          "counterpart": {
+            "$ref": "#/components/schemas/Party"
+          },
+          "canReply": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageView"
+            }
+          },
+          "earlierOmitted": {
+            "type": "boolean",
+            "description": "true when the conversation has more messages than are returned\n                       (<code>MessagingService.MESSAGES_SHOWN</code>); the oldest are left out"
+          }
+        }
+      },
+      "ConversationRole": {
+        "type": "string",
+        "description": "Which side of a conversation the caller is on.",
+        "enum": [
+          "BUYER",
+          "SELLER"
+        ]
+      },
+      "ListingRef": {
+        "type": "object",
+        "description": "The listing the conversation is about, as it is now.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean",
+            "description": "whether it can be found and opened by the public at the moment"
+          },
+          "coverUrl": {
+            "type": "string",
+            "description": "its first photo, small; null when it has none"
+          }
+        }
+      },
+      "MessageView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sentByMe": {
+            "type": "boolean"
+          },
+          "body": {
+            "type": "string",
+            "description": "null when a moderator hid the message"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "reportedByMe": {
+            "type": "boolean",
+            "description": "whether the caller has reported it; a message can be reported once"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Party": {
+        "type": "object",
+        "description": "The other side: a display name and whether it is a trade seller.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
           }
         }
       },
@@ -4223,6 +4878,102 @@
           }
         }
       },
+      "ConversationSummary": {
+        "type": "object",
+        "description": "One line of an inbox.\n\n <p>The other party is a display name and a role, never an email or a phone number: a buyer\n and a seller reach each other only through these conversations.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ConversationRole",
+            "description": "which side the caller is on"
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ListingRef"
+          },
+          "counterpart": {
+            "$ref": "#/components/schemas/Party"
+          },
+          "lastMessage": {
+            "$ref": "#/components/schemas/LastMessage"
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "messages from the other party the caller has not opened"
+          },
+          "canReply": {
+            "type": "boolean",
+            "description": "false once the listing has been taken down or deleted, or either\n                    account is closed or suspended; the conversation stays readable"
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LastMessage": {
+        "type": "object",
+        "properties": {
+          "preview": {
+            "type": "string",
+            "description": "the start of the message, or null when a moderator hid it"
+          },
+          "sentByMe": {
+            "type": "boolean"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PageResponseConversationSummary": {
+        "type": "object",
+        "description": "The envelope every list endpoint returns.\n\n <p>Spring's own <code>Page</code> serialises its internal structure, which would tie the\n public contract to a Spring Data version. This is our shape, and it is the only\n one a mobile client has to understand.\n\n <p>Offset paging is correct for admin tables. Public search will use a keyset\n cursor instead — same envelope, with a <code>nextCursor</code> added — because offset\n paging skips and repeats rows while listings are being inserted underneath.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConversationSummary"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UnreadCount": {
+        "type": "object",
+        "description": "How many of the caller's conversations have a message they have not opened.",
+        "properties": {
+          "conversations": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "PageResponseUserSummary": {
         "type": "object",
         "description": "The envelope every list endpoint returns.\n\n <p>Spring's own <code>Page</code> serialises its internal structure, which would tie the\n public contract to a Spring Data version. This is our shape, and it is the only\n one a mobile client has to understand.\n\n <p>Offset paging is correct for admin tables. Public search will use a keyset\n cursor instead — same envelope, with a <code>nextCursor</code> added — because offset\n paging skips and repeats rows while listings are being inserted underneath.",
@@ -4251,6 +5002,105 @@
           },
           "hasNext": {
             "type": "boolean"
+          }
+        }
+      },
+      "ContextMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "senderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string",
+            "description": "the text, also when a moderator has hidden it: the moderator is the one\n                 person who needs to read it"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "reported": {
+            "type": "boolean",
+            "description": "whether this is the message the report is about"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PageResponseReportedMessage": {
+        "type": "object",
+        "description": "The envelope every list endpoint returns.\n\n <p>Spring's own <code>Page</code> serialises its internal structure, which would tie the\n public contract to a Spring Data version. This is our shape, and it is the only\n one a mobile client has to understand.\n\n <p>Offset paging is correct for admin tables. Public search will use a keyset\n cursor instead — same envelope, with a <code>nextCursor</code> added — because offset\n paging skips and repeats rows while listings are being inserted underneath.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportedMessage"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReportedMessage": {
+        "type": "object",
+        "description": "An open report, for a moderator: the message, who reported it and why, and the messages\n around it so it can be judged in context.\n\n <p>A moderator sees a conversation only through a report on it. There is no endpoint that\n lets an administrator browse conversations nobody has reported.",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/MessageReportReason"
+          },
+          "note": {
+            "type": "string"
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reporter": {
+            "$ref": "#/components/schemas/Party"
+          },
+          "sender": {
+            "$ref": "#/components/schemas/Party"
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ListingRef"
+          },
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "context": {
+            "type": "array",
+            "description": "up to <code>MessagingService.REPORT_CONTEXT</code> messages either side of the\n                reported one, and it, oldest first",
+            "items": {
+              "$ref": "#/components/schemas/ContextMessage"
+            }
           }
         }
       },

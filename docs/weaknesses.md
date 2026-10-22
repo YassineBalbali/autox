@@ -175,13 +175,13 @@ seller or by an administrator; secrets come from the environment with no default
 
 ## 2. Where the product is weakest
 
-### W1. A buyer cannot contact a seller — frontend and backend
+### W1. A buyer cannot contact a seller — resolved, but nobody is told
 
-The one transaction a marketplace exists for is not there. The listing page has a contact
-button that is disabled and says so; no phone number is shown; there is no messaging.
-The brief put messaging out of the MVP, and that was right for building — but it means the
-MVP demonstrates a catalogue, not a marketplace. **Everything else on this list is
-secondary to this.**
+A buyer writes from the listing page, and both sides have an inbox, through AutoX only
+(`messaging.md`). What remains is W7's problem in a sharper form: **nothing tells a seller
+that a buyer wrote.** The header shows a count to someone already on the site; a seller
+who is not visiting never knows. Until email notifications exist, a buyer's first message
+can wait unseen for days, which in a car sale is a lost sale.
 
 ### W2. There is no vehicle catalogue outside the demo — backend, data
 
@@ -223,8 +223,8 @@ previews need server rendering or a prerender step.
 
 ### W7. Nothing is ever sent to a seller — backend
 
-Beyond R1's reset email: no notice that a listing is about to expire, has expired, was
-taken down, or was reinstated. Everything is discoverable on the dashboard and nowhere
+Beyond R1's reset email: no notice of a new message (see W1), or that a listing is about to
+expire, has expired, was taken down, or was reinstated. Everything is discoverable on the dashboard and nowhere
 else, and listings expire silently after 60 days.
 
 ### W8. Moderation works for one moderator and a short queue — frontend and backend

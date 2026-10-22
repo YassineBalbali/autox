@@ -9,6 +9,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BASE_PATH, ErrorCode, FuelType, Gearbox, PriceLevel, PublicListingDetail } from '../../core/api';
+import { TOKEN_STORE } from '../../core/auth/token-store';
 import { NBSP } from '../../shared/format/number';
 import { SearchMemory } from '../search/search-memory';
 import { ListingPage } from './listing-page';
@@ -88,6 +89,8 @@ describe('ListingPage', () => {
           withComponentInputBinding(),
         ),
         { provide: BASE_PATH, useValue: BASE },
+        // Signed out: the page is public, and contacting the seller is ContactSeller's spec.
+        { provide: TOKEN_STORE, useValue: { read: () => null, write: () => undefined, clear: () => undefined } },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -227,7 +230,7 @@ describe('ListingPage', () => {
 
       expect(panel.querySelector('h1')).not.toBeNull();
       expect(panel.querySelector('app-price')).not.toBeNull();
-      expect(panel.querySelector('.summary__contact')).not.toBeNull();
+      expect(panel.querySelector('app-contact-seller')).not.toBeNull();
       expect(panel.querySelector('.seller')).not.toBeNull();
       expect(panel.textContent).toContain('Publiée le 11 octobre 2026');
     });
@@ -320,34 +323,15 @@ describe('ListingPage', () => {
     });
   });
 
-  describe('the contact button', () => {
-    it('is present, says what it will do, and says it cannot do it yet', async () => {
+  describe('contacting the seller', () => {
+    it('asks a visitor who is not signed in to sign in, and to come back to this listing', async () => {
       await load();
-      const button = root.querySelector('.summary__contact') as HTMLButtonElement;
+      const link = root.querySelector('app-contact-seller a.btn') as HTMLAnchorElement;
 
-      expect(button.textContent?.trim()).toBe('Contacter le vendeur');
-      expect(button.getAttribute('aria-disabled')).toBe('true');
-      const reason = root.querySelector(`#${button.getAttribute('aria-describedby')}`);
-      expect(reason?.textContent).toContain('messagerie n’est pas encore ouverte');
-    });
-
-    it('stays reachable by keyboard, so the reason can be heard', async () => {
-      // The `disabled` attribute would take it out of the tab order, and a screen reader
-      // user would never learn that contacting the seller is planned but not open.
-      await load();
-      const button = root.querySelector('.summary__contact') as HTMLButtonElement;
-
-      expect(button.disabled).toBe(false);
-      expect(button.tabIndex).toBe(0);
-    });
-
-    it('reveals nothing and sends nothing when pressed', async () => {
-      await load();
-      (root.querySelector('.summary__contact') as HTMLButtonElement).click();
-      await settle();
-
-      backend.expectNone(() => true);
-      expect(root.querySelector('form')).toBeNull();
+      expect(link.textContent?.trim()).toBe('Contacter le vendeur');
+      expect(link.getAttribute('href')).toBe(`/connexion?suivant=%2Fannonces%2F${LISTING.id}`);
+      // Nothing about the seller is revealed to get there.
+      expect(root.querySelector('app-contact-seller')?.textContent).toContain('ni votre adresse e-mail ni');
     });
   });
 

@@ -149,6 +149,30 @@ export const routes: Routes = [
       import('./features/seller/listing-editor-page').then((m) => m.ListingEditorPage),
   },
 
+  // ---- messages -----------------------------------------------------------
+  //
+  // The list is the parent and the open conversation a child, so going from one
+  // conversation to the next swaps only the right-hand side and the list keeps its place.
+
+  {
+    path: 'messages',
+    canActivate: [authGuard],
+    title: 'Messages · AutoX',
+    loadComponent: () => import('./features/messages/messages-page').then((m) => m.MessagesPage),
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./features/messages/no-conversation').then((m) => m.NoConversation),
+      },
+      {
+        // The id reaches the component as an input through `withComponentInputBinding()`.
+        path: ':id',
+        loadComponent: () =>
+          import('./features/messages/conversation-view').then((m) => m.ConversationView),
+      },
+    ],
+  },
+
   // ---- administration -----------------------------------------------------
   //
   // One screen today. `roleGuard` also turns away a visitor with no session, so it is
@@ -162,6 +186,13 @@ export const routes: Routes = [
     canActivate: [roleGuard(UserRole.ADMIN)],
     title: 'Modération · AutoX',
     loadComponent: () => import('./features/admin/moderation-page').then((m) => m.ModerationPage),
+  },
+  {
+    path: 'admin/moderation/messages',
+    canActivate: [roleGuard(UserRole.ADMIN)],
+    title: 'Messages signalés · AutoX',
+    loadComponent: () =>
+      import('./features/admin/reported-messages-page').then((m) => m.ReportedMessagesPage),
   },
 
   // ---- internal -----------------------------------------------------------

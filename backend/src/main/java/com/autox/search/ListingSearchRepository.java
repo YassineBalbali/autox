@@ -41,8 +41,11 @@ public class ListingSearchRepository {
      */
     private static final String VISIBLE = visible("l");
 
-    /** {@link #VISIBLE} for a listing table under another alias: {@link MarketPrice}'s comparables. */
-    static String visible(String alias) {
+    /**
+     * {@link #VISIBLE} for a listing table under another alias: {@link MarketPrice}'s
+     * comparables, and whether the listing a conversation is about is still online.
+     */
+    public static String visible(String alias) {
         return """
                 %1$s.status = 'ACTIVE'
                   AND %1$s.moderation_status <> 'REJECTED'

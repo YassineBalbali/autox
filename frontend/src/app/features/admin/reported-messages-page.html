@@ -1,0 +1,142 @@
+<div class="stack moderation">
+  <header>
+    <p class="moderation__section" i18n="@@adminSection">Administration</p>
+    <h1 class="page-title" i18n="@@reportedTitle">Messages signalés</h1>
+    <p class="lede" i18n="@@reportedLede">
+      Un message signalé par son destinataire, avec ceux qui l’entourent. Le masquer remplace son texte par un
+      avis pour les deux personnes ; le texte est conservé.
+    </p>
+  </header>
+
+  <nav class="moderation__views" aria-label="Listes de modération" i18n-aria-label="@@moderationViews">
+    @for (entry of views; track entry.slug; let first = $first) {
+      <a class="moderation__view" routerLink="/admin/moderation" [queryParams]="{ vue: first ? null : entry.slug }">
+        {{ entry.label }}
+      </a>
+    }
+    <a class="moderation__view moderation__view--active" aria-current="page" routerLink="/admin/moderation/messages">
+      <ng-container i18n="@@moderationMessagesTab">Messages signalés</ng-container>
+      @if (state() === 'ready' && total() > 0) {
+        <!-- The space inside the span: Angular drops whitespace that stands alone between elements. -->
+        <span class="moderation__count"> ({{ total() }})</span>
+      }
+    </a>
+  </nav>
+
+  @if (notice()) {
+    <app-alert kind="success">{{ notice() }}</app-alert>
+  }
+
+  @switch (state()) {
+    @case ('loading') {
+      <div class="panel moderation__state" aria-busy="true">
+        <p class="meta" i18n="@@reportedLoading">Chargement des signalements…</p>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="panel stack">
+        <app-alert kind="error">{{ loadFailure() }}</app-alert>
+        <div class="form-actions">
+          <button class="btn btn--quiet" type="button" (click)="load()" i18n="@@retry">Réessayer</button>
+        </div>
+      </div>
+    }
+
+    @case ('ready') {
+      @if (items().length === 0) {
+        <div class="panel moderation__state">
+          <p i18n="@@reportedEmpty">Aucun message signalé en attente.</p>
+        </div>
+      } @else {
+        @for (item of items(); track item.reportId) {
+          <article class="panel report-card" [attr.aria-labelledby]="'signalement-' + item.reportId">
+            <header class="report-card__head">
+              <h2 class="report-card__reason" [id]="'signalement-' + item.reportId">{{ reasonLabel(item) }}</h2>
+              <!-- One sentence, one translation unit: split into pieces, Angular drops the
+                   spaces that stand alone between them. -->
+              <p class="meta" i18n="@@reportedByOn">
+                Signalé par <strong>{{ item.reporter?.displayName }}</strong> le
+                <time [attr.datetime]="item.reportedAt">{{ sentAtFull(item.reportedAt) }}</time>
+              </p>
+              @if (item.listing; as listing) {
+                <p class="meta report-card__listing">
+                  @if (listing.online) {
+                    <ng-container i18n="@@reportedAboutLink">Au sujet de <a [routerLink]="['/annonces', listing.id]">{{ listing.title }}</a></ng-container>
+                  } @else {
+                    <ng-container i18n="@@reportedAbout">Au sujet de {{ listing.title }}</ng-container>
+                  }
+                </p>
+              }
+            </header>
+
+            @if (item.note) {
+              <blockquote class="report-card__note">
+                <span class="visually-hidden" i18n="@@reportedNote">Précision du signalement :</span>
+                {{ item.note }}
+              </blockquote>
+            }
+
+            <ol class="report-card__context" role="list">
+              @for (message of item.context; track message.id) {
+                <li class="context" [class.context--reported]="message.reported">
+                  <p class="context__who">
+                    {{ senderName(item, message.senderId) }}
+                    @if (message.senderId === item.sender?.id) {
+                      <app-seller-badge [role]="item.sender?.role" />
+                    }
+                    <time class="context__when" [attr.datetime]="message.sentAt">{{ sentAtFull(message.sentAt) }}</time>
+                    @if (message.reported) {
+                      <span class="tag tag--danger" i18n="@@reportedTag">Message signalé</span>
+                    }
+                    @if (message.hidden) {
+                      <span class="tag" i18n="@@reportedHiddenTag">Déjà masqué</span>
+                    }
+                  </p>
+                  <p class="context__body">{{ message.body }}</p>
+                </li>
+              }
+            </ol>
+
+            @if (failures()[item.reportId!]) {
+              <app-alert kind="error">{{ failures()[item.reportId!] }}</app-alert>
+            }
+
+            <div class="form-actions">
+              <button
+                class="btn btn--danger"
+                type="button"
+                [disabled]="busy() !== null"
+                (click)="hide(item)"
+                i18n="@@reportedHide"
+              >
+                Masquer le message
+              </button>
+              <button
+                class="btn btn--quiet"
+                type="button"
+                [disabled]="busy() !== null"
+                (click)="dismiss(item)"
+                i18n="@@reportedDismiss"
+              >
+                Classer sans suite
+              </button>
+            </div>
+          </article>
+        }
+
+        @if (totalPages() > 1) {
+          <nav class="moderation__pages" aria-label="Pagination" i18n-aria-label="@@pagination">
+            <button class="btn btn--quiet" type="button" [disabled]="!hasPrevious()" (click)="goTo(page() - 1)" i18n="@@pagePrevious">
+              Précédente
+            </button>
+            <span class="meta">{{ page() + 1 }} / {{ totalPages() }}</span>
+            <button class="btn btn--quiet" type="button" [disabled]="!hasNext()" (click)="goTo(page() + 1)" i18n="@@pageNext">
+              Suivante
+            </button>
+          </nav>
+        }
+      }
+    }
+  }
+</div>

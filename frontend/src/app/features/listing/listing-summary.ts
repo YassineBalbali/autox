@@ -8,6 +8,7 @@ import { PriceBadge } from '../../shared/listing/price-badge';
 import { SellerBadge } from '../../shared/listing/seller-badge';
 import { departmentOf } from '../../shared/listing/summary';
 import { Icon } from '../../shared/ui/icon';
+import { ContactSeller } from './contact-seller';
 
 const MONTH_AND_YEAR = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
 
@@ -22,7 +23,7 @@ const MONTH_AND_YEAR = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: '
  */
 @Component({
   selector: 'app-listing-summary',
-  imports: [Price, PriceBadge, SellerBadge, Icon],
+  imports: [Price, PriceBadge, SellerBadge, Icon, ContactSeller],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-summary.html',
   styleUrl: './listing-summary.scss',

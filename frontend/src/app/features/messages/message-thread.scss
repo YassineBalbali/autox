@@ -1,0 +1,106 @@
+.omitted {
+  margin: 0 0 var(--s-3);
+  text-align: center;
+}
+
+.day {
+  margin: var(--s-4) 0 var(--s-3);
+  color: var(--c-ink-faint);
+  font-size: var(--t-xs);
+  font-weight: var(--fw-semibold);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+.bubbles {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Theirs on the left on white, mine on the right in the accent: the convention of every
+// messaging app, so nobody has to read a name to know who said what.
+.bubble {
+  display: block;
+  justify-self: start;
+  max-width: min(36rem, 85%);
+  padding: var(--s-2) var(--s-3);
+  border: var(--border);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-lg) var(--r-sm);
+  background: var(--c-surface);
+}
+
+.bubble--mine {
+  justify-self: end;
+  border-color: var(--c-accent);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg);
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+
+  .bubble__meta {
+    color: var(--c-accent-soft);
+  }
+}
+
+.bubble--hidden,
+.bubble--mine.bubble--hidden {
+  border-style: dashed;
+  border-color: var(--c-line-strong);
+  background: var(--c-surface-sunk);
+  color: var(--c-ink-faint);
+  font-style: italic;
+
+  .bubble__meta {
+    color: var(--c-ink-faint);
+  }
+}
+
+// As typed: line breaks kept, a long word or link broken rather than widening the bubble.
+.bubble__body {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.bubble__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-1);
+  margin: var(--s-1) 0 0;
+  color: var(--c-ink-faint);
+  font-size: var(--t-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.bubble__report {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-ink-faint);
+  font: inherit;
+  cursor: pointer;
+
+  &::before {
+    content: '·';
+    margin-right: var(--s-1);
+  }
+
+  &:hover {
+    color: var(--c-danger);
+  }
+}
+
+.bubble__reported {
+  color: var(--c-danger);
+}

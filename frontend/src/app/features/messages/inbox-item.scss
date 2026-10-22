@@ -1,0 +1,98 @@
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-left: 3px solid transparent;
+  color: var(--c-ink);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--c-surface-sunk);
+  }
+}
+
+// The open one: the accent tint, and the bar on its leading edge as in the account sidebar.
+.item--selected,
+.item--selected:hover {
+  border-left-color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+
+.item__thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 4rem;
+  height: 3rem;
+  border-radius: var(--r-sm);
+  background: var(--c-surface-sunk);
+  color: var(--c-ink-faint);
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.item__text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.item__top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.item__who,
+.item__listing,
+.item__preview {
+  overflow: hidden;
+  font-size: var(--t-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item__who {
+  font-weight: var(--fw-semibold);
+}
+
+.item__when {
+  flex: none;
+  margin-left: auto;
+  color: var(--c-ink-faint);
+  font-size: var(--t-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.item__listing {
+  color: var(--c-ink-soft);
+}
+
+.item__role,
+.item__preview {
+  color: var(--c-ink-faint);
+}
+
+.item__preview--hidden {
+  font-style: italic;
+}
+
+.item--unread {
+  .item__who,
+  .item__preview {
+    color: var(--c-ink);
+    font-weight: var(--fw-bold);
+  }
+}
+
+.item__unread {
+  align-self: center;
+}

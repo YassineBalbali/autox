@@ -14,6 +14,7 @@ import { routes } from '../app.routes';
 import { ProfileService, UserRole } from '../core/api';
 import { AuthService, userSummaryOf } from '../core/auth/auth.service';
 import { Logo } from '../shared/brand/logo';
+import { MessagesLink } from './messages-link';
 import { availableNav } from './primary-nav';
 
 /**
@@ -32,7 +33,7 @@ import { availableNav } from './primary-nav';
  */
 @Component({
   selector: 'app-site-header',
-  imports: [RouterLink, RouterLinkActive, Logo],
+  imports: [RouterLink, RouterLinkActive, Logo, MessagesLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './site-header.html',
   styleUrl: './site-header.scss',

@@ -37,24 +37,7 @@
     </div>
   }
 
-  <!-- Not a working button yet, and it says so. aria-disabled rather than the disabled
-       attribute, so it stays reachable by keyboard and a screen reader reads both the
-       label and the reason, instead of skipping it in silence. -->
-  <div class="summary__contact-block">
-    <button
-      class="btn btn--primary btn--block summary__contact"
-      type="button"
-      aria-disabled="true"
-      aria-describedby="contact-indisponible"
-    >
-      <app-icon name="message-circle" [size]="18" [strokeWidth]="2" />
-      <span i18n="@@listingContact">Contacter le vendeur</span>
-    </button>
-    <p class="meta" id="contact-indisponible" i18n="@@listingContactSoon">
-      La messagerie n’est pas encore ouverte. Il sera bientôt possible d’écrire au vendeur
-      depuis cette page.
-    </p>
-  </div>
+  <app-contact-seller [listing]="listing()" />
 
   <section class="seller" aria-labelledby="titre-vendeur">
     <h2 id="titre-vendeur" class="visually-hidden" i18n="@@listingSeller">Vendeur</h2>

@@ -160,6 +160,10 @@ public class ReferenceService {
         published.put("DistanceUnit", DistanceUnit.class);
         published.put("SearchSort", SearchSort.class);
         published.put("PriceLevel", com.autox.search.PriceLevel.class);
+
+        // Messages.
+        published.put("ConversationRole", com.autox.messaging.ConversationRole.class);
+        published.put("MessageReportReason", com.autox.messaging.MessageReportReason.class);
         // Included on purpose: clients are told to branch on `code`, so the set of codes they
         // may receive is part of the contract, not an implementation detail.
         published.put("ErrorCode", ErrorCode.class);

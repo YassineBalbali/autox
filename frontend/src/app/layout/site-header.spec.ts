@@ -193,6 +193,40 @@ describe('SiteHeader', () => {
     });
   });
 
+  describe('messages', () => {
+    const UNREAD = `${BASE}/api/v1/conversations/unread`;
+
+    it('links a signed-in user to their messages, with how many conversations wait', async () => {
+      await render(true);
+      TestBed.inject(HttpTestingController).expectOne(UNREAD).flush({ conversations: 3 });
+      await fixture.whenStable();
+
+      const link = query('app-messages-link a') as HTMLAnchorElement;
+      expect(link.getAttribute('href')).toBe('/messages');
+      expect(link.querySelector('.count-badge')?.textContent?.trim()).toBe('3');
+      // The number is said in words too: "Messages 3" alone tells a screen reader nothing.
+      expect(link.textContent).toContain(', 3 conversations non lues');
+    });
+
+    it('shows no number when nothing waits, and no link for a visitor', async () => {
+      await render(true);
+      TestBed.inject(HttpTestingController).expectOne(UNREAD).flush({ conversations: 0 });
+      await fixture.whenStable();
+      expect(query('app-messages-link .count-badge')).toBeNull();
+
+      await render(false);
+      expect(query('app-messages-link')).toBeNull();
+    });
+
+    it('caps a large number, which the badge would not hold', async () => {
+      await render(true);
+      TestBed.inject(HttpTestingController).expectOne(UNREAD).flush({ conversations: 140 });
+      await fixture.whenStable();
+
+      expect(query('app-messages-link .count-badge')?.textContent?.trim()).toBe('99+');
+    });
+  });
+
   it('offers only the destinations that exist', async () => {
     // Both entries have a route. "Vendre" is offered to a visitor too: the guard on it
     // sends them to sign in and brings them back, which is the right first step.

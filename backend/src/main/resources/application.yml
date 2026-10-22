@@ -174,6 +174,18 @@ autox:
     # free Supabase project from pausing for inactivity (see StorageReadinessCheck).
     storage-check-interval: ${AUTOX_SCHEDULE_STORAGE_CHECK:PT12H}
 
+  # Per account, in fixed windows. A reply costs one message; starting a conversation costs
+  # one conversation and one message. Twenty messages in ten minutes is more than anyone types
+  # to one buyer, and ten new conversations a day is a buyer shortlisting cars, not a spammer
+  # writing to every seller. Over either: 429 RATE_LIMITED with Retry-After.
+  messaging:
+    throttle:
+      enabled: ${AUTOX_MESSAGING_THROTTLE_ENABLED:true}
+      messages-per-window: 20
+      message-window: PT10M
+      conversations-per-window: 10
+      conversation-window: P1D
+
   listing:
     # A published listing stays live for this long, then the sweeper expires it.
     # Renewing resets the window from the moment of renewal.
