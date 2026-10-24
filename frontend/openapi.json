@@ -1827,6 +1827,52 @@
         ]
       }
     },
+    "/api/v1/listings/{id}/similar": {
+      "get": {
+        "tags": [
+          "Listings (public)"
+        ],
+        "summary": "\"Annonces similaires\": three to six live listings like this one, best first, as search\n result cards; an empty list when there are fewer than three good matches, never padding",
+        "description": "\"Annonces similaires\": three to six live listings like this one, best first, as search\n result cards; an empty list when there are fewer than three good matches, never padding.\n\n <p>The same model registered within three years and priced within 40 % first, then the\n same body type within 20 % of the price. Never the listing itself, and at most one of a seller's copies of the\n same car. 404 when the listing is not public, as for the detail.",
+        "operationId": "similar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicListingSummary"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/listings/mine": {
       "get": {
         "tags": [

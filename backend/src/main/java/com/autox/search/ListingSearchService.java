@@ -37,19 +37,22 @@ public class ListingSearchService {
     private final ObjectStorage storage;
     private final MarketPrice marketPrice;
     private final DemoAccounts demoAccounts;
+    private final SimilarListings similarListings;
 
     public ListingSearchService(ListingSearchRepository searchRepository,
                                 ListingRepository listings,
                                 ListingImageRepository images,
                                 ObjectStorage storage,
                                 MarketPrice marketPrice,
-                                DemoAccounts demoAccounts) {
+                                DemoAccounts demoAccounts,
+                                SimilarListings similarListings) {
         this.searchRepository = searchRepository;
         this.listings = listings;
         this.images = images;
         this.storage = storage;
         this.marketPrice = marketPrice;
         this.demoAccounts = demoAccounts;
+        this.similarListings = similarListings;
     }
 
     @Transactional(readOnly = true)
@@ -99,6 +102,27 @@ public class ListingSearchService {
 
     @Transactional(readOnly = true)
     public PublicListingDetail detail(UUID listingId) {
+        Listing listing = publicListing(listingId);
+
+        List<ImageResponse> gallery = images.findReadyByListing(listingId).stream()
+                .map(image -> ImageResponse.from(image, storage::readUrl))
+                .toList();
+
+        return PublicListingDetail.from(listing, gallery, marketPrice.indicators(List.of(listingId)).get(listingId),
+                demoAccounts.isDemoAccount(listing.getSeller().getId()));
+    }
+
+    /**
+     * The listings a buyer looking at this one would look at next, as result cards: three to
+     * six, or none. See {@link SimilarListings} for the rule. 404 as for the detail.
+     */
+    @Transactional(readOnly = true)
+    public List<PublicListingSummary> similar(UUID listingId) {
+        publicListing(listingId);
+        return toSummaries(similarListings.find(listingId));
+    }
+
+    private Listing publicListing(UUID listingId) {
         Listing listing = listings.findActiveById(listingId)
                 .orElseThrow(() -> ApiException.notFound("Listing"));
 
@@ -107,13 +131,7 @@ public class ListingSearchService {
             // public API is concerned — the same answer as an id that never existed.
             throw ApiException.notFound("Listing");
         }
-
-        List<ImageResponse> gallery = images.findReadyByListing(listingId).stream()
-                .map(image -> ImageResponse.from(image, storage::readUrl))
-                .toList();
-
-        return PublicListingDetail.from(listing, gallery, marketPrice.indicators(List.of(listingId)).get(listingId),
-                demoAccounts.isDemoAccount(listing.getSeller().getId()));
+        return listing;
     }
 
     /**

@@ -1,0 +1,37 @@
+@use '../search/results';
+
+:host {
+  display: block;
+}
+
+.similar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+// The listing page's section heading, accent bar included, on the page itself rather than
+// on a panel: the cards are panels of their own.
+.similar__title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin: 0;
+  font-size: var(--t-lg);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+
+  &::before {
+    content: '';
+    flex: none;
+    width: 4px;
+    height: 1.1em;
+    border-radius: var(--r-sm);
+    background: var(--c-accent);
+  }
+}
+
+// The results page's grid: the cards at the width they are designed for, three across.
+.similar__grid {
+  @include results.grid;
+}

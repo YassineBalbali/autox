@@ -102,6 +102,8 @@ class PublicRateLimitIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/reference/enums")).andExpect(status().isTooManyRequests());
         mockMvc.perform(get("/api/v1/listings/" + java.util.UUID.randomUUID()))
                 .andExpect(status().isTooManyRequests());
+        mockMvc.perform(get("/api/v1/listings/" + java.util.UUID.randomUUID() + "/similar"))
+                .andExpect(status().isTooManyRequests());
     }
 
     @Test

@@ -87,8 +87,10 @@ public class SecurityConfig {
                         // rule below, which would otherwise match /listings/mine as an id.
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/mine", "/api/v1/listings/mine/**")
                             .authenticated()
-                        // The shop window: searchable and linkable without an account.
-                        .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/*").permitAll()
+                        // The shop window: searchable and linkable without an account, with
+                        // the listings like each one.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/*",
+                                "/api/v1/listings/*/similar").permitAll()
                         // Vocabularies a client needs before it can render a login form, let
                         // alone a search form. Public for the same reason the search is.
                         .requestMatchers(HttpMethod.GET, "/api/v1/reference/**").permitAll()

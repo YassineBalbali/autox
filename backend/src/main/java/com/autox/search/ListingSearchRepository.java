@@ -54,7 +54,7 @@ public class ListingSearchRepository {
                 """.formatted(alias);
     }
 
-    private static final String SELECT = """
+    static final String SELECT = """
             SELECT l.id,
                    l.title,
                    l.price_amount,
@@ -325,7 +325,7 @@ public class ListingSearchRepository {
         return value != null && !value.isBlank();
     }
 
-    private static SearchRow mapRow(ResultSet rs, int rowNumber) throws SQLException {
+    static SearchRow mapRow(ResultSet rs, int rowNumber) throws SQLException {
         Timestamp publishedAt = rs.getTimestamp("published_at");
         return new SearchRow(
                 rs.getObject("id", UUID.class),

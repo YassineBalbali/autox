@@ -100,6 +100,9 @@
           <app-listing-summary [listing]="item" [minorUnit]="minorUnit()" />
         </aside>
       </article>
+
+      <!-- Under both columns, the full width of the page: the last thing on it. -->
+      <app-similar-listings class="listing__similar" [listingId]="item.id!" />
     }
   }
 }
