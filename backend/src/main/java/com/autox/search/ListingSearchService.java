@@ -1,6 +1,7 @@
 package com.autox.search;
 
 import com.autox.api.error.ApiException;
+import com.autox.demo.DemoAccounts;
 import com.autox.listing.Listing;
 import com.autox.listing.ListingImageRepository;
 import com.autox.listing.ListingRepository;
@@ -35,17 +36,20 @@ public class ListingSearchService {
     private final ListingImageRepository images;
     private final ObjectStorage storage;
     private final MarketPrice marketPrice;
+    private final DemoAccounts demoAccounts;
 
     public ListingSearchService(ListingSearchRepository searchRepository,
                                 ListingRepository listings,
                                 ListingImageRepository images,
                                 ObjectStorage storage,
-                                MarketPrice marketPrice) {
+                                MarketPrice marketPrice,
+                                DemoAccounts demoAccounts) {
         this.searchRepository = searchRepository;
         this.listings = listings;
         this.images = images;
         this.storage = storage;
         this.marketPrice = marketPrice;
+        this.demoAccounts = demoAccounts;
     }
 
     @Transactional(readOnly = true)
@@ -108,7 +112,8 @@ public class ListingSearchService {
                 .map(image -> ImageResponse.from(image, storage::readUrl))
                 .toList();
 
-        return PublicListingDetail.from(listing, gallery, marketPrice.indicators(List.of(listingId)).get(listingId));
+        return PublicListingDetail.from(listing, gallery, marketPrice.indicators(List.of(listingId)).get(listingId),
+                demoAccounts.isDemoAccount(listing.getSeller().getId()));
     }
 
     /**

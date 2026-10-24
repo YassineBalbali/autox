@@ -125,6 +125,8 @@ conversations stay readable but closed.
 - **Older messages.** A conversation shows its latest 200; there is no way to load the
   ones before.
 - **The demo sellers cannot answer.** Their passwords are random and never shown, so a
-  visitor who writes to a demo listing gets no reply. The banner already says the vehicles
-  are not for sale. Answering as a demo seller would need a demo login, which would be a
-  credential in the repository.
+  visitor who writes to a demo listing gets no reply. The listing page says so under the
+  contact button: the detail's `seller.demo` is true for an account listed in the seed's
+  `demo_seed_ledger`, which outlives the `demo` profile and goes with the demo's removal.
+  Answering as a demo seller would need a demo login, which would be a credential in the
+  repository.

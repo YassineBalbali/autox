@@ -57,7 +57,7 @@ public record PublicListingDetail(
         Instant updatedAt) {
 
     public static PublicListingDetail from(Listing listing, List<ImageResponse> images,
-                                           PriceIndicator priceIndicator) {
+                                           PriceIndicator priceIndicator, boolean demoSeller) {
         return new PublicListingDetail(
                 listing.getId(),
                 listing.getTitle(),
@@ -68,7 +68,7 @@ public record PublicListingDetail(
                 listing.getVatDeductible(),
                 VehicleView.from(listing),
                 LocationView.from(listing),
-                SellerView.from(listing),
+                SellerView.from(listing, demoSeller),
                 listing.getMileageKm(),
                 name(listing.getVehicleCondition()),
                 name(listing.getExteriorColor()),
@@ -143,13 +143,17 @@ public record PublicListingDetail(
         }
     }
 
-    /** {@code role} tells a buyer whether this is a dealer or a private sale. Nothing more. */
-    public record SellerView(UUID id, String displayName, String role, Instant memberSince) {
+    /**
+     * {@code role} tells a buyer whether this is a dealer or a private sale. {@code demo} says
+     * the seller is one of the demo seed's accounts, which nobody signs in to, so a message to
+     * them will not be answered. Nothing more.
+     */
+    public record SellerView(UUID id, String displayName, String role, Instant memberSince, boolean demo) {
 
-        static SellerView from(Listing listing) {
+        static SellerView from(Listing listing, boolean demo) {
             var seller = listing.getSeller();
             return new SellerView(seller.getId(), seller.getDisplayName(),
-                    seller.getRole().name(), seller.getCreatedAt());
+                    seller.getRole().name(), seller.getCreatedAt(), demo);
         }
     }
 

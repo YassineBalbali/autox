@@ -61,3 +61,10 @@
     gap: var(--s-2);
   }
 }
+
+.contact__demo {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border-left: 3px solid var(--c-line-strong);
+  background: var(--c-surface-sunk);
+}

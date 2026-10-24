@@ -104,6 +104,8 @@ class PublicSearchIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.location.city").value("Paris"))
                 .andExpect(jsonPath("$.seller.displayName").isNotEmpty())
                 .andExpect(jsonPath("$.seller.role").value("PROFESSIONNEL"))
+                // A database never seeded with demo data has no demo sellers.
+                .andExpect(jsonPath("$.seller.demo").value(false))
                 .andExpect(jsonPath("$.featureCodes.length()").value(2))
                 .andExpect(jsonPath("$.images").isArray())
                 .andReturn().getResponse().getContentAsString();

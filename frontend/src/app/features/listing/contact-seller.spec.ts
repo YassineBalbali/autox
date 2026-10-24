@@ -150,6 +150,34 @@ describe('ContactSeller', () => {
     expect(textarea().value).toBe('Encore une question');
   });
 
+  it('says a demo seller will not answer, before and after writing, but not to the seller', async () => {
+    const demo = { ...LISTING, seller: { ...LISTING.seller, demo: true } };
+    const note = () => root.querySelector('.contact__demo')?.textContent ?? '';
+
+    await render(null);
+    fixture.componentInstance.listing.set(demo);
+    await settle();
+    expect(note()).toContain('fait partie de la démonstration et ne répondra pas');
+
+    await render('buyer-1');
+    fixture.componentInstance.listing.set(demo);
+    await settle();
+    button().click();
+    await settle();
+    expect(note()).toContain('ne répondra pas');
+
+    await render('seller-1');
+    fixture.componentInstance.listing.set(demo);
+    await settle();
+    expect(root.querySelector('.contact__demo')).toBeNull();
+  });
+
+  it('says nothing of the kind about a real seller', async () => {
+    await render('buyer-1');
+
+    expect(root.querySelector('.contact__demo')).toBeNull();
+  });
+
   it('cancelling closes the form without sending anything', async () => {
     await render('buyer-1');
     button().click();

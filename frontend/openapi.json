@@ -4717,7 +4717,7 @@
       },
       "SellerView": {
         "type": "object",
-        "description": "<code>role</code> tells a buyer whether this is a dealer or a private sale. Nothing more.",
+        "description": "<code>role</code> tells a buyer whether this is a dealer or a private sale. <code>demo</code> says\n the seller is one of the demo seed's accounts, which nobody signs in to, so a message to\n them will not be answered. Nothing more.",
         "properties": {
           "id": {
             "type": "string",
@@ -4732,6 +4732,9 @@
           "memberSince": {
             "type": "string",
             "format": "date-time"
+          },
+          "demo": {
+            "type": "boolean"
           }
         }
       },

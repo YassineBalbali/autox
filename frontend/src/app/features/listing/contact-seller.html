@@ -75,3 +75,12 @@
     Votre message passe par AutoX : vos coordonnées ne sont pas communiquées au vendeur.
   </p>
 }
+
+<!-- The demo's own sellers: nobody signs in to them, so a buyer is told before writing, not
+     left waiting. Under every state but the seller's own, since it matters as much after
+     sending as before. -->
+@if (listing().seller?.demo && !ownListing()) {
+  <p class="contact__demo meta" role="note" i18n="@@contactDemoSeller">
+    Ce vendeur fait partie de la démonstration et ne répondra pas aux messages.
+  </p>
+}
