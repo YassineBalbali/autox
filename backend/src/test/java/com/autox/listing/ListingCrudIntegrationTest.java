@@ -204,6 +204,61 @@ class ListingCrudIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("a new listing needs its power, a whole number of ch from 1 to 2 000")
+    void powerIsRequired() throws Exception {
+        JsonNode seller = register(uniqueEmail("power"), UserRole.PARTICULIER);
+
+        Map<String, Object> missing = ListingTestFixtures.freeTextListingPayload();
+        missing.remove("powerHp");
+        create(seller, missing)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@.field == 'powerHp')]").exists());
+
+        for (int power : new int[] {0, 2001}) {
+            Map<String, Object> outOfRange = ListingTestFixtures.freeTextListingPayload();
+            outOfRange.put("powerHp", power);
+            create(seller, outOfRange)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors[?(@.field == 'powerHp')]").exists());
+        }
+    }
+
+    @Test
+    @DisplayName("a listing saved before the power was asked for still loads, edits and publishes, and can be given one")
+    void listingWithoutPower() throws Exception {
+        JsonNode seller = register(uniqueEmail("no-power"), UserRole.PARTICULIER);
+        String id = createListing(seller);
+        // As a listing created before the field was required has it.
+        jdbcTemplate.update("UPDATE listing SET power_hp = NULL, power_kw = NULL WHERE id = ?", UUID.fromString(id));
+
+        mockMvc.perform(get("/api/v1/listings/mine/" + id).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.vehicle.powerHp").doesNotExist());
+        mockMvc.perform(patch("/api/v1/listings/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("priceAmount", 1_700_000L))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.vehicle.powerHp").doesNotExist());
+
+        attachReadyPhoto(id);
+        mockMvc.perform(post("/api/v1/listings/" + id + "/publish").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+        mockMvc.perform(get("/api/v1/listings/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.vehicle.powerHp").doesNotExist());
+
+        mockMvc.perform(patch("/api/v1/listings/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("powerHp", 190, "powerKw", 140))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.vehicle.powerHp").value(190))
+                .andExpect(jsonPath("$.vehicle.powerKw").value(140));
+    }
+
+    @Test
     @DisplayName("creating a listing requires authentication")
     void createRequiresAuthentication() throws Exception {
         mockMvc.perform(post("/api/v1/listings")
@@ -395,6 +450,14 @@ class ListingCrudIntegrationTest extends AbstractIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions create(JsonNode session, Map<String, Object> payload)
+            throws Exception {
+        return mockMvc.perform(post("/api/v1/listings")
+                .header(HttpHeaders.AUTHORIZATION, bearer(session))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload)));
     }
 
     private String createListing(JsonNode session) throws Exception {

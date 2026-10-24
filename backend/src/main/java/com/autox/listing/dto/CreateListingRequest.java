@@ -71,7 +71,9 @@ public record CreateListingRequest(
         BodyType bodyType,
         Drivetrain drivetrain,
 
-        @Min(1) @Max(2000) Integer powerHp,
+        // Required: without it a listing is never valued nor counted as a comparable. Not on
+        // an update, so a listing saved before it was asked for can still be edited.
+        @NotNull @Min(1) @Max(2000) Integer powerHp,
         @Min(1) @Max(1500) Integer powerKw,
         @Min(50) @Max(10000) Integer engineDisplacementCc,
         @Min(1) @Max(7) Integer doors,

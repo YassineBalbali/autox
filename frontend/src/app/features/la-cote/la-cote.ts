@@ -157,6 +157,7 @@ export function sellParams(query: CoteQuery, makeId: string, modelId: string): P
   if (query.year !== null) params['annee'] = String(query.year);
   if (query.mileage !== null) params['km'] = String(query.mileage);
   if (query.fuel) params['carburant'] = query.fuel;
+  if (query.power !== null) params['puissance'] = String(query.power);
   if (query.gearbox) params['boite'] = query.gearbox;
   return params;
 }

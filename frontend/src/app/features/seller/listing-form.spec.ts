@@ -7,10 +7,12 @@ import {
   OTHER,
   OfferValue,
   VehicleValue,
+  kilowatts,
   makeIsTyped,
   modelIsTyped,
   offerForm,
   offerValueOf,
+  powerValidators,
   suggestedTitle,
   toCreateRequest,
   toOfferUpdate,
@@ -47,6 +49,7 @@ describe('listing form', () => {
     year: '2021',
     mileage: '42 500',
     fuel: FuelType.DIESEL,
+    power: '130',
     gearbox: Gearbox.MANUAL,
     body: '',
     condition: VehicleCondition.USED,
@@ -71,7 +74,31 @@ describe('listing form', () => {
         .map(([name]) => name);
       // `model` and the typed fields are made required by the page, depending on which of
       // them is on screen.
-      expect(required).toEqual(['make', 'year', 'mileage', 'fuel', 'gearbox', 'condition']);
+      expect(required).toEqual(['make', 'year', 'mileage', 'fuel', 'power', 'gearbox', 'condition']);
+    });
+
+    it('takes a power in whole ch from 1 to 2 000', () => {
+      const form = vehicleForm();
+      for (const [typed, valid] of [['90', true], ['1', true], ['2000', true], ['0', false], ['2001', false], ['9,5', false]] as const) {
+        form.controls.power.setValue(typed);
+        expect(form.controls.power.valid, typed).toBe(valid);
+      }
+    });
+
+    it('does not require the power of a listing saved before it was asked for, but still checks one that is typed', () => {
+      const form = vehicleForm();
+      form.controls.power.setValidators(powerValidators(false));
+      form.controls.power.setValue('');
+      form.controls.power.updateValueAndValidity();
+      expect(form.controls.power.valid).toBe(true);
+      form.controls.power.setValue('5000');
+      expect(form.controls.power.valid).toBe(false);
+    });
+
+    it('converts ch to the kW of a registration certificate', () => {
+      expect(kilowatts(90)).toBe(66);
+      expect(kilowatts(130)).toBe(96);
+      expect(kilowatts(283)).toBe(208);
     });
 
     it('accepts next year and refuses the one after', () => {
@@ -155,6 +182,8 @@ describe('listing form', () => {
         firstRegistrationYear: 2021,
         mileageKm: 42500,
         fuelType: FuelType.DIESEL,
+        powerHp: 130,
+        powerKw: 96,
         gearbox: Gearbox.MANUAL,
         bodyType: undefined,
         condition: VehicleCondition.USED,
@@ -199,6 +228,13 @@ describe('listing form', () => {
       expect(update).not.toHaveProperty('title');
     });
 
+    it('sends a new power in both units, and leaves the power alone when none is typed', () => {
+      expect(toVehicleUpdate(vehicle({ power: '110' }), MAKES, MODELS)).toMatchObject({ powerHp: 110, powerKw: 81 });
+      const without = toVehicleUpdate(vehicle({ power: '' }), MAKES, MODELS);
+      expect(without).not.toHaveProperty('powerHp');
+      expect(without).not.toHaveProperty('powerKw');
+    });
+
     it('sends only the offer step’s fields from the offer step', () => {
       const update = toOfferUpdate(offer({ price: '9500', negotiable: true }), FRANCE);
       expect(update).toMatchObject({ priceAmount: 950_000, priceNegotiable: true, currencyCode: 'EUR' });
@@ -231,6 +267,7 @@ describe('listing form', () => {
         version: 'BlueHDi 130',
         firstRegistrationYear: 2021,
         fuelType: FuelType.DIESEL,
+        powerHp: 130,
         gearbox: Gearbox.MANUAL,
       },
     };
@@ -245,6 +282,7 @@ describe('listing form', () => {
         year: '2021',
         mileage: '42500',
         fuel: FuelType.DIESEL,
+        power: '130',
         gearbox: Gearbox.MANUAL,
         body: '',
         condition: VehicleCondition.USED,
@@ -259,6 +297,10 @@ describe('listing form', () => {
         model: OTHER,
         modelText: 'City',
       });
+    });
+
+    it('leaves the power empty for a listing saved without one', () => {
+      expect(vehicleValueOf({ ...listing, vehicle: { ...listing.vehicle, powerHp: undefined } }).power).toBe('');
     });
 
     it('keeps a mileage of zero, and leaves an unstated one empty', () => {

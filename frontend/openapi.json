@@ -3088,6 +3088,7 @@
           "fuelType",
           "gearbox",
           "mileageKm",
+          "powerHp",
           "priceAmount",
           "title"
         ]

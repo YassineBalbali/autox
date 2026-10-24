@@ -70,6 +70,8 @@ const listing = (over: Partial<ListingResponse> = {}): ListingResponse => ({
     version: 'BlueHDi 130',
     firstRegistrationYear: 2021,
     fuelType: FuelType.DIESEL,
+    powerHp: 130,
+    powerKw: 96,
     gearbox: Gearbox.MANUAL,
   },
   images: [],
@@ -205,6 +207,7 @@ describe('ListingEditorPage', () => {
     await fill('Année', '2021');
     await fill('Kilométrage', '42 500');
     await fill('Carburant', 'DIESEL');
+    await fill('Puissance', '130');
     await fill('Boîte', 'MANUAL');
     await fill('État', 'USED');
   }
@@ -283,7 +286,8 @@ describe('ListingEditorPage', () => {
       await visit('/vendre');
       await submit();
 
-      expect(errors()).toEqual(Array.from({ length: 6 }, () => 'Ce champ est obligatoire.'));
+      // Make, year, mileage, fuel, power, gearbox and condition.
+      expect(errors()).toEqual(Array.from({ length: 7 }, () => 'Ce champ est obligatoire.'));
       expect(router.url).toBe('/vendre');
     });
 
@@ -318,10 +322,112 @@ describe('ListingEditorPage', () => {
     });
   });
 
+  describe('the power', () => {
+    const ENGINES = `${API}/valuation/engines`;
+    const engineButtons = () => Array.from(root.querySelectorAll('.editor__engines button')) as HTMLButtonElement[];
+
+    it('is asked for, and why, in one line', async () => {
+      await visit('/vendre');
+
+      expect(control('Puissance (ch)')).not.toBeNull();
+      expect(text()).toContain('Nécessaire pour estimer le prix et comparer l’annonce aux autres.');
+    });
+
+    it('is required: the vehicle step does not go on without it', async () => {
+      await visit('/vendre');
+      await fillVehicle();
+      await fill('Puissance', '');
+      await submit();
+
+      expect(router.url).toBe('/vendre');
+      expect(control('Puissance')?.getAttribute('aria-invalid')).toBe('true');
+    });
+
+    it('offers the model’s engines listed on AutoX; one fills the fuel and the power, the seller can still change them', async () => {
+      await visit('/vendre');
+      await fill('Marque', 'make-peugeot');
+      await answerModels();
+      await fill('Modèle', 'model-308');
+      const request = open(ENGINES)[0];
+      expect(request.request.params.get('modelId')).toBe('model-308');
+      request.flush([
+        { fuelType: 'PETROL', powerHp: 130, exampleVersion: 'PureTech 130 Allure', listingCount: 9 },
+        { fuelType: 'DIESEL', powerHp: 130, exampleVersion: 'BlueHDi 130', listingCount: 2 },
+      ]);
+      await settle();
+
+      expect(engineButtons().map((button) => button.textContent?.trim())).toEqual([
+        'Essence 130 ch — PureTech 130 Allure',
+        'Diesel 130 ch — BlueHDi 130',
+      ]);
+      engineButtons()[0].click();
+      await settle();
+      expect(control('Carburant')?.value).toBe('PETROL');
+      expect(control('Puissance')?.value).toBe('130');
+      expect(control('Version')?.value).toBe('PureTech 130 Allure');
+
+      // A version the seller typed is theirs; the engine only sets fuel and power.
+      await fill('Version', 'BlueHDi 130 EAT8 GT');
+      engineButtons()[1].click();
+      await settle();
+      expect(control('Version')?.value).toBe('BlueHDi 130 EAT8 GT');
+      expect(control('Carburant')?.value).toBe('DIESEL');
+
+      await fill('Puissance', '131');
+      expect(control('Puissance')?.value).toBe('131');
+    });
+
+    it('offers nothing when the model has no listed engines', async () => {
+      await visit('/vendre');
+      await fill('Marque', 'make-peugeot');
+      await answerModels();
+      await fill('Modèle', 'model-308');
+      open(ENGINES)[0].flush([]);
+      await settle();
+
+      expect(engineButtons()).toHaveLength(0);
+      expect(text()).not.toContain('Motorisations courantes');
+    });
+
+    describe('on a listing saved before it was asked for', () => {
+      const withoutPower = () =>
+        listing({ vehicle: { ...listing().vehicle, powerHp: undefined, powerKw: undefined } });
+
+      it('loads, says what is missing, and does not hold the vehicle step', async () => {
+        await edit('vehicule', withoutPower());
+
+        expect(control('Puissance')?.value).toBe('');
+        expect(text()).toContain('Sans puissance, l’annonce ne peut être ni estimée ni comparée');
+        await fill('Kilométrage', '51 000');
+        await submit();
+
+        const request = open(`${API}/listings/${ID}`)[0];
+        expect(request.request.method).toBe('PATCH');
+        expect(request.request.body).not.toHaveProperty('powerHp');
+      });
+
+      it('saves its price, and is given a power once one is typed', async () => {
+        await edit('offre', withoutPower());
+        await fill('Prix', '14 500');
+        await submit();
+        const offer = open(`${API}/listings/${ID}`)[0];
+        expect(offer.request.body).toMatchObject({ priceAmount: 1_450_000 });
+        offer.flush(withoutPower());
+        await settle();
+        expect(router.url).toBe(`/mes-annonces/${ID}/modifier?etape=photos`);
+
+        await edit('vehicule', withoutPower());
+        await fill('Puissance', '110');
+        await submit();
+        expect(open(`${API}/listings/${ID}`)[0].request.body).toMatchObject({ powerHp: 110, powerKw: 81 });
+      });
+    });
+  });
+
   describe('starting from La Cote', () => {
     it('takes the car described there into the vehicle step: make, model, version, year, mileage, fuel, gearbox', async () => {
       await visit(
-        '/vendre?marque=make-peugeot&modele=model-3008&version=BlueHDi%20130%20EAT8&annee=2021&km=53400&carburant=DIESEL&boite=AUTOMATIC',
+        '/vendre?marque=make-peugeot&modele=model-3008&version=BlueHDi%20130%20EAT8&annee=2021&km=53400&carburant=DIESEL&puissance=130&boite=AUTOMATIC',
       );
       await answerModels();
 
@@ -331,6 +437,7 @@ describe('ListingEditorPage', () => {
       expect(control('Année')?.value).toBe('2021');
       expect(control('Kilométrage')?.value).toBe('53400');
       expect(control('Carburant')?.value).toBe('DIESEL');
+      expect(control('Puissance')?.value).toBe('130');
       expect(control('Boîte')?.value).toBe('AUTOMATIC');
       // A car with a value to estimate has been on the road.
       expect(control('État')?.value).toBe('USED');
@@ -409,6 +516,7 @@ describe('ListingEditorPage', () => {
       await fill('Année', '2021');
       await fill('Kilométrage', '42500');
       await fill('Carburant', 'DIESEL');
+      await fill('Puissance', '130');
       await fill('Boîte', 'MANUAL');
       await fill('État', 'USED');
       await submit();
@@ -465,6 +573,8 @@ describe('ListingEditorPage', () => {
         firstRegistrationYear: 2021,
         mileageKm: 42500,
         fuelType: 'DIESEL',
+        powerHp: 130,
+        powerKw: 96,
         gearbox: 'MANUAL',
         condition: 'USED',
         title: 'Peugeot 308 BlueHDi 130',
@@ -592,7 +702,13 @@ describe('ListingEditorPage', () => {
 
       const request = open(`${API}/listings/${ID}`)[0];
       expect(request.request.method).toBe('PATCH');
-      expect(request.request.body).toMatchObject({ makeId: 'make-peugeot', modelId: 'model-308', mileageKm: 51000 });
+      expect(request.request.body).toMatchObject({
+        makeId: 'make-peugeot',
+        modelId: 'model-308',
+        mileageKm: 51000,
+        powerHp: 130,
+        powerKw: 96,
+      });
       expect(request.request.body).not.toHaveProperty('priceAmount');
       request.flush(listing({ mileageKm: 51000 }));
       await settle();
@@ -708,6 +824,7 @@ describe('ListingEditorPage', () => {
           'Année 2021',
           `Kilométrage 42${NBSP}500${NBSP}km`,
           'Carburant Diesel',
+          `Puissance 130${NBSP}ch (96${NBSP}kW)`,
           'Boîte de vitesses Manuelle',
           'État Occasion',
           'Localisation 69003 Lyon',

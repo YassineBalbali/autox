@@ -162,9 +162,9 @@ class MarketPriceIntegrationTest extends AbstractIntegrationTest {
     void notJudged() throws Exception {
         market(5);
         String brandNew = listing(Map.of("condition", "NEW", "mileageKm", 10, "priceAmount", 500_000L));
-        Map<String, Object> noPower = new HashMap<>(Map.of("priceAmount", 500_000L));
-        noPower.put("powerHp", null);
-        String unstated = listing(noPower);
+        // A power is required now; a listing saved before it was has none.
+        String unstated = listing(Map.of("priceAmount", 500_000L));
+        jdbcTemplate.update("UPDATE listing SET power_hp = NULL WHERE id = ?", java.util.UUID.fromString(unstated));
 
         Map<String, Object> typed = new HashMap<>(ListingTestFixtures.freeTextListingPayload());
         typed.put("priceAmount", 500_000L);

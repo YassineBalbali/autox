@@ -261,11 +261,11 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 451 tests, needs Docker running
+mvn clean verify         # 453 tests, needs Docker running
 
 cd ../frontend
 npm run lint
-npm test -- --no-watch   # 996 tests, jsdom
+npm test -- --no-watch   # 1007 tests, jsdom
 npm run test:scripts     # 21 tests of the build scripts: the security policy
 npm run build            # the production build, with the policy and headers written in
 ```
