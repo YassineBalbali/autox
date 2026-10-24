@@ -31,6 +31,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/v1/listings",
                         "/api/v1/listings/*",
                         "/api/v1/listings/*/similar",
+                        "/api/v1/valuation",
+                        "/api/v1/valuation/engines",
                         "/api/v1/reference/**")
                 // The seller's own views live under the same prefix and are not public.
                 .excludePathPatterns(

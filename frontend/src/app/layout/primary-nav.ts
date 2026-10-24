@@ -13,13 +13,14 @@ export interface NavItem {
 /**
  * The marketplace's primary navigation, declared in one place.
  *
- * <p>The two destinations a vehicle marketplace is built around. Buying is the search,
- * which is the home page; selling has no screen yet, and is declared anyway so that it
- * appears the day its route does, with no change here.
+ * <p>The two destinations a vehicle marketplace is built around, buying (the search) and
+ * selling, then La Cote, what a car is worth: the question a seller asks before selling and
+ * a buyer before making an offer.
  */
 export const PRIMARY_NAV: readonly NavItem[] = [
   { label: 'Acheter', path: 'recherche' },
   { label: 'Vendre', path: 'vendre' },
+  { label: 'La Cote', path: 'la-cote' },
 ];
 
 /**

@@ -80,6 +80,60 @@ export type OfferForm = ReturnType<typeof offerForm>;
 export type VehicleValue = ReturnType<VehicleForm['getRawValue']>;
 export type OfferValue = ReturnType<OfferForm['getRawValue']>;
 
+/**
+ * A car described elsewhere, to start a listing from: La Cote's "Vendre ma voiture" sends
+ * the visitor here with it in the query string. Catalogue ids for the make and model, codes
+ * for the fuel and gearbox.
+ */
+export interface VehiclePrefill {
+  readonly marque?: string;
+  readonly modele?: string;
+  readonly version?: string;
+  readonly annee?: string;
+  readonly km?: string;
+  readonly carburant?: string;
+  readonly boite?: string;
+}
+
+/**
+ * The vehicle step's values from a prefill, keeping only what is valid: the query string is
+ * user input. Null when there is nothing to use. The car is taken to be used, since a car
+ * with a value to estimate has been on the road.
+ */
+export function vehiclePrefill(
+  prefill: VehiclePrefill,
+  now = new Date(),
+): { make: string | null; model: string | null; values: Partial<VehicleValue> } | null {
+  // An id's shape only: the editor keeps the make only if the catalogue has it.
+  const id = (raw?: string) => (raw && /^[\w-]{1,64}$/.test(raw) ? raw : null);
+  const whole = (raw: string | undefined, min: number, max: number) => {
+    const value = parseWholeNumber(raw);
+    return value !== null && value >= min && value <= max ? String(value) : null;
+  };
+  const code = <T extends string>(raw: string | undefined, type: Record<string, T>) =>
+    raw && (Object.values(type) as string[]).includes(raw) ? raw : null;
+
+  const values: Partial<VehicleValue> = {};
+  const version = prefill.version?.trim().slice(0, LIMITS.version);
+  const year = whole(prefill.annee, LIMITS.minYear, now.getFullYear() + 1);
+  const mileage = whole(prefill.km, 0, LIMITS.maxMileage);
+  const fuel = code(prefill.carburant, FuelType);
+  const gearbox = code(prefill.boite, Gearbox);
+  if (version) values.version = version;
+  if (year) values.year = year;
+  if (mileage) values.mileage = mileage;
+  if (fuel) values.fuel = fuel;
+  if (gearbox) values.gearbox = gearbox;
+
+  const make = id(prefill.marque);
+  const model = make ? id(prefill.modele) : null;
+  if (!make && Object.keys(values).length === 0) {
+    return null;
+  }
+  values.condition = VehicleCondition.USED;
+  return { make, model, values };
+}
+
 /** Whether the make is being typed rather than chosen. */
 export function makeIsTyped(value: Pick<VehicleValue, 'make'>, makes: readonly Make[]): boolean {
   return makes.length === 0 || value.make === OTHER;

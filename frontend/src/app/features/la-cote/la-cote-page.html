@@ -1,0 +1,125 @@
+<header class="cote__head">
+  <h1 class="cote__h1" i18n="@@coteHeading">La Cote AutoX</h1>
+  <p class="cote__lead" i18n="@@coteLead">
+    Ce que vaut votre voiture sur AutoX, d’après les annonces en ligne de voitures comparables.
+  </p>
+</header>
+
+<div class="cote">
+  <form class="panel cote__form" (submit)="submit($event)" novalidate aria-labelledby="cote-voiture">
+    <h2 id="cote-voiture" class="cote__title" i18n="@@coteYourCar">Votre voiture</h2>
+
+    <app-select-field
+      [control]="form.controls.make"
+      label="Marque"
+      i18n-label="@@coteMake"
+      [options]="makeOptions()"
+    />
+    <app-select-field
+      [control]="form.controls.model"
+      label="Modèle"
+      i18n-label="@@coteModel"
+      [options]="modelOptions()"
+      [placeholder]="makeSlug() ? 'Choisir…' : 'Choisissez d’abord la marque'"
+    />
+    <app-select-field
+      [control]="form.controls.engine"
+      label="Motorisation"
+      i18n-label="@@coteEngine"
+      [options]="engineOptions()"
+      [hint]="engineHint()"
+    />
+
+    @if (otherEngine()) {
+      <div class="cote__pair">
+        <app-select-field
+          [control]="form.controls.fuel"
+          label="Carburant"
+          i18n-label="@@coteFuel"
+          [options]="fuelOptions"
+        />
+        <app-text-field
+          [control]="form.controls.power"
+          label="Puissance (ch)"
+          i18n-label="@@cotePower"
+          inputMode="numeric"
+        />
+      </div>
+    }
+
+    <div class="cote__pair">
+      <app-select-field
+        [control]="form.controls.year"
+        label="Année"
+        i18n-label="@@coteYear"
+        [options]="yearOptions"
+      />
+      <app-text-field
+        [control]="form.controls.mileage"
+        label="Kilométrage (km)"
+        i18n-label="@@coteMileage"
+        inputMode="numeric"
+      />
+    </div>
+
+    <app-select-field
+      [control]="form.controls.gearbox"
+      label="Boîte de vitesses"
+      i18n-label="@@coteGearbox"
+      [options]="gearboxOptions"
+      [optional]="true"
+      hint="Ne change pas l’estimation ; reprise dans les liens qui la suivent."
+      i18n-hint="@@coteGearboxHint"
+    />
+
+    <button class="btn btn--primary btn--block" type="submit" i18n="@@coteSubmit">Estimer ma voiture</button>
+  </form>
+
+  <section class="cote__answer" aria-live="polite" aria-label="Estimation" i18n-aria-label="@@coteAnswer">
+    @switch (state().kind) {
+      @case ('loading') {
+        <div class="panel cote__waiting" aria-busy="true" i18n="@@coteLoading">Calcul de la cote…</div>
+      }
+      @case ('unknown') {
+        <app-alert kind="error" i18n="@@coteUnknownModel">
+          Ce modèle n’est pas dans le catalogue AutoX. Choisissez la marque et le modèle dans les listes.
+        </app-alert>
+      }
+      @case ('error') {
+        <app-alert kind="error">{{ failure() }}</app-alert>
+      }
+      @case ('ready') {
+        @if (ready(); as ready) {
+          <app-cote-result
+            [valuation]="ready.valuation"
+            [modelName]="ready.modelName"
+            [minorUnit]="minorUnit()"
+            [links]="links()!"
+          />
+        }
+      }
+      @default {
+        <div class="panel cote__method">
+          <h2 class="cote__title" i18n="@@coteHowTitle">Comment est calculée la cote</h2>
+          <ol class="cote__steps">
+            <li i18n="@@coteHow1">
+              Nous cherchons les annonces en ligne de la même voiture : même modèle, même motorisation (même
+              carburant, puissance à 15 % près), deux ans d’écart au plus, même tranche de kilométrage.
+            </li>
+            <li i18n="@@coteHow2">
+              Le prix de chacune est ramené à l’âge et au kilométrage de votre voiture : 10 % par an et 2 % par
+              tranche de 10 000 km.
+            </li>
+            <li i18n="@@coteHow3">
+              La cote est le prix médian, avec la fourchette où se situe la moitié des annonces. Il en faut au
+              moins cinq : en dessous, nous ne donnons pas de chiffre.
+            </li>
+          </ol>
+          <p class="meta" i18n="@@coteHowAsking">
+            Ce sont des prix demandés sur AutoX, pas des prix de vente constatés.
+          </p>
+        </div>
+      }
+    }
+  </section>
+</div>

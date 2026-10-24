@@ -228,7 +228,7 @@ describe('SiteHeader', () => {
   });
 
   it('offers only the destinations that exist', async () => {
-    // Both entries have a route. "Vendre" is offered to a visitor too: the guard on it
+    // Every entry has a route. "Vendre" is offered to a visitor too: the guard on it
     // sends them to sign in and brings them back, which is the right first step.
     await render(false);
 
@@ -238,6 +238,7 @@ describe('SiteHeader', () => {
     expect(links).toEqual([
       ['Acheter', '/recherche'],
       ['Vendre', '/vendre'],
+      ['La Cote', '/la-cote'],
     ]);
   });
 

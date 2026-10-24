@@ -51,6 +51,7 @@ import {
   offerForm,
   offerValueOf,
   suggestedTitle,
+  vehiclePrefill,
   toCreateRequest,
   toOfferUpdate,
   toVehicleUpdate,
@@ -128,6 +129,19 @@ export class ListingEditorPage {
   readonly id = input<string | undefined>();
   /** The step, from `?etape=`. */
   readonly etape = input<string | undefined>();
+  /** A car to start from, from La Cote's "Vendre ma voiture"; see `vehiclePrefill`. */
+  readonly marque = input<string | undefined>();
+  readonly modele = input<string | undefined>();
+  readonly version = input<string | undefined>();
+  readonly annee = input<string | undefined>();
+  readonly km = input<string | undefined>();
+  readonly carburant = input<string | undefined>();
+  readonly boite = input<string | undefined>();
+
+  /** Taken once, on the create route: after that the form is the seller's. */
+  private prefillTaken = false;
+  /** The prefilled model, set once its make's models have loaded. */
+  private readonly pendingModel = signal<string | null>(null);
 
   protected readonly steps = STEPS;
   protected readonly stepTitles = STEP_TITLES;
@@ -293,6 +307,40 @@ export class ListingEditorPage {
     effect(() => {
       this.makes();
       this.syncVehicleRules();
+    });
+
+    // A car described on La Cote: into the vehicle step, once the makes are known, so the
+    // make can be checked against them. The make first, since choosing it clears the model.
+    effect(() => {
+      const makes = this.makes();
+      if (this.id() || this.prefillTaken || makes === null) {
+        return;
+      }
+      this.prefillTaken = true;
+      const prefill = vehiclePrefill({
+        marque: this.marque(),
+        modele: this.modele(),
+        version: this.version(),
+        annee: this.annee(),
+        km: this.km(),
+        carburant: this.carburant(),
+        boite: this.boite(),
+      });
+      if (!prefill) {
+        return;
+      }
+      if (prefill.make && makes.some((make) => make.id === prefill.make)) {
+        this.vehicle.controls.make.setValue(prefill.make);
+        this.pendingModel.set(prefill.model);
+      }
+      this.vehicle.patchValue(prefill.values);
+    });
+    effect(() => {
+      const wanted = this.pendingModel();
+      if (wanted && this.models().some((model) => model.id === wanted)) {
+        this.pendingModel.set(null);
+        this.vehicle.controls.model.setValue(wanted);
+      }
     });
 
     // Load the listing named by the route; on the create route there is nothing to load.

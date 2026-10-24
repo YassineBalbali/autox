@@ -91,6 +91,8 @@ public class SecurityConfig {
                         // the listings like each one.
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/*",
                                 "/api/v1/listings/*/similar").permitAll()
+                        // La Cote: a valuation is public, like the listings it is made from.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/valuation", "/api/v1/valuation/engines").permitAll()
                         // Vocabularies a client needs before it can render a login form, let
                         // alone a search form. Public for the same reason the search is.
                         .requestMatchers(HttpMethod.GET, "/api/v1/reference/**").permitAll()

@@ -43,6 +43,14 @@ export const routes: Routes = [
   },
 
   {
+    // La Cote: a car's value against live listings. Public, like the listings it is made
+    // from. The described car lives in the query string — see features/la-cote/la-cote.ts.
+    path: 'la-cote',
+    title: 'La Cote : estimer sa voiture · AutoX',
+    loadComponent: () => import('./features/la-cote/la-cote-page').then((m) => m.LaCotePage),
+  },
+
+  {
     // One listing. Public, like the search. The id reaches the component as an input
     // through `withComponentInputBinding()`. No static title: the page sets its own
     // once it knows which car it is.

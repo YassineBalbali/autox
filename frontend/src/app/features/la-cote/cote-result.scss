@@ -1,0 +1,105 @@
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.result__title {
+  margin: 0;
+  font-size: var(--t-lg);
+  font-weight: var(--fw-bold);
+}
+
+.result__subtitle {
+  margin: 0;
+  font-size: var(--t-body);
+  font-weight: var(--fw-bold);
+}
+
+.result__wide,
+.result__few {
+  margin: 0;
+}
+
+.result__wide {
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+}
+
+// The figure on the accent tint: the one thing the page is for.
+.result__figure {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-1);
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--c-accent-soft);
+
+  .meta {
+    margin: 0;
+    max-width: var(--w-prose);
+  }
+}
+
+.result__range {
+  margin: 0;
+  font-size: var(--t-md);
+  font-variant-numeric: tabular-nums;
+}
+
+// Label and value side by side, one fact a row, like the listing's specification table.
+.result__basis {
+  display: grid;
+  margin: 0;
+
+  > div {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    gap: var(--s-3);
+    padding: var(--s-2) 0;
+    border-bottom: var(--divider);
+  }
+
+  dt {
+    color: var(--c-ink-soft);
+    font-size: var(--t-sm);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: var(--fw-semibold);
+  }
+}
+
+// The caution that matters most: these are asking prices.
+.result__note {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border-left: 3px solid var(--c-warn);
+  background: var(--c-warn-soft);
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+}
+
+.result__wider {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result__count {
+  margin-left: var(--s-2);
+  color: var(--c-ink-faint);
+  font-size: var(--t-sm);
+}
+
+.result__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  padding-top: var(--s-4);
+  border-top: var(--divider);
+}

@@ -20,6 +20,10 @@
       "description": "The three-step direct-to-storage upload, plus gallery order. Requires authentication."
     },
     {
+      "name": "La Cote",
+      "description": "Public valuation of a described car against live listings. No authentication."
+    },
+    {
       "name": "Listings (seller)",
       "description": "Creating and managing your own listings. Requires authentication."
     },
@@ -1602,6 +1606,94 @@
             "bearerAuth": []
           }
         ]
+      }
+    },
+    "/api/v1/valuation": {
+      "get": {
+        "tags": [
+          "La Cote"
+        ],
+        "summary": "An estimate of a car's value: the median asking price of comparable live listings,\n each brought to this car's age and mileage, with the interquartile range around it",
+        "description": "An estimate of a car's value: the median asking price of comparable live listings,\n each brought to this car's age and mileage, with the interquartile range around it.\n\n <p>The comparables are the price indicator's: same model, same fuel, power within 15 %,\n registered within two years, in the same mileage band. With fewer than five there is no\n estimate, and <code>widerScopes</code> lists the loosenings that would give one; ask again\n with one as <code>scope</code>. 404 for an unknown model.",
+        "operationId": "value",
+        "parameters": [
+          {
+            "name": "car",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ValuationRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Valuation"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/valuation/engines": {
+      "get": {
+        "tags": [
+          "La Cote"
+        ],
+        "summary": "The engines of a model that are listed now, each a fuel and a power with the version name\n sellers most often give it: the choices a visitor values a car with.",
+        "description": "The engines of a model that are listed now, each a fuel and a power with the version name\n sellers most often give it: the choices a visitor values a car with. 404 for an unknown\n model.",
+        "operationId": "engines",
+        "parameters": [
+          {
+            "name": "modelId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ValuationEngine"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/reference/makes": {
@@ -4179,6 +4271,217 @@
               "minLength": 0
             },
             "uniqueItems": true
+          }
+        }
+      },
+      "ValuationRequest": {
+        "type": "object",
+        "description": "The car a visitor wants valued, as query parameters.\n\n <p>Only what chooses comparables or adjusts their prices: the catalogue model, the engine\n (fuel and power), the first registration and the mileage. The gearbox and the version name\n are not here on purpose: the price indicator does not compare on them, and La Cote values\n a car the way the indicator judges one, so the two never disagree about the same car.",
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fuelType": {
+            "$ref": "#/components/schemas/FuelType"
+          },
+          "powerHp": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2000,
+            "minimum": 1
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1900
+          },
+          "month": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 12,
+            "minimum": 1
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 3000000,
+            "minimum": 0
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ValuationScope",
+            "description": "the price indicator's rule, or one loosening of it; EXACT when absent"
+          },
+          "currency": {
+            "type": "string",
+            "description": "the currency to value in, which is the currency of the comparables; EUR\n                 when absent",
+            "pattern": "^[A-Z]{3}$"
+          }
+        },
+        "required": [
+          "fuelType",
+          "mileageKm",
+          "modelId",
+          "powerHp",
+          "year"
+        ]
+      },
+      "ValuationScope": {
+        "type": "string",
+        "description": "Which comparables La Cote valued a car against: the price indicator's rule, or that rule\n loosened one way when the car has too few comparables under it.\n\n <p>Each loosening drops or widens one condition, never two, so a buyer reading \"toutes\n motorisations\" knows exactly what the figure no longer accounts for.",
+        "enum": [
+          "EXACT",
+          "ALL_ENGINES",
+          "WIDER_YEARS",
+          "ANY_MILEAGE"
+        ]
+      },
+      "Valuation": {
+        "type": "object",
+        "description": "La Cote's answer for one car: an estimate with its range, or the plain statement that\n there is not enough to estimate from, and in either case what it rests on.\n\n <p>Every amount is an <b>asking price</b> on AutoX, in the currency's minor unit, brought\n to the car's age and mileage. It is not what cars sell for, which is usually a little less.",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/ValuationScope",
+            "description": "the comparables rule used: the price indicator's, or one loosening"
+          },
+          "comparableCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "how many live listings matched"
+          },
+          "minimumComparables": {
+            "type": "integer",
+            "format": "int32",
+            "description": "below this, no estimate is given"
+          },
+          "estimate": {
+            "$ref": "#/components/schemas/ValuationEstimate",
+            "description": "null when there are fewer than <code>minimumComparables</code>"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/ValuationBasis",
+            "description": "the comparables actually found; null when there are none"
+          },
+          "window": {
+            "$ref": "#/components/schemas/ValuationWindow",
+            "description": "what was searched for"
+          },
+          "widerScopes": {
+            "type": "array",
+            "description": "when there is no estimate: the loosenings that would give one,\n                           with how many they find. Empty otherwise",
+            "items": {
+              "$ref": "#/components/schemas/ValuationWidening"
+            }
+          }
+        }
+      },
+      "ValuationBasis": {
+        "type": "object",
+        "description": "The years and mileages of the comparables found, as listed, before any adjustment.",
+        "properties": {
+          "yearFrom": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "yearTo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mileageFromKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mileageToKm": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ValuationEstimate": {
+        "type": "object",
+        "description": "The median of the adjusted prices, with the middle half of them either side: a quarter\n of the comparables are priced below <code>lowAmount</code> and a quarter above\n <code>highAmount</code>. Each is rounded to the nearest hundred: a valuation to the euro\n would claim a precision it does not have.",
+        "properties": {
+          "lowAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "medianAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "highAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          }
+        }
+      },
+      "ValuationWidening": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/ValuationScope"
+          },
+          "comparableCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ValuationWindow": {
+        "type": "object",
+        "description": "The conditions the comparables met. <code>mileageToKm</code> is null for the open-ended top\n band; the mileage and power bounds are null when the scope does not match on them.",
+        "properties": {
+          "yearFrom": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "yearTo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mileageFromKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mileageToKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fuelType": {
+            "type": "string"
+          },
+          "powerFromHp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "powerToHp": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ValuationEngine": {
+        "type": "object",
+        "description": "One engine of a model as it is listed on AutoX: a fuel and a power, with the version name\n sellers most often give it, and how many live listings have it.",
+        "properties": {
+          "fuelType": {
+            "type": "string"
+          },
+          "powerHp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "exampleVersion": {
+            "type": "string",
+            "description": "the most common version text among those listings, which may name a\n                       trim level as well as the engine; null when none gave one"
+          },
+          "listingCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

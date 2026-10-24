@@ -261,11 +261,11 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 443 tests, needs Docker running
+mvn clean verify         # 451 tests, needs Docker running
 
 cd ../frontend
 npm run lint
-npm test -- --no-watch   # 969 tests, jsdom
+npm test -- --no-watch   # 996 tests, jsdom
 npm run test:scripts     # 21 tests of the build scripts: the security policy
 npm run build            # the production build, with the policy and headers written in
 ```
@@ -349,11 +349,12 @@ of the interface.
 | `/` | anyone | Home: search card with a live count, recent searches, make, budget and category shortcuts. An old search link (`/?marque=…`) is forwarded to `/recherche` |
 | `/recherche` | anyone | Search results: filters, sort and view in the query string; a heart on each result marks it in this browser only |
 | `/annonces/:id` | anyone | One listing |
+| `/la-cote` | anyone | La Cote: what a described car is worth against live listings, the description in the query string |
 | `/connexion`, `/inscription` | anyone | Sign in, register (private seller or dealer) |
 | `/mot-de-passe-oublie`, `/reinitialiser-mot-de-passe` | anyone | Reset by emailed link |
 | `/mon-compte`, `…/mot-de-passe`, `…/sessions` | signed in | Profile, password, devices |
 | `/mon-compte/entreprise` | dealer, admin | Company details |
-| `/vendre` | signed in | Create a listing (`?etape=`) |
+| `/vendre` | signed in | Create a listing (`?etape=`; La Cote can prefill the vehicle with `?marque=…&modele=…`) |
 | `/mes-annonces` | signed in | The seller's listings (`?statut=`) |
 | `/mes-annonces/:id/modifier` | signed in | Edit a listing (`?etape=`) |
 | `/messages`, `/messages/:id` | signed in | Conversations with buyers and sellers, the open one beside the list |
@@ -371,6 +372,7 @@ A route guard is a courtesy. The API is what refuses.
 | Accounts | `POST /auth/register`, `/login`, `/refresh`, `/logout`, `/password/forgot`, `/password/reset` | none |
 | The caller | `GET`·`PATCH /me`, `POST /me/password`, `GET /me/sessions`, `DELETE /me/sessions/{id}` | token |
 | Public listings | `GET /listings` (search), `GET /listings/count`, `GET /listings/{id}`, `GET /listings/{id}/similar` | none |
+| La Cote | `GET /valuation`, `GET /valuation/engines` | none |
 | A seller's listings | `POST /listings`, `GET /listings/mine`, `/mine/quota`, `/mine/{id}`, `PATCH`·`DELETE /listings/{id}`, `POST /listings/{id}/publish`·`unpublish`·`renew`·`sold` | token, owner |
 | Photos | `POST`·`GET /listings/{id}/images`, `POST …/images/{imageId}/confirm`, `PUT …/images/order`, `DELETE …/images/{imageId}` | token, owner |
 | Reference | `GET /reference/countries`, `/enums`, `/makes`, `/makes/{id}/models`, `/features` | none |
@@ -668,7 +670,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/image-decisions.md` | The upload handshake, variants, EXIF |
 | `docs/third-party-assets.md` | The home page photo and the icons: source, licence, notices |
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
-| `docs/price-indicator.md` | "Bonne affaire" and the rest: the comparables rule, why, and how it is computed |
+| `docs/price-indicator.md` | "Bonne affaire" and the rest: the comparables rule, why, and how it is computed; La Cote, the same rule for a car that is not listed, and its limits |
 | `docs/messaging.md` | Messages between buyers and sellers: who may write, what each side sees, unread, rate limits, reports |
 | `docs/similar-listings.md` | "Annonces similaires": which listings, in what order, and when none are shown |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
