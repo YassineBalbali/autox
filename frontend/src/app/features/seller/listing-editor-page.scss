@@ -134,3 +134,9 @@ button.steps__link {
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+
+.editor__engines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}

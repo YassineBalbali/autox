@@ -139,6 +139,7 @@ describe('la-cote', () => {
         annee: '2022',
         km: '45000',
         carburant: 'PETROL',
+        puissance: '90',
         boite: 'MANUAL',
       });
     });

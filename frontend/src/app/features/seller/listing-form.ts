@@ -37,6 +37,7 @@ export const LIMITS = {
   city: 120,
   maxPrice: 10_000_000,
   maxMileage: 3_000_000,
+  maxPower: 2000,
   minYear: 1900,
 } as const;
 
@@ -57,10 +58,28 @@ export function vehicleForm(now = new Date()) {
     year: text([requiredText(), wholeNumber(LIMITS.minYear, now.getFullYear() + 1)]),
     mileage: text([requiredText(), wholeNumber(0, LIMITS.maxMileage)]),
     fuel: text([requiredText()]),
+    /** In ch. Required, or not, by `powerValidators`: see there. */
+    power: text(powerValidators(true)),
     gearbox: text([requiredText()]),
     body: text(),
     condition: text([requiredText()]),
   });
+}
+
+/**
+ * The power's rules. Required for a new listing, and for one that already states a power:
+ * without it a listing can never be valued, nor count as a comparable for another. Not
+ * required for a listing saved before the field existed, so that it can still be edited and
+ * published as it is.
+ */
+export function powerValidators(required: boolean): ValidatorFn[] {
+  const range = wholeNumber(1, LIMITS.maxPower);
+  return required ? [requiredText(), range] : [range];
+}
+
+/** The same power in kW, as the registration certificate gives it: 1 ch is 0.7355 kW. */
+export function kilowatts(horsepower: number): number {
+  return Math.round(horsepower * 0.73549875);
 }
 
 /** Step 2 — the offer: what it costs, what the seller says about it, where it is. */
@@ -92,6 +111,7 @@ export interface VehiclePrefill {
   readonly annee?: string;
   readonly km?: string;
   readonly carburant?: string;
+  readonly puissance?: string;
   readonly boite?: string;
 }
 
@@ -118,11 +138,13 @@ export function vehiclePrefill(
   const year = whole(prefill.annee, LIMITS.minYear, now.getFullYear() + 1);
   const mileage = whole(prefill.km, 0, LIMITS.maxMileage);
   const fuel = code(prefill.carburant, FuelType);
+  const power = whole(prefill.puissance, 1, LIMITS.maxPower);
   const gearbox = code(prefill.boite, Gearbox);
   if (version) values.version = version;
   if (year) values.year = year;
   if (mileage) values.mileage = mileage;
   if (fuel) values.fuel = fuel;
+  if (power) values.power = power;
   if (gearbox) values.gearbox = gearbox;
 
   const make = id(prefill.marque);
@@ -200,10 +222,18 @@ function vehiclePayload(value: VehicleValue, makes: readonly Make[], models: rea
     firstRegistrationYear: parseWholeNumber(value.year)!,
     mileageKm: parseWholeNumber(value.mileage)!,
     fuelType: value.fuel as FuelType,
+    // Left out when empty: on an update that leaves a listing's power as it is.
+    ...power(value.power),
     gearbox: value.gearbox as Gearbox,
     bodyType: (value.body || undefined) as BodyType | undefined,
     condition: value.condition as VehicleCondition,
   };
+}
+
+/** The power in both units the API keeps, or nothing when none was typed. */
+function power(raw: string): { powerHp?: number; powerKw?: number } {
+  const horsepower = parseWholeNumber(raw);
+  return horsepower === null ? {} : { powerHp: horsepower, powerKw: kilowatts(horsepower) };
 }
 
 /** Step 2's fields. The price is typed in whole units and stored in minor ones. */
@@ -230,7 +260,14 @@ export function toCreateRequest(
   makes: readonly Make[],
   models: readonly Model[],
 ): CreateListingRequest {
-  return { ...vehiclePayload(vehicle, makes, models), ...offerPayload(offer, market) };
+  // The form requires a power on a new listing, so there is one to send.
+  const horsepower = parseWholeNumber(vehicle.power)!;
+  return {
+    ...vehiclePayload(vehicle, makes, models),
+    powerHp: horsepower,
+    powerKw: kilowatts(horsepower),
+    ...offerPayload(offer, market),
+  };
 }
 
 /** Step 1 alone, for a listing that already exists. */
@@ -267,6 +304,7 @@ export function vehicleValueOf(listing: ListingResponse): VehicleValue {
     // Zero is a mileage; only "not stated" is empty.
     mileage: typeof listing.mileageKm === 'number' ? String(listing.mileageKm) : '',
     fuel: vehicle.fuelType ?? '',
+    power: typeof vehicle.powerHp === 'number' ? String(vehicle.powerHp) : '',
     gearbox: vehicle.gearbox ?? '',
     body: vehicle.bodyType ?? '',
     condition: listing.condition ?? '',

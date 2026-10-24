@@ -95,6 +95,24 @@
                 />
               }
 
+              @if (engines().length) {
+                <!-- The model's engines as listed on AutoX: one click fills fuel and power,
+                     which the seller can still change below. -->
+                <div class="field">
+                  <p class="field__label" id="moteurs-courants" i18n="@@editorEngines">Motorisations courantes</p>
+                  <div class="editor__engines" role="group" aria-labelledby="moteurs-courants">
+                    @for (engine of engines(); track $index) {
+                      <button class="btn btn--quiet btn--sm" type="button" (click)="useEngine(engine)">
+                        {{ engineLabel(engine) }}
+                      </button>
+                    }
+                  </div>
+                  <p class="field__hint" i18n="@@editorEnginesHint">
+                    Celles des annonces de ce modèle sur AutoX. Un clic remplit le carburant et la puissance.
+                  </p>
+                </div>
+              }
+
               @if (modelTyped()) {
                 <app-text-field
                   label="Modèle (saisie libre)"
@@ -138,6 +156,28 @@
                 [control]="vehicle.controls.fuel"
                 [options]="fuelOptions()"
               />
+              @if (powerMissing()) {
+                <app-text-field
+                  label="Puissance (ch)"
+                  i18n-label="@@fieldPower"
+                  hint="Sans puissance, l’annonce ne peut être ni estimée ni comparée : ajoutez-la."
+                  i18n-hint="@@fieldPowerMissingHint"
+                  inputMode="numeric"
+                  [optional]="true"
+                  [maxLength]="4"
+                  [control]="vehicle.controls.power"
+                />
+              } @else {
+                <app-text-field
+                  label="Puissance (ch)"
+                  i18n-label="@@fieldPower"
+                  hint="Nécessaire pour estimer le prix et comparer l’annonce aux autres."
+                  i18n-hint="@@fieldPowerHint"
+                  inputMode="numeric"
+                  [maxLength]="4"
+                  [control]="vehicle.controls.power"
+                />
+              }
               <app-select-field
                 label="Boîte de vitesses"
                 i18n-label="@@fieldGearbox"
@@ -295,6 +335,7 @@
                     [mileage]="item.mileageKm"
                     [fuel]="previewFuel()"
                     [gearbox]="previewGearbox()"
+                    [powerHp]="item.vehicle?.powerHp"
                   />
                   @if (item.priceAmount !== undefined) {
                     <div class="preview__price">

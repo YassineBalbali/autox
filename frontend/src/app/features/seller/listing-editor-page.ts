@@ -15,16 +15,19 @@ import {
   ListingQuota,
   ListingResponse,
   ListingStatus,
+  LaCoteService,
   ListingsSellerService,
   Make,
   Model,
   PublicListingDetail,
   VehicleCondition,
+  ValuationEngine,
 } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { asApiError } from '../../core/errors/api-error';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
+import { engineLabel } from '../la-cote/la-cote';
 import { FlashService } from '../../core/ui/flash.service';
 import { SelectField, SelectOption } from '../../shared/forms/select-field';
 import { TextField } from '../../shared/forms/text-field';
@@ -52,6 +55,7 @@ import {
   offerValueOf,
   suggestedTitle,
   vehiclePrefill,
+  powerValidators,
   toCreateRequest,
   toOfferUpdate,
   toVehicleUpdate,
@@ -124,6 +128,7 @@ export class ListingEditorPage {
   private readonly flash = inject(FlashService);
   private readonly auth = inject(AuthService);
   private readonly title = inject(Title);
+  private readonly laCote = inject(LaCoteService);
 
   /** The listing being edited — absent on the create route. */
   readonly id = input<string | undefined>();
@@ -136,6 +141,7 @@ export class ListingEditorPage {
   readonly annee = input<string | undefined>();
   readonly km = input<string | undefined>();
   readonly carburant = input<string | undefined>();
+  readonly puissance = input<string | undefined>();
   readonly boite = input<string | undefined>();
 
   /** Taken once, on the create route: after that the form is the seller's. */
@@ -211,6 +217,29 @@ export class ListingEditorPage {
   });
   private readonly model = toSignal(this.vehicle.controls.model.valueChanges, {
     initialValue: this.vehicle.controls.model.value,
+  });
+
+  /**
+   * The engines of the chosen catalogue model as listed on AutoX, offered as a way to fill
+   * the fuel and power in one click. There is no trim catalogue to take a power from, and the
+   * listed engines are the next best thing: the ones the price indicator compares against.
+   */
+  protected readonly engines = toSignal(
+    this.vehicle.controls.model.valueChanges.pipe(
+      startWith(this.vehicle.controls.model.value),
+      switchMap((model): Observable<ValuationEngine[]> =>
+        model && model !== OTHER
+          ? this.laCote.engines({ modelId: model }).pipe(catchError(() => of([] as ValuationEngine[])))
+          : of([]),
+      ),
+    ),
+    { initialValue: [] as ValuationEngine[] },
+  );
+
+  /** A listing saved before the power was asked for, and still without one. */
+  protected readonly powerMissing = computed(() => {
+    const listing = this.listing();
+    return !!listing && listing.vehicle?.powerHp == null;
   });
 
   protected readonly makeTyped = computed(() => makeIsTyped({ make: this.make() }, this.makes() ?? []));
@@ -324,6 +353,7 @@ export class ListingEditorPage {
         annee: this.annee(),
         km: this.km(),
         carburant: this.carburant(),
+        puissance: this.puissance(),
         boite: this.boite(),
       });
       if (!prefill) {
@@ -418,6 +448,21 @@ export class ListingEditorPage {
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
     );
   }
+
+  /** One of the listed engines: its fuel and power, and its usual name if none is typed. */
+  protected useEngine(engine: ValuationEngine): void {
+    const { fuel, power, version } = this.vehicle.controls;
+    fuel.setValue(engine.fuelType ?? '');
+    power.setValue(engine.powerHp ? String(engine.powerHp) : '');
+    if (!version.value.trim() && engine.exampleVersion) {
+      version.setValue(engine.exampleVersion);
+    }
+    for (const control of [fuel, power, version]) {
+      control.markAsDirty();
+    }
+  }
+
+  protected readonly engineLabel = engineLabel;
 
   // --- moving between steps ------------------------------------------------
 
@@ -545,7 +590,7 @@ export class ListingEditorPage {
    * never be valid for a reason the seller cannot see.
    */
   private syncVehicleRules(): void {
-    const { makeText, model, modelText } = this.vehicle.controls;
+    const { makeText, model, modelText, power } = this.vehicle.controls;
     const value = this.vehicle.getRawValue();
     const makes = this.makes() ?? [];
     const typedMake = makeIsTyped(value, makes);
@@ -558,7 +603,9 @@ export class ListingEditorPage {
     modelText.setValidators(
       typedModel ? [requiredText(), Validators.maxLength(LIMITS.modelText)] : [Validators.maxLength(LIMITS.modelText)],
     );
-    for (const control of [makeText, model, modelText]) {
+    // Required, except on a listing saved before the field existed and still without one.
+    power.setValidators(powerValidators(!this.powerMissing()));
+    for (const control of [makeText, model, modelText, power]) {
       control.updateValueAndValidity({ emitEvent: false });
     }
     // With no catalogue at all there is no list to choose from: the make is typed.

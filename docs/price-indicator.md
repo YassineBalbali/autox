@@ -209,10 +209,13 @@ Everything listed above about the indicator applies, plus the following:
   over four it costs twice that. That is why a widened estimate says it is less precise.
 - **Condition, trim and options are not known.** Two cars with the same engine, age and
   mileage can differ by a fifth in value. The range shows part of that spread, not all of it.
-- **Listings published through the site never count as comparables.** The listing form
-  has no power field, so a listing a seller publishes states no power. It gets no price
-  verdict, and La Cote can't use it. Today only the demo seed's listings have a power.
-  Adding a power field to the form is outside this feature.
+- **Listings saved before the power was asked for don't count.** The listing form now
+  requires a power in ch, and the API requires one on create. Listings saved before that
+  have none, so they get no verdict and don't count for La Cote until their seller adds
+  one. The form still lets them be edited and published without it, and tells the seller
+  why to add it. When the seller has chosen a catalogue model, the form offers that
+  model's engines as listed on AutoX. One click fills the fuel and the power, and the
+  seller can correct either.
 
 ### The API
 
