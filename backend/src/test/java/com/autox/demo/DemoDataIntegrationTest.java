@@ -8,6 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.autox.catalog.VehicleMake;
 import com.autox.catalog.VehicleMakeRepository;
 import com.autox.storage.ObjectStorage;
+import com.autox.user.AppUser;
+import com.autox.user.UserRole;
+import com.autox.user.UserStatus;
 import com.autox.support.AbstractIntegrationTest;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
@@ -46,6 +49,7 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
     @Autowired DemoLedger ledger;
     @Autowired VehicleMakeRepository makes;
     @Autowired ObjectStorage storage;
+    @Autowired DemoAccounts demoAccounts;
 
     @AfterEach
     void leaveNothingBehind() {
@@ -115,8 +119,24 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
         assertThat(detail.get("vehicle").get("doors").asInt()).isBetween(3, 5);
         assertThat(detail.get("vehicle").get("seats").asInt()).isBetween(4, 5);
         assertThat(detail.get("seller").get("memberSince").asText()).isNotBlank();
+        // Nobody will answer a message to this seller, and the page says so.
+        assertThat(detail.get("seller").get("demo").asBoolean()).isTrue();
         // Not there, by design of the public API — and the seed does not invent one.
         assertThat(detail.has("vin")).isFalse();
+    }
+
+    @Test
+    @DisplayName("a demo seller is one the seed created, not any account in a seeded database")
+    void demoSellersAreTheSeedsOwn() {
+        demoData.seed();
+        AppUser visitor = createUser(uniqueEmail("visitor"), UserRole.PARTICULIER, UserStatus.ACTIVE);
+
+        assertThat(ledger.ids(DemoLedger.USER)).allSatisfy(id -> assertThat(demoAccounts.isDemoAccount(id)).isTrue());
+        assertThat(demoAccounts.isDemoAccount(visitor.getId())).isFalse();
+
+        // And once the demo is removed, its ledger with it, nobody is.
+        demoData.remove();
+        assertThat(demoAccounts.isDemoAccount(visitor.getId())).isFalse();
     }
 
     @Test
