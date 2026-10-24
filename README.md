@@ -261,11 +261,11 @@ Both are common collisions, and both are a variable away from fixed:
 
 ```bash
 cd backend
-mvn clean verify         # 433 tests, needs Docker running
+mvn clean verify         # 443 tests, needs Docker running
 
 cd ../frontend
 npm run lint
-npm test -- --no-watch   # 961 tests, jsdom
+npm test -- --no-watch   # 969 tests, jsdom
 npm run test:scripts     # 21 tests of the build scripts: the security policy
 npm run build            # the production build, with the policy and headers written in
 ```
@@ -370,7 +370,7 @@ A route guard is a courtesy. The API is what refuses.
 |---|---|---|
 | Accounts | `POST /auth/register`, `/login`, `/refresh`, `/logout`, `/password/forgot`, `/password/reset` | none |
 | The caller | `GET`·`PATCH /me`, `POST /me/password`, `GET /me/sessions`, `DELETE /me/sessions/{id}` | token |
-| Public listings | `GET /listings` (search), `GET /listings/count`, `GET /listings/{id}` | none |
+| Public listings | `GET /listings` (search), `GET /listings/count`, `GET /listings/{id}`, `GET /listings/{id}/similar` | none |
 | A seller's listings | `POST /listings`, `GET /listings/mine`, `/mine/quota`, `/mine/{id}`, `PATCH`·`DELETE /listings/{id}`, `POST /listings/{id}/publish`·`unpublish`·`renew`·`sold` | token, owner |
 | Photos | `POST`·`GET /listings/{id}/images`, `POST …/images/{imageId}/confirm`, `PUT …/images/order`, `DELETE …/images/{imageId}` | token, owner |
 | Reference | `GET /reference/countries`, `/enums`, `/makes`, `/makes/{id}/models`, `/features` | none |
@@ -670,6 +670,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
 | `docs/price-indicator.md` | "Bonne affaire" and the rest: the comparables rule, why, and how it is computed |
 | `docs/messaging.md` | Messages between buyers and sellers: who may write, what each side sees, unread, rate limits, reports |
+| `docs/similar-listings.md` | "Annonces similaires": which listings, in what order, and when none are shown |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
 | `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |

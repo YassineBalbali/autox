@@ -5,6 +5,7 @@ import com.autox.search.dto.PublicListingSummary;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -78,5 +79,18 @@ public class PublicListingController {
     @GetMapping("/{id}")
     public PublicListingDetail detail(@PathVariable UUID id) {
         return searchService.detail(id);
+    }
+
+    /**
+     * "Annonces similaires": three to six live listings like this one, best first, as search
+     * result cards; an empty list when there are fewer than three good matches, never padding.
+     *
+     * <p>The same model registered within three years and priced within 40 % first, then the
+     * same body type within 20 % of the price. Never the listing itself, and at most one of a seller's copies of the
+     * same car. 404 when the listing is not public, as for the detail.
+     */
+    @GetMapping("/{id}/similar")
+    public List<PublicListingSummary> similar(@PathVariable UUID id) {
+        return searchService.similar(id);
     }
 }

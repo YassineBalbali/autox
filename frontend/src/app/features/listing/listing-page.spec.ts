@@ -335,6 +335,31 @@ describe('ListingPage', () => {
     });
   });
 
+  describe('similar listings', () => {
+    it('asks for them once the listing is there, and puts them under both columns', async () => {
+      await load();
+      const request = open(`${DETAIL}/similar`)[0];
+      expect(request.request.method).toBe('GET');
+      request.flush(
+        ['a', 'b', 'c'].map((id) => ({ id, title: `Peugeot 208 ${id}`, make: 'Peugeot', model: '208', priceAmount: 1_000_000 })),
+      );
+      await settle();
+
+      const section = root.querySelector('app-similar-listings') as HTMLElement;
+      // A sibling of the article, not inside a column of it: the page's full width.
+      expect(section.parentElement).toBe(root.querySelector('article.listing')?.parentElement);
+      expect(section.querySelectorAll('app-listing-card')).toHaveLength(3);
+    });
+
+    it('is not asked for a listing that is not there', async () => {
+      await visit();
+      open(DETAIL)[0].flush({ code: ErrorCode.NOT_FOUND }, { status: 404, statusText: 'Not Found' });
+      await settle();
+
+      expect(open(`${DETAIL}/similar`)).toHaveLength(0);
+    });
+  });
+
   describe('a listing that is not there', () => {
     it('gets its own page, not an error, when the API says not found', async () => {
       await visit();

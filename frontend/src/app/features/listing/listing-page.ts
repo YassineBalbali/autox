@@ -19,6 +19,7 @@ import { SearchMemory, isSearchUrl } from '../search/search-memory';
 import { KeyFacts } from './key-facts';
 import { ListingSummary } from './listing-summary';
 import { galleryImages, groupFeatures, specificationRows } from './listing-view';
+import { SimilarListings } from './similar-listings';
 
 type PageState = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -42,7 +43,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 @Component({
   selector: 'app-listing-page',
-  imports: [PhotoGallery, KeyFacts, ListingSummary, Icon, Alert, NotFound],
+  imports: [PhotoGallery, KeyFacts, ListingSummary, SimilarListings, Icon, Alert, NotFound],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-page.html',
   styleUrl: './listing-page.scss',

@@ -36,7 +36,9 @@ import { headlineOf, listingLink, placeOf } from './summary';
       />
 
       <div class="card__body">
-        <h2 class="card__title">
+        <!-- A heading of the page's outline: level 2 under the results' title, 3 under a
+             section's own heading such as "Annonces similaires". -->
+        <h2 class="card__title" [attr.aria-level]="headingLevel() === 2 ? null : headingLevel()">
           @if (link(); as target) {
             <a class="card__link" [routerLink]="target">{{ headline().title }}</a>
           } @else {
@@ -206,6 +208,8 @@ export class ListingCard {
   readonly fuelLabel = input<string | null>(null);
   readonly gearboxLabel = input<string | null>(null);
   readonly eager = input(false);
+  /** Where the title sits in the page's outline; the element stays an h2 for its styles. */
+  readonly headingLevel = input(2);
 
   protected readonly headline = computed(() => headlineOf(this.listing()));
   protected readonly electric = computed(() => this.listing().fuelType === 'ELECTRIC');
