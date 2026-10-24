@@ -27,8 +27,20 @@ RUN mvn -B --no-transfer-progress -Dmaven.test.skip=true package \
 
 # ---- run ------------------------------------------------------------------------------
 # Alpine's Temurin JRE: no compiler, no Maven, no JDK tools, and it ships the fonts the
-# demo photo painter needs.
-FROM eclipse-temurin:21-jre-alpine@sha256:51ab5e3302e7141ce665ca3ea85e8b5cd648eafbc3c0c90dd79d6537684e4555
+# demo photo painter needs. Java 21; moving to 25 is a migration, not a digest refresh.
+FROM eclipse-temurin:21-jre-alpine@sha256:b48e02e0ea88d7bfb305335df94923bdef394905f4147dccd52e873cf17b1088
+
+# Alpine's own security fixes, applied at build time rather than waiting for Temurin to
+# rebuild its image. Alpine publishes a fixed package in the stable branch days before the
+# Temurin image that contains it: in October 2026 the image already had the fixed libexpat
+# but not the fixed brotli-libs, which Alpine 3.24 had, and the scan below failed on it.
+#
+# The price is reproducibility. The digest above still fixes the JRE and the Alpine release
+# (3.24), but the packages inside can now differ between two builds of the same commit, by
+# whatever revisions Alpine shipped in between: security and bug fixes only, on a stable
+# branch, never a new release. What actually shipped is the scanned image's own digest, not
+# this file. A builder that caches layers keeps this one until the line above changes.
+RUN apk upgrade --no-cache
 
 RUN addgroup -S -g 10001 autox && adduser -S -u 10001 -G autox -H -s /sbin/nologin autox
 WORKDIR /app

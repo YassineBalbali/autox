@@ -4,7 +4,8 @@
 # other half — it proposes the upgrades, including for the build tools the scans leave out.
 #
 # Three rules, the same for every ecosystem:
-#   - Monthly. A portfolio demo does not need a weekly review queue.
+#   - Monthly. A portfolio demo does not need a weekly review queue. Except the Dockerfile's
+#     base images, weekly: see there.
 #   - No major versions. Each is a migration (Spring Boot 4, Java 25, PostgreSQL 18), done
 #     on purpose, by hand, not proposed by a bot on a schedule. Security fixes in a newer
 #     major are still caught: the CI scans fail on them.
@@ -60,10 +61,17 @@ updates:
         patterns: ['*']
 
   # backend/Dockerfile pins both base images (Maven build, Temurin JRE) by digest.
+  #
+  # Weekly, the one exception to monthly: this is what ships, and the image scan blocks CI
+  # on it. Monthly let it fall behind in October 2026. The run that the config change made
+  # on the 18th found nothing new; the fixed Temurin image appeared on the 21st, CI failed
+  # from the 20th, and the next monthly run was a month away. Alpine's own fixes are
+  # applied in the Dockerfile (apk upgrade), but the JRE is not an Alpine package: a Java
+  # security release reaches the image only through a new digest, so only this picks it up.
   - package-ecosystem: docker
     directory: /backend
     schedule:
-      interval: monthly
+      interval: weekly
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
