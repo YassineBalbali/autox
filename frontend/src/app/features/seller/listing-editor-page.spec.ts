@@ -318,6 +318,37 @@ describe('ListingEditorPage', () => {
     });
   });
 
+  describe('starting from La Cote', () => {
+    it('takes the car described there into the vehicle step: make, model, version, year, mileage, fuel, gearbox', async () => {
+      await visit(
+        '/vendre?marque=make-peugeot&modele=model-3008&version=BlueHDi%20130%20EAT8&annee=2021&km=53400&carburant=DIESEL&boite=AUTOMATIC',
+      );
+      await answerModels();
+
+      expect(control('Marque')?.value).toBe('make-peugeot');
+      expect(control('Modèle')?.value).toBe('model-3008');
+      expect(control('Version')?.value).toBe('BlueHDi 130 EAT8');
+      expect(control('Année')?.value).toBe('2021');
+      expect(control('Kilométrage')?.value).toBe('53400');
+      expect(control('Carburant')?.value).toBe('DIESEL');
+      expect(control('Boîte')?.value).toBe('AUTOMATIC');
+      // A car with a value to estimate has been on the road.
+      expect(control('État')?.value).toBe('USED');
+      // Filled, not sent: nothing is saved until the seller says so.
+      expect(open(`${API}/listings`)).toHaveLength(0);
+    });
+
+    it('leaves out what is not valid, and a make the catalogue does not have', async () => {
+      await visit('/vendre?marque=make-unknown&modele=model-3008&annee=1800&km=-5&carburant=WATER&boite=AUTOMATIC');
+
+      expect(control('Marque')?.value).toBe('');
+      expect(control('Année')?.value).toBe('');
+      expect(control('Kilométrage')?.value).toBe('');
+      expect(control('Carburant')?.value).toBe('');
+      expect(control('Boîte')?.value).toBe('AUTOMATIC');
+    });
+  });
+
   describe('creating: outside the catalogue', () => {
     it('opens two text fields for "another make", and stops asking for a model from a list', async () => {
       await visit('/vendre');

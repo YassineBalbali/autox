@@ -160,6 +160,7 @@ public class ReferenceService {
         published.put("DistanceUnit", DistanceUnit.class);
         published.put("SearchSort", SearchSort.class);
         published.put("PriceLevel", com.autox.search.PriceLevel.class);
+        published.put("ValuationScope", com.autox.search.ValuationScope.class);
 
         // Messages.
         published.put("ConversationRole", com.autox.messaging.ConversationRole.class);

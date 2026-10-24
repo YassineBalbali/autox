@@ -1,0 +1,98 @@
+<article class="panel result" aria-labelledby="cote-resultat">
+  @if (estimate(); as estimate) {
+    <h2 id="cote-resultat" class="result__title" i18n="@@coteTitle">Cote estimée · {{ modelName() }}</h2>
+
+    @if (caveat()) {
+      <p class="result__wide">
+        <span class="tag tag--accent" i18n="@@coteWide">Estimation élargie</span>
+        {{ caveat() }}
+      </p>
+    }
+
+    <div class="result__figure">
+      <app-price
+        size="detail"
+        [amountMinor]="estimate.medianAmount!"
+        [currency]="estimate.currencyCode ?? 'EUR'"
+        [minorUnit]="minorUnit()"
+      />
+      <p class="result__range" i18n="@@coteRange">
+        Fourchette : <strong>{{ low() }}</strong> à <strong>{{ high() }}</strong>
+      </p>
+      <p class="meta" i18n="@@coteRangeMeaning">
+        La moitié des annonces comparables, une fois leur prix ramené à l’âge et au kilométrage de votre
+        voiture, se situe dans cette fourchette.
+      </p>
+    </div>
+
+    <dl class="result__basis">
+      <div>
+        <dt i18n="@@coteBasisCount">Calculée sur</dt>
+        <dd i18n="@@coteBasisCountValue">{{ counted() }} en ligne sur AutoX</dd>
+      </div>
+      <div>
+        <dt i18n="@@coteBasisYears">Années</dt>
+        <dd>{{ years() }}</dd>
+      </div>
+      <div>
+        <dt i18n="@@coteBasisMileage">Kilométrages</dt>
+        <dd>{{ mileages() }}</dd>
+      </div>
+      <div>
+        <dt i18n="@@coteBasisCriteria">Critères</dt>
+        <dd>{{ criteria() }}</dd>
+      </div>
+    </dl>
+
+    <p class="result__note" i18n="@@coteAskingPrices">
+      Ce sont des prix demandés sur AutoX, pas des prix de vente : une voiture se vend souvent un peu en
+      dessous de son prix affiché. L’état, la finition, les options et la boîte de vitesses ne sont pas
+      pris en compte.
+    </p>
+  } @else {
+    <h2 id="cote-resultat" class="result__title" i18n="@@coteTooFewTitle">
+      Pas assez d’annonces pour estimer cette voiture
+    </h2>
+    <p class="result__few">
+      @if (count() === 0) {
+        <ng-container i18n="@@coteNone">Aucune annonce comparable en ligne sur AutoX.</ng-container>
+      } @else {
+        <ng-container i18n="@@coteFew">Seulement {{ counted() }} en ligne sur AutoX.</ng-container>
+      }
+      <ng-container i18n="@@coteNeed">
+        Il en faut au moins {{ minimum() }} pour donner une cote : plutôt qu’un chiffre peu fiable, nous
+        n’en donnons pas.
+      </ng-container>
+    </p>
+    <p class="meta" i18n="@@coteSearched">Recherché : {{ criteria() }}</p>
+
+    @if (links().wider.length) {
+      <h3 class="result__subtitle" i18n="@@coteWiden">Élargir la recherche</h3>
+      <ul class="result__wider" role="list">
+        @for (option of links().wider; track option.label) {
+          <li>
+            <a class="btn btn--quiet" [routerLink]="[]" [queryParams]="option.params">
+              {{ option.label }}
+              <span class="result__count" i18n="@@coteWidenCount">{{ option.count }} annonces</span>
+            </a>
+          </li>
+        }
+      </ul>
+      <p class="meta" i18n="@@coteWidenMeaning">Une estimation élargie est moins précise, et elle le dit.</p>
+    } @else {
+      <p class="meta" i18n="@@coteNothingWider">
+        Même en élargissant les critères, il n’y a pas assez d’annonces de ce modèle aujourd’hui. Vérifiez la
+        motorisation, ou revenez quand d’autres seront en ligne.
+      </p>
+    }
+  }
+
+  <div class="result__actions">
+    <a class="btn btn--primary" routerLink="/vendre" [queryParams]="links().sell" i18n="@@coteSell">
+      Vendre ma voiture
+    </a>
+    <a class="btn btn--quiet" routerLink="/recherche" [queryParams]="links().search" i18n="@@coteSimilar">
+      Voir les annonces similaires
+    </a>
+  </div>
+</article>

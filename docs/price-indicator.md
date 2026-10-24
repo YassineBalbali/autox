@@ -148,6 +148,84 @@ stale.
   `?priceLevel=GOOD_DEAL`. A listing without an indicator matches no level. The site's URL
   for it is `/recherche?bonnes_affaires=1`.
 
+## La Cote: the same engine for a car that is not listed
+
+La Cote (`/la-cote`) is the indicator run the other way round. The indicator asks where a
+listing's price sits among its comparables. La Cote takes a car a visitor describes and asks
+what its comparables are listed for. The code is
+`backend/src/main/java/com/autox/search/LaCote.java`.
+
+### The method
+
+- **The same rule.** The described car enters the indicator's query as a listing of its
+  own: a one-row table with the columns the rule reads, joined to `MarketPrice.comparable`.
+  The comparables, the adjustment to age and mileage, and the minimum of five are therefore
+  those above, with no second copy of the rule.
+- **Identifying the engine.** There is no trim catalogue, so the visitor chooses among the
+  model's engines listed now (`GET /valuation/engines`). Each is a fuel and a power, named
+  by the version text sellers give it most often. "Autre motorisation" takes a fuel and a
+  power for an engine that is not listed.
+- **What is ignored.** The gearbox and the version name are asked for but not compared on,
+  because the indicator doesn't compare on them either. They only prefill the two links
+  shown after an estimate. La Cote and the badge can therefore never disagree about the
+  same car. The page says the gearbox is not taken into account.
+- **The figure.** The **median** of the adjusted prices.
+- **The range.** The **interquartile range**: a quarter of the comparables are below the low
+  figure and a quarter above the high one. A single figure from five to ten asking prices
+  would claim more precision than it has.
+- **Rounding.** All three figures are rounded to the nearest 100 €, for the same reason.
+
+**Fewer than five comparables means no figure.** The page says how many were found and that
+it takes five. It then offers the loosenings of the rule that would reach five, each with
+its count. Each loosening changes exactly one thing:
+
+| Scope | Loosening | The page says |
+|---|---|---|
+| `ALL_ENGINES` | any fuel and power of the model | "ne tient pas compte de la puissance ni du carburant" |
+| `WIDER_YEARS` | four years either side instead of two | prices brought further, so less precise |
+| `ANY_MILEAGE` | any mileage band | prices brought further, so less precise |
+
+A widened estimate carries an "Estimation élargie" tag and that sentence. A loosening that
+still finds fewer than five is not offered. Even widened, no figure ever comes from fewer
+than five.
+
+**What the page shows the estimate rests on:**
+- how many listings;
+- the years and mileages of the comparables found;
+- the criteria they met;
+- that these are **asking prices on AutoX, not transaction prices**.
+
+### Its limits
+
+Everything listed above about the indicator applies, plus the following:
+
+- **Asking prices are not sale prices.** Cars usually sell a little below their asking
+  price, and La Cote doesn't know by how much. It reports what sellers ask and says so,
+  rather than applying an invented discount.
+- **The market is AutoX's alone.** Five comparables on AutoX is a small sample of the French
+  market. A model that is rare here has no estimate, even if it is common elsewhere.
+- **Widening leans on the assumption.** Four years apart is twice the window the
+  depreciation rate was meant for. Over two years a wrong rate costs a few per cent;
+  over four it costs twice that. That is why a widened estimate says it is less precise.
+- **Condition, trim and options are not known.** Two cars with the same engine, age and
+  mileage can differ by a fifth in value. The range shows part of that spread, not all of it.
+- **Listings published through the site never count as comparables.** The listing form
+  has no power field, so a listing a seller publishes states no power. It gets no price
+  verdict, and La Cote can't use it. Today only the demo seed's listings have a power.
+  Adding a power field to the form is outside this feature.
+
+### The API
+
+- **`GET /api/v1/valuation`**
+  - **Parameters:** `modelId`, `fuelType`, `powerHp`, `year`, `month` (optional),
+    `mileageKm`, `scope` (default `EXACT`), `currency` (default `EUR`).
+  - **Returns:** `{ scope, comparableCount, minimumComparables, estimate?, basis?, window,
+    widerScopes }`, with amounts in minor units.
+  - **Errors:** 404 for an unknown model, 400 for a value out of range.
+- **`GET /api/v1/valuation/engines?modelId=`**
+  - **Returns:** the model's listed engines, most listed first.
+- **Both:** public, and rate-limited per address with the rest of the public read API.
+
 ## The demo data
 
 Seeded at random, the indicator would have nothing to say: a hundred and twenty listings
@@ -171,3 +249,15 @@ at the old or the young end of the window. With it, none of 27 is. One is strong
 truth warrants: a 2023 Peugeot 208 asked 2 % under its value is called a good deal. That is
 the residue of an assumption that differs from how the seed's prices were made, which is
 what real prices will do too.
+
+**La Cote on the same data.** Valuing the car of each of the 120 demo listings, as if its
+owner asked:
+- **57** get an estimate.
+- **17** get none, but are offered a wider search that would give one.
+- **46** get neither: the models with only one to four listings.
+
+Two examples:
+- **2024 Clio TCe 90, 39 600 km**, listed at 10 590 €: estimated at 13 200 € (range
+  12 000–14 100 €) from 7 listings. The indicator calls the same listing a good deal.
+- **2021 3008 BlueHDi 130, 53 400 km:** only one comparable in its mileage band, so no
+  figure. Widened to every mileage: 18 400 € (17 300–20 000 €) from 10 listings.

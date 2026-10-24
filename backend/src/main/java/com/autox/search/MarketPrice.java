@@ -88,13 +88,38 @@ public class MarketPrice {
     /** How far from the median, as a fraction of it, before a price is no longer "the market". */
     public static final double DEAL_MARGIN = 0.10;
 
+    /**
+     * Where one mileage band ends and the next begins, in km: under 30 000, 30–60 000,
+     * 60–100 000, 100–150 000, and 150 000 and over.
+     */
+    private static final int[] BAND_LIMITS = {30_000, 60_000, 100_000, 150_000};
+
     /** The mileage band of a listing aliased {@code %1$s}, as an integer from 0 to 4. */
-    private static final String BAND = """
-            CASE WHEN %1$s.mileage_km < 30000 THEN 0
-                 WHEN %1$s.mileage_km < 60000 THEN 1
-                 WHEN %1$s.mileage_km < 100000 THEN 2
-                 WHEN %1$s.mileage_km < 150000 THEN 3
-                 ELSE 4 END""";
+    private static final String BAND = bandSql();
+
+    private static String bandSql() {
+        StringBuilder sql = new StringBuilder("CASE");
+        for (int band = 0; band < BAND_LIMITS.length; band++) {
+            sql.append(" WHEN %1$s.mileage_km < ").append(BAND_LIMITS[band]).append(" THEN ").append(band);
+        }
+        return sql.append(" ELSE ").append(BAND_LIMITS.length).append(" END").toString();
+    }
+
+    /** A mileage band, from {@code fromKm} up to but not including {@code toKm}; null for the last. */
+    public record MileageBand(int fromKm, Integer toKm) {
+    }
+
+    /** The mileage band a mileage falls in: the same bands as the SQL above. */
+    public static MileageBand bandOf(int mileageKm) {
+        int from = 0;
+        for (int limit : BAND_LIMITS) {
+            if (mileageKm < limit) {
+                return new MileageBand(from, limit);
+            }
+            from = limit;
+        }
+        return new MileageBand(from, null);
+    }
 
     /**
      * The first registration of a listing aliased {@code %1$s}, in years with the month as a
@@ -115,6 +140,44 @@ public class MarketPrice {
             YEARLY_DEPRECIATION, DEPRECIATION_PER_10K_KM, REGISTERED.formatted("l"), REGISTERED.formatted("c"));
 
     /**
+     * Whether the listing {@code c} is a comparable of the listing {@code l}: the rule above,
+     * as a predicate. The price indicator always uses all of it. La Cote can loosen it when a
+     * car has too few comparables, and says so whenever it does.
+     *
+     * @param yearSpan   years either side of {@code l}'s first registration
+     * @param sameEngine the same fuel and a power within {@link #POWER_SPAN}
+     * @param sameBand   the same mileage band
+     */
+    static String comparable(int yearSpan, boolean sameEngine, boolean sameBand) {
+        StringBuilder rule = new StringBuilder("""
+                c.model_id = l.model_id
+                   AND c.id <> l.id
+                   AND c.price_currency_code = l.price_currency_code
+                   AND c.vehicle_condition <> 'NEW'
+                   AND c.first_registration_year BETWEEN l.first_registration_year - %1$d
+                                                     AND l.first_registration_year + %1$d
+                """.formatted(yearSpan));
+        if (sameEngine) {
+            rule.append("""
+                       AND c.fuel_type = l.fuel_type
+                       AND c.power_hp BETWEEN l.power_hp * (1 - %1$s) AND l.power_hp * (1 + %1$s)
+                    """.formatted(POWER_SPAN));
+        }
+        if (sameBand) {
+            rule.append("   AND ").append(BAND.formatted("c")).append(" = ").append(BAND.formatted("l")).append('\n');
+        }
+        return rule.append("   AND ").append(ListingSearchRepository.visible("c")).toString();
+    }
+
+    /**
+     * The price of the comparable {@code c} brought to the age and mileage of the listing
+     * {@code l}, as SQL. See {@link #ADJUSTED_PRICE}.
+     */
+    static String adjustedPrice() {
+        return ADJUSTED_PRICE;
+    }
+
+    /**
      * The comparables of the listing aliased {@code l}, as columns {@code mp.comparables} and
      * {@code mp.median}, the median of their prices adjusted to the listing. Joined to
      * nothing for a listing that cannot have an indicator, so those columns are then null.
@@ -122,21 +185,11 @@ public class MarketPrice {
     static final String LATERAL = """
              LEFT JOIN LATERAL (
                 SELECT count(*) AS comparables,
-                       percentile_cont(0.5) WITHIN GROUP (ORDER BY %6$s) AS median
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY %1$s) AS median
                   FROM listing c
-                 WHERE c.model_id = l.model_id
-                   AND c.id <> l.id
-                   AND c.price_currency_code = l.price_currency_code
-                   AND c.vehicle_condition <> 'NEW'
-                   AND c.fuel_type = l.fuel_type
-                   AND c.power_hp BETWEEN l.power_hp * (1 - %5$s) AND l.power_hp * (1 + %5$s)
-                   AND c.first_registration_year BETWEEN l.first_registration_year - %1$d
-                                                     AND l.first_registration_year + %1$d
-                   AND %2$s = %3$s
-                   AND %4$s
+                 WHERE %2$s
              ) mp ON l.model_id IS NOT NULL AND l.power_hp IS NOT NULL AND l.vehicle_condition <> 'NEW'
-            """.formatted(YEAR_SPAN, BAND.formatted("c"), BAND.formatted("l"),
-                    ListingSearchRepository.visible("c"), POWER_SPAN, ADJUSTED_PRICE);
+            """.formatted(ADJUSTED_PRICE, comparable(YEAR_SPAN, true, true));
 
     /** The level of the listing aliased {@code l}, or null; needs {@link #LATERAL}. */
     static final String LEVEL = """
