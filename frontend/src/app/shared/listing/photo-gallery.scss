@@ -192,3 +192,80 @@
   background: var(--c-surface);
   color: var(--c-ink);
 }
+
+// ---- a phone: the swiping row ----------------------------------------------
+
+// Edge to edge across the screen: on a phone the photo is the page's first and largest
+// thing, and a frame around it only takes width from it.
+.swipe {
+  position: relative;
+  margin-inline: calc(-1 * var(--gutter));
+  background: var(--c-surface-sunk);
+}
+
+// One photo to a screen; the row scrolls sideways and snaps to whole photos, so a swipe
+// always ends on one. No scrollbar: the counter says where the row is.
+.swipe__track {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.swipe__slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  // One photo per swipe, however hard the flick.
+  scroll-snap-stop: always;
+}
+
+.swipe__open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+// ---- a phone: the full-screen view -----------------------------------------
+
+.lightbox--phone {
+  padding: 0;
+  // Solid on a phone: the whole screen is the photo, and the page faintly behind a small
+  // picture reads as clutter rather than as context.
+  background: var(--c-navy);
+  cursor: default;
+
+  .lightbox__track {
+    width: 100%;
+    height: 100%;
+  }
+
+  .lightbox__slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lightbox__close {
+    z-index: 1;
+    height: 44px;
+    padding-inline: var(--s-4);
+    font-size: var(--t-body);
+  }
+
+  .lightbox__count {
+    bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
+  }
+}

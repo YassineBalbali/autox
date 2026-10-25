@@ -120,10 +120,12 @@ app-root {
   min-height: 100dvh;
 }
 
-// A modal — the phone's menu drawer, a full-screen sheet — freezes the page under it. The
-// dialog already makes that page inert; without this it would still scroll behind the
-// backdrop when a finger drags past the edge of the panel.
-html:has(dialog:modal) {
+// A modal — the phone's menu drawer, a full-screen sheet, an enlarged photo (which marks
+// itself data-locks-scroll) — freezes the page under it. A dialog already makes that page
+// inert; without this it would still scroll behind the backdrop when a finger drags past
+// the edge of the panel.
+html:has(dialog:modal),
+html:has([data-locks-scroll]) {
   overflow: hidden;
 }
 
@@ -171,4 +173,12 @@ html:has(dialog:modal) {
 // Figures that line up in a column: prices, mileages, dates.
 .num {
   font-variant-numeric: tabular-nums;
+}
+
+// The listing page's bottom bar (app-contact-bar) is fixed over the foot of the screen:
+// the page ends that much later, so the footer's last line is not under it.
+@media (max-width: 1023.98px) {
+  body:has(.contact-bar) {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  }
 }

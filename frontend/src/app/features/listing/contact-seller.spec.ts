@@ -1,9 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component, signal } from '@angular/core';
+import { Component, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { describe, expect, it } from 'vitest';
+import { Router, provideRouter } from '@angular/router';
+import { describe, expect, it, vi } from 'vitest';
 
 import { BASE_PATH, ErrorCode, PublicListingDetail, UserRole, UserSummary } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
@@ -31,6 +31,7 @@ const LISTING: PublicListingDetail = {
 })
 class Host {
   readonly listing = signal(LISTING);
+  readonly contact = viewChild.required(ContactSeller);
 }
 
 /**
@@ -187,5 +188,51 @@ describe('ContactSeller', () => {
 
     expect(root.querySelector('form')).toBeNull();
     backend.expectNone(CONTACT);
+  });
+
+  describe('engaged from elsewhere — the phone\'s bottom bar', () => {
+    it('opens the form, focused, exactly as its own button does', async () => {
+      await render('buyer-1');
+
+      fixture.componentInstance.contact().engage();
+      await settle();
+
+      expect(document.activeElement).toBe(textarea());
+      expect(fixture.componentInstance.contact().open()).toBe(true);
+    });
+
+    it('goes to the conversation once a message is sent', async () => {
+      await render('buyer-1');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      button().click();
+      await settle();
+      send().click();
+      sent().flush({ id: 'c1', messages: [] });
+      await settle();
+
+      fixture.componentInstance.contact().engage();
+
+      expect(navigate).toHaveBeenCalledWith(['/messages', 'c1']);
+    });
+
+    it('sends a visitor to sign in, and back to the listing', async () => {
+      await render(null);
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+      fixture.componentInstance.contact().engage();
+
+      expect(navigate).toHaveBeenCalledWith(['/connexion'], { queryParams: { suivant: '/annonces/l1' } });
+    });
+
+    it('does nothing on the seller\'s own listing', async () => {
+      await render('seller-1');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+
+      fixture.componentInstance.contact().engage();
+      await settle();
+
+      expect(navigate).not.toHaveBeenCalled();
+      expect(textarea()).toBeNull();
+    });
   });
 });

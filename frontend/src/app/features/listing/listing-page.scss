@@ -14,6 +14,14 @@
     &:hover {
       text-decoration: underline;
     }
+
+    @include t.touch {
+      min-height: 44px;
+    }
+  }
+
+  @include t.touch {
+    margin-bottom: var(--s-1);
   }
 }
 
@@ -43,9 +51,22 @@
   min-width: 0;
 }
 
+// Below the large breakpoint the two columns become one sequence: the photographs, then
+// the summary — title, price, contact — then the facts and the long tail of details. The
+// main column steps aside (display: contents) so its children and the summary can be
+// ordered as one list. From the breakpoint up, the summary is the right-hand column and
+// stays in view.
+.listing__main {
+  @media (max-width: calc(t.$bp-lg - 0.02px)) {
+    display: contents;
+  }
+}
+
+.listing__gallery {
+  order: -2;
+}
+
 .listing__aside {
-  // On a narrow screen the summary — title, price, contact — comes before the gallery's
-  // long tail of details; on desktop it is the right-hand column and stays in view.
   order: -1;
 
   @media (min-width: t.$bp-lg) {
@@ -64,11 +85,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-4);
-  padding: var(--s-5);
+  padding: var(--s-4);
   background: var(--c-surface);
   border: 1px solid var(--c-line);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-raised);
+
+  @media (min-width: t.$bp-md) {
+    padding: var(--s-5);
+  }
 }
 
 .section__title {
@@ -87,6 +112,77 @@
     height: 1.1em;
     border-radius: var(--r-sm);
     background: var(--c-accent);
+  }
+}
+
+// ---- folding, on a phone --------------------------------------------------
+//
+// The heading holds both a plain title and a button with the same words; one of them is
+// shown. Below the medium breakpoint the button, and the section's body only once opened;
+// from the breakpoint up the title, and the body always.
+
+.section__toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+
+  app-icon {
+    color: var(--c-ink-faint);
+    transition: transform 150ms ease-out;
+  }
+
+  &[aria-expanded='true'] app-icon {
+    transform: rotate(180deg);
+  }
+}
+
+.section__title-text {
+  display: none;
+}
+
+// Scoped to .section so they outweigh the display each body sets for itself below.
+.section .section__body {
+  display: none;
+}
+
+.section .section__body--open {
+  display: block;
+
+  &.equipment {
+    display: grid;
+  }
+}
+
+// A folded section is its heading and nothing else: no gap left open under it.
+.section:has(.section__body:not(.section__body--open)) {
+  @media (max-width: calc(t.$bp-md - 0.02px)) {
+    gap: 0;
+  }
+}
+
+@media (min-width: t.$bp-md) {
+  .section__toggle {
+    display: none;
+  }
+
+  .section__title-text {
+    display: inline;
+  }
+
+  .section .section__body {
+    display: block;
+
+    &.equipment {
+      display: grid;
+    }
   }
 }
 

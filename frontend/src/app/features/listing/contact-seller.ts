@@ -9,7 +9,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { MessagesService, PublicListingDetail } from '../../core/api';
 import { RETURN_URL_PARAM, SIGN_IN_ROUTE } from '../../core/auth/auth.routes';
@@ -40,6 +40,7 @@ export class ContactSeller {
   private readonly auth = inject(AuthService);
   private readonly api = inject(MessagesService);
   private readonly errors = inject(ErrorMessageService);
+  private readonly router = inject(Router);
 
   readonly listing = input.required<PublicListingDetail>();
 
@@ -54,7 +55,8 @@ export class ContactSeller {
     return !!me && me === this.listing().seller?.id;
   });
 
-  protected readonly open = signal(false);
+  /** The message form is open: someone is writing. */
+  readonly open = signal(false);
   protected readonly body = signal('');
   protected readonly sending = signal(false);
   protected readonly failure = signal<string | null>(null);
@@ -72,6 +74,22 @@ export class ContactSeller {
   protected readonly canSend = computed(
     () => this.trimmed().length > 0 && this.body().length <= MESSAGE_MAX_LENGTH && !this.sending(),
   );
+
+  /**
+   * What the phone's bottom bar does: the same as this component's own button in its
+   * current state. Signed out, sign in and come back; sent, the conversation; otherwise
+   * the form, opened and focused — which brings it into view and, on a phone, the
+   * keyboard up.
+   */
+  engage(): void {
+    if (!this.signedIn()) {
+      void this.router.navigate([this.signInRoute], { queryParams: this.signInQuery() });
+    } else if (this.sentTo()) {
+      void this.router.navigate(['/messages', this.sentTo()]);
+    } else if (!this.ownListing()) {
+      this.start();
+    }
+  }
 
   protected start(): void {
     if (!this.body()) {

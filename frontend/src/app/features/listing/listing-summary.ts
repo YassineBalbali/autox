@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, viewChild } from '@angular/core';
 
 import { PublicListingDetail } from '../../core/api';
 import { NBSP } from '../../shared/format/number';
@@ -30,6 +30,12 @@ const MONTH_AND_YEAR = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: '
 })
 export class ListingSummary {
   readonly listing = input.required<PublicListingDetail>();
+
+  /**
+   * The contact block, for the phone's bottom bar to act through and to read. Not
+   * required: the page reads it while the summary's own view is still being created.
+   */
+  readonly contact = viewChild(ContactSeller);
   /** Decimal places of the listing's currency. */
   readonly minorUnit = input(2);
 
