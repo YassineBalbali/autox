@@ -12,17 +12,25 @@
   --h-control: 40px;
 
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--s-2) var(--s-3);
+  // On a phone: the text field and a square button beside it, nothing else. Make and model
+  // move to the filter sheet; the price and the year are already there as ranges.
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-2);
   align-items: end;
-  padding: var(--s-3) var(--s-4);
+  padding: var(--s-2);
   background: var(--c-surface);
   border: var(--border);
   border-top: 3px solid var(--c-navy);
   border-radius: var(--r-md);
 
+  @include t.touch {
+    --h-control: 44px;
+  }
+
   @media (min-width: t.$bp-md) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-2) var(--s-3);
+    padding: var(--s-3) var(--s-4);
   }
 
   // One row at desktop width: the text takes the slack, the two selects share evenly,
@@ -37,6 +45,12 @@
   flex-direction: column;
   gap: var(--s-0);
   min-width: 0;
+
+  @media (max-width: calc(t.$bp-md - 0.02px)) {
+    &:not(.bar__field--wide) {
+      display: none;
+    }
+  }
 }
 
 .bar__field--wide {
@@ -51,6 +65,16 @@
   color: var(--c-ink-soft);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+
+  // Named for a screen reader on a phone; the placeholder says it for the eye.
+  @media (max-width: calc(t.$bp-md - 0.02px)) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 // The fields fill their grid cell; the global measure cap is for forms, not for a bar.
@@ -63,7 +87,29 @@
   font-size: var(--t-md);
   font-weight: var(--fw-bold);
 
+  @media (max-width: calc(t.$bp-md - 0.02px)) {
+    width: var(--h-control);
+    padding: 0;
+  }
+
   @media (min-width: t.$bp-md) and (max-width: (t.$bp-lg - 1px)) {
     grid-column: 1 / -1;
+  }
+}
+
+.bar__submit-icon {
+  @media (min-width: t.$bp-md) {
+    display: none;
+  }
+}
+
+.bar__submit-text {
+  @media (max-width: calc(t.$bp-md - 0.02px)) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

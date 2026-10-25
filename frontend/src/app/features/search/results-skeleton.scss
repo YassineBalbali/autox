@@ -14,9 +14,9 @@
   @include results.surface;
 
   display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
-  gap: var(--s-2) var(--s-3);
-  padding: var(--s-3);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--s-3);
+  padding: var(--s-2);
 
   @media (min-width: t.$bp-sm) {
     grid-template-columns: 12rem minmax(0, 1fr) 8.5rem;

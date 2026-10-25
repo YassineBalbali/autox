@@ -30,6 +30,8 @@ import { Favourites } from './favourites';
     </button>
   `,
   styles: `
+    @use '../../../styles/tokens' as t;
+
     :host {
       display: block;
       position: relative;
@@ -62,6 +64,12 @@ import { Favourites } from './favourites';
       &:focus-visible {
         outline: 2px solid var(--c-focus);
         outline-offset: 2px;
+      }
+
+      // A finger's size on a phone; the heart inside stays the same.
+      @include t.touch {
+        width: 44px;
+        height: 44px;
       }
 
       &[aria-pressed='true'] {

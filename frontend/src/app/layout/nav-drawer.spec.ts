@@ -2,11 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { BASE_PATH, UserRole } from '../core/api';
 import { AuthService } from '../core/auth/auth.service';
 import { StoredTokens, TOKEN_STORE, TokenStore } from '../core/auth/token-store';
+import { stubDialogs } from '../core/ui/dom-testing';
 import { NavDrawer } from './nav-drawer';
 
 const BASE = 'http://api.test';
@@ -40,28 +41,10 @@ const ITEMS = [
 /**
  * The phone's menu drawer.
  *
- * <p>jsdom knows the dialog element but not its modal methods, so they are given the two
- * effects the component relies on: showModal opens it, close shuts it and says so with a
- * `close` event — which is also what a real browser fires on Escape.
+ * <p>jsdom knows the dialog element but not its modal methods: see {@link stubDialogs}.
  */
 describe('NavDrawer', () => {
-  const proto = HTMLDialogElement.prototype as unknown as Record<string, unknown>;
-  const original = { showModal: proto['showModal'], close: proto['close'] };
-
-  beforeAll(() => {
-    proto['showModal'] = function (this: HTMLDialogElement) {
-      this.setAttribute('open', '');
-    };
-    proto['close'] = function (this: HTMLDialogElement) {
-      this.removeAttribute('open');
-      this.dispatchEvent(new Event('close'));
-    };
-  });
-
-  afterAll(() => {
-    proto['showModal'] = original.showModal;
-    proto['close'] = original.close;
-  });
+  stubDialogs();
 
   let fixture: ComponentFixture<NavDrawer>;
   let auth: AuthService;
@@ -122,7 +105,7 @@ describe('NavDrawer', () => {
   it('opens as a modal, so the page behind is inert and focus stays inside', async () => {
     await render(false);
     let modal = false;
-    const showModal = proto['showModal'] as () => void;
+    const showModal = HTMLDialogElement.prototype.showModal;
     dialog().showModal = function (this: HTMLDialogElement) {
       modal = true;
       showModal.call(this);

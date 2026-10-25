@@ -1,9 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 
-import { BodyType, FuelType, Gearbox, VehicleCondition } from '../../core/api';
+import { BodyType, FuelType, Gearbox, ResultCount, VehicleCondition } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
+import { WIDE, mediaQuery } from '../../core/ui/media';
+import { formatIntegerFr } from '../../shared/format/number';
+import { Icon } from '../../shared/ui/icon';
 import { FilterChip } from '../../shared/ui/filter-chip';
 import {
   BODY_LABELS,
@@ -13,6 +28,7 @@ import {
   labelOf,
 } from '../../shared/listing/labels.fr';
 import { SearchQuery, activeFilterCount } from './search-query';
+import { VehicleFilter } from './vehicle-filter';
 
 /** One multi-choice filter: its key in the query, its heading, its options. */
 interface ChoiceGroup {
@@ -39,13 +55,20 @@ type RangeKey = 'yearMin' | 'yearMax' | 'priceMin' | 'priceMax' | 'mileageMin' |
  * <p>The enum options come from the reference endpoint, not from lists written here.
  * What is written here is only the French for them.
  *
+ * <p><b>Two places.</b> From the large breakpoint up the form is a sidebar beside the
+ * results. Below it, it is a full-screen sheet — a native modal dialog, so focus is held in
+ * it, the page behind is inert, and Escape closes it — opened from the page's sticky bar.
+ * Its changes apply as they are made, exactly as in the sidebar, so the button at its
+ * foot only closes it, and can say how many cars the filters find. On a phone the sheet
+ * also carries make and model, which the search bar there no longer shows.
+ *
  * <p>Text and number fields report on `change`, which fires when the field is left or
  * Enter is pressed, not on every keystroke: typing "15000" would otherwise be five
  * searches and five entries in the browser history.
  */
 @Component({
   selector: 'app-search-filters',
-  imports: [FilterChip],
+  imports: [FilterChip, NgTemplateOutlet, Icon, VehicleFilter],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './search-filters.html',
   styleUrl: './search-filters.scss',
@@ -55,13 +78,53 @@ export class SearchFilters {
 
   readonly query = input.required<SearchQuery>();
 
+  /** How many listings the current filters find, for the sheet's button. */
+  readonly resultCount = input<ResultCount | null>(null);
+
   /** The fields of the query to replace. */
   readonly changed = output<Partial<SearchQuery>>();
 
-  /** Below the breakpoint the sidebar is collapsed behind a button; this is that state. */
-  protected readonly open = signal(false);
+  /** "Tout effacer", from the sheet. */
+  readonly cleared = output<void>();
+
+  /**
+   * Sidebar or sheet. Without `matchMedia` — the test runner — the sidebar: the layout the
+   * component had before there was a sheet.
+   */
+  protected readonly wide = mediaQuery(WIDE, true);
+
+  /** Whether the sheet is open. Read by the page, for its button's aria-expanded. */
+  readonly sheetOpen = signal(false);
+
+  private readonly sheet = viewChild.required<ElementRef<HTMLDialogElement>>('sheet');
 
   protected readonly activeCount = computed(() => activeFilterCount(this.query()));
+
+  /** "Voir les 120 annonces": what closing the sheet will show. */
+  protected readonly showLabel = computed(() => showLabel(this.resultCount()));
+
+  constructor() {
+    effect(() => {
+      const sheet = this.sheet().nativeElement;
+      // Never modal on a wide screen: if the window is widened with the sheet open, the
+      // sidebar takes over and the page must not be left inert behind an empty dialog.
+      const open = this.sheetOpen() && !this.wide();
+      if (open && !sheet.open) {
+        sheet.showModal();
+      } else if (!open && sheet.open) {
+        sheet.close();
+      }
+    });
+  }
+
+  /** Opens the sheet. Below the large breakpoint only; above it the sidebar is there. */
+  openSheet(): void {
+    this.sheetOpen.set(true);
+  }
+
+  protected closeSheet(): void {
+    this.sheetOpen.set(false);
+  }
 
   private readonly enums = toSignal(
     this.reference.enums().pipe(catchError(() => of({} as Record<string, string[]>))),
@@ -77,10 +140,6 @@ export class SearchFilters {
       group('condition', 'État', enums['VehicleCondition'], VehicleCondition, CONDITION_LABELS),
     ].filter((entry) => entry.options.length > 0);
   });
-
-  protected toggleOpen(): void {
-    this.open.update((open) => !open);
-  }
 
   protected isChosen(key: ChoiceGroup['key'], value: string): boolean {
     return (this.query()[key] as readonly string[]).includes(value);
@@ -107,6 +166,23 @@ export class SearchFilters {
     }
     this.changed.emit({ [key]: value } as Partial<SearchQuery>);
   }
+}
+
+/**
+ * The sheet's button. The count is asked separately from the results and may be late or
+ * missing: then it says what it does without a figure rather than guessing one.
+ */
+export function showLabel(count: ResultCount | null): string {
+  if (count === null || typeof count.count !== 'number') {
+    return 'Voir les annonces';
+  }
+  if (count.capped) {
+    return `Voir plus de ${formatIntegerFr(count.count)} annonces`;
+  }
+  if (count.count === 0) {
+    return 'Aucune annonce';
+  }
+  return count.count === 1 ? 'Voir l’annonce' : `Voir les ${formatIntegerFr(count.count)} annonces`;
 }
 
 function textOf(event: Event): string | null {

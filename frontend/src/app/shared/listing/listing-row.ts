@@ -9,6 +9,7 @@ import { Price } from './price';
 import { PriceBadge } from './price-badge';
 import { SellerBadge } from './seller-badge';
 import { SpecFacts } from './spec-facts';
+import { SpecLine } from './spec-line';
 import { headlineOf, listingLink, placeOf } from './summary';
 
 /**
@@ -31,10 +32,15 @@ import { headlineOf, listingLink, placeOf } from './summary';
  * hit area is stretched over the row in CSS. One link per row, not a link wrapped round
  * everything — a screen reader then announces "Peugeot 308, lien" rather than reading
  * the price, the mileage and the town out as one enormous link name.
+ *
+ * <p>On a phone (below the small breakpoint) the row tightens to what fits beside a
+ * photo: the price, the title, two short spec lines — year and mileage, fuel and gearbox
+ * — and the town. The version, the power, the seller, the price verdict and the date are
+ * on the listing's page. Both versions are in the markup; the stylesheet shows one.
  */
 @Component({
   selector: 'app-listing-row',
-  imports: [Price, PriceBadge, SpecFacts, SellerBadge, ListingThumb, Icon, RouterLink],
+  imports: [Price, PriceBadge, SpecFacts, SpecLine, SellerBadge, ListingThumb, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-row.html',
   styleUrl: './listing-row.scss',

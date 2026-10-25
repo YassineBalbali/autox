@@ -163,11 +163,19 @@ function range(
     }
   `,
   styles: `
+    @use '../../../styles/tokens' as t;
+
     .applied {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: var(--s-2) var(--s-3);
+
+      // Below the large breakpoint, one row: the chips scroll sideways under a finger and
+      // "Tout effacer" stays at the end of the row, where it can always be reached.
+      @media (max-width: calc(t.$bp-lg - 0.02px)) {
+        flex-wrap: nowrap;
+      }
     }
 
     .applied__list {
@@ -177,6 +185,21 @@ function range(
       margin: 0;
       padding: 0;
       list-style: none;
+
+      @media (max-width: calc(t.$bp-lg - 0.02px)) {
+        flex: 1;
+        flex-wrap: nowrap;
+        min-width: 0;
+        gap: var(--s-2);
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        // No bar: the chip cut off at the edge says there is more.
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+          display: none;
+        }
+      }
     }
 
     // The active-filter state from the style pass — accent outline, tint and text — so a
@@ -199,6 +222,11 @@ function range(
         border-color: var(--c-accent-strong);
         color: var(--c-accent-strong);
       }
+
+      @include t.touch {
+        height: var(--h-control);
+        padding-inline: var(--s-3);
+      }
     }
 
     .applied__x {
@@ -218,6 +246,12 @@ function range(
 
       &:hover {
         color: var(--c-ink);
+      }
+
+      @include t.touch {
+        flex: none;
+        min-height: 44px;
+        white-space: nowrap;
       }
     }
   `,

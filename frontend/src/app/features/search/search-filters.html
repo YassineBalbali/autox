@@ -1,108 +1,139 @@
-<!-- Below the large breakpoint the filters collapse behind this button. On desktop it is
-     hidden and the sidebar is always there. -->
-<button
-  class="btn btn--quiet filters__toggle"
-  type="button"
-  [attr.aria-expanded]="open()"
-  aria-controls="filtres"
-  (click)="toggleOpen()"
->
-  <ng-container i18n="@@filtersToggle">Filtres</ng-container>
-  @if (activeCount() > 0) {
-    <span class="tag tag--accent">{{ activeCount() }}</span>
-  }
-</button>
+<!-- One form, in one of two places: beside the results from the large breakpoint up, and
+     in a full-screen sheet below it, opened from the page's sticky bar. Rendered in one
+     place at a time, so there is never a second copy for a screen reader to find. -->
+<ng-template #form>
+  <!-- A form only so that Enter in a field commits it; it is never submitted anywhere. -->
+  <form
+    class="filters"
+    id="filtres"
+    aria-label="Filtres de recherche"
+    i18n-aria-label="@@filtersLabel"
+    (submit)="$event.preventDefault()"
+  >
+    <!-- The sidebar's heading. The sheet has its own, beside its close button. -->
+    @if (wide()) {
+      <div class="filters__head">
+        <h2 i18n="@@filtersTitle">Filtres</h2>
+      </div>
+    }
 
-<!-- A form only so that Enter in a field commits it; it is never submitted anywhere. -->
-<form
-  class="filters"
-  id="filtres"
-  [class.filters--open]="open()"
-  aria-label="Filtres de recherche"
-  i18n-aria-label="@@filtersLabel"
-  (submit)="$event.preventDefault()"
->
-  <div class="filters__head">
-    <h2 i18n="@@filtersTitle">Filtres</h2>
-  </div>
-
-  <!-- ============================================================= ranges -->
-  <fieldset class="filters__group">
-    <legend i18n="@@filterYear">Année</legend>
-    <div class="filters__range">
-      <input class="input" type="text" inputmode="numeric" placeholder="De" aria-label="Année minimum"
-        i18n-placeholder="@@rangeFrom" i18n-aria-label="@@filterYearMin"
-        [value]="query().yearMin ?? ''" (change)="setNumber('yearMin', $event)" />
-      <input class="input" type="text" inputmode="numeric" placeholder="À" aria-label="Année maximum"
-        i18n-placeholder="@@rangeTo" i18n-aria-label="@@filterYearMax"
-        [value]="query().yearMax ?? ''" (change)="setNumber('yearMax', $event)" />
-    </div>
-  </fieldset>
-
-  <fieldset class="filters__group">
-    <legend i18n="@@filterPrice">Prix (€)</legend>
-    <div class="filters__range">
-      <input class="input" type="text" inputmode="numeric" placeholder="Min" aria-label="Prix minimum en euros"
-        i18n-placeholder="@@rangeMin" i18n-aria-label="@@filterPriceMin"
-        [value]="query().priceMin ?? ''" (change)="setNumber('priceMin', $event)" />
-      <input class="input" type="text" inputmode="numeric" placeholder="Max" aria-label="Prix maximum en euros"
-        i18n-placeholder="@@rangeMax" i18n-aria-label="@@filterPriceMax"
-        [value]="query().priceMax ?? ''" (change)="setNumber('priceMax', $event)" />
-    </div>
-  </fieldset>
-
-  <fieldset class="filters__group">
-    <legend i18n="@@filterMileage">Kilométrage (km)</legend>
-    <div class="filters__range">
-      <input class="input" type="text" inputmode="numeric" placeholder="Min" aria-label="Kilométrage minimum"
-        i18n-placeholder="@@rangeMin" i18n-aria-label="@@filterMileageMin"
-        [value]="query().mileageMin ?? ''" (change)="setNumber('mileageMin', $event)" />
-      <input class="input" type="text" inputmode="numeric" placeholder="Max" aria-label="Kilométrage maximum"
-        i18n-placeholder="@@rangeMax" i18n-aria-label="@@filterMileageMax"
-        [value]="query().mileageMax ?? ''" (change)="setNumber('mileageMax', $event)" />
-    </div>
-  </fieldset>
-
-  <!-- The price indicator: listings priced well below comparable ones. -->
-  <fieldset class="filters__group">
-    <legend i18n="@@filterMarket">Prix du marché</legend>
-    <div class="filters__chips">
-      <app-filter-chip [active]="query().goodDeals" (toggled)="changed.emit({ goodDeals: $event })">
-        <ng-container i18n="@@filterGoodDeals">Bonnes affaires uniquement</ng-container>
-      </app-filter-chip>
-    </div>
-  </fieldset>
-
-  <!-- ====================================================== multi-choice -->
-  @for (group of groups(); track group.key) {
+    <!-- ============================================================= ranges -->
     <fieldset class="filters__group">
-      <legend>{{ group.legend }}</legend>
-      <div class="filters__chips">
-        @for (option of group.options; track option.value) {
-          <app-filter-chip
-            [active]="isChosen(group.key, option.value)"
-            (toggled)="toggleChoice(group.key, option.value, $event)"
-          >
-            {{ option.label }}
-          </app-filter-chip>
-        }
+      <legend i18n="@@filterYear">Année</legend>
+      <div class="filters__range">
+        <input class="input" type="text" inputmode="numeric" placeholder="De" aria-label="Année minimum"
+          i18n-placeholder="@@rangeFrom" i18n-aria-label="@@filterYearMin"
+          [value]="query().yearMin ?? ''" (change)="setNumber('yearMin', $event)" />
+        <input class="input" type="text" inputmode="numeric" placeholder="À" aria-label="Année maximum"
+          i18n-placeholder="@@rangeTo" i18n-aria-label="@@filterYearMax"
+          [value]="query().yearMax ?? ''" (change)="setNumber('yearMax', $event)" />
       </div>
     </fieldset>
-  }
 
-  <!-- =========================================================== location -->
-  <fieldset class="filters__group">
-    <legend i18n="@@filterLocation">Localisation</legend>
-    <input
-      class="input"
-      type="text"
-      autocomplete="off"
-      placeholder="Ville ou code postal"
-      aria-label="Ville ou code postal"
-      i18n-placeholder="@@filterLocationPlaceholder"
-      i18n-aria-label="@@filterLocationPlaceholder"
-      [value]="query().location ?? ''"
-      (change)="setLocation($event)"
-    />
-  </fieldset>
-</form>
+    <fieldset class="filters__group">
+      <legend i18n="@@filterPrice">Prix (€)</legend>
+      <div class="filters__range">
+        <input class="input" type="text" inputmode="numeric" placeholder="Min" aria-label="Prix minimum en euros"
+          i18n-placeholder="@@rangeMin" i18n-aria-label="@@filterPriceMin"
+          [value]="query().priceMin ?? ''" (change)="setNumber('priceMin', $event)" />
+        <input class="input" type="text" inputmode="numeric" placeholder="Max" aria-label="Prix maximum en euros"
+          i18n-placeholder="@@rangeMax" i18n-aria-label="@@filterPriceMax"
+          [value]="query().priceMax ?? ''" (change)="setNumber('priceMax', $event)" />
+      </div>
+    </fieldset>
+
+    <fieldset class="filters__group">
+      <legend i18n="@@filterMileage">Kilométrage (km)</legend>
+      <div class="filters__range">
+        <input class="input" type="text" inputmode="numeric" placeholder="Min" aria-label="Kilométrage minimum"
+          i18n-placeholder="@@rangeMin" i18n-aria-label="@@filterMileageMin"
+          [value]="query().mileageMin ?? ''" (change)="setNumber('mileageMin', $event)" />
+        <input class="input" type="text" inputmode="numeric" placeholder="Max" aria-label="Kilométrage maximum"
+          i18n-placeholder="@@rangeMax" i18n-aria-label="@@filterMileageMax"
+          [value]="query().mileageMax ?? ''" (change)="setNumber('mileageMax', $event)" />
+      </div>
+    </fieldset>
+
+    <!-- The price indicator: listings priced well below comparable ones. -->
+    <fieldset class="filters__group">
+      <legend i18n="@@filterMarket">Prix du marché</legend>
+      <div class="filters__chips">
+        <app-filter-chip [active]="query().goodDeals" (toggled)="changed.emit({ goodDeals: $event })">
+          <ng-container i18n="@@filterGoodDeals">Bonnes affaires uniquement</ng-container>
+        </app-filter-chip>
+      </div>
+    </fieldset>
+
+    <!-- ====================================================== multi-choice -->
+    @for (group of groups(); track group.key) {
+      <fieldset class="filters__group">
+        <legend>{{ group.legend }}</legend>
+        <div class="filters__chips">
+          @for (option of group.options; track option.value) {
+            <app-filter-chip
+              [active]="isChosen(group.key, option.value)"
+              (toggled)="toggleChoice(group.key, option.value, $event)"
+            >
+              {{ option.label }}
+            </app-filter-chip>
+          }
+        </div>
+      </fieldset>
+    }
+
+    <!-- =========================================================== location -->
+    <fieldset class="filters__group">
+      <legend i18n="@@filterLocation">Localisation</legend>
+      <input
+        class="input"
+        type="text"
+        autocomplete="off"
+        placeholder="Ville ou code postal"
+        aria-label="Ville ou code postal"
+        i18n-placeholder="@@filterLocationPlaceholder"
+        i18n-aria-label="@@filterLocationPlaceholder"
+        [value]="query().location ?? ''"
+        (change)="setLocation($event)"
+      />
+    </fieldset>
+  </form>
+</ng-template>
+
+@if (wide()) {
+  <ng-container *ngTemplateOutlet="form" />
+}
+
+<dialog
+  #sheet
+  class="sheet"
+  aria-labelledby="sheet-title"
+  (close)="sheetOpen.set(false)"
+>
+  @if (!wide()) {
+    <div class="sheet__top">
+      <button class="sheet__close" type="button" (click)="closeSheet()">
+        <app-icon name="x" [size]="24" />
+        <span class="visually-hidden" i18n="@@sheetClose">Fermer les filtres</span>
+      </button>
+      <h2 id="sheet-title" class="sheet__title" i18n="@@filtersTitle">Filtres</h2>
+      @if (activeCount() > 0) {
+        <button class="sheet__clear" type="button" (click)="cleared.emit()" i18n="@@appliedClear">
+          Tout effacer
+        </button>
+      }
+    </div>
+
+    <div class="sheet__body">
+      <app-vehicle-filter class="sheet__vehicle" [query]="query()" (changed)="changed.emit($event)" />
+      <ng-container *ngTemplateOutlet="form" />
+    </div>
+
+    <!-- Every change above has already been applied: this closes the sheet on results
+         that are already there, and says how many. -->
+    <div class="sheet__foot">
+      <button class="btn btn--primary btn--block sheet__show" type="button" (click)="closeSheet()">
+        {{ showLabel() }}
+      </button>
+    </div>
+  }
+</dialog>

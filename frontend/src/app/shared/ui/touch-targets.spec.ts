@@ -36,6 +36,19 @@ describe('touch targets', () => {
     );
   });
 
+  it('gives the controls a results page is tapped through the full floor on a phone', () => {
+    // The heart on every photo, the filter chips, and the search bar, which is a step
+    // taller than other controls on a desktop and must not stay a step short on a phone.
+    expect(read('src/app/shared/listing/favourite-button.ts')).toMatch(
+      /@include t\.touch \{\s*width: 44px;\s*height: 44px;/,
+    );
+    expect(read('src/app/shared/ui/filter-chip.ts')).toMatch(/@include t\.touch \{\s*height: var\(--h-control\);/);
+    expect(read('src/app/features/search/active-filters.ts')).toMatch(
+      /@include t\.touch \{\s*height: var\(--h-control\);/,
+    );
+    expect(read('src/app/features/search/search-bar.scss')).toMatch(/@include t\.touch \{\s*--h-control: 44px;/);
+  });
+
   it('sets text fields in 16px below the medium breakpoint, so iOS does not zoom', () => {
     const input = controls.slice(controls.indexOf('.input {'));
     expect(input.slice(0, input.indexOf('\n}'))).toMatch(

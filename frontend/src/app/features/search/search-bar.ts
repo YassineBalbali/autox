@@ -4,6 +4,7 @@ import { catchError, map, of, startWith, switchMap } from 'rxjs';
 
 import { Make, Model } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
+import { Icon } from '../../shared/ui/icon';
 import { SearchQuery } from './search-query';
 
 /** What the bar is holding before "Rechercher" is pressed. Strings: these are form fields. */
@@ -40,6 +41,7 @@ const OLDEST_YEAR = 2000;
  */
 @Component({
   selector: 'app-search-bar',
+  imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './search-bar.html',
   styleUrl: './search-bar.scss',

@@ -4,17 +4,18 @@
   display: block;
 }
 
-// Three columns from the small breakpoint up: photo, facts, price. Below it the price
-// drops under the facts, still right-aligned, rather than squeezing the title.
+// Three columns from the small breakpoint up: photo, facts, price. Below it, on a phone,
+// two: the photo, and beside it price, title, two spec lines and the town.
 //
 // The article is the positioning context for the title link's ::after, which is stretched
 // over all of it: the row is the link's target.
 .listing {
   position: relative;
   display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
-  gap: var(--s-2) var(--s-3);
-  padding: var(--s-3);
+  // Two fifths for the photo: 4:3 at that width is as tall as the five lines beside it.
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--s-3);
+  padding: var(--s-2);
 
   @media (min-width: t.$bp-sm) {
     // A photo big enough to judge the car by, and no taller than the text beside it:
@@ -40,12 +41,24 @@
 .listing__main {
   display: flex;
   flex-direction: column;
-  gap: var(--s-2);
+  gap: var(--s-1);
   min-width: 0;
 
   @media (min-width: t.$bp-sm) {
+    gap: var(--s-2);
     padding-block: var(--s-3);
   }
+}
+
+.listing__phone-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-0);
+}
+
+.listing__phone-price {
+  // Above the title, where the line height would otherwise open a gap.
+  line-height: var(--lh-tight);
 }
 
 .listing__title {
@@ -94,6 +107,10 @@
   font-weight: var(--fw-regular);
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  @media (max-width: calc(t.$bp-sm - 0.02px)) {
+    display: none;
+  }
 }
 
 // Directly under the facts, not pinned to the bottom: heading, facts and foot read as one
@@ -104,10 +121,13 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s-1) var(--s-3);
-  margin-top: var(--s-1);
   font-size: var(--t-xs);
   color: var(--c-ink-faint);
   line-height: var(--lh-snug);
+
+  @media (min-width: t.$bp-sm) {
+    margin-top: var(--s-1);
+  }
 }
 
 .listing__place {
@@ -155,4 +175,20 @@
   color: var(--c-ink-faint);
   font-size: var(--t-xs);
   white-space: nowrap;
+}
+
+// ---- one layout or the other ---------------------------------------------------------
+//
+// Last in the sheet, so they win over the display each part sets for itself above.
+
+.listing__phone {
+  @media (min-width: t.$bp-sm) {
+    display: none;
+  }
+}
+
+.listing__wide {
+  @media (max-width: calc(t.$bp-sm - 0.02px)) {
+    display: none;
+  }
 }

@@ -151,4 +151,57 @@ describe('ListingRow', () => {
       expect(row.querySelector('h2')?.textContent).toContain('Peugeot 308');
     });
   });
+
+  describe('on a phone', () => {
+    // jsdom does not apply the stylesheet's breakpoints, so these check the markup each
+    // layout is given: the phone's parts are marked listing__phone, the rest listing__wide.
+    const words = (element: Element | null) => element?.textContent?.replace(/\s+/g, ' ').trim();
+
+    it('leads with the price, above the title', async () => {
+      const row = await render();
+      const main = row.querySelector('.listing__main') as HTMLElement;
+
+      expect(main.firstElementChild?.classList).toContain('listing__phone-price');
+      expect(words(main.firstElementChild)?.replace(/\s/g, ' ')).toBe('12 500 €');
+    });
+
+    it('gives two short spec lines: year and mileage, then fuel and gearbox', async () => {
+      const row = await render();
+      const lines = Array.from(row.querySelectorAll('.listing__phone-lines app-spec-line')).map((line) =>
+        Array.from(line.querySelectorAll('li')).map((item) => item.textContent?.replace(/\s/g, ' ').trim()),
+      );
+
+      expect(lines).toEqual([
+        ['2021', '62 400 km'],
+        ['Diesel', 'Manuelle'],
+      ]);
+    });
+
+    it('keeps the town, and leaves the rest to the wider layout', async () => {
+      const row = await render();
+
+      expect(row.querySelector('.listing__place')?.closest('.listing__wide')).toBeNull();
+      for (const part of ['app-spec-facts', '.listing__seller', '.listing__aside']) {
+        expect(row.querySelector(part)?.classList, part).toContain('listing__wide');
+      }
+    });
+
+    it('has one link still, whose target is the whole row', async () => {
+      const row = await render();
+
+      expect(row.querySelectorAll('a')).toHaveLength(1);
+      expect(row.querySelector('.listing__phone-price a, .listing__phone-lines a')).toBeNull();
+    });
+
+    it('drops a missing fact rather than leaving a dangling line', async () => {
+      const row = await render({ ...LISTING, fuelType: undefined, gearbox: undefined, mileageKm: undefined });
+      const lines = Array.from(row.querySelectorAll('.listing__phone-lines app-spec-line')).map(
+        (line) => line.querySelectorAll('li').length,
+      );
+
+      // The host passes the labels in; with none, only the year is left.
+      expect(lines[0]).toBe(1);
+      expect(row.textContent).not.toContain('undefined');
+    });
+  });
 });

@@ -8,6 +8,37 @@
   gap: var(--s-3);
 }
 
+// ---- the sticky bar, below the large breakpoint ------------------------------------
+
+// The filter button and the sort, side by side, held at the top of the screen. Full-bleed,
+// on the page grey, so the results scrolling under it disappear behind a clean edge.
+.search__sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s-2);
+  margin-inline: calc(-1 * var(--gutter));
+  padding: var(--s-2) var(--gutter);
+  background: var(--c-page);
+  border-bottom: var(--divider);
+
+  @media (min-width: t.$bp-lg) {
+    display: none;
+  }
+}
+
+.search__filters-button {
+  justify-content: center;
+  font-weight: var(--fw-bold);
+}
+
+.search__sort-compact {
+  max-width: none;
+  font-weight: var(--fw-semibold);
+}
+
 // Filters beside results from the large breakpoint up; stacked below it. Same grid, and
 // the same minmax(0, 1fr) for the same reason, as the account section.
 .search__body {
@@ -60,6 +91,13 @@
   gap: var(--s-2) var(--s-4);
 }
 
+// A result is always a row on a phone: nothing to choose.
+.search__view {
+  @media (max-width: calc(t.$bp-sm - 0.02px)) {
+    display: none;
+  }
+}
+
 // ---- the results ---------------------------------------------------------
 
 .search__list {
@@ -89,6 +127,11 @@
   display: flex;
   align-items: center;
   gap: var(--s-2);
+
+  // Below the large breakpoint the sort is in the sticky bar.
+  @media (max-width: calc(t.$bp-lg - 0.02px)) {
+    display: none;
+  }
 
   label {
     font-size: var(--t-sm);
