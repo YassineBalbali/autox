@@ -34,9 +34,9 @@ import { headlineOf, listingLink, placeOf } from './summary';
  * the price, the mileage and the town out as one enormous link name.
  *
  * <p>On a phone (below the small breakpoint) the row tightens to what fits beside a
- * photo: the price, the title, two short spec lines — year and mileage, fuel and gearbox
- * — and the town. The version, the power, the seller, the price verdict and the date are
- * on the listing's page. Both versions are in the markup; the stylesheet shows one.
+ * photo: the price and its verdict, the title, two short spec lines — year and mileage,
+ * fuel and gearbox — and the town. The version, the power, the seller and the date are on
+ * the listing's page. Both versions are in the markup; the stylesheet shows one.
  */
 @Component({
   selector: 'app-listing-row',

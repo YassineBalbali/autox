@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { PublicListingSummary } from '../../core/api';
+import { PriceLevel, PublicListingSummary } from '../../core/api';
 import { NBSP } from '../format/number';
 import { ListingRow } from './listing-row';
 
@@ -163,6 +163,25 @@ describe('ListingRow', () => {
 
       expect(main.firstElementChild?.classList).toContain('listing__phone-price');
       expect(words(main.firstElementChild)?.replace(/\s/g, ' ')).toBe('12 500 €');
+    });
+
+    it('gives the price verdict its own line, right under the price', async () => {
+      const row = await render({
+        ...LISTING,
+        priceIndicator: { level: PriceLevel.GOOD_DEAL, medianPriceAmount: 1400000, comparableCount: 12 },
+      });
+      const main = row.querySelector('.listing__main') as HTMLElement;
+      const verdict = main.children[1] as HTMLElement;
+
+      expect(verdict.classList).toContain('listing__phone-verdict');
+      expect(verdict.classList).toContain('listing__phone');
+      expect(words(verdict)).toBe('Bonne affaire');
+    });
+
+    it('leaves the verdict line empty, and so collapsed, for a listing without one', async () => {
+      const row = await render({ ...LISTING, priceIndicator: undefined });
+
+      expect(row.querySelector('.listing__phone-verdict')?.textContent?.trim()).toBe('');
     });
 
     it('gives two short spec lines: year and mileage, then fuel and gearbox', async () => {

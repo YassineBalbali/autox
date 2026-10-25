@@ -387,6 +387,19 @@ describe('SearchFilters', () => {
       expect(host.clears).toBe(1);
     });
 
+    it('closes on Back, and Back does nothing else', async () => {
+      await renderPhone();
+      await openSheet();
+
+      history.back();
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      await fixture.whenStable();
+
+      expect(sheet().open).toBe(false);
+      expect(host.filters().sheetOpen()).toBe(false);
+      expect(host.patches).toEqual([]);
+    });
+
     it('keeps its state honest when the browser closes it, as Escape does', async () => {
       await renderPhone();
       await openSheet();

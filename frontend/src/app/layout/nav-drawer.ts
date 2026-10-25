@@ -17,6 +17,7 @@ import { filter } from 'rxjs';
 import { UserRole } from '../core/api';
 import { AuthService } from '../core/auth/auth.service';
 import { UnreadMessages } from '../core/messaging/unread-messages';
+import { OverlayEntry, OverlayHistory } from '../core/ui/overlay-history';
 import { Logo } from '../shared/brand/logo';
 import { Icon } from '../shared/ui/icon';
 import { NavItem } from './primary-nav';
@@ -33,9 +34,12 @@ import { NavItem } from './primary-nav';
  * focus goes back to the burger afterwards. A hand-made overlay has to reimplement each of
  * those, and is usually missing one.
  *
- * <p>It closes on the way out of every route change, not only on a tap on one of its own
- * links — the browser's back button is a navigation too, and a drawer still open over the
- * page it led to would look like the page had not changed.
+ * <p>Back closes it and does nothing else, as on any phone: see {@link OverlayHistory}. Its
+ * links replace the history entry the drawer added rather than stacking a page on top of
+ * it, so Back from where a link led returns to the page the drawer was opened on.
+ *
+ * <p>It also closes on any route change it did not start itself, so it is never left open
+ * over a page it did not lead to.
  */
 @Component({
   selector: 'app-nav-drawer',
@@ -58,11 +62,11 @@ import { NavItem } from './primary-nav';
       class="drawer"
       aria-label="Menu"
       i18n-aria-label="@@drawerLabel"
-      (close)="open.set(false)"
+      (close)="hide()"
     >
       <div class="drawer__panel">
         <div class="drawer__top">
-          <a class="drawer__brand" routerLink="/" aria-label="AutoX — accueil" i18n-aria-label="@@brandHome" (click)="hide()">
+          <a class="drawer__brand" routerLink="/" aria-label="AutoX — accueil" i18n-aria-label="@@brandHome" [replaceUrl]="true" (click)="leave()">
             <app-logo />
           </a>
           <button class="drawer__close" type="button" (click)="hide()">
@@ -78,7 +82,8 @@ import { NavItem } from './primary-nav';
               [routerLink]="'/' + item.path"
               routerLinkActive="drawer__link--active"
               [routerLinkActiveOptions]="{ exact: item.path === '' }"
-              (click)="hide()"
+              [replaceUrl]="true"
+              (click)="leave()"
             >
               {{ item.label }}
             </a>
@@ -91,14 +96,14 @@ import { NavItem } from './primary-nav';
               <app-icon name="user" [size]="16" />
               <span class="drawer__account-name">{{ accountName() }}</span>
             </h2>
-            <a class="drawer__link" routerLink="/messages" routerLinkActive="drawer__link--active" (click)="hide()">
+            <a class="drawer__link" routerLink="/messages" routerLinkActive="drawer__link--active" [replaceUrl]="true" (click)="leave()">
               <span i18n="@@headerMessages">Messages</span>
               @if (unread() > 0) {
                 <span class="count-badge" aria-hidden="true">{{ unread() > 99 ? '99+' : unread() }}</span>
                 <span class="visually-hidden">{{ unreadLabel() }}</span>
               }
             </a>
-            <a class="drawer__link" routerLink="/mes-annonces" routerLinkActive="drawer__link--active" (click)="hide()" i18n="@@headerMyListings">
+            <a class="drawer__link" routerLink="/mes-annonces" routerLinkActive="drawer__link--active" [replaceUrl]="true" (click)="leave()" i18n="@@headerMyListings">
               Mes annonces
             </a>
             <a
@@ -106,16 +111,17 @@ import { NavItem } from './primary-nav';
               routerLink="/mon-compte"
               routerLinkActive="drawer__link--active"
               [routerLinkActiveOptions]="{ exact: true }"
-              (click)="hide()"
+              [replaceUrl]="true"
+              (click)="leave()"
               i18n="@@headerAccount"
             >
               Mon compte
             </a>
-            <a class="drawer__link" routerLink="/mon-compte/sessions" routerLinkActive="drawer__link--active" (click)="hide()" i18n="@@navSessions">
+            <a class="drawer__link" routerLink="/mon-compte/sessions" routerLinkActive="drawer__link--active" [replaceUrl]="true" (click)="leave()" i18n="@@navSessions">
               Appareils connectés
             </a>
             @if (isAdmin()) {
-              <a class="drawer__link" routerLink="/admin/moderation" routerLinkActive="drawer__link--active" (click)="hide()" i18n="@@headerAdmin">
+              <a class="drawer__link" routerLink="/admin/moderation" routerLinkActive="drawer__link--active" [replaceUrl]="true" (click)="leave()" i18n="@@headerAdmin">
                 Administration
               </a>
             }
@@ -126,10 +132,10 @@ import { NavItem } from './primary-nav';
           </section>
         } @else {
           <div class="drawer__section drawer__auth">
-            <a class="btn btn--primary drawer__cta" routerLink="/inscription" (click)="hide()" i18n="@@headerRegister">
+            <a class="btn btn--primary drawer__cta" routerLink="/inscription" [replaceUrl]="true" (click)="leave()" i18n="@@headerRegister">
               Créer un compte
             </a>
-            <a class="btn btn--quiet drawer__cta" routerLink="/connexion" (click)="hide()" i18n="@@headerSignIn">
+            <a class="btn btn--quiet drawer__cta" routerLink="/connexion" [replaceUrl]="true" (click)="leave()" i18n="@@headerSignIn">
               Se connecter
             </a>
           </div>
@@ -331,6 +337,8 @@ export class NavDrawer {
   });
 
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
+  private readonly history = inject(OverlayHistory);
+  private entry: OverlayEntry | null = null;
 
   constructor() {
     effect(() => {
@@ -347,7 +355,7 @@ export class NavDrawer {
         filter((event) => event instanceof NavigationStart),
         takeUntilDestroyed(),
       )
-      .subscribe(() => this.hide());
+      .subscribe(() => this.leave());
 
     // A tap on the backdrop closes it. Bound here rather than with (click) in the template,
     // where it would read as a mouse-only control on a non-focusable element: the keyboard's
@@ -364,14 +372,28 @@ export class NavDrawer {
 
   protected show(): void {
     this.open.set(true);
+    this.entry = this.history.open(() => {
+      this.entry = null;
+      this.open.set(false);
+    });
   }
 
+  /** Closed from its own controls: the close button, the backdrop, Escape. */
   protected hide(): void {
     this.open.set(false);
+    this.entry?.closed();
+    this.entry = null;
+  }
+
+  /** Closed because a link was followed: the navigation takes over its history entry. */
+  protected leave(): void {
+    this.open.set(false);
+    this.entry?.release();
+    this.entry = null;
   }
 
   protected signOut(): void {
-    this.hide();
+    this.leave();
     this.auth.logout('/connexion');
   }
 }

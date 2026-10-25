@@ -216,12 +216,15 @@ export class SearchPage {
    *
    * <p>Replaced, not merged: a cleared filter has to disappear from the address, and
    * merging would leave it behind. A real navigation rather than `replaceUrl`, so each
-   * filter change is a history entry and the back button undoes exactly one of them.
+   * filter change is a history entry and the back button undoes exactly one of them —
+   * except while the phone's filter sheet is open, where each change replaces the last:
+   * one visit to the sheet is one step back, and Back itself only closes the sheet.
    */
   private navigate(query: SearchQuery): void {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: toQueryParams(query),
+      replaceUrl: this.filters().sheetOpen(),
     });
   }
 

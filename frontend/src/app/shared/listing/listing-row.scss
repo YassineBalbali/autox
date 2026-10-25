@@ -192,3 +192,8 @@
     display: none;
   }
 }
+
+// A listing without a verdict: no empty line in the column.
+.listing__phone-verdict:empty {
+  display: none;
+}

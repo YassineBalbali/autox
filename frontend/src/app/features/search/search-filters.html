@@ -107,7 +107,7 @@
   #sheet
   class="sheet"
   aria-labelledby="sheet-title"
-  (close)="sheetOpen.set(false)"
+  (close)="closeSheet()"
 >
   @if (!wide()) {
     <div class="sheet__top">
