@@ -120,6 +120,13 @@ app-root {
   min-height: 100dvh;
 }
 
+// A modal — the phone's menu drawer, a full-screen sheet — freezes the page under it. The
+// dialog already makes that page inert; without this it would still scroll behind the
+// backdrop when a finger drags past the edge of the panel.
+html:has(dialog:modal) {
+  overflow: hidden;
+}
+
 // ---- the layout primitives every screen uses ------------------------------
 
 // <b>The one container.</b> Horizontal padding plus a maximum width, used by the header,

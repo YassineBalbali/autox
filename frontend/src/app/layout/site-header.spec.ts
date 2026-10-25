@@ -88,6 +88,20 @@ describe('SiteHeader', () => {
     expect(brand.getAttribute('href')).toBe('/');
   });
 
+  it('carries the phone’s menu, fed the same navigation as the desktop bar', async () => {
+    await render(false);
+
+    const drawer = query('app-nav-drawer') as HTMLElement;
+    expect(drawer).not.toBeNull();
+    // First in the bar, before the wordmark, where a thumb expects it.
+    expect(query('.header__inner')?.firstElementChild?.tagName).toBe('APP-NAV-DRAWER');
+    const drawerLinks = Array.from(drawer.querySelectorAll('nav a')).map((a) => a.getAttribute('href'));
+    const barLinks = Array.from((query('.header__nav') as HTMLElement).querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    );
+    expect(drawerLinks).toEqual(barLinks);
+  });
+
   describe('signed out', () => {
     it('offers sign-in and registration', async () => {
       await render(false);
@@ -95,6 +109,7 @@ describe('SiteHeader', () => {
       expect(text()).toContain('Se connecter');
       expect(text()).toContain('Créer un compte');
       expect(query('.account-menu')).toBeNull();
+      expect(query('.header__account-link')).toBeNull();
     });
   });
 
@@ -106,6 +121,16 @@ describe('SiteHeader', () => {
 
       expect(query('.account-menu__button')?.textContent).toContain('Garage Bellevue');
       expect(text()).not.toContain('Créer un compte');
+    });
+
+    it('gives a phone the account as an icon, named in words', async () => {
+      await render(true);
+      auth.setUser({ id: 'u-1', email: 'jean@exemple.fr', displayName: 'Garage Bellevue' });
+      await fixture.whenStable();
+
+      const link = query('.header__account-link') as HTMLAnchorElement;
+      expect(link.getAttribute('href')).toBe('/mon-compte');
+      expect(link.getAttribute('aria-label')).toBe('Mon compte — Garage Bellevue');
     });
 
     it('falls back to the email before the profile has loaded', async () => {

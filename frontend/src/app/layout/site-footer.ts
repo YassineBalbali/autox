@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink, Routes } from '@angular/router';
 
 import { routes } from '../app.routes';
 import { Logo } from '../shared/brand/logo';
+import { Icon } from '../shared/ui/icon';
 
 /** One entry in a footer column. */
 export interface FooterItem {
@@ -109,18 +110,36 @@ export function resolveFooter(
  *
  * <p>Inside `.page`, the same container as the header and the content, so its columns
  * start on the same vertical line as the wordmark above.
+ *
+ * <p>On a phone the five columns are seventeen links stacked one under another — a screen
+ * and a half of small print to scroll past. Below the medium breakpoint each column folds
+ * to its title, a button that opens it: the standard accordion, a heading holding a
+ * button with aria-expanded and aria-controls. Above it there is nothing to open, so the
+ * title is the plain heading again rather than a button that does nothing.
  */
 @Component({
   selector: 'app-site-footer',
-  imports: [Logo, RouterLink],
+  imports: [Logo, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
       <nav class="footer__columns" aria-label="Pied de page" i18n-aria-label="@@footerLabel">
-        @for (column of columns; track column.title) {
+        @for (column of columns; track column.title; let i = $index) {
           <section class="footer__column">
-            <h2 class="footer__title">{{ column.title }}</h2>
-            <ul class="footer__list">
+            <h2 class="footer__title">
+              <span class="footer__title-text">{{ column.title }}</span>
+              <button
+                class="footer__toggle"
+                type="button"
+                [attr.aria-expanded]="isOpen(i)"
+                [attr.aria-controls]="'footer-list-' + i"
+                (click)="toggle(i)"
+              >
+                {{ column.title }}
+                <app-icon name="chevron-down" [size]="18" />
+              </button>
+            </h2>
+            <ul class="footer__list" [id]="'footer-list-' + i" [class.footer__list--open]="isOpen(i)">
               @for (item of column.items; track item.path) {
                 <li>
                   @if (item.available) {
@@ -168,15 +187,17 @@ export function resolveFooter(
       border-top: 2px solid var(--c-navy);
     }
 
+    // One column of folded sections on a phone; the grid from the medium breakpoint up.
     .footer__columns {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--s-4);
-      padding-block: var(--s-5) var(--s-4);
+      display: flex;
+      flex-direction: column;
+      padding-block: var(--s-2) var(--s-4);
 
       @media (min-width: t.$bp-md) {
+        display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: var(--s-5);
+        padding-block: var(--s-5) var(--s-4);
       }
 
       @media (min-width: t.$bp-lg) {
@@ -184,8 +205,13 @@ export function resolveFooter(
       }
     }
 
+    .footer__column {
+      @media (max-width: calc(t.$bp-md - 0.02px)) {
+        border-bottom: var(--divider);
+      }
+    }
+
     .footer__title {
-      margin-bottom: var(--s-2);
       font-size: var(--t-xs);
       font-weight: var(--fw-bold);
       color: var(--c-ink);
@@ -193,20 +219,86 @@ export function resolveFooter(
       letter-spacing: 0.05em;
     }
 
-    .footer__list {
+    // ---- phone: the title is a button, the list is folded --------------------------
+
+    .footer__title-text {
+      display: none;
+    }
+
+    .footer__toggle {
       display: flex;
-      flex-direction: column;
-      gap: var(--s-1);
-      margin: 0;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 48px;
       padding: 0;
+      border: 0;
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      text-transform: inherit;
+      letter-spacing: inherit;
+
+      app-icon {
+        color: var(--c-ink-faint);
+        transition: transform 150ms ease-out;
+      }
+
+      &[aria-expanded='true'] app-icon {
+        transform: rotate(180deg);
+      }
+    }
+
+    .footer__list {
+      display: none;
+      flex-direction: column;
+      margin: 0;
+      padding: 0 0 var(--s-2);
       list-style: none;
     }
 
+    .footer__list--open {
+      display: flex;
+    }
+
+    // ---- from the medium breakpoint: a heading, and every list open ----------------
+
+    @media (min-width: t.$bp-md) {
+      .footer__title {
+        margin-bottom: var(--s-2);
+      }
+
+      .footer__title-text {
+        display: inline;
+      }
+
+      .footer__toggle {
+        display: none;
+      }
+
+      .footer__list {
+        display: flex;
+        gap: var(--s-1);
+        padding: 0;
+      }
+    }
+
     .footer__link {
-      font-size: var(--t-sm);
+      // A full-width 44px row on a phone, so a finger cannot land between two entries.
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      font-size: var(--t-body);
       line-height: var(--lh-snug);
       color: var(--c-ink-soft);
       text-decoration: none;
+
+      @media (min-width: t.$bp-md) {
+        display: inline;
+        min-height: 0;
+        font-size: var(--t-sm);
+      }
     }
 
     a.footer__link {
@@ -245,6 +337,8 @@ export function resolveFooter(
       display: flex;
       flex-direction: column;
       gap: var(--s-1);
+      // The mark, the line and the copyright on one left edge, not the mark centred.
+      align-items: flex-start;
       padding-block: var(--s-3);
       border-top: var(--divider);
 
@@ -276,6 +370,21 @@ export function resolveFooter(
 })
 export class SiteFooter {
   protected readonly columns = resolveFooter(FOOTER_COLUMNS, routes);
+
+  /** The columns unfolded on a phone, by position. All folded to begin with. */
+  private readonly opened = signal<ReadonlySet<number>>(new Set());
+
+  protected isOpen(index: number): boolean {
+    return this.opened().has(index);
+  }
+
+  protected toggle(index: number): void {
+    this.opened.update((open) => {
+      const next = new Set(open);
+      if (!next.delete(index)) next.add(index);
+      return next;
+    });
+  }
 
   /** Read once at construction. A page open across midnight on 31 December can cope. */
   protected readonly year = new Date().getFullYear();

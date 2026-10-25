@@ -14,8 +14,13 @@
 .header__inner {
   display: flex;
   align-items: center;
-  gap: var(--s-5);
+  // Tighter on a phone, where four things share 343px.
+  gap: var(--s-2);
   height: var(--h-header);
+
+  @media (min-width: t.$bp-md) {
+    gap: var(--s-5);
+  }
 }
 
 // The logo's slot. The box is sized by app-logo from --logo-h and the artwork's ratio, so
@@ -28,6 +33,10 @@
   // A little air around the mark, inside the link, so the focus ring does not hug it.
   padding: var(--s-1) 0;
   text-decoration: none;
+
+  @include t.touch {
+    min-height: 44px;
+  }
 }
 
 // ---- primary navigation ---------------------------------------------------
@@ -81,6 +90,10 @@
 }
 
 .header__signin {
+  display: inline-flex;
+  align-items: center;
+  // The whole height of the bar is the target on a phone, not the line of text.
+  min-height: 44px;
   color: var(--c-ink);
   font-size: var(--t-sm);
   font-weight: var(--fw-semibold);
@@ -93,18 +106,46 @@
 }
 
 .header__cta {
-  // The sign-in link alone is enough on a narrow screen.
+  // The sign-in link alone is enough on a phone; the drawer offers registration.
   display: none;
 
-  @media (min-width: t.$bp-sm) {
+  @media (min-width: t.$bp-md) {
     display: inline-flex;
   }
+}
+
+// ---- the account, on a phone ----------------------------------------------
+
+.header__account-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-right: calc(-1 * var(--s-2));
+  border-radius: var(--r-md);
+  color: var(--c-ink);
+
+  @media (min-width: t.$bp-md) {
+    display: none;
+  }
+}
+
+.header__account-link--active {
+  color: var(--c-accent);
 }
 
 // ---- the account menu -----------------------------------------------------
 
 .account-menu {
   position: relative;
+  // Its entries are in the drawer below this width.
+  display: none;
+
+  @media (min-width: t.$bp-md) {
+    display: block;
+  }
 }
 
 .account-menu__button {

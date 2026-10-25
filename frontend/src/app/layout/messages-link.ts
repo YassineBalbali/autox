@@ -32,6 +32,7 @@ import { Icon } from '../shared/ui/icon';
     .link {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: var(--s-2);
       color: var(--c-ink);
       font-size: var(--t-sm);
@@ -41,6 +42,12 @@ import { Icon } from '../shared/ui/icon';
 
       &:hover {
         color: var(--c-accent);
+      }
+
+      // A finger's target, even when the icon alone is showing.
+      @include t.touch {
+        min-width: 44px;
+        min-height: 44px;
       }
     }
 
