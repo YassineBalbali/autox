@@ -38,6 +38,11 @@
     color: var(--c-ink);
     border-bottom-color: var(--c-line-strong);
   }
+
+  // The padding and the line come to a fraction under the floor; the floor wins.
+  @include t.touch {
+    min-height: 48px;
+  }
 }
 
 .finder__tab--active,
@@ -122,6 +127,12 @@ input.finder__control {
   font-size: var(--t-sm);
   font-weight: var(--fw-semibold);
   color: var(--c-accent);
+
+  @include t.touch {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 
   &:hover {
     color: var(--c-accent-strong);

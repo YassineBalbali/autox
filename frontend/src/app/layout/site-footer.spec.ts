@@ -67,7 +67,7 @@ describe('SiteFooter', () => {
   it('has the columns a marketplace footer carries, the working pages first', async () => {
     const root = await render();
 
-    expect(Array.from(root.querySelectorAll('.footer__title')).map((title) => title.textContent?.trim())).toEqual([
+    expect(Array.from(root.querySelectorAll('.footer__title-text')).map((title) => title.textContent?.trim())).toEqual([
       'AutoX',
       'À propos',
       'Aide',
@@ -108,6 +108,56 @@ describe('SiteFooter', () => {
   it('gives every entry a distinct path, so two can never claim one page', () => {
     const paths = FOOTER_COLUMNS.flatMap((column) => column.items).map((item) => item.path);
     expect(new Set(paths).size).toBe(paths.length);
+  });
+
+  describe('on a phone, folded', () => {
+    const toggles = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLButtonElement>('.footer__toggle'));
+    const list = (root: HTMLElement, button: HTMLButtonElement) =>
+      root.querySelector('#' + button.getAttribute('aria-controls')) as HTMLElement;
+
+    it('gives each column a button in its heading, which names the list it controls', async () => {
+      const root = await render();
+
+      expect(toggles(root).map((button) => button.textContent?.trim())).toEqual([
+        'AutoX',
+        'À propos',
+        'Aide',
+        'Informations légales',
+        'Contact',
+      ]);
+      for (const button of toggles(root)) {
+        expect(button.parentElement?.tagName).toBe('H2');
+        expect(list(root, button).tagName).toBe('UL');
+      }
+    });
+
+    it('starts folded, and opens and closes each column on its own', async () => {
+      TestBed.configureTestingModule({ providers: [provideRouter([])] });
+      const fixture = TestBed.createComponent(SiteFooter);
+      await fixture.whenStable();
+      const root: HTMLElement = fixture.nativeElement;
+      const [first, second] = toggles(root);
+
+      expect(toggles(root).every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true);
+      expect(list(root, first).classList).not.toContain('footer__list--open');
+
+      first.click();
+      await fixture.whenStable();
+      expect(first.getAttribute('aria-expanded')).toBe('true');
+      expect(list(root, first).classList).toContain('footer__list--open');
+      expect(second.getAttribute('aria-expanded')).toBe('false');
+
+      second.click();
+      await fixture.whenStable();
+      // Opening one does not close another: someone comparing two columns keeps both.
+      expect(first.getAttribute('aria-expanded')).toBe('true');
+      expect(second.getAttribute('aria-expanded')).toBe('true');
+
+      first.click();
+      await fixture.whenStable();
+      expect(first.getAttribute('aria-expanded')).toBe('false');
+      expect(list(root, first).classList).not.toContain('footer__list--open');
+    });
   });
 
   it('sits in the shared container and signs off with the mark and the year', async () => {

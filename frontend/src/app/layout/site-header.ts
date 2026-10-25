@@ -14,7 +14,9 @@ import { routes } from '../app.routes';
 import { ProfileService, UserRole } from '../core/api';
 import { AuthService, userSummaryOf } from '../core/auth/auth.service';
 import { Logo } from '../shared/brand/logo';
+import { Icon } from '../shared/ui/icon';
 import { MessagesLink } from './messages-link';
+import { NavDrawer } from './nav-drawer';
 import { availableNav } from './primary-nav';
 
 /**
@@ -27,13 +29,14 @@ import { availableNav } from './primary-nav';
  *
  * <p>The account menu is a disclosure rather than a row of links because on a signed-in
  * desktop header the right-hand side is the account, not four competing destinations.
- * Below the medium breakpoint the primary navigation is hidden: this is the desktop pass,
- * and a row of links wrapping under the wordmark is the kind of not-broken-but-unpolished
- * the mobile pass will deal with properly with a drawer.
+ *
+ * <p>Below the medium breakpoint the bar keeps four things: the burger, the wordmark, the
+ * messages and the account — each a 44px target. The navigation and the account menu's
+ * entries move into the drawer behind the burger ({@link NavDrawer}).
  */
 @Component({
   selector: 'app-site-header',
-  imports: [RouterLink, RouterLinkActive, Logo, MessagesLink],
+  imports: [RouterLink, RouterLinkActive, Logo, Icon, MessagesLink, NavDrawer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './site-header.html',
   styleUrl: './site-header.scss',

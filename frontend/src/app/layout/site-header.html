@@ -1,4 +1,7 @@
 <div class="page header__inner">
+  <!-- Phones only: the burger, and the drawer behind it. -->
+  <app-nav-drawer [items]="navItems" />
+
   <!-- The logo carries its own accessible name; the link adds where it goes. -->
   <a class="header__brand" routerLink="/" aria-label="AutoX — accueil" i18n-aria-label="@@brandHome">
     <app-logo />
@@ -26,6 +29,17 @@
 
   @if (signedIn()) {
     <app-messages-link />
+
+    <!-- Phones only: the account's way in, as an icon. The drawer holds the rest of what
+         the desktop's account menu does. -->
+    <a
+      class="header__account-link"
+      routerLink="/mon-compte"
+      routerLinkActive="header__account-link--active"
+      [attr.aria-label]="'Mon compte — ' + accountName()"
+    >
+      <app-icon name="user" [size]="22" />
+    </a>
 
     <div class="account-menu">
       <button

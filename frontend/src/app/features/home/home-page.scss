@@ -51,6 +51,12 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 
+  @include t.touch {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
   &:hover {
     color: var(--c-accent);
   }

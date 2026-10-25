@@ -247,6 +247,11 @@ textarea.input {
   height: calc(var(--h-control) - 6px);
   padding-inline: var(--s-3);
   font-size: var(--t-sm);
+
+  // On a phone the row grows instead: a smaller button is a smaller target.
+  @include t.touch {
+    height: var(--h-control);
+  }
 }
 
 // Fills its container. For a form that is itself a narrow column.

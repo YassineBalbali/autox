@@ -150,9 +150,12 @@
   --logo-h: 22px;
 }
 
-// A touch screen keeps touch-sized targets. Keyed on the pointer rather than on width,
-// because a narrow desktop window is still driven by a mouse and a wide tablet is not.
-@media (pointer: coarse) {
+// A touch screen keeps touch-sized targets: 44px, the floor both Apple and the WCAG
+// target-size criterion set for a finger. Keyed on the pointer, because a wide tablet is
+// driven by a finger — and on the width too, because a phone-width layout is a phone's,
+// whatever the browser reports about its pointer, and a desktop window that narrow loses
+// nothing by being easier to hit.
+@media (pointer: coarse), (max-width: 767.98px) {
   :root {
     --h-control: 44px;
   }
@@ -171,3 +174,11 @@ $bp-sm: 480px;
 $bp-md: 768px;
 $bp-lg: 1024px;
 $bp-xl: 1280px;
+
+// The same condition as the 44px controls above, for a component's own rules: a finger, or
+// a phone-width layout. `@include t.touch { ... }`.
+@mixin touch {
+  @media (pointer: coarse), (max-width: 767.98px) {
+    @content;
+  }
+}
