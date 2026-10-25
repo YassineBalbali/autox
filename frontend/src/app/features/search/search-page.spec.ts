@@ -5,7 +5,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { BASE_PATH, ErrorCode, PublicListingSummary } from '../../core/api';
 import { PHONE_SCREEN, stubDialogs, stubMedia } from '../../core/ui/dom-testing';
@@ -870,6 +870,27 @@ describe('SearchPage', () => {
       await answer([listing('a')], { count: 31 });
       expect(sheet().open).toBe(true);
       expect(sheet().querySelector('.sheet__show')?.textContent?.trim()).toBe('Voir les 31 annonces');
+    });
+
+    it('records the changes made in the sheet in place of one another, not as a pile of entries', async () => {
+      // One visit to the sheet is one step back afterwards; Back itself only closes it.
+      stubMedia(PHONE_SCREEN);
+      await visit('/recherche');
+      await answer([listing('a')]);
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+
+      chip('Diesel').click();
+      await settle();
+      expect(navigate.mock.calls.at(-1)?.[1]?.replaceUrl).toBe(false);
+
+      filtersButton().click();
+      await settle();
+      (Array.from(sheet().querySelectorAll('app-filter-chip button')).find((button) =>
+        button.textContent?.includes('Manuelle'),
+      ) as HTMLButtonElement).click();
+      await settle();
+
+      expect(navigate.mock.calls.at(-1)?.[1]?.replaceUrl).toBe(true);
     });
 
     it('clears every filter from the sheet, keeping the sort', async () => {

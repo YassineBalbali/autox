@@ -17,6 +17,7 @@ import { catchError, of } from 'rxjs';
 import { BodyType, FuelType, Gearbox, ResultCount, VehicleCondition } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
 import { WIDE, mediaQuery } from '../../core/ui/media';
+import { OverlayEntry, OverlayHistory } from '../../core/ui/overlay-history';
 import { formatIntegerFr } from '../../shared/format/number';
 import { Icon } from '../../shared/ui/icon';
 import { FilterChip } from '../../shared/ui/filter-chip';
@@ -62,6 +63,10 @@ type RangeKey = 'yearMin' | 'yearMax' | 'priceMin' | 'priceMax' | 'mileageMin' |
  * foot only closes it, and can say how many cars the filters find. On a phone the sheet
  * also carries make and model, which the search bar there no longer shows.
  *
+ * <p>Back closes the sheet and leaves the filters as they are ({@link OverlayHistory}).
+ * While it is open the page records each change in place of the last rather than as a
+ * new history entry, so one visit to the sheet is one step back afterwards.
+ *
  * <p>Text and number fields report on `change`, which fires when the field is left or
  * Enter is pressed, not on every keystroke: typing "15000" would otherwise be five
  * searches and five entries in the browser history.
@@ -97,6 +102,8 @@ export class SearchFilters {
   readonly sheetOpen = signal(false);
 
   private readonly sheet = viewChild.required<ElementRef<HTMLDialogElement>>('sheet');
+  private readonly history = inject(OverlayHistory);
+  private entry: OverlayEntry | null = null;
 
   protected readonly activeCount = computed(() => activeFilterCount(this.query()));
 
@@ -119,11 +126,21 @@ export class SearchFilters {
 
   /** Opens the sheet. Below the large breakpoint only; above it the sidebar is there. */
   openSheet(): void {
+    if (this.sheetOpen() || this.wide()) {
+      return;
+    }
     this.sheetOpen.set(true);
+    this.entry = this.history.open(() => {
+      this.entry = null;
+      this.sheetOpen.set(false);
+    });
   }
 
+  /** Closed from its own controls: the close button, the results button, Escape. */
   protected closeSheet(): void {
     this.sheetOpen.set(false);
+    this.entry?.closed();
+    this.entry = null;
   }
 
   private readonly enums = toSignal(

@@ -18,6 +18,9 @@
         [minorUnit]="minorUnit()"
       />
     }
+    <!-- The price verdict, on its own short line under the price: what sets AutoX apart,
+         so it is on the phone row too. Renders nothing for a listing without one. -->
+    <app-price-badge class="listing__phone listing__phone-verdict" [indicator]="listing().priceIndicator" />
 
     <h2 class="listing__title">
       @if (link(); as target) {
