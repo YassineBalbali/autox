@@ -1,11 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component, signal } from '@angular/core';
+import { Component, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { BASE_PATH, FuelType, Gearbox } from '../../core/api';
-import { SearchFilters } from './search-filters';
+import { BASE_PATH, FuelType, Gearbox, ResultCount } from '../../core/api';
+import { PHONE_SCREEN, stubDialogs, stubMedia } from '../../core/ui/dom-testing';
+import { SearchFilters, showLabel } from './search-filters';
 import { EMPTY_QUERY, SearchQuery } from './search-query';
 
 const BASE = 'http://api.test';
@@ -21,11 +22,19 @@ const ENUMS = {
 
 @Component({
   imports: [SearchFilters],
-  template: `<app-search-filters [query]="query()" (changed)="patches.push($event)" />`,
+  template: `<app-search-filters
+    [query]="query()"
+    [resultCount]="count()"
+    (changed)="patches.push($event)"
+    (cleared)="clears = clears + 1"
+  />`,
 })
 class Host {
   readonly query = signal<SearchQuery>(EMPTY_QUERY);
+  readonly count = signal<ResultCount | null>(null);
   readonly patches: Partial<SearchQuery>[] = [];
+  clears = 0;
+  readonly filters = viewChild.required(SearchFilters);
 }
 
 /**
@@ -244,26 +253,173 @@ describe('SearchFilters', () => {
       const root = await render({ ...EMPTY_QUERY, priceMax: 9000 });
       expect(root.textContent).not.toContain('Tout effacer');
     });
+  });
 
-    it('shows how many filters are active on the collapse button', async () => {
-      const root = await render({ ...EMPTY_QUERY, location: 'Lyon', priceMin: 1000, priceMax: 9000 });
+  describe('below the large breakpoint, a full-screen sheet', () => {
+    stubDialogs();
 
-      expect(root.querySelector('.filters__toggle .tag')?.textContent?.trim()).toBe('2');
+    const sheet = () => fixture.nativeElement.querySelector('dialog.sheet') as HTMLDialogElement;
+
+    async function renderPhone(query: SearchQuery = EMPTY_QUERY): Promise<HTMLElement> {
+      stubMedia(PHONE_SCREEN);
+      const root = await render(query);
+      // The sheet's make and model ask for the catalogue.
+      backend.expectOne(`${BASE}/api/v1/reference/makes`).flush([
+        { id: 'm-1', slug: 'peugeot', name: 'Peugeot' },
+        { id: 'm-2', slug: 'renault', name: 'Renault' },
+      ]);
+      await fixture.whenStable();
+      return root;
+    }
+
+    async function openSheet(): Promise<void> {
+      host.filters().openSheet();
+      await fixture.whenStable();
+    }
+
+    it('puts nothing beside the results: the filters wait in the closed sheet', async () => {
+      const root = await renderPhone();
+
+      expect(sheet().open).toBe(false);
+      // The form exists once, in the sheet, never also inline on the page.
+      expect(root.querySelectorAll('form.filters')).toHaveLength(1);
+      expect(sheet().querySelector('form.filters')).not.toBeNull();
     });
 
-    it('collapses and expands, and says which it is', async () => {
-      const root = await render();
-      const toggle = root.querySelector('.filters__toggle') as HTMLButtonElement;
-      const panel = root.querySelector('.filters') as HTMLElement;
+    it('opens as a modal, titled, with a way to close it', async () => {
+      await renderPhone();
+      let modal = false;
+      const showModal = HTMLDialogElement.prototype.showModal;
+      sheet().showModal = function (this: HTMLDialogElement) {
+        modal = true;
+        showModal.call(this);
+      };
 
-      expect(toggle.getAttribute('aria-expanded')).toBe('false');
-      expect(toggle.getAttribute('aria-controls')).toBe(panel.id);
+      await openSheet();
 
-      toggle.click();
+      expect(modal).toBe(true);
+      expect(host.filters().sheetOpen()).toBe(true);
+      const title = sheet().querySelector('#sheet-title') as HTMLElement;
+      expect(title.textContent?.trim()).toBe('Filtres');
+      expect(sheet().getAttribute('aria-labelledby')).toBe('sheet-title');
+      expect(sheet().querySelector('.sheet__close')?.textContent?.trim()).toBe('Fermer les filtres');
+
+      (sheet().querySelector('.sheet__close') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      expect(sheet().open).toBe(false);
+      expect(host.filters().sheetOpen()).toBe(false);
+    });
+
+    it('carries make and model first on a phone, and every refining filter after', async () => {
+      await renderPhone();
+      await openSheet();
+
+      const legends = Array.from(sheet().querySelectorAll('legend')).map((legend) => legend.textContent?.trim());
+      expect(legends[0]).toBe('Véhicule');
+      expect(legends.slice(1)).toEqual([
+        'Année',
+        'Prix (€)',
+        'Kilométrage (km)',
+        'Prix du marché',
+        'Carburant',
+        'Boîte de vitesses',
+        'Carrosserie',
+        'État',
+        'Localisation',
+      ]);
+      // The sheet has its own heading; the sidebar's would be a second "Filtres".
+      expect(sheet().querySelector('.filters__head')).toBeNull();
+    });
+
+    it('applies a change at once, while the sheet stays open', async () => {
+      await renderPhone();
+      await openSheet();
+
+      chips(sheet(), 'Carburant')[1].click();
       await fixture.whenStable();
 
-      expect(toggle.getAttribute('aria-expanded')).toBe('true');
-      expect(panel.classList).toContain('filters--open');
+      expect(host.patches.at(-1)).toEqual({ fuel: [FuelType.DIESEL] });
+      expect(sheet().open).toBe(true);
     });
+
+    it('changes the make, and clears the model with it', async () => {
+      await renderPhone({ ...EMPTY_QUERY, make: 'peugeot', model: '308' });
+      backend.expectOne(`${BASE}/api/v1/reference/makes/m-1/models`).flush([{ id: 'x-1', slug: '308', name: '308' }]);
+      await openSheet();
+
+      const make = sheet().querySelector('#f-marque') as HTMLSelectElement;
+      expect(make.value).toBe('peugeot');
+      expect((sheet().querySelector('#f-modele') as HTMLSelectElement).value).toBe('308');
+
+      make.value = 'renault';
+      make.dispatchEvent(new Event('change'));
+      await fixture.whenStable();
+
+      expect(host.patches.at(-1)).toEqual({ make: 'renault', model: null });
+    });
+
+    it('says how many listings its button will show, and closes on it', async () => {
+      await renderPhone();
+      host.count.set({ count: 120, capped: false });
+      await openSheet();
+
+      const show = sheet().querySelector('.sheet__show') as HTMLButtonElement;
+      expect(show.textContent?.trim()).toBe('Voir les 120 annonces');
+
+      host.count.set({ count: 7, capped: false });
+      await fixture.whenStable();
+      expect(show.textContent?.trim()).toBe('Voir les 7 annonces');
+
+      show.click();
+      await fixture.whenStable();
+      expect(sheet().open).toBe(false);
+    });
+
+    it('offers "tout effacer" once something is set, since the chips are hidden behind it', async () => {
+      await renderPhone();
+      await openSheet();
+      expect(sheet().querySelector('.sheet__clear')).toBeNull();
+
+      host.query.set({ ...EMPTY_QUERY, priceMax: 9000 });
+      await fixture.whenStable();
+      (sheet().querySelector('.sheet__clear') as HTMLButtonElement).click();
+
+      expect(host.clears).toBe(1);
+    });
+
+    it('keeps its state honest when the browser closes it, as Escape does', async () => {
+      await renderPhone();
+      await openSheet();
+
+      sheet().close();
+      await fixture.whenStable();
+
+      expect(host.filters().sheetOpen()).toBe(false);
+    });
+
+    it('is never opened as a modal over the desktop sidebar', async () => {
+      // No matchMedia: the desktop layout.
+      await render();
+      host.filters().openSheet();
+      await fixture.whenStable();
+
+      expect(sheet().open).toBe(false);
+      expect(sheet().children).toHaveLength(0);
+      expect(fixture.nativeElement.querySelector('form.filters')?.closest('dialog')).toBeNull();
+    });
+  });
+});
+
+describe('showLabel', () => {
+  it('counts what the sheet will show, in French', () => {
+    expect(showLabel({ count: 120, capped: false })).toBe('Voir les 120 annonces');
+    expect(showLabel({ count: 1, capped: false })).toBe('Voir l’annonce');
+    expect(showLabel({ count: 0, capped: false })).toBe('Aucune annonce');
+    expect(showLabel({ count: 10000, capped: true })).toMatch(/^Voir plus de 10\s?000 annonces$/u);
+  });
+
+  it('says what it does without a figure while the count is unknown', () => {
+    expect(showLabel(null)).toBe('Voir les annonces');
+    expect(showLabel({ capped: false } as ResultCount)).toBe('Voir les annonces');
   });
 });

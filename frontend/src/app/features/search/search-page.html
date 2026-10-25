@@ -2,6 +2,35 @@
   <!-- Full width, above everything: where a search is composed. -->
   <app-search-bar [query]="query()" (submitted)="applyFilters($event)" />
 
+  <!-- Below the large breakpoint: the way into the filter sheet, and the sort, held at the
+       top of the screen while the results scroll under it. -->
+  <div class="search__sticky">
+    <button
+      class="btn btn--quiet search__filters-button"
+      type="button"
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="filtersOpen()"
+      (click)="openFilters()"
+    >
+      <app-icon name="sliders-horizontal" [size]="18" />
+      <span>
+        <ng-container i18n="@@filtersToggle">Filtres</ng-container>
+        @if (sheetCount() > 0) {
+          ({{ sheetCount() }})
+        }
+      </span>
+    </button>
+
+    <label class="visually-hidden" for="tri-mobile" i18n="@@searchSortLabel">Trier par</label>
+    <select class="input search__sort-compact" id="tri-mobile" (change)="setSort($event)">
+      @for (option of sortOptions; track option.value) {
+        <option [value]="option.value" [selected]="option.value === query().sort">
+          {{ option.label }}
+        </option>
+      }
+    </select>
+  </div>
+
   <!-- What is applied, each removable. Renders nothing when no filter is set. -->
   <app-active-filters
     [query]="query()"
@@ -13,7 +42,9 @@
     <app-search-filters
       class="search__filters"
       [query]="query()"
+      [resultCount]="results.count()"
       (changed)="applyFilters($event)"
+      (cleared)="clearFilters()"
     />
 
     <section class="search__results" aria-labelledby="titre-resultats">
@@ -39,7 +70,8 @@
         </div>
 
         <div class="search__tools">
-          <app-view-toggle [view]="view()" (changed)="setView($event)" />
+          <!-- Not on a phone, where a result is always a row. -->
+          <app-view-toggle class="search__view" [view]="view()" (changed)="setView($event)" />
 
           <div class="search__sort">
             <label for="tri" i18n="@@searchSortLabel">Trier par</label>
@@ -56,7 +88,7 @@
 
       @switch (results.status()) {
         @case ('loading') {
-          <app-results-skeleton [view]="view()" />
+          <app-results-skeleton [view]="shownView()" />
         }
 
         @case ('error') {
@@ -95,7 +127,7 @@
               }
             </div>
           } @else {
-            @if (view() === 'grille') {
+            @if (shownView() === 'grille') {
               <!-- The same results, the same order, the same components inside — only the
                  arrangement differs. -->
               <ul class="search__grid" role="list">

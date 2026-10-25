@@ -76,6 +76,10 @@
     </select>
   </div>
 
-  <!-- The one filled button on the screen. -->
-  <button class="btn btn--primary bar__submit" type="submit" i18n="@@barSubmit">Rechercher</button>
+  <!-- The one filled button on the screen. On a phone, a magnifier beside the field; the
+       word stays, for a screen reader. -->
+  <button class="btn btn--primary bar__submit" type="submit">
+    <app-icon class="bar__submit-icon" name="search" [size]="22" [strokeWidth]="2.5" />
+    <span class="bar__submit-text" i18n="@@barSubmit">Rechercher</span>
+  </button>
 </form>

@@ -1,14 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import { PublicListingSummary, ResultCount, SearchSort } from '../../core/api';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
+import { PHONE, mediaQuery } from '../../core/ui/media';
 import { formatIntegerFr } from '../../shared/format/number';
 import { ListingCard } from '../../shared/listing/listing-card';
 import { ListingRow } from '../../shared/listing/listing-row';
 import { Alert } from '../../shared/ui/alert';
+import { Icon } from '../../shared/ui/icon';
 import { ActiveFilters } from './active-filters';
 import { FUEL_LABELS, GEARBOX_LABELS, SORT_OPTIONS, labelOf } from '../../shared/listing/labels.fr';
 import { SearchBar } from './search-bar';
@@ -49,6 +51,10 @@ import { ViewToggle } from './view-toggle';
  * each change at once; the chips between them show what is applied and remove it. All
  * three only ever navigate.
  *
+ * <p>On a phone the same three, rearranged: the bar keeps only its text field, the
+ * sidebar becomes a full-screen sheet opened from a sticky bar that also holds the sort,
+ * and the chips scroll sideways in one row. Nothing about the loop changes.
+ *
  * <p>The cursor is deliberately <em>not</em> in the URL. "Voir plus" extends the list in
  * place; putting the cursor in the address would make a shared link open on page three of
  * a list whose first two pages the recipient never saw.
@@ -64,6 +70,7 @@ import { ViewToggle } from './view-toggle';
     ListingCard,
     ResultsSkeleton,
     Alert,
+    Icon,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './search-page.html',
@@ -94,6 +101,25 @@ export class SearchPage {
    * from {@link ViewPreference} and not from the URL: see that class for why.
    */
   protected readonly view = this.preference.view;
+
+  /**
+   * What is shown: the preference, except on a phone, where a result is always a row —
+   * the compact one, four or five to a screen. The preference is kept, not overwritten, so
+   * the same visitor on a laptop still gets their grid.
+   */
+  private readonly phone = mediaQuery(PHONE, false);
+  protected readonly shownView = computed<ResultsView>(() => (this.phone() ? 'liste' : this.view()));
+
+  private readonly filters = viewChild.required(SearchFilters);
+
+  /** Whether the filter sheet is open, for the sticky bar's button. */
+  protected readonly filtersOpen = computed(() => this.filters().sheetOpen());
+
+  /**
+   * The number on the sticky bar's "Filtres" button: what the sheet holds. The free text
+   * is not counted — it is in the search bar right above, not in the sheet.
+   */
+  protected readonly sheetCount = computed(() => activeFilterCount({ ...this.query(), text: null }));
 
   protected readonly sortOptions = SORT_OPTIONS;
 
@@ -158,6 +184,10 @@ export class SearchPage {
 
   protected clearFilters(): void {
     this.navigate(withoutFilters(this.query()));
+  }
+
+  protected openFilters(): void {
+    this.filters().openSheet();
   }
 
   protected setView(view: ResultsView): void {

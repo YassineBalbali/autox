@@ -7,6 +7,18 @@
   />
 
   <div class="listing__main">
+    <!-- Phones: the price first, over the title — on a narrow row it is what the eye looks
+         for, and there is no third column to put it in. -->
+    @if (listing().priceAmount !== undefined) {
+      <app-price
+        class="listing__phone listing__phone-price"
+        size="result"
+        [amountMinor]="listing().priceAmount!"
+        [currency]="listing().currencyCode ?? 'EUR'"
+        [minorUnit]="minorUnit()"
+      />
+    }
+
     <h2 class="listing__title">
       @if (link(); as target) {
         <a class="listing__link" [routerLink]="target">{{ headline().title }}</a>
@@ -18,7 +30,14 @@
       }
     </h2>
 
+    <!-- Phones: two short lines instead of the icon run, which wraps to three there. -->
+    <div class="listing__phone listing__phone-lines">
+      <app-spec-line [year]="listing().firstRegistrationYear" [mileage]="listing().mileageKm" />
+      <app-spec-line [fuel]="fuelLabel()" [gearbox]="gearboxLabel()" />
+    </div>
+
     <app-spec-facts
+      class="listing__wide"
       [year]="listing().firstRegistrationYear"
       [mileage]="listing().mileageKm"
       [fuel]="fuelLabel()"
@@ -34,7 +53,7 @@
           {{ place() }}
         </span>
       }
-      <span class="listing__seller">
+      <span class="listing__seller listing__wide">
         <app-seller-badge [role]="listing().seller?.role" />
         @if (listing().seller?.displayName; as name) {
           <span class="listing__name">{{ name }}</span>
@@ -44,7 +63,7 @@
   </div>
 
   <!-- The price: last in the row, right-aligned, and in the same place on every row. -->
-  <div class="listing__aside">
+  <div class="listing__aside listing__wide">
     @if (listing().priceAmount !== undefined) {
       <app-price
         size="result"

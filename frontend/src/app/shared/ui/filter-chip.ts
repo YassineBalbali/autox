@@ -30,6 +30,8 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
     </button>
   `,
   styles: `
+    @use '../../../styles/tokens' as t;
+
     :host {
       display: inline-block;
     }
@@ -50,6 +52,13 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
       &:hover {
         border-color: var(--c-ink-faint);
+      }
+
+      // A finger's target: the full control height, not six pixels under it.
+      @include t.touch {
+        height: var(--h-control);
+        padding-inline: var(--s-3);
+        font-size: var(--t-body);
       }
     }
 

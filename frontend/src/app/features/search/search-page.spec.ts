@@ -8,6 +8,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, expect, it } from 'vitest';
 
 import { BASE_PATH, ErrorCode, PublicListingSummary } from '../../core/api';
+import { PHONE_SCREEN, stubDialogs, stubMedia } from '../../core/ui/dom-testing';
 import { NBSP } from '../../shared/format/number';
 import { SearchPage, countLabel, rangeLabel } from './search-page';
 
@@ -811,6 +812,100 @@ describe('SearchPage', () => {
 
       // The reuse applied to the arrival only; this is a new search like any other.
       expect(open(LIST)).toHaveLength(1);
+    });
+  });
+
+  describe('on a phone', () => {
+    stubDialogs();
+
+    const filtersButton = () => root.querySelector('.search__filters-button') as HTMLButtonElement;
+    const sheet = () => root.querySelector('dialog.sheet') as HTMLDialogElement;
+
+    it('has a sticky bar with the filters, counted, and the sort', async () => {
+      await visit('/recherche?carburant=diesel&prix_max=20000&lieu=Lyon');
+      await answer([listing('a')]);
+
+      expect(root.querySelector('.search__sticky')).not.toBeNull();
+      expect(filtersButton().textContent?.replace(/\s+/g, ' ').trim()).toBe('Filtres (3)');
+      expect(filtersButton().getAttribute('aria-haspopup')).toBe('dialog');
+      expect(root.querySelector('label[for="tri-mobile"]')?.textContent?.trim()).toBe('Trier par');
+    });
+
+    it('does not count the free text, which is in the bar above, not in the sheet', async () => {
+      await visit('/recherche?q=golf');
+      await answer([listing('a')]);
+
+      expect(filtersButton().textContent?.trim()).toBe('Filtres');
+    });
+
+    it('opens the filter sheet from the sticky bar', async () => {
+      stubMedia(PHONE_SCREEN);
+      await visit('/recherche?carburant=diesel');
+      await answer([listing('a'), listing('b')], { count: 42 });
+
+      expect(sheet().open).toBe(false);
+      expect(filtersButton().getAttribute('aria-expanded')).toBe('false');
+
+      filtersButton().click();
+      await settle();
+
+      expect(sheet().open).toBe(true);
+      expect(filtersButton().getAttribute('aria-expanded')).toBe('true');
+      expect(sheet().querySelector('.sheet__show')?.textContent?.trim()).toBe('Voir les 42 annonces');
+    });
+
+    it('applies a filter from the sheet as a navigation, and counts the new results', async () => {
+      stubMedia(PHONE_SCREEN);
+      await visit('/recherche');
+      await answer([listing('a')], { count: 120 });
+      filtersButton().click();
+      await settle();
+
+      (Array.from(sheet().querySelectorAll('app-filter-chip button')).find((button) =>
+        button.textContent?.includes('Diesel'),
+      ) as HTMLButtonElement).click();
+      await settle();
+      expect(url()).toBe('/recherche?carburant=diesel');
+
+      await answer([listing('a')], { count: 31 });
+      expect(sheet().open).toBe(true);
+      expect(sheet().querySelector('.sheet__show')?.textContent?.trim()).toBe('Voir les 31 annonces');
+    });
+
+    it('clears every filter from the sheet, keeping the sort', async () => {
+      stubMedia(PHONE_SCREEN);
+      await visit('/recherche?carburant=diesel&tri=prix-croissant');
+      await answer([listing('a')]);
+      filtersButton().click();
+      await settle();
+
+      (sheet().querySelector('.sheet__clear') as HTMLButtonElement).click();
+      await settle();
+
+      expect(url()).toBe('/recherche?tri=prix-croissant');
+    });
+
+    it('sorts from the sticky bar', async () => {
+      await visit('/recherche');
+      await answer([listing('a')]);
+
+      const sort = root.querySelector('#tri-mobile') as HTMLSelectElement;
+      sort.value = 'PRICE_ASC';
+      sort.dispatchEvent(new Event('change'));
+      await settle();
+
+      expect(url()).toBe('/recherche?tri=prix-croissant');
+    });
+
+    it('always shows rows, whatever view was chosen on a wider screen — and keeps that choice', async () => {
+      localStorage.setItem('autox.search.view', 'grille');
+      stubMedia(PHONE_SCREEN);
+      await visit('/recherche', MAKES, true);
+      await answer([listing('a'), listing('b')]);
+
+      expect(rows()).toHaveLength(2);
+      expect(root.querySelector('app-listing-card')).toBeNull();
+      expect(localStorage.getItem('autox.search.view')).toBe('grille');
     });
   });
 });
