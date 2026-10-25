@@ -25,3 +25,6 @@ export function mediaQuery(query: string, fallback: boolean): Signal<boolean> {
   }
   return matches.asReadonly();
 }
+
+/** Below the medium breakpoint (`$bp-md`): a phone, held either way. */
+export const NARROW = '(max-width: 767.98px)';

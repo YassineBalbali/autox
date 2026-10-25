@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
+import { PHONE_SCREEN, stubMedia } from '../../core/ui/dom-testing';
 import { GalleryImage, PhotoGallery } from './photo-gallery';
 
 const image = (id: string): GalleryImage => ({
@@ -282,5 +283,123 @@ describe('PhotoGallery', () => {
 
     expect(shown()).toBe('http://img.test/x-card.jpg');
     expect(count()).toBe('1 / 2');
+  });
+
+  describe('Back', () => {
+    it('closes the enlarged view, and does nothing else', async () => {
+      await render();
+      await click(main());
+      expect(dialog()).not.toBeNull();
+
+      history.back();
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      await fixture.whenStable();
+
+      expect(dialog()).toBeNull();
+    });
+  });
+
+  describe('on a phone', () => {
+    const track = () => root.querySelector('.swipe__track') as HTMLElement;
+    const slides = () => Array.from(root.querySelectorAll('.swipe__open')) as HTMLButtonElement[];
+
+    /** jsdom does not lay out: the row's width and where it is scrolled to are given. */
+    async function swipeTo(element: HTMLElement, slide: number, width = 375): Promise<void> {
+      Object.defineProperty(element, 'clientWidth', { configurable: true, value: width });
+      Object.defineProperty(element, 'scrollLeft', { configurable: true, value: slide * width });
+      element.dispatchEvent(new Event('scroll'));
+      await fixture.whenStable();
+    }
+
+    async function renderPhone(images?: GalleryImage[]): Promise<void> {
+      stubMedia(PHONE_SCREEN);
+      await render(images);
+    }
+
+    it('lays every photo out in one swiping row, with no arrows and no thumbnails', async () => {
+      await renderPhone();
+
+      expect(slides()).toHaveLength(3);
+      expect(Array.from(track().querySelectorAll('img')).map((img) => img.getAttribute('src'))).toEqual([
+        'http://img.test/a-card.jpg',
+        'http://img.test/b-card.jpg',
+        'http://img.test/c-card.jpg',
+      ]);
+      expect(root.querySelector('.gallery__arrow')).toBeNull();
+      expect(root.querySelector('.gallery__thumbs')).toBeNull();
+      expect(count()).toBe('1 / 3');
+    });
+
+    it('loads the first photo at once and the others when they come near', async () => {
+      await renderPhone();
+
+      expect(Array.from(track().querySelectorAll('img')).map((img) => img.getAttribute('loading'))).toEqual([
+        'eager',
+        'lazy',
+        'lazy',
+      ]);
+    });
+
+    it('names each photo by its place, for a screen reader', async () => {
+      await renderPhone();
+
+      expect(slides().map((slide) => slide.getAttribute('aria-label'))).toEqual([
+        'Agrandir la photo 1',
+        'Agrandir la photo 2',
+        'Agrandir la photo 3',
+      ]);
+      expect(track().querySelectorAll('img')[1].getAttribute('alt')).toBe('Photo 2 sur 3 — Peugeot 308');
+    });
+
+    it('moves the counter as the row is swiped', async () => {
+      await renderPhone();
+
+      await swipeTo(track(), 2);
+      expect(count()).toBe('3 / 3');
+
+      await swipeTo(track(), 1);
+      expect(count()).toBe('2 / 3');
+    });
+
+    it('opens the photo tapped full screen, still swiping, on that photo', async () => {
+      await renderPhone();
+
+      await click(slides()[1]);
+
+      const lightbox = dialog() as HTMLElement;
+      expect(lightbox.classList).toContain('lightbox--phone');
+      expect(lightbox.querySelectorAll('.lightbox__track img')).toHaveLength(3);
+      expect(lightbox.querySelector('.lightbox__count')?.textContent?.trim()).toBe('2 / 3');
+      // No arrows to aim at with a thumb: the swipe does it.
+      expect(lightbox.querySelector('.lightbox__arrow')).toBeNull();
+      // And the page behind does not scroll while it is open.
+      expect(lightbox.hasAttribute('data-locks-scroll')).toBe(true);
+    });
+
+    it('comes back to the row on the photo last seen full screen', async () => {
+      await renderPhone();
+      await click(slides()[0]);
+
+      await swipeTo(root.querySelector('.lightbox__track') as HTMLElement, 2);
+      await click(root.querySelector('.lightbox__close'));
+
+      expect(dialog()).toBeNull();
+      expect(count()).toBe('3 / 3');
+    });
+
+    it('leaves a single photo without a counter', async () => {
+      await renderPhone([image('only')]);
+
+      expect(slides()).toHaveLength(1);
+      expect(count()).toBeUndefined();
+    });
+  });
+
+  it('does not lock the page behind the enlarged view on a desktop', async () => {
+    // The scrollbar would vanish and the page under the overlay shift sideways.
+    await render();
+    await click(main());
+
+    expect(dialog()?.hasAttribute('data-locks-scroll')).toBe(false);
   });
 });

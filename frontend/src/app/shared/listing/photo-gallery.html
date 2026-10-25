@@ -1,70 +1,107 @@
 @if (current(); as image) {
-  <div class="gallery">
-    <div class="gallery__stage">
-      <!-- The main image is a button: clicking it enlarges, and a button is what makes
-           that reachable from the keyboard and announced as an action. -->
-      <button
-        #opener
-        class="gallery__main"
-        type="button"
-        aria-label="Agrandir la photo"
-        i18n-aria-label="@@galleryEnlarge"
-        (click)="open()"
-      >
-        <img
-          class="gallery__img"
-          [src]="image.medium"
-          [attr.srcset]="image.medium + ' 800w, ' + image.large + ' 1600w'"
-          sizes="(min-width: 1024px) 760px, 100vw"
-          [attr.width]="image.width"
-          [attr.height]="image.height"
-          [alt]="alt()"
-          (error)="markBroken(image)"
-        />
-      </button>
-
-      @if (many()) {
-        <button class="gallery__arrow gallery__arrow--prev" type="button" aria-label="Photo précédente"
-          i18n-aria-label="@@galleryPrevious" (click)="step(-1)">‹</button>
-        <button class="gallery__arrow gallery__arrow--next" type="button" aria-label="Photo suivante"
-          i18n-aria-label="@@galleryNext" (click)="step(1)">›</button>
-        <!-- Polite, so moving through the photos is announced without interrupting. -->
-        <p class="gallery__count" aria-live="polite">{{ index() + 1 }} / {{ usable().length }}</p>
-      }
-    </div>
-
-    @if (many()) {
-      <ul class="gallery__thumbs" aria-label="Toutes les photos" i18n-aria-label="@@galleryAll">
-        @for (thumb of usable(); track thumb.id; let i = $index) {
-          <li>
+  @if (phone()) {
+    <!-- A phone: every photo in a row that the finger swipes, one to a screen, snapping into
+         place. Each is a button that opens it full screen. The counter says where the row is. -->
+    <div class="swipe">
+      <ul #track class="swipe__track" aria-label="Photos" i18n-aria-label="@@galleryPhotos" (scroll)="onSwipe(track)">
+        @for (photo of usable(); track photo.id; let i = $index) {
+          <li class="swipe__slide">
             <button
-              class="gallery__thumb"
+              class="swipe__open"
               type="button"
-              [class.gallery__thumb--current]="i === index()"
-              [attr.aria-label]="'Afficher la photo ' + (i + 1)"
-              [attr.aria-current]="i === index() ? 'true' : null"
-              (click)="show(i)"
+              [attr.aria-label]="'Agrandir la photo ' + (i + 1)"
+              (click)="openAt(i)"
             >
-              <img [src]="thumb.thumbnail" alt="" loading="lazy" decoding="async" (error)="markBroken(thumb)" />
+              <img
+                class="gallery__img"
+                [src]="photo.medium"
+                [attr.srcset]="photo.medium + ' 800w, ' + photo.large + ' 1600w'"
+                sizes="100vw"
+                [attr.width]="photo.width"
+                [attr.height]="photo.height"
+                [attr.loading]="i === 0 ? 'eager' : 'lazy'"
+                [alt]="altOf(i)"
+                (error)="markBroken(photo)"
+              />
             </button>
           </li>
         }
       </ul>
-    }
-  </div>
+      @if (many()) {
+        <p class="gallery__count" aria-live="polite">{{ index() + 1 }} / {{ usable().length }}</p>
+      }
+    </div>
+  } @else {
+    <div class="gallery">
+      <div class="gallery__stage">
+        <!-- The main image is a button: clicking it enlarges, and a button is what makes
+             that reachable from the keyboard and announced as an action. -->
+        <button
+          #opener
+          class="gallery__main"
+          type="button"
+          aria-label="Agrandir la photo"
+          i18n-aria-label="@@galleryEnlarge"
+          (click)="open()"
+        >
+          <img
+            class="gallery__img"
+            [src]="image.medium"
+            [attr.srcset]="image.medium + ' 800w, ' + image.large + ' 1600w'"
+            sizes="(min-width: 1024px) 760px, 100vw"
+            [attr.width]="image.width"
+            [attr.height]="image.height"
+            [alt]="alt()"
+            (error)="markBroken(image)"
+          />
+        </button>
+
+        @if (many()) {
+          <button class="gallery__arrow gallery__arrow--prev" type="button" aria-label="Photo précédente"
+            i18n-aria-label="@@galleryPrevious" (click)="step(-1)">‹</button>
+          <button class="gallery__arrow gallery__arrow--next" type="button" aria-label="Photo suivante"
+            i18n-aria-label="@@galleryNext" (click)="step(1)">›</button>
+          <!-- Polite, so moving through the photos is announced without interrupting. -->
+          <p class="gallery__count" aria-live="polite">{{ index() + 1 }} / {{ usable().length }}</p>
+        }
+      </div>
+
+      @if (many()) {
+        <ul class="gallery__thumbs" aria-label="Toutes les photos" i18n-aria-label="@@galleryAll">
+          @for (thumb of usable(); track thumb.id; let i = $index) {
+            <li>
+              <button
+                class="gallery__thumb"
+                type="button"
+                [class.gallery__thumb--current]="i === index()"
+                [attr.aria-label]="'Afficher la photo ' + (i + 1)"
+                [attr.aria-current]="i === index() ? 'true' : null"
+                (click)="show(i)"
+              >
+                <img [src]="thumb.thumbnail" alt="" loading="lazy" decoding="async" (error)="markBroken(thumb)" />
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
 
   @if (enlarged()) {
     <!-- A click on the backdrop itself closes; a click on the picture or a control lands
          on that element, not on this one, and is ignored here. tabindex -1 makes the
          dialog focusable by script without adding it to the tab order, and Escape is
-         handled both here and on the host, so it works wherever focus is inside. -->
+         handled both here and on the host, so it works wherever focus is inside.
+         On a phone, data-locks-scroll: the page behind does not scroll while it is open. -->
     <div
       class="lightbox"
+      [class.lightbox--phone]="phone()"
       role="dialog"
       aria-modal="true"
       aria-label="Photo agrandie"
       i18n-aria-label="@@galleryDialog"
       tabindex="-1"
+      [attr.data-locks-scroll]="phone() ? '' : null"
       (click)="closeOnBackdrop($event)"
       (keydown.escape)="close()"
     >
@@ -72,16 +109,30 @@
         Fermer
       </button>
 
-      @if (many()) {
-        <button class="lightbox__arrow lightbox__arrow--prev" type="button" aria-label="Photo précédente"
-          i18n-aria-label="@@galleryPrevious" (click)="step(-1)">‹</button>
+      @if (phone()) {
+        <!-- The same swipe as the page's row, at full size, opened on the photo tapped. -->
+        <ul #bigTrack class="swipe__track lightbox__track" (scroll)="onSwipe(bigTrack)">
+          @for (photo of usable(); track photo.id; let i = $index) {
+            <li class="swipe__slide lightbox__slide">
+              <img class="lightbox__img" [src]="photo.large" [alt]="altOf(i)" [attr.loading]="i === index() ? 'eager' : 'lazy'" />
+            </li>
+          }
+        </ul>
+      } @else {
+        @if (many()) {
+          <button class="lightbox__arrow lightbox__arrow--prev" type="button" aria-label="Photo précédente"
+            i18n-aria-label="@@galleryPrevious" (click)="step(-1)">‹</button>
+        }
+
+        <img class="lightbox__img" [src]="image.large" [alt]="alt()" />
+
+        @if (many()) {
+          <button class="lightbox__arrow lightbox__arrow--next" type="button" aria-label="Photo suivante"
+            i18n-aria-label="@@galleryNext" (click)="step(1)">›</button>
+        }
       }
 
-      <img class="lightbox__img" [src]="image.large" [alt]="alt()" />
-
       @if (many()) {
-        <button class="lightbox__arrow lightbox__arrow--next" type="button" aria-label="Photo suivante"
-          i18n-aria-label="@@galleryNext" (click)="step(1)">›</button>
         <p class="lightbox__count" aria-live="polite">{{ index() + 1 }} / {{ usable().length }}</p>
       }
     </div>

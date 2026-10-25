@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   HostListener,
+  afterRenderEffect,
   computed,
   effect,
   inject,
@@ -10,6 +11,9 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+
+import { NARROW, mediaQuery } from '../../core/ui/media';
+import { OverlayEntry, OverlayHistory } from '../../core/ui/overlay-history';
 
 /** One photo, in the sizes the gallery uses. */
 export interface GalleryImage {
@@ -36,6 +40,13 @@ export interface GalleryImage {
  * <p>The enlarged view is a modal dialog in the full sense: focus moves into it and is
  * held there, Escape closes it, and focus returns to the image that opened it. Without
  * those three a keyboard user opens the picture and is lost behind it.
+ *
+ * <p>On a phone (below the medium breakpoint) the arrows and thumbnails give way to the
+ * finger: the photos sit in one row that swipes and snaps, one to a screen, with the
+ * counter over it. A tap opens the photo full screen, where the same swipe goes on. The
+ * position is shared, so the full-screen view opens on the photo tapped and the row is on
+ * the last one seen when it closes. Back closes the full-screen view, as on any phone
+ * ({@link OverlayHistory}).
  */
 @Component({
   selector: 'app-photo-gallery',
@@ -52,6 +63,13 @@ export class PhotoGallery {
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly closeButton = viewChild<ElementRef<HTMLButtonElement>>('closeButton');
   private readonly opener = viewChild<ElementRef<HTMLButtonElement>>('opener');
+  private readonly track = viewChild<ElementRef<HTMLElement>>('track');
+  private readonly bigTrack = viewChild<ElementRef<HTMLElement>>('bigTrack');
+  private readonly history = inject(OverlayHistory);
+  private entry: OverlayEntry | null = null;
+
+  /** The swiping layout. Without `matchMedia` — the test runner — the desktop one. */
+  protected readonly phone = mediaQuery(NARROW, false);
 
   private readonly position = signal(0);
   protected readonly enlarged = signal(false);
@@ -72,10 +90,13 @@ export class PhotoGallery {
   protected readonly many = computed(() => this.usable().length > 1);
 
   /** "Photo 2 sur 5 — Peugeot 308" */
-  protected readonly alt = computed(() => {
-    const place = `Photo ${this.index() + 1} sur ${this.usable().length}`;
+  protected readonly alt = computed(() => this.altOf(this.index()));
+
+  /** "Photo 2 sur 5 — Peugeot 308", for any photo, not only the current one. */
+  protected altOf(index: number): string {
+    const place = `Photo ${index + 1} sur ${this.usable().length}`;
     return this.subject() ? `${place} — ${this.subject()}` : place;
-  });
+  }
 
   constructor() {
     // A different listing's photos start from the first one.
@@ -90,6 +111,34 @@ export class PhotoGallery {
         this.closeButton()?.nativeElement.focus();
       }
     });
+
+    // A swiping row follows the position when something else moved it — the keyboard's
+    // arrows, or the other row — and is left alone when its own swipe did.
+    afterRenderEffect(() => {
+      const index = this.index();
+      for (const track of [this.track(), this.bigTrack()]) {
+        const element = track?.nativeElement;
+        if (element && element.clientWidth > 0 && slideOf(element) !== index) {
+          element.scrollTo({ left: index * element.clientWidth, behavior: 'instant' });
+        }
+      }
+    });
+  }
+
+  /** A swipe settled on a photo: that is the position now. */
+  protected onSwipe(track: HTMLElement): void {
+    if (track.clientWidth > 0) {
+      const index = slideOf(track);
+      if (index !== this.index()) {
+        this.position.set(index);
+      }
+    }
+  }
+
+  /** A phone's tap on one photo in the row. */
+  protected openAt(index: number): void {
+    this.position.set(index);
+    this.open();
   }
 
   protected show(index: number): void {
@@ -105,13 +154,26 @@ export class PhotoGallery {
   }
 
   protected open(): void {
+    if (this.enlarged()) {
+      return;
+    }
     this.enlarged.set(true);
+    this.entry = this.history.open(() => {
+      this.entry = null;
+      this.enlarged.set(false);
+    });
   }
 
   protected close(): void {
     if (this.enlarged()) {
       this.enlarged.set(false);
-      this.opener()?.nativeElement.focus();
+      this.entry?.closed();
+      this.entry = null;
+      // Back to what opened it: the main image, or on a phone the photo now in the row.
+      const opener =
+        this.opener()?.nativeElement ??
+        this.track()?.nativeElement.querySelectorAll<HTMLButtonElement>('button')[this.index()];
+      opener?.focus({ preventScroll: true });
     }
   }
 
@@ -171,4 +233,9 @@ export class PhotoGallery {
       event.preventDefault();
     }
   }
+}
+
+/** Which slide a swiping row is showing: the nearest whole one. */
+function slideOf(track: HTMLElement): number {
+  return Math.round(track.scrollLeft / track.clientWidth);
 }

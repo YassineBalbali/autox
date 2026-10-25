@@ -6,10 +6,11 @@ import { TestBed } from '@angular/core/testing';
 import { Title } from '@angular/platform-browser';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { BASE_PATH, ErrorCode, FuelType, Gearbox, PriceLevel, PublicListingDetail } from '../../core/api';
-import { TOKEN_STORE } from '../../core/auth/token-store';
+import { BASE_PATH, ErrorCode, FuelType, Gearbox, PriceLevel, PublicListingDetail, UserRole } from '../../core/api';
+import { AuthService } from '../../core/auth/auth.service';
+import { StoredTokens, TOKEN_STORE } from '../../core/auth/token-store';
 import { NBSP } from '../../shared/format/number';
 import { SearchMemory } from '../search/search-memory';
 import { ListingPage } from './listing-page';
@@ -75,6 +76,9 @@ describe('ListingPage', () => {
   const open = (url: string): TestRequest[] =>
     backend.match((request) => request.url === url).filter((request) => !request.cancelled);
 
+  /** A signed-in visitor, for the tests that need one; signed out otherwise. */
+  let session: StoredTokens | null = null;
+
   function configure(): void {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -84,17 +88,19 @@ describe('ListingPage', () => {
         provideRouter(
           [
             { path: 'recherche', component: SearchStub },
+            { path: 'connexion', component: SearchStub },
             { path: 'annonces/:id', component: ListingPage },
           ],
           withComponentInputBinding(),
         ),
         { provide: BASE_PATH, useValue: BASE },
         // Signed out: the page is public, and contacting the seller is ContactSeller's spec.
-        { provide: TOKEN_STORE, useValue: { read: () => null, write: () => undefined, clear: () => undefined } },
+        { provide: TOKEN_STORE, useValue: { read: () => session, write: () => undefined, clear: () => undefined } },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
     TestBed.inject(Router).setUpLocationChangeListener();
+    TestBed.inject(AuthService).restore();
   }
 
   function answerReference(): void {
@@ -514,5 +520,111 @@ describe('ListingPage', () => {
     await settle();
 
     expect(harness.fixture.nativeElement.querySelector('h1')?.textContent?.trim()).toBe('Renault Clio');
+  });
+
+  describe('on a phone and a tablet', () => {
+    const bar = () => root.querySelector('app-contact-bar') as HTMLElement | null;
+
+    afterEach(() => {
+      session = null;
+    });
+
+    async function signInAs(id: string): Promise<void> {
+      session = { accessToken: 'a', refreshToken: 'r', accessTokenExpiresAt: Date.now() + 900_000 };
+      await visit();
+      TestBed.inject(AuthService).setUser({ id, email: 'moi@autox.test', role: UserRole.PARTICULIER });
+      open(DETAIL)[0].flush({ ...LISTING, priceIndicator: { level: PriceLevel.GOOD_DEAL, medianPriceAmount: 2100000, comparableCount: 9 } });
+      await settle();
+    }
+
+    it('holds the price, its verdict and the way to the seller in a bar at the foot', async () => {
+      await load({ ...LISTING, priceIndicator: { level: PriceLevel.GOOD_DEAL, medianPriceAmount: 2100000, comparableCount: 9 } });
+
+      const words = bar()?.textContent?.replace(/\s+/g, ' ');
+      // \s took the narrow no-break space in the figure with it.
+      expect(words).toContain('18 990 €');
+      expect(words).toContain('Bonne affaire');
+      expect(bar()?.querySelector('button')?.textContent?.trim()).toBe('Contacter');
+    });
+
+    it('sends a visitor to sign in from the bar, and back to this listing afterwards', async () => {
+      await load();
+
+      (bar()?.querySelector('button') as HTMLButtonElement).click();
+      await settle();
+
+      expect(TestBed.inject(Router).url).toBe(`/connexion?suivant=%2Fannonces%2F${ID}`);
+    });
+
+    it('opens the message form from the bar, and steps out of the way while it is open', async () => {
+      await signInAs('u-buyer');
+
+      (bar()?.querySelector('button') as HTMLButtonElement).click();
+      await settle();
+
+      expect(root.querySelector('#contact-message')).not.toBeNull();
+      expect(bar()).toBeNull();
+
+      // Cancelled: the bar comes back.
+      (Array.from(root.querySelectorAll('app-contact-seller button')).find((button) =>
+        button.textContent?.includes('Annuler'),
+      ) as HTMLButtonElement).click();
+      await settle();
+      expect(bar()).not.toBeNull();
+    });
+
+    it('has no bar on the seller’s own listing, where there is nobody to contact', async () => {
+      await signInAs('s-1');
+
+      expect(bar()).toBeNull();
+    });
+
+    describe('the long sections', () => {
+      const toggle = (title: string) => root.querySelector(`#${title} .section__toggle`) as HTMLButtonElement;
+      const body = (button: HTMLButtonElement) =>
+        root.querySelector('#' + button.getAttribute('aria-controls')) as HTMLElement;
+
+      it('fold the specification and the equipment to their headings', async () => {
+        await load();
+
+        for (const title of ['titre-caracteristiques', 'titre-equipements']) {
+          const button = toggle(title);
+          expect(button.parentElement?.tagName, title).toBe('H2');
+          expect(button.getAttribute('aria-expanded'), title).toBe('false');
+          expect(body(button).classList, title).not.toContain('section__body--open');
+        }
+        expect(toggle('titre-caracteristiques').textContent?.trim()).toBe('Caractéristiques');
+        expect(toggle('titre-equipements').textContent?.trim()).toBe('Équipements');
+      });
+
+      it('open and close each on its own', async () => {
+        await load();
+        const specification = toggle('titre-caracteristiques');
+
+        specification.click();
+        await settle();
+        expect(specification.getAttribute('aria-expanded')).toBe('true');
+        expect(body(specification).classList).toContain('section__body--open');
+        expect(toggle('titre-equipements').getAttribute('aria-expanded')).toBe('false');
+
+        specification.click();
+        await settle();
+        expect(specification.getAttribute('aria-expanded')).toBe('false');
+      });
+
+      it('keep the description open: it is what the seller wrote, and short', async () => {
+        await load();
+
+        expect(root.querySelector('#titre-description .section__toggle')).toBeNull();
+      });
+
+      it('keep the plain heading for a wide screen, where nothing folds', async () => {
+        await load();
+
+        expect(root.querySelector('#titre-caracteristiques .section__title-text')?.textContent?.trim()).toBe(
+          'Caractéristiques',
+        );
+      });
+    });
   });
 });

@@ -1,12 +1,13 @@
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { catchError, of, switchMap, tap } from 'rxjs';
 
 import { ErrorCode, Feature, ListingsPublicService, PublicListingDetail } from '../../core/api';
+import { AuthService } from '../../core/auth/auth.service';
 import { asApiError } from '../../core/errors/api-error';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
@@ -16,12 +17,16 @@ import { Alert } from '../../shared/ui/alert';
 import { Icon } from '../../shared/ui/icon';
 import { NotFound } from '../../shared/ui/not-found';
 import { SearchMemory, isSearchUrl } from '../search/search-memory';
+import { ContactBar } from './contact-bar';
 import { KeyFacts } from './key-facts';
 import { ListingSummary } from './listing-summary';
 import { galleryImages, groupFeatures, specificationRows } from './listing-view';
 import { SimilarListings } from './similar-listings';
 
 type PageState = 'loading' | 'ready' | 'missing' | 'error';
+
+/** The sections that fold on a phone. */
+type FoldingSection = 'specification' | 'equipment';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -40,10 +45,18 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * search, and is kept apart from "the request failed", which gets a retry. Telling
  * somebody to retry a listing that has been sold is as wrong as telling them a listing
  * is gone because their train went into a tunnel.
+ *
+ * <h2>On a phone</h2>
+ *
+ * <p>The photographs come first, edge to edge and swiped, then the title, price and seller,
+ * then the facts. The price and the contact button are also held in a bar at the foot of
+ * the screen, so the buyer can act from anywhere on the page. The specification and the
+ * equipment fold to their headings: long lists a buyer opens when they want them, rather
+ * than scrolls past to reach the cars like this one.
  */
 @Component({
   selector: 'app-listing-page',
-  imports: [PhotoGallery, KeyFacts, ListingSummary, SimilarListings, Icon, Alert, NotFound],
+  imports: [PhotoGallery, KeyFacts, ListingSummary, SimilarListings, ContactBar, Icon, Alert, NotFound],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-page.html',
   styleUrl: './listing-page.scss',
@@ -56,11 +69,27 @@ export class ListingPage {
   private readonly location = inject(Location);
   private readonly title = inject(Title);
   private readonly memory = inject(SearchMemory);
+  private readonly auth = inject(AuthService);
 
   /** The listing id, bound from the route by `withComponentInputBinding`. */
   readonly id = input.required<string>();
 
   protected readonly state = signal<PageState>('loading');
+
+  private readonly summary = viewChild<ListingSummary>('summary');
+
+  /**
+   * The bottom bar: not while the buyer is writing, and never on the seller's own listing.
+   * Decided from the page's own listing and session; of the contact block only its open
+   * state is read, which is a plain signal and safe while that block is still being created.
+   */
+  protected readonly barShown = computed(() => {
+    const own = !!this.auth.user()?.id && this.auth.user()?.id === this.listing()?.seller?.id;
+    return !own && !this.summary()?.contact()?.open();
+  });
+
+  /** The sections folded open on a phone. All folded to begin with. */
+  private readonly unfolded = signal<ReadonlySet<FoldingSection>>(new Set());
   protected readonly listing = signal<PublicListingDetail | null>(null);
   protected readonly failure = signal<string | null>(null);
 
@@ -178,6 +207,23 @@ export class ListingPage {
   private showMissing(): void {
     this.state.set('missing');
     this.title.setTitle('Annonce introuvable · AutoX');
+  }
+
+  protected isOpen(section: FoldingSection): boolean {
+    return this.unfolded().has(section);
+  }
+
+  protected toggle(section: FoldingSection): void {
+    this.unfolded.update((open) => {
+      const next = new Set(open);
+      if (!next.delete(section)) next.add(section);
+      return next;
+    });
+  }
+
+  /** The bottom bar's button: whatever the contact block's own button would do. */
+  protected contactSeller(): void {
+    this.summary()?.contact()?.engage();
   }
 }
 

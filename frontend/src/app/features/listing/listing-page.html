@@ -47,7 +47,7 @@
 
       <article class="listing">
         <div class="listing__main">
-          <app-photo-gallery [images]="images()" [subject]="item.title ?? ''" />
+          <app-photo-gallery class="listing__gallery" [images]="images()" [subject]="item.title ?? ''" />
 
           <app-key-facts [listing]="item" [fuel]="fuelLabel()" [gearbox]="gearboxLabel()" />
 
@@ -62,10 +62,26 @@
 
           @if (specification().length) {
             <section class="section" aria-labelledby="titre-caracteristiques">
-              <h2 id="titre-caracteristiques" class="section__title" i18n="@@listingSpecification">
-                Caractéristiques
+              <!-- On a phone the heading is a button that folds the section; above it, the
+                   plain heading, and the section always open. -->
+              <h2 id="titre-caracteristiques" class="section__title">
+                <span class="section__title-text" i18n="@@listingSpecification">Caractéristiques</span>
+                <button
+                  class="section__toggle"
+                  type="button"
+                  [attr.aria-expanded]="isOpen('specification')"
+                  aria-controls="corps-caracteristiques"
+                  (click)="toggle('specification')"
+                >
+                  <span i18n="@@listingSpecification">Caractéristiques</span>
+                  <app-icon name="chevron-down" [size]="20" />
+                </button>
               </h2>
-              <dl class="spec-table">
+              <dl
+                id="corps-caracteristiques"
+                class="spec-table section__body"
+                [class.section__body--open]="isOpen('specification')"
+              >
                 @for (row of specification(); track row.label) {
                   <div class="spec-table__row">
                     <dt>{{ row.label }}</dt>
@@ -78,8 +94,24 @@
 
           @if (equipment().length) {
             <section class="section" aria-labelledby="titre-equipements">
-              <h2 id="titre-equipements" class="section__title" i18n="@@listingEquipment">Équipements</h2>
-              <div class="equipment">
+              <h2 id="titre-equipements" class="section__title">
+                <span class="section__title-text" i18n="@@listingEquipment">Équipements</span>
+                <button
+                  class="section__toggle"
+                  type="button"
+                  [attr.aria-expanded]="isOpen('equipment')"
+                  aria-controls="corps-equipements"
+                  (click)="toggle('equipment')"
+                >
+                  <span i18n="@@listingEquipment">Équipements</span>
+                  <app-icon name="chevron-down" [size]="20" />
+                </button>
+              </h2>
+              <div
+                id="corps-equipements"
+                class="equipment section__body"
+                [class.section__body--open]="isOpen('equipment')"
+              >
                 @for (group of equipment(); track group.category) {
                   <div class="equipment__group">
                     <h3>{{ group.title }}</h3>
@@ -97,12 +129,19 @@
 
         <!-- Everything needed to decide, and to act: it follows the page down. -->
         <aside class="listing__aside">
-          <app-listing-summary [listing]="item" [minorUnit]="minorUnit()" />
+          <app-listing-summary #summary [listing]="item" [minorUnit]="minorUnit()" />
         </aside>
       </article>
 
       <!-- Under both columns, the full width of the page: the last thing on it. -->
       <app-similar-listings class="listing__similar" [listingId]="item.id!" />
+
+      <!-- Phones and tablets: the price and the way to the seller, held at the foot of the
+           screen. Not while the message form is open — it would sit over the keyboard — and
+           not for the seller's own listing. -->
+      @if (barShown()) {
+        <app-contact-bar [listing]="item" [minorUnit]="minorUnit()" (contact)="contactSeller()" />
+      }
     }
   }
 }
