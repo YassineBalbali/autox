@@ -96,13 +96,9 @@
   gap: var(--s-1);
 }
 
-.tile__icon {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
+// The car, in the accent, above its name. Its own box size, so the tile's height is the
+// same before and after the drawing paints.
+.tile__silhouette {
   margin-bottom: var(--s-2);
-  border-radius: 50%;
-  background: var(--c-accent-soft);
   color: var(--c-accent);
 }

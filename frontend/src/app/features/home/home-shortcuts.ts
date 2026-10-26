@@ -1,4 +1,5 @@
-import { BodyType, FuelType, Gearbox } from '../../core/api';
+import { BodyType } from '../../core/api';
+import { SilhouetteName } from '../../shared/ui/body-silhouettes.data';
 import { IconName } from '../../shared/ui/icons.data';
 import { EMPTY_QUERY, SearchQuery } from '../search/search-query';
 
@@ -10,7 +11,8 @@ export interface Shortcut {
 }
 
 export interface CategoryShortcut extends Shortcut {
-  readonly icon: IconName;
+  /** The car drawn on the tile. */
+  readonly silhouette: SilhouetteName;
 }
 
 const search = (patch: Partial<SearchQuery>): SearchQuery => ({ ...EMPTY_QUERY, ...patch });
@@ -32,24 +34,22 @@ export const BUDGETS: readonly Shortcut[] = [
 ];
 
 /**
- * Kinds of car, each an ordinary search on the filters the results page already has —
- * so a tile and the sidebar can never disagree about what "hybride" means.
+ * Kinds of car, by shape: each tile is an ordinary search on the sidebar's body-type
+ * filter, so a tile and the sidebar can never disagree about what "break" means, and each
+ * shows the car's silhouette.
  *
- * <p>"Citadine" is the hatchback body type, which the sidebar already labels "Citadine /
- * compacte". "Familiale" is a break or a monospace: the two bodies bought for space.
+ * <p>The six bodies most cars on sale are. "Citadine" is the hatchback, which the sidebar
+ * labels "Citadine / compacte"; "Utilitaire" is the van. Coupés, cabriolets and pick-ups
+ * are in the sidebar. Energy and gearbox are too: they are not shapes, and a row of car
+ * drawings with a lightning bolt in it reads as one tile out of place.
  */
 export const CATEGORIES: readonly CategoryShortcut[] = [
-  { id: 'electric', label: 'Électrique', icon: 'zap', query: search({ fuel: [FuelType.ELECTRIC] }) },
-  {
-    id: 'hybrid',
-    label: 'Hybride',
-    icon: 'leaf',
-    query: search({ fuel: [FuelType.HYBRID_PETROL, FuelType.HYBRID_DIESEL, FuelType.PLUGIN_HYBRID] }),
-  },
-  { id: 'automatic', label: 'Automatique', icon: 'cog', query: search({ gearbox: [Gearbox.AUTOMATIC] }) },
-  { id: 'city', label: 'Citadine', icon: 'building-2', query: search({ body: [BodyType.HATCHBACK] }) },
-  { id: 'suv', label: 'SUV', icon: 'mountain', query: search({ body: [BodyType.SUV] }) },
-  { id: 'family', label: 'Familiale', icon: 'users', query: search({ body: [BodyType.ESTATE, BodyType.MPV] }) },
+  { id: 'citadine', label: 'Citadine', silhouette: 'citadine', query: search({ body: [BodyType.HATCHBACK] }) },
+  { id: 'berline', label: 'Berline', silhouette: 'berline', query: search({ body: [BodyType.SEDAN] }) },
+  { id: 'break', label: 'Break', silhouette: 'break', query: search({ body: [BodyType.ESTATE] }) },
+  { id: 'suv', label: 'SUV', silhouette: 'suv', query: search({ body: [BodyType.SUV] }) },
+  { id: 'monospace', label: 'Monospace', silhouette: 'monospace', query: search({ body: [BodyType.MPV] }) },
+  { id: 'utilitaire', label: 'Utilitaire', silhouette: 'utilitaire', query: search({ body: [BodyType.VAN] }) },
 ];
 
 /** The budgets offered by the hero's "Prix max" field, in whole euros. */

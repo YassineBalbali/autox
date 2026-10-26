@@ -49,7 +49,7 @@
   <ul class="tiles tiles--six">
     @for (category of categories(); track category.id) {
       <li>
-        <app-shortcut-tile variant="category" [label]="category.label" [icon]="category.icon" [params]="category.params" [count]="category.count" />
+        <app-shortcut-tile variant="category" [label]="category.label" [silhouette]="category.silhouette" [params]="category.params" [count]="category.count" />
       </li>
     }
   </ul>

@@ -94,9 +94,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Body-type silhouettes — drawn for AutoX
+
+| | |
+|---|---|
+| Files | `frontend/src/app/shared/ui/body-silhouettes.data.ts`, drawn by `body-silhouette.ts` |
+| Source | Drawn for this project, by hand, as SVG path data: no third-party artwork |
+| Licence | The project's own, like the rest of the code |
+
+Six side views for the home page's body-type tiles: citadine, berline, break, SUV,
+monospace, utilitaire. Each is a generic shape built from the proportions that define the
+type — a short hatch, three boxes, a long roof, a tall body on bigger wheels, one box, a
+flat-roofed van — and none was traced from a photograph, a manufacturer's drawing or
+another icon set, so none resembles an identifiable model. They follow Lucide's style
+(2-unit round strokes, no fill) so that they sit with the icons above, on their own wider
+64 x 32 grid.
+
 ## What is deliberately not here
 
 - **Manufacturers' logos.** They are trademarks. The home page names makes in text only.
+- **Manufacturers' imagery.** No drawing on the site is traced from a carmaker's photographs,
+  outlines or configurator views; the body-type silhouettes above are generic.
 - **Any other site's branding, photos or wording.** The home page follows the usual layout of
   a French car marketplace, but its colours, wordmark, copy and imagery are AutoX's own or
   listed above.

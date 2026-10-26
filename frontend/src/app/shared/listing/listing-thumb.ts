@@ -52,6 +52,8 @@ import { coverOf } from './summary';
     </div>
   `,
   styles: `
+    @use '../../../styles/tokens' as t;
+
     :host {
       display: block;
     }
@@ -105,6 +107,13 @@ import { coverOf } from './summary';
       position: absolute;
       top: var(--s-2);
       right: var(--s-2);
+
+      // On a phone the button is larger than the disc it shows; it moves out by the
+      // difference, so the disc sits as far from the corner as the photo count does.
+      @include t.touch {
+        top: calc(var(--s-2) - var(--fav-disc-inset, 0px));
+        right: calc(var(--s-2) - var(--fav-disc-inset, 0px));
+      }
     }
   `,
 })

@@ -221,28 +221,50 @@ describe('HomePage', () => {
       expect(links[0].querySelector('.tile__count')?.textContent?.trim()).toBe('3 annonces');
     });
 
-    it('links each category to the sidebar filter it stands for', async () => {
+    it('offers the six body types, each linked to the sidebar filter it stands for', async () => {
       await visit();
-      const hrefs = tiles('category').map((link) => link.getAttribute('href'));
+      const links = tiles('category');
 
-      expect(hrefs).toHaveLength(CATEGORIES.length);
-      expect(hrefs).toEqual([
-        '/recherche?carburant=electric',
-        '/recherche?carburant=hybrid-diesel,hybrid-petrol,plugin-hybrid',
-        '/recherche?boite=automatic',
-        '/recherche?carrosserie=hatchback',
-        '/recherche?carrosserie=suv',
-        '/recherche?carrosserie=estate,mpv',
+      expect(links).toHaveLength(CATEGORIES.length);
+      expect(links.map((link) => link.querySelector('.tile__label')?.textContent?.trim())).toEqual([
+        'Citadine',
+        'Berline',
+        'Break',
+        'SUV',
+        'Monospace',
+        'Utilitaire',
       ]);
+      expect(links.map((link) => link.getAttribute('href'))).toEqual([
+        '/recherche?carrosserie=hatchback',
+        '/recherche?carrosserie=sedan',
+        '/recherche?carrosserie=estate',
+        '/recherche?carrosserie=suv',
+        '/recherche?carrosserie=mpv',
+        '/recherche?carrosserie=van',
+      ]);
+    });
+
+    it('draws each body type’s own silhouette above its name, as decoration only', async () => {
+      await visit();
+      const links = tiles('category');
+      const drawings = links.map((link) => link.querySelector('app-body-silhouette svg') as SVGElement);
+
+      expect(drawings.every((svg) => svg !== null)).toBe(true);
+      // Above the label, in the tile's reading order.
+      expect(links[0].firstElementChild?.tagName).toBe('APP-BODY-SILHOUETTE');
+      // The label says what it is: the drawing is not announced as well.
+      expect(drawings.every((svg) => svg.getAttribute('aria-hidden') === 'true')).toBe(true);
+      // Six different drawings, not one car six times.
+      expect(new Set(drawings.map((svg) => svg.innerHTML)).size).toBe(6);
     });
 
     it('puts "1 annonce" in the singular, and a failed count costs the number, not the tile', async () => {
       await visit();
-      await answerCounts((criteria) => (criteria['gearbox'] ? 'fail' : 1));
+      await answerCounts((criteria) => (Object.values(criteria).some((value) => value.includes('VAN')) ? 'fail' : 1));
 
-      const automatic = tiles('category')[2];
-      expect(automatic.getAttribute('href')).toBe('/recherche?boite=automatic');
-      expect(automatic.querySelector('.tile__count')?.textContent?.trim()).toBe('');
+      const van = tiles('category')[5];
+      expect(van.getAttribute('href')).toBe('/recherche?carrosserie=van');
+      expect(van.querySelector('.tile__count')?.textContent?.trim()).toBe('');
       expect(tiles('category')[0].querySelector('.tile__count')?.textContent?.trim()).toBe('1 annonce');
     });
 
