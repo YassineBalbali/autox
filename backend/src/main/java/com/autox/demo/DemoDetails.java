@@ -44,8 +44,16 @@ final class DemoDetails {
         return vehicle.body() == BodyType.SEDAN ? 4 : 5;
     }
 
+    /** A van's cab: a bench for two passengers in the larger Jumpy, a single seat in the others. */
     static int seats(DemoCatalogue.Vehicle vehicle) {
-        return vehicle.modelSlug().equals("500") ? 4 : 5;
+        if (vehicle.body() == BodyType.VAN) {
+            return vehicle.modelSlug().equals("jumpy") ? 3 : 2;
+        }
+        return switch (vehicle.modelSlug()) {
+            case "500" -> 4;
+            case "5008" -> 7;
+            default -> 5;
+        };
     }
 
     static int powerKw(DemoCatalogue.Vehicle vehicle) {
@@ -95,6 +103,10 @@ final class DemoDetails {
         }
         if (vehicle.fuel() == FuelType.DIESEL) {
             codes.add("PARTICLE_FILTER");
+        }
+        if (vehicle.body() == BodyType.VAN) {
+            // No rear seats, so nothing to fix a child seat to.
+            codes.remove("ISOFIX");
         }
         if (vehicle.fuel() != FuelType.ELECTRIC && vehicle.gearbox() == Gearbox.AUTOMATIC) {
             codes.add("START_STOP");

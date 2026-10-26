@@ -231,19 +231,20 @@ Everything listed above about the indicator applies, plus the following:
 
 ## The demo data
 
-Seeded at random, the indicator would have nothing to say: a hundred and twenty listings
-over twenty-one models, each in several versions, and almost none would reach five
+Seeded at random, the indicator would have nothing to say: a hundred and fifty-two listings
+over twenty-seven models, each in several versions, and almost none would reach five
 comparables of the same engine. The seed (`DemoCatalogue`) therefore puts about ten
-listings on each of eight common models, most or all of them in the one version that
-sells: the Clio TCe 90, the Model 3 Propulsion, the Sandero Stepway ECO-G 100. The other
+listings on each of ten common models, most or all of them in the one version that
+sells: the Clio TCe 90, the Model 3 Propulsion, the Sandero Stepway ECO-G 100, and, so that
+monospaces and vans have verdicts too, the Berlingo BlueHDi 100 and the Kangoo Van dCi 95. The other
 models get one to four listings, which shows the indicator staying silent. Asking prices
 are spread around each car's value, as sellers' prices are, so all three verdicts appear.
-About half the listings (57 of 120) get one: 16 good deals, 29 at the market price and 12
+About half the listings (70 of 152) get one: 18 good deals, 38 at the market price and 14
 above it.
 
 `DemoCatalogueTest` applies the rule to the seed in memory. It fails if fewer than thirty
-listings get a verdict, if any verdict is missing, or if one of the eight volume models
-gets none.
+listings get a verdict, if any verdict is missing, if one of the ten volume models gets
+none, or if no monospace or no van does.
 
 The seed knows each car's true value, so the verdicts can be checked against it. Without
 the age and mileage adjustment, 3 of the 24 good-deal and above-market verdicts were wrong
@@ -253,8 +254,8 @@ truth warrants: a 2023 Peugeot 208 asked 2 % under its value is called a good de
 the residue of an assumption that differs from how the seed's prices were made, which is
 what real prices will do too.
 
-**La Cote on the same data.** Valuing the car of each of the 120 demo listings, as if its
-owner asked:
+**La Cote on the same data.** Valuing the car of each of the 120 demo listings the seed
+had before the monospaces and vans were added, as if its owner asked:
 - **57** get an estimate.
 - **17** get none, but are offered a wider search that would give one.
 - **46** get neither: the models with only one to four listings.

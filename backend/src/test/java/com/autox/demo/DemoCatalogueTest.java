@@ -101,7 +101,14 @@ class DemoCatalogueTest {
                         FuelType.HYBRID_PETROL, FuelType.PLUGIN_HYBRID, FuelType.LPG);
         assertThat(vehicles.stream().map(DemoCatalogue.Vehicle::gearbox).distinct())
                 .contains(Gearbox.MANUAL, Gearbox.AUTOMATIC);
-        assertThat(vehicles.stream().map(DemoCatalogue.Vehicle::body).distinct()).hasSizeGreaterThanOrEqualTo(4);
+        // The six the home page offers a tile for, each with a few listings behind it.
+        Map<com.autox.catalog.BodyType, Long> perBody = vehicles.stream()
+                .collect(Collectors.groupingBy(DemoCatalogue.Vehicle::body, Collectors.counting()));
+        assertThat(perBody).containsKeys(
+                com.autox.catalog.BodyType.HATCHBACK, com.autox.catalog.BodyType.SEDAN,
+                com.autox.catalog.BodyType.ESTATE, com.autox.catalog.BodyType.SUV,
+                com.autox.catalog.BodyType.MPV, com.autox.catalog.BodyType.VAN);
+        assertThat(perBody.values()).allSatisfy(count -> assertThat(count).isGreaterThanOrEqualTo(3));
         assertThat(vehicles.stream().map(DemoCatalogue.Vehicle::city).distinct()).hasSizeGreaterThanOrEqualTo(8);
         // Every make in the demo catalogue has at least one car, so no make filter is empty.
         assertThat(vehicles.stream().map(DemoCatalogue.Vehicle::makeSlug).distinct())
@@ -227,6 +234,7 @@ class DemoCatalogueTest {
         // at least five others, their prices brought to the listing's age and mileage.
         Map<String, Long> levels = new java.util.HashMap<>();
         Set<String> judgedModels = new java.util.HashSet<>();
+        Map<com.autox.catalog.BodyType, Long> judgedBodies = new java.util.EnumMap<>(com.autox.catalog.BodyType.class);
         for (DemoCatalogue.Vehicle vehicle : vehicles) {
             if (vehicle.condition() == com.autox.listing.VehicleCondition.NEW) {
                 continue;
@@ -251,6 +259,7 @@ class DemoCatalogueTest {
                     : vehicle.priceEuros() >= 1.1 * median ? "ABOVE_MARKET" : "MARKET";
             levels.merge(level, 1L, Long::sum);
             judgedModels.add(vehicle.makeSlug() + "/" + vehicle.modelSlug());
+            judgedBodies.merge(vehicle.body(), 1L, Long::sum);
         }
 
         // The volume models exist for this: if one of them has no verdict at all, its
@@ -259,8 +268,13 @@ class DemoCatalogueTest {
                 .filter(template -> template.weight() >= 9)
                 .map(template -> template.makeSlug() + "/" + template.modelSlug())
                 .collect(Collectors.toSet());
-        assertThat(volumeModels).hasSize(8);
+        assertThat(volumeModels).hasSize(10);
         assertThat(judgedModels).containsAll(volumeModels);
+        // And every body type on the home page has listings that show a verdict, not
+        // only the cars and SUVs.
+        assertThat(judgedBodies).as("listings with an indicator, by body").containsKeys(
+                com.autox.catalog.BodyType.HATCHBACK, com.autox.catalog.BodyType.SEDAN,
+                com.autox.catalog.BodyType.SUV, com.autox.catalog.BodyType.MPV, com.autox.catalog.BodyType.VAN);
 
         assertThat(levels.values().stream().mapToLong(Long::longValue).sum())
                 .as("listings with an indicator").isGreaterThanOrEqualTo(30);
