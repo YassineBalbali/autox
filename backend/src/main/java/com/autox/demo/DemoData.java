@@ -118,9 +118,21 @@ class DemoData {
      */
     int seed() {
         ledger.create();
+        List<DemoCatalogue.Vehicle> vehicles = DemoCatalogue.vehicles();
+        int target = Math.min(limit, vehicles.size());
         if (ledger.hasEntries()) {
-            log.info("Demo data is already present; nothing seeded. "
-                    + "Start once with AUTOX_DEMO_ACTION=remove to clear it.");
+            // Only what an earlier seed recorded counts. Removal drops the whole ledger, so a
+            // make or model it kept for someone else's listing is not in here, and a seed
+            // that was stopped partway is told apart from one that finished.
+            int recorded = ledger.ids(DemoLedger.LISTING).size();
+            if (recorded >= target) {
+                log.info("Demo data is already present ({} listings); nothing seeded.", recorded);
+            } else {
+                log.warn("An earlier demo seed stopped partway: {} of {} listings. Nothing seeded. "
+                                + "Start once with AUTOX_DEMO_ACTION=remove, which deletes only what the "
+                                + "seed recorded, then once without it to seed from the start.",
+                        recorded, target);
+            }
             return 0;
         }
 
@@ -137,8 +149,7 @@ class DemoData {
         Map<String, UUID[]> catalogue = seedCatalogue();
 
         int created = 0;
-        List<DemoCatalogue.Vehicle> vehicles = DemoCatalogue.vehicles();
-        for (DemoCatalogue.Vehicle vehicle : vehicles.subList(0, Math.min(limit, vehicles.size()))) {
+        for (DemoCatalogue.Vehicle vehicle : vehicles.subList(0, target)) {
             seedListing(vehicle, sellerIds.get(vehicle.sellerKey()),
                     catalogue.get(vehicle.makeSlug() + "/" + vehicle.modelSlug()));
             created++;

@@ -231,25 +231,10 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
         // A visitor who sold a Peugeot 308 picked the demo's 308. Deleting it failed on the
         // foreign key halfway through a removal, after the demo listings had gone.
         demoData.seed();
-        DemoCatalogue.Vehicle first = DemoCatalogue.vehicles().getFirst();
-        java.util.UUID makeId = jdbcTemplate.queryForObject(
-                "SELECT id FROM vehicle_make WHERE slug = ?", java.util.UUID.class, first.makeSlug());
-        java.util.UUID modelId = jdbcTemplate.queryForObject(
-                "SELECT id FROM vehicle_model WHERE make_id = ? AND slug = ?", java.util.UUID.class,
-                makeId, first.modelSlug());
-        AppUser visitor = createUser(uniqueEmail("visitor"), UserRole.PARTICULIER, UserStatus.ACTIVE);
-        jdbcTemplate.update("""
-                INSERT INTO listing (id, seller_id, status, moderation_status, title,
-                                     price_amount, price_currency_code, country_code,
-                                     postal_code, city, make_id, model_id,
-                                     first_registration_year, mileage_km, fuel_type, gearbox,
-                                     body_type, vehicle_condition, published_at, expires_at,
-                                     created_at, updated_at)
-                VALUES (gen_random_uuid(), ?, 'ACTIVE', 'NOT_REVIEWED', 'Ma voiture',
-                        1500000, 'EUR', 'FR', '75011', 'Paris', ?, ?,
-                        2021, 40000, 'PETROL', 'MANUAL', 'HATCHBACK', 'USED',
-                        now(), now() + interval '60 days', now(), now())
-                """, visitor.getId(), makeId, modelId);
+        java.util.UUID[] demoModel = firstDemoModel();
+        java.util.UUID makeId = demoModel[0];
+        java.util.UUID modelId = demoModel[1];
+        insertVisitorListing(makeId, modelId);
 
         assertThat(demoData.remove()).isEqualTo(SEEDED);
 
@@ -260,6 +245,108 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
         assertThat(jdbcTemplate.queryForList("SELECT id FROM vehicle_make", java.util.UUID.class))
                 .containsExactly(makeId);
         jdbcTemplate.update("DELETE FROM listing");
+    }
+
+    @Test
+    @DisplayName("remove then seed works again and again, visitors' listings untouched, kept catalogue rows reused")
+    void removeThenSeedRepeats() {
+        // The production reset: remove, seed, and later the same again. A visitor's listing
+        // on a demo model keeps that model through each removal; another on a make the demo
+        // does not have is never touched. Neither may stop the next seed.
+        assertThat(demoData.seed()).isEqualTo(SEEDED);
+        java.util.UUID[] demoModel = firstDemoModel();
+        java.util.UUID onDemoModel = insertVisitorListing(demoModel[0], demoModel[1]);
+        java.util.UUID elsewhere = insertVisitorListing(null, null);
+
+        for (int cycle = 1; cycle <= 2; cycle++) {
+            assertThat(demoData.remove()).as("cycle %d: removed", cycle).isEqualTo(SEEDED);
+            assertThat(ledger.exists()).as("cycle %d: ledger gone", cycle).isFalse();
+            assertThat(listingIds()).as("cycle %d: after removal", cycle)
+                    .containsExactlyInAnyOrder(onDemoModel, elsewhere);
+
+            assertThat(demoData.seed()).as("cycle %d: seeded", cycle).isEqualTo(SEEDED);
+            assertThat(ledger.ids(DemoLedger.LISTING)).as("cycle %d: recorded", cycle).hasSize(SEEDED);
+            assertThat(listingIds()).as("cycle %d: after seeding", cycle)
+                    .hasSize(SEEDED + 2).contains(onDemoModel, elsewhere);
+            // The kept model is reused, not created twice, and not recorded as the seed's.
+            assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM vehicle_model WHERE id = ?",
+                    Integer.class, demoModel[1])).isOne();
+            assertThat(ledger.ids(DemoLedger.MODEL)).doesNotContain(demoModel[1]);
+        }
+
+        jdbcTemplate.update("DELETE FROM listing WHERE id IN (?, ?)", onDemoModel, elsewhere);
+    }
+
+    @Test
+    @DisplayName("a seed stopped partway is not taken for a finished one, and remove then seed recovers")
+    void interruptedSeedRecovers() throws Exception {
+        // What a restart in the middle of a seed leaves: the accounts and catalogue, some
+        // listings, the last of them a draft without its photos, and a ledger of all that.
+        demoData.seed();
+        java.util.UUID visitorListing = insertVisitorListing(null, null);
+        List<java.util.UUID> recorded = ledger.ids(DemoLedger.LISTING);
+        for (java.util.UUID id : recorded.subList(SEEDED - 2, SEEDED)) {
+            storage.deleteAll(jdbcTemplate.queryForList("""
+                    SELECT storage_key FROM listing_image WHERE listing_id = ?
+                    UNION ALL
+                    SELECT v.storage_key FROM listing_image_variant v
+                      JOIN listing_image i ON i.id = v.image_id WHERE i.listing_id = ?""",
+                    String.class, id, id));
+            jdbcTemplate.update("DELETE FROM listing WHERE id = ?", id);
+            jdbcTemplate.update("DELETE FROM demo_seed_ledger WHERE entity_id = ?", id);
+        }
+        jdbcTemplate.update("UPDATE listing SET status = 'DRAFT', published_at = NULL WHERE id = ?",
+                recorded.get(SEEDED - 3));
+
+        // Started again, it does not pile a second seed on the first.
+        assertThat(demoData.seed()).isZero();
+        assertThat(listingIds()).hasSize(SEEDED - 2 + 1);
+
+        // Remove takes the partial seed, draft included, and only that; then a full seed.
+        assertThat(demoData.remove()).isEqualTo(SEEDED - 2);
+        assertThat(listingIds()).containsExactly(visitorListing);
+        assertThat(demoData.seed()).isEqualTo(SEEDED);
+        assertThat(listingIds()).hasSize(SEEDED + 1).contains(visitorListing);
+
+        jdbcTemplate.update("DELETE FROM listing WHERE id = ?", visitorListing);
+    }
+
+    /** The make and model ids of the first demo vehicle, as seeded. */
+    private java.util.UUID[] firstDemoModel() {
+        DemoCatalogue.Vehicle first = DemoCatalogue.vehicles().getFirst();
+        java.util.UUID makeId = jdbcTemplate.queryForObject(
+                "SELECT id FROM vehicle_make WHERE slug = ?", java.util.UUID.class, first.makeSlug());
+        java.util.UUID modelId = jdbcTemplate.queryForObject(
+                "SELECT id FROM vehicle_model WHERE make_id = ? AND slug = ?", java.util.UUID.class,
+                makeId, first.modelSlug());
+        return new java.util.UUID[] {makeId, modelId};
+    }
+
+    /**
+     * A published listing by a visitor: on the given make and model, or, with nulls, on a
+     * make typed in that the demo catalogue does not have.
+     */
+    private java.util.UUID insertVisitorListing(java.util.UUID makeId, java.util.UUID modelId) {
+        AppUser visitor = createUser(uniqueEmail("visitor"), UserRole.PARTICULIER, UserStatus.ACTIVE);
+        java.util.UUID id = java.util.UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO listing (id, seller_id, status, moderation_status, title,
+                                     price_amount, price_currency_code, country_code,
+                                     postal_code, city, make_id, model_id, make_text, model_text,
+                                     first_registration_year, mileage_km, fuel_type, gearbox,
+                                     body_type, vehicle_condition, published_at, expires_at,
+                                     created_at, updated_at)
+                VALUES (?, ?, 'ACTIVE', 'NOT_REVIEWED', 'Ma voiture',
+                        1500000, 'EUR', 'FR', '75011', 'Paris', ?, ?, ?, ?,
+                        2021, 40000, 'PETROL', 'MANUAL', 'HATCHBACK', 'USED',
+                        now(), now() + interval '60 days', now(), now())
+                """, id, visitor.getId(), makeId, modelId,
+                makeId == null ? "Audi" : null, makeId == null ? "A3" : null);
+        return id;
+    }
+
+    private List<java.util.UUID> listingIds() {
+        return jdbcTemplate.queryForList("SELECT id FROM listing", java.util.UUID.class);
     }
 
     @Test
