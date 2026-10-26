@@ -222,12 +222,12 @@ shell and no one-off jobs, so the profile goes on for one deploy and comes off a
 2. **Logs**: wait for the line
 
    ```
-   Seeded 120 demo listings, 10 demo accounts and 10 demo makes. This is invented data …
+   Seeded 152 demo listings, 10 demo accounts and 10 demo makes. This is invented data …
    ```
 
-   Allow **about twenty-five minutes** after startup: the 60-listing seed this replaced took
-   about twelve in a local test with Render's limits, and this one is twice the size —
-   120 listings and their photos, each drawn, uploaded and resized into three sizes. The
+   Allow **about thirty-five minutes** after startup: a 60-listing seed took about twelve
+   in a local test with Render's limits, and this one is two and a half times the size —
+   152 listings and their photos, each drawn, uploaded and resized into three sizes. The
    service is live and answering throughout. The site shows the listings as they are
    written; only `/actuator/health/readiness` says 503 until the seed is done.
 3. **Remove `SPRING_PROFILES_ACTIVE`** → Save, rebuild and deploy. Left on, it would only

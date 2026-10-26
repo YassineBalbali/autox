@@ -11,11 +11,11 @@ import java.util.List;
 /**
  * What the demo seed contains. Data only — nothing here touches a database.
  *
- * <p>Invented, so the site has something to show. A hundred and twenty listings: fourteen
+ * <p>Invented, so the site has something to show. A hundred and fifty-two listings: sixteen
  * written by hand, the rest generated from model templates with a fixed seed. Enough for
- * five pages of results, and enough of the eight most common models that their listings
+ * seven pages of results, and enough of the eight most common models that their listings
  * have the comparables the price indicator needs. Chosen to exercise every filter: seven
- * fuels, both gearboxes, four body shapes, new and used, ten sellers in fifteen towns,
+ * fuels, both gearboxes, six body shapes, new and used, ten sellers in fifteen towns,
  * and posting dates spread over three months so the four sort orders give four different
  * lists.
  *
@@ -217,7 +217,26 @@ final class DemoCatalogue {
                     v("Touring Sports 196h GR Sport", FuelType.HYBRID_PETROL, AUTO, 196, 39_000, 2023, 2025))),
             new Template("fiat", "500", "Fiat 500", BodyType.HATCHBACK, 1, List.of(
                     v("1.2 69 Lounge", FuelType.PETROL, MANUAL, 69, 15_500, 2015, 2019),
-                    v("e 118 Icône", FuelType.ELECTRIC, AUTO, 118, 33_000, 2021, 2025))));
+                    v("e 118 Icône", FuelType.ELECTRIC, AUTO, 118, 33_000, 2021, 2025))),
+            // ---- monospaces and vans, so that no body type on the home page is empty. Last
+            // in the list, after the models above; one of each kind has enough listings of
+            // one version for the price indicator. The passenger Berlingo is the monospace;
+            // the van-only Partner and Jumpy are sold as "fourgon".
+            new Template("citroen", "berlingo", "Citroën Berlingo", BodyType.MPV, 10, List.of(
+                    v(4, "BlueHDi 100 Feel", FuelType.DIESEL, MANUAL, 100, 25_500, 2019, 2022),
+                    v(1, "PureTech 110 Shine", FuelType.PETROL, MANUAL, 110, 26_500, 2019, 2022))),
+            new Template("renault", "scenic", "Renault Scénic", BodyType.MPV, 4, List.of(
+                    v("Blue dCi 120 Intens", FuelType.DIESEL, MANUAL, 120, 31_500, 2018, 2022),
+                    v("TCe 140 EDC Business", FuelType.PETROL, AUTO, 140, 31_000, 2019, 2022))),
+            new Template("renault", "kangoo", "Renault Kangoo", BodyType.VAN, 10, List.of(
+                    v(4, "Van Blue dCi 95 Grand Confort", FuelType.DIESEL, MANUAL, 95, 27_000, 2021, 2025),
+                    v(1, "Van Blue dCi 95 Extra", FuelType.DIESEL, MANUAL, 95, 29_500, 2021, 2025))),
+            new Template("citroen", "jumpy", "Citroën Jumpy", BodyType.VAN, 3, List.of(
+                    v("Fourgon M BlueHDi 120 Club", FuelType.DIESEL, MANUAL, 120, 34_000, 2019, 2023),
+                    v("Fourgon M BlueHDi 145 EAT8 Driver", FuelType.DIESEL, AUTO, 145, 41_000, 2019, 2023))),
+            new Template("peugeot", "partner", "Peugeot Partner", BodyType.VAN, 3, List.of(
+                    v("Fourgon Standard BlueHDi 100 Premium", FuelType.DIESEL, MANUAL, 100, 25_500, 2019, 2023),
+                    v("Fourgon Long BlueHDi 130 EAT8 Asphalt", FuelType.DIESEL, AUTO, 130, 32_500, 2019, 2023))));
 
     /**
      * The first year each model was sold in France under its name. Every listing, hand-written
@@ -235,7 +254,10 @@ final class DemoCatalogue {
             java.util.Map.entry("tesla/model-3", 2019), java.util.Map.entry("tesla/model-y", 2021),
             java.util.Map.entry("toyota/yaris", 1999), java.util.Map.entry("toyota/corolla", 1966),
             java.util.Map.entry("dacia/sandero", 2008), java.util.Map.entry("dacia/duster", 2010),
-            java.util.Map.entry("fiat/500", 2007));
+            java.util.Map.entry("fiat/500", 2007), java.util.Map.entry("peugeot/5008", 2009),
+            java.util.Map.entry("peugeot/partner", 1996), java.util.Map.entry("renault/scenic", 1996),
+            java.util.Map.entry("renault/kangoo", 1997), java.util.Map.entry("citroen/berlingo", 1996),
+            java.util.Map.entry("citroen/jumpy", 1994));
 
     private static final String LOW_MILEAGE = " — faible kilométrage";
 
@@ -256,7 +278,7 @@ final class DemoCatalogue {
     static final double[] ASKING = {0.84, 0.90, 0.95, 0.98, 1.0, 1.02, 1.05, 1.10, 1.16};
 
     /** How many listings the full seed has. */
-    static final int SIZE = 120;
+    static final int SIZE = 152;
 
     /** The date ages are counted back from: October 2026. Fixed, so the set never drifts. */
     static final int REFERENCE_YEAR = 2026;
@@ -379,11 +401,14 @@ final class DemoCatalogue {
 
     static final List<Make> MAKES = List.of(
             new Make("peugeot", "Peugeot", true, List.of(
-                    new Model("208", "208"), new Model("308", "308"), new Model("3008", "3008"))),
+                    new Model("208", "208"), new Model("308", "308"), new Model("3008", "3008"),
+                    new Model("5008", "5008"), new Model("partner", "Partner"))),
             new Make("renault", "Renault", true, List.of(
-                    new Model("clio", "Clio"), new Model("captur", "Captur"), new Model("megane", "Mégane"))),
+                    new Model("clio", "Clio"), new Model("captur", "Captur"), new Model("megane", "Mégane"),
+                    new Model("scenic", "Scénic"), new Model("kangoo", "Kangoo"))),
             new Make("citroen", "Citroën", true, List.of(
-                    new Model("c3", "C3"), new Model("c5-aircross", "C5 Aircross"))),
+                    new Model("c3", "C3"), new Model("c5-aircross", "C5 Aircross"),
+                    new Model("berlingo", "Berlingo"), new Model("jumpy", "Jumpy"))),
             new Make("volkswagen", "Volkswagen", true, List.of(
                     new Model("golf", "Golf"), new Model("polo", "Polo"), new Model("tiguan", "Tiguan"))),
             new Make("bmw", "BMW", false, List.of(
@@ -455,5 +480,16 @@ final class DemoCatalogue {
             new Vehicle("thomas", "dacia", "sandero", "SCe 75 Essentiel",
                     "Dacia Sandero SCe 75, faible kilométrage", 7_200, 2018, 12, 58_400,
                     FuelType.PETROL, Gearbox.MANUAL, BodyType.HATCHBACK, 75, VehicleCondition.USED,
-                    ExteriorColor.WHITE, "Strasbourg", "67200", 52));
+                    ExteriorColor.WHITE, "Strasbourg", "67200", 52),
+            // The first 5008, 2009 to 2016, was a seven-seat monospace; the one sold since
+            // 2017 is an SUV. Written by hand rather than generated: at ten years old the
+            // generator's depreciation prices it below what such a car really fetches.
+            new Vehicle("thomas", "peugeot", "5008", "1.6 BlueHDi 120 Allure",
+                    "Peugeot 5008 BlueHDi 120 Allure 7 places", 8_900, 2015, 9, 148_000,
+                    FuelType.DIESEL, Gearbox.MANUAL, BodyType.MPV, 120, VehicleCondition.USED,
+                    ExteriorColor.GREY, "Strasbourg", "67000", 27),
+            new Vehicle("garage-bellevue", "peugeot", "5008", "1.2 PureTech 130 Allure",
+                    "Peugeot 5008 PureTech 130 Allure 7 places, entretien à jour", 10_490, 2016, 4, 96_500,
+                    FuelType.PETROL, Gearbox.MANUAL, BodyType.MPV, 130, VehicleCondition.USED,
+                    ExteriorColor.BLACK, "Lyon", "69008", 44));
 }
