@@ -54,6 +54,17 @@ class PublicRateLimitIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("the search bar's suggestions are counted too: they are called on keystrokes")
+    void suggestionsAreLimited() throws Exception {
+        for (int request = 0; request < 3; request++) {
+            mockMvc.perform(get("/api/v1/catalogue/suggestions").param("q", "pe")).andExpect(status().isOk());
+        }
+        mockMvc.perform(get("/api/v1/catalogue/suggestions").param("q", "peu"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+    }
+
+    @Test
     @DisplayName("the client address is the key, and counts per address")
     void clientAddressIsTheKey() throws Exception {
         // The address as the container resolved it. Behind a proxy that is Tomcat's
