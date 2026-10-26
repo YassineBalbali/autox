@@ -179,11 +179,27 @@ class DemoData {
 
         listingIds.forEach(id -> jdbc.update("DELETE FROM listing WHERE id = ?", id));
         ledger.ids(DemoLedger.USER).forEach(id -> jdbc.update("DELETE FROM app_user WHERE id = ?", id));
-        ledger.ids(DemoLedger.MODEL).forEach(id -> jdbc.update("DELETE FROM vehicle_model WHERE id = ?", id));
-        ledger.ids(DemoLedger.MAKE).forEach(id -> jdbc.update("DELETE FROM vehicle_make WHERE id = ?", id));
+        // A make or model someone else's listing uses stays. Visitors' listings are left
+        // alone, and a visitor who sold a "Peugeot 308" picked the demo's 308: deleting it
+        // failed on the foreign key halfway through, after the listings and accounts had
+        // gone. Kept, it is an ordinary catalogue row from then on, and a later seed reuses it.
+        ledger.ids(DemoLedger.MODEL).forEach(id -> jdbc.update("""
+                DELETE FROM vehicle_model m WHERE id = ?
+                   AND NOT EXISTS (SELECT 1 FROM listing WHERE model_id = m.id)
+                   AND NOT EXISTS (SELECT 1 FROM vehicle_trim WHERE model_id = m.id)""", id));
+        ledger.ids(DemoLedger.MAKE).forEach(id -> jdbc.update("""
+                DELETE FROM vehicle_make k WHERE id = ?
+                   AND NOT EXISTS (SELECT 1 FROM listing WHERE make_id = k.id)
+                   AND NOT EXISTS (SELECT 1 FROM vehicle_model WHERE make_id = k.id)""", id));
+        Integer kept = jdbc.queryForObject("""
+                SELECT (SELECT count(*) FROM vehicle_model WHERE id IN (SELECT entity_id FROM demo_seed_ledger
+                         WHERE entity_type = ?))
+                     + (SELECT count(*) FROM vehicle_make WHERE id IN (SELECT entity_id FROM demo_seed_ledger
+                         WHERE entity_type = ?))""", Integer.class, DemoLedger.MODEL, DemoLedger.MAKE);
         ledger.drop();
 
-        log.warn("Removed the demo data: {} listings and {} stored objects.", listingIds.size(), keys.size());
+        log.warn("Removed the demo data: {} listings and {} stored objects. {} demo makes and models "
+                        + "were kept because other listings use them.", listingIds.size(), keys.size(), kept);
         return listingIds.size();
     }
 
