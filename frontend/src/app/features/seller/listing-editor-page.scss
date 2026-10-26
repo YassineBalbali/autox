@@ -1,3 +1,5 @@
+@use '../../../styles/tokens' as t;
+
 :host {
   display: block;
 }
@@ -12,6 +14,94 @@
 
 .editor__back {
   font-size: var(--t-sm);
+
+  @include t.touch {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+// ---- a phone: progress in words and a bar, and buttons to fill the width ----------
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+
+  @media (min-width: t.$bp-md) {
+    display: none;
+  }
+}
+
+.progress__label {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+}
+
+.progress__count {
+  color: var(--c-ink-soft);
+  font-size: var(--t-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.progress__bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-1);
+}
+
+.progress__segment {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--c-line);
+}
+
+.progress__segment--done {
+  background: var(--c-accent);
+}
+
+.steps-nav {
+  @media (max-width: calc(t.$bp-md - 0.02px)) {
+    display: none;
+  }
+}
+
+// The step's buttons share the width: "Précédent" a third, the way forward the rest, both
+// a thumb's height. Alone, the one button takes it all; a way out goes on a row below.
+.editor .form-actions {
+  @media (max-width: calc(t.$bp-md - 0.02px)) {
+    display: flex;
+    flex-wrap: wrap;
+
+    .btn {
+      flex: 1;
+      height: 48px;
+      white-space: normal;
+      line-height: var(--lh-tight);
+      text-align: center;
+    }
+
+    // Only the way forward wraps: its labels are the long ones ("Enregistrer le brouillon
+    // et continuer"); "← Précédent" stays on one line.
+    button.btn--quiet {
+      white-space: nowrap;
+    }
+
+    // A way out rather than a step ("Plus tard, retour à mes annonces"): a row of its own.
+    a.btn {
+      flex-basis: 100%;
+    }
+
+    .btn--primary {
+      flex: 2;
+    }
+  }
 }
 
 .editor__loading {

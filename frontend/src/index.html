@@ -8,8 +8,11 @@
     <title>AutoX — voitures d’occasion (site de démonstration)</title>
     <base href="/" />
     <!-- No maximum-scale and no user-scalable=no: pinch-zoom is how a lot of people read a
-         phone screen, and taking it away is an accessibility failure, not a design choice. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+         phone screen, and taking it away is an accessibility failure, not a design choice.
+         interactive-widget: on Android, the on-screen keyboard shrinks the page instead of
+         covering it, so a message composer at the foot of the screen stays above the keys.
+         iOS ignores it; the conversation screen measures the keyboard there itself. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
     <meta
       name="description"
       content="AutoX est la démonstration d’une place de marché automobile : recherche, annonces, dépôt d’annonce et modération. Les annonces et les vendeurs sont fictifs."

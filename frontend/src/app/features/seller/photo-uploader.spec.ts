@@ -2,7 +2,7 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { BASE_PATH, ErrorCode, ImageResponse, ImageStatus } from '../../core/api';
 import { PhotoUploadService, UploadEvent } from './photo-upload.service';
@@ -188,11 +188,6 @@ describe('PhotoUploader', () => {
       expect(el().querySelector('.dropzone')?.textContent).toContain('le maximum de 20 photos');
     });
 
-    it('accepts only JPEG and PNG in the file chooser', async () => {
-      await render();
-
-      expect((el().querySelector('input[type=file]') as HTMLInputElement).accept).toBe('image/jpeg,image/png');
-    });
   });
 
   describe('when an upload fails', () => {
@@ -350,6 +345,97 @@ describe('PhotoUploader', () => {
       expect(shownIds()).toEqual(['a', 'b']);
       expect(emitted).toEqual([]);
       expect(el().querySelector('app-alert')).not.toBeNull();
+    });
+  });
+
+  describe('photos from a phone, made ready first', () => {
+    const MB = 1024 * 1024;
+    /** Decoding stood in for, one photo at a time, finished when the test says so. */
+    let decodes: { resolve: () => void; reject: () => void }[];
+
+    function stubDecoding(): void {
+      decodes = [];
+      // No canvas in jsdom: a decoded photo is then sent as it was, which is all these need.
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+      vi.stubGlobal(
+        'createImageBitmap',
+        () =>
+          new Promise((resolve, reject) =>
+            decodes.push({
+              resolve: () => resolve({ width: 4000, height: 3000, close: () => undefined }),
+              reject: () => reject(new DOMException('undecodable', 'InvalidStateError')),
+            }),
+          ),
+      );
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    /** The preparation is a promise chain Angular does not track: let it run, then render. */
+    async function prepared(): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve));
+      await settle();
+    }
+
+    it('says a heavy photo is being prepared, then sends it', async () => {
+      stubDecoding();
+      await render();
+      await drop(file('IMG_2041.jpg', 'image/jpeg', 7 * MB));
+
+      expect(queue()[0].textContent).toContain('Préparation de la photo…');
+      expect(uploads.calls).toHaveLength(0);
+
+      decodes[0].resolve();
+      await prepared();
+
+      expect(uploads.calls.map((call) => call.file.name)).toEqual(['IMG_2041.jpg']);
+    });
+
+    it('still sends the photos in the order chosen, whichever is ready first', async () => {
+      stubDecoding();
+      await render();
+      // The heavy one first, a small one second: the small one is ready at once.
+      await drop(file('first.jpg', 'image/jpeg', 7 * MB), file('second.jpg', 'image/jpeg', 1024));
+
+      expect(uploads.calls).toHaveLength(0);
+
+      decodes[0].resolve();
+      await prepared();
+      expect(uploads.calls.map((call) => call.file.name)).toEqual(['first.jpg']);
+    });
+
+    it('refuses, by name and with its reason, a photo that could not be made ready', async () => {
+      stubDecoding();
+      await render();
+      await drop(file('IMG_2041.HEIC', 'image/heic', 2 * MB));
+
+      decodes[0].reject();
+      await prepared();
+
+      expect(queue()).toHaveLength(0);
+      expect(el().textContent).toContain('« IMG_2041.HEIC » n’est pas une image JPEG ou PNG.');
+      expect(uploads.calls).toHaveLength(0);
+    });
+
+    it('counts a photo being prepared towards the limit of twenty', async () => {
+      stubDecoding();
+      await render(Array.from({ length: 19 }, (_, index) => photo(`p${index}`, index)));
+      await drop(file('a.jpg', 'image/jpeg', 7 * MB), file('b.jpg', 'image/jpeg', 7 * MB));
+
+      expect(queue()).toHaveLength(1);
+      expect(el().textContent).toContain('« b.jpg » n’a pas été ajoutée');
+    });
+
+    it('offers the phone\'s library, never the camera alone, and WebP with the rest', async () => {
+      await render();
+      const input = el().querySelector('input[type=file]') as HTMLInputElement;
+
+      expect(input.hasAttribute('capture')).toBe(false);
+      expect(input.multiple).toBe(true);
+      expect(input.accept).toBe('image/jpeg,image/png,image/webp');
     });
   });
 });

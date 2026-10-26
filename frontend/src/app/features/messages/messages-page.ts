@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/cor
 import { RouterLink, RouterOutlet } from '@angular/router';
 
 import { UnreadMessages } from '../../core/messaging/unread-messages';
+import { trackKeyboardInset } from '../../core/ui/keyboard-inset';
 import { Alert } from '../../shared/ui/alert';
 import { Icon } from '../../shared/ui/icon';
 import { Inbox } from './inbox';
@@ -32,6 +33,9 @@ export class MessagesPage {
   private readonly unread = inject(UnreadMessages);
 
   constructor() {
+    // The keyboard's height, for the conversation screen's composer on iOS.
+    trackKeyboardInset();
+
     effect(() => {
       this.unread.count();
       this.inbox.load();

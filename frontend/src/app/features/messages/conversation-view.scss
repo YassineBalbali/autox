@@ -39,6 +39,7 @@
   flex-basis: 100%;
   align-items: center;
   gap: var(--s-1);
+  min-height: 44px;
   font-size: var(--t-sm);
   font-weight: var(--fw-semibold);
 
@@ -162,4 +163,118 @@
   background: var(--c-surface-sunk);
   color: var(--c-ink-soft);
   font-size: var(--t-sm);
+}
+
+// ---- a phone ----------------------------------------------------------------------
+//
+// The head tightens to two short lines, and the composer becomes one row: the field, and
+// the send button beside it, in reach of the thumb that typed. Below the medium breakpoint,
+// which is also where the conversation is a screen of its own.
+
+@media (max-width: calc(t.$bp-md - 0.02px)) {
+  .conversation__head {
+    gap: 0 var(--s-3);
+    padding: 0 var(--s-3) var(--s-2);
+  }
+
+  .conversation__back {
+    flex-basis: auto;
+  }
+
+  .conversation__who {
+    flex: 1;
+    flex-wrap: nowrap;
+
+    .meta {
+      display: none;
+    }
+  }
+
+  .conversation__name {
+    overflow: hidden;
+    font-size: var(--t-md);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // The whole block — picture, title, price — is the way to the listing: the title link is
+  // stretched over it, as on a result row, so the target is not one line of small text.
+  .conversation__listing {
+    position: relative;
+    flex-basis: 100%;
+    margin-left: 0;
+    min-height: 44px;
+  }
+
+  a.conversation__listing-title::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .conversation__thumb {
+    width: 3rem;
+    height: 2.25rem;
+  }
+
+  .conversation__listing-title {
+    max-width: none;
+  }
+
+  .conversation__thread {
+    min-height: 0;
+    padding: var(--s-3);
+  }
+
+  .composer {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--s-1) var(--s-2);
+    padding: var(--s-2) var(--s-3) calc(var(--s-2) + env(safe-area-inset-bottom));
+  }
+
+  .composer__input {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 44px;
+    height: 5.5rem;
+    max-height: 8rem;
+    resize: none;
+  }
+
+  .composer__bar {
+    display: contents;
+  }
+
+  .composer__send {
+    grid-column: 2;
+    grid-row: 1;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+  }
+
+  .composer__send-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .composer__hint {
+    grid-column: 1 / -1;
+    font-size: var(--t-xs);
+  }
+
+  .composer app-alert {
+    grid-column: 1 / -1;
+  }
+}
+
+.composer__shortcut {
+  @include t.touch {
+    display: none;
+  }
 }

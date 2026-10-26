@@ -38,14 +38,28 @@
   }
 }
 
+// A phone, reading: the conversation is the whole screen, like a messaging app's — its
+// head at the top, the thread scrolling in the middle, the composer at the foot. The foot
+// is the top of the on-screen keyboard: on Android the window itself shrinks to it (the
+// viewport meta), and on iOS --keyboard and --viewport-top say where it is (see
+// trackKeyboardInset). The site's header is covered too: with the keyboard up, every line
+// of the thread counts, and the conversation has its own way back.
 .messages--reading {
   @media (max-width: calc(t.$bp-md - 1px)) {
+    position: fixed;
+    inset: var(--viewport-top, 0px) 0 var(--keyboard, 0px) 0;
+    z-index: 40;
+    display: flex;
+    border: 0;
+    border-radius: 0;
+
     .messages__list {
       display: none;
     }
 
     .messages__pane {
       display: flex;
+      flex: 1;
     }
   }
 }

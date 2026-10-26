@@ -19,14 +19,17 @@
         pour en ajouter une autre.
       </p>
     } @else {
+      <!-- Dropping is a pointer's shortcut: on a touch screen the sentence is hidden and the
+           button is the whole of it. No capture attribute: that would open the camera only,
+           and a phone's photos are already in its library. -->
       <p class="dropzone__text" i18n="@@uploaderDrop">Glissez vos photos ici, ou</p>
       <label class="btn btn--quiet dropzone__choose">
         <ng-container i18n="@@uploaderChoose">Choisir des photos</ng-container>
         <input class="visually-hidden" type="file" multiple [accept]="accept" (change)="onChosen($event)" />
       </label>
       <p class="meta" i18n="@@uploaderRules">
-        JPEG ou PNG, 10 Mo au maximum par photo, jusqu’à {{ rules.maxPerListing }} photos. La
-        première est la photo principale de l’annonce.
+        JPEG, PNG ou WebP, jusqu’à {{ rules.maxPerListing }} photos ; les photos lourdes sont
+        réduites avant l’envoi. La première est la photo principale.
       </p>
     }
   </div>
@@ -49,6 +52,9 @@
           <div class="row__main">
             <p class="upload__name">{{ item.name }}</p>
             @switch (item.state) {
+              @case ('preparing') {
+                <p class="meta" i18n="@@uploadPreparing">Préparation de la photo…</p>
+              }
               @case ('waiting') {
                 <p class="meta" i18n="@@uploadWaiting">En attente…</p>
               }

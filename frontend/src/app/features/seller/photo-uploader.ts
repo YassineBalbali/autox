@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, ou
 import { ImageResponse, ImageStatus, ListingPhotosService } from '../../core/api';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { Alert } from '../../shared/ui/alert';
+import { ACCEPTED_TYPES, needsPreparing, preparePhoto } from './photo-prepare';
 import { PHOTO_RULES, PhotoUploadService, rejectionFor } from './photo-upload.service';
 
 /** A file on its way up, or one that did not make it. */
@@ -10,7 +11,8 @@ interface QueuedUpload {
   readonly key: number;
   readonly file: File;
   readonly name: string;
-  readonly state: 'waiting' | 'sending' | 'processing' | 'failed';
+  /** `preparing`: being redrawn on the device first — see photo-prepare.ts. */
+  readonly state: 'preparing' | 'waiting' | 'sending' | 'processing' | 'failed';
   /** 0 to 100, while sending. */
   readonly percent: number;
   /** The French reason, when it failed. */
@@ -32,6 +34,11 @@ let nextKey = 0;
  *
  * <p>Uploads run one at a time. In parallel they would finish in an arbitrary order and
  * the photos would land in that order, which is not the one the seller chose them in.
+ *
+ * <p>A heavy photo, or one in a type the API does not take — a phone's camera roll is full
+ * of both — is first made ready on the device ({@link preparePhoto}). That takes a moment
+ * and the photos finish in any order, so the queue still sends them in the order chosen:
+ * it waits for the first one in line, even when one behind it is ready.
  */
 @Component({
   selector: 'app-photo-uploader',
@@ -64,7 +71,7 @@ export class PhotoUploader {
   private dragging: number | null = null;
 
   protected readonly rules = PHOTO_RULES;
-  protected readonly accept = PHOTO_RULES.contentTypes.join(',');
+  protected readonly accept = ACCEPTED_TYPES;
   protected readonly full = computed(() => this.photos().length >= PHOTO_RULES.maxPerListing);
   protected readonly busy = computed(() =>
     this.queue().some((item) => item.state === 'sending' || item.state === 'processing'),
@@ -110,6 +117,19 @@ export class PhotoUploader {
     let count = this.photos().length + this.queue().filter((item) => item.state !== 'failed').length;
 
     for (const file of files) {
+      if (needsPreparing(file)) {
+        // Only the count can be checked now; the rest once it is redrawn.
+        const reason = rejectionFor(file, count, { countOnly: true });
+        if (reason) {
+          refused.push(reason);
+          continue;
+        }
+        const item: QueuedUpload = { key: ++nextKey, file, name: file.name, state: 'preparing', percent: 0, error: null };
+        accepted.push(item);
+        count++;
+        void preparePhoto(file).then((prepared) => this.prepared(item.key, prepared));
+        continue;
+      }
       const reason = rejectionFor(file, count);
       if (reason) {
         refused.push(reason);
@@ -124,13 +144,27 @@ export class PhotoUploader {
     this.pump();
   }
 
+  /** A photo made ready on the device: checked as any other, then in line to be sent. */
+  private prepared(key: number, file: File): void {
+    // Its place in the count was already taken when it was chosen.
+    const reason = rejectionFor(file, 0);
+    if (reason) {
+      this.queue.update((queue) => queue.filter((item) => item.key !== key));
+      this.refused.update((refused) => [...refused, reason]);
+    } else {
+      this.patch(key, { file, state: 'waiting' });
+    }
+    this.pump();
+  }
+
   /** Starts the next waiting upload, unless one is already running. */
   private pump(): void {
     if (this.busy()) {
       return;
     }
-    const next = this.queue().find((item) => item.state === 'waiting');
-    if (!next) {
+    // The first in line, not the first ready: a photo still being prepared holds its place.
+    const next = this.queue().find((item) => item.state === 'waiting' || item.state === 'preparing');
+    if (!next || next.state === 'preparing') {
       return;
     }
     this.patch(next.key, { state: 'sending', percent: 0 });

@@ -332,4 +332,38 @@ describe('MessagesPage', () => {
       expect((root.querySelector('app-report-form textarea') as HTMLTextAreaElement).placeholder).toContain('obligatoire');
     });
   });
+
+  describe('on a phone', () => {
+    const screen = () => root.querySelector('.messages') as HTMLElement;
+
+    it('makes an open conversation a screen of its own, holding the page under it still', async () => {
+      await visit('/messages', [summary('c1')]);
+      expect(screen().classList).not.toContain('messages--reading');
+      expect(screen().hasAttribute('data-locks-scroll-narrow')).toBe(false);
+
+      await visit('/messages/c1', [summary('c1')]);
+      await opened('c1');
+
+      expect(screen().classList).toContain('messages--reading');
+      expect(screen().hasAttribute('data-locks-scroll-narrow')).toBe(true);
+    });
+
+    it('keeps the keyboard shortcut apart from the warning, so a touch screen can drop it alone', async () => {
+      await visit('/messages/c1', [summary('c1')]);
+      await opened('c1');
+      const hint = root.querySelector('#composer-hint') as HTMLElement;
+
+      expect(hint.querySelector('.composer__shortcut')?.textContent?.trim()).toBe('Ctrl + Entrée pour envoyer.');
+      expect(hint.textContent?.replace('Ctrl + Entrée pour envoyer.', '')).toContain(
+        'Ne payez jamais un véhicule avant de l’avoir vu',
+      );
+    });
+
+    it('keeps the send button named in words when only its icon shows', async () => {
+      await visit('/messages/c1', [summary('c1')]);
+      await opened('c1');
+
+      expect(root.querySelector('.composer__send .composer__send-text')?.textContent?.trim()).toBe('Envoyer');
+    });
+  });
 });

@@ -103,10 +103,16 @@ export class PhotoUploadService {
  * <p>Checked in the browser before anything is sent, so that a 40 MB photo is refused in
  * a millisecond with a sentence that names the file, instead of after a minute's upload
  * with a status code. The API checks all of this again; this is a courtesy, not the rule.
+ *
+ * <p>`countOnly`: for a photo that is still to be made ready on the device, whose type
+ * and size are only known afterwards.
  */
-export function rejectionFor(file: File, photosSoFar: number): string | null {
+export function rejectionFor(file: File, photosSoFar: number, options: { countOnly?: boolean } = {}): string | null {
   if (photosSoFar >= PHOTO_RULES.maxPerListing) {
     return `« ${file.name} » n’a pas été ajoutée : une annonce contient au maximum ${PHOTO_RULES.maxPerListing} photos.`;
+  }
+  if (options.countOnly) {
+    return null;
   }
   if (!(PHOTO_RULES.contentTypes as readonly string[]).includes(file.type)) {
     return `« ${file.name} » n’est pas une image JPEG ou PNG.`;

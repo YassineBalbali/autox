@@ -34,8 +34,24 @@
         <a class="editor__back" [routerLink]="myListings" i18n="@@editorBackToMine">← Mes annonces</a>
       </header>
 
+      <!-- A phone: where the seller is, in words and as a bar. The numbered steps below take
+           four lines there; the buttons at the foot of each step move between them. -->
+      <div class="progress">
+        <p class="progress__label">
+          <span class="progress__count">
+            <ng-container i18n="@@editorStepOf">Étape {{ stepIndex() + 1 }} sur {{ steps.length }}</ng-container>
+          </span>
+          {{ stepTitles[step()] }}
+        </p>
+        <div class="progress__bar" aria-hidden="true">
+          @for (name of steps; track name; let index = $index) {
+            <span class="progress__segment" [class.progress__segment--done]="index <= stepIndex()"></span>
+          }
+        </div>
+      </div>
+
       <!-- The steps, numbered. A step that cannot be opened yet is text, not a dead link. -->
-      <nav aria-label="Étapes" i18n-aria-label="@@editorSteps">
+      <nav class="steps-nav" aria-label="Étapes" i18n-aria-label="@@editorSteps">
         <ol class="steps">
           @for (name of steps; track name; let index = $index) {
             <li class="steps__item" [class.steps__item--current]="name === step()">
