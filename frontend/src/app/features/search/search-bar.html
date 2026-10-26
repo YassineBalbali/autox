@@ -1,16 +1,13 @@
 <form class="bar" role="search" aria-label="Rechercher un véhicule" i18n-aria-label="@@barLabel" (submit)="submit($event)">
   <div class="bar__field bar__field--wide">
     <label class="bar__label" for="b-q" i18n="@@barText">Recherche</label>
-    <input
-      class="input"
-      id="b-q"
-      type="search"
-      autocomplete="off"
-      maxlength="120"
+    <app-search-typeahead
+      inputId="b-q"
       placeholder="Marque, modèle, version… ex. Golf TDI"
       i18n-placeholder="@@barTextPlaceholder"
       [value]="draft().text"
-      (input)="set('text', $event)"
+      (valueChange)="setText($event)"
+      (picked)="pick($event)"
     />
   </div>
 

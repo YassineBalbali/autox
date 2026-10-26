@@ -28,6 +28,10 @@
       "description": "Creating and managing your own listings. Requires authentication."
     },
     {
+      "name": "Catalogue",
+      "description": "Make and model suggestions for the search bar. No authentication."
+    },
+    {
       "name": "Admin",
       "description": "Moderation. Requires the ADMIN role."
     },
@@ -2305,6 +2309,53 @@
             "bearerAuth": []
           }
         ]
+      }
+    },
+    "/api/v1/catalogue/suggestions": {
+      "get": {
+        "tags": [
+          "Catalogue"
+        ],
+        "summary": "Up to eight makes and models whose name starts with <code>q</code>, ignoring case and\n accents: \"citro\" finds Citroën, \"a3\" the A3, \"audi a\" the Audi A1, A3, A4… Makes come\n first, then the most listed.",
+        "description": "Up to eight makes and models whose name starts with <code>q</code>, ignoring case and\n accents: \"citro\" finds Citroën, \"a3\" the A3, \"audi a\" the Audi A1, A3, A4… Makes come\n first, then the most listed. Only entries with a listing online are returned; none is\n an empty list. 400 if <code>q</code> is shorter than two characters or longer than sixty.",
+        "operationId": "suggestions",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "What has been typed: 2 to 60 characters.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "audi a"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogueSuggestion"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/admin/users": {
@@ -5326,6 +5377,62 @@
             "format": "int32"
           }
         }
+      },
+      "CatalogueSuggestion": {
+        "type": "object",
+        "description": "One entry under the search bar as the visitor types: a make, or a model of a make.\n\n <p>Ids and slugs both. The slugs are what the search URL carries (<code>marque=audi</code>),\n the ids what the rest of the API is keyed on. The model fields are absent on a make.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "MAKE",
+              "MODEL"
+            ]
+          },
+          "makeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "makeSlug": {
+            "type": "string",
+            "example": "audi"
+          },
+          "makeName": {
+            "type": "string",
+            "example": "Audi"
+          },
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelSlug": {
+            "type": "string",
+            "example": "a3"
+          },
+          "modelName": {
+            "type": "string",
+            "example": "A3"
+          },
+          "label": {
+            "type": "string",
+            "description": "What to show: the make's name, or the make's and the model's.",
+            "example": "Audi A3"
+          },
+          "listingCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Listings online now. Never zero: an entry with none is not suggested.",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "label",
+          "listingCount",
+          "makeId",
+          "makeName",
+          "makeSlug",
+          "type"
+        ]
       },
       "PageResponseUserSummary": {
         "type": "object",

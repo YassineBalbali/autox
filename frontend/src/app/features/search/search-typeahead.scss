@@ -1,0 +1,75 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+.typeahead {
+  position: relative;
+}
+
+// The fields fill their grid cell; the global measure cap is for forms, not for a bar.
+.input {
+  max-width: none;
+}
+
+// Hung from the field, as wide as it, over the results. Dense like the rest of the page:
+// one line per entry, the count to the right in the quiet colour.
+.typeahead__list {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  left: 0;
+  // Over the results and the sticky results bar (10), under the header (20).
+  z-index: 15;
+  margin: 0;
+  padding: var(--s-1) 0;
+  list-style: none;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-overlay);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.typeahead__option {
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 0 var(--s-3);
+  font-size: var(--t-sm);
+  color: var(--c-ink);
+  cursor: pointer;
+
+  // A finger's size where there is a finger.
+  @include t.touch {
+    min-height: var(--h-control);
+    font-size: var(--t-body);
+  }
+}
+
+.typeahead__option--active {
+  background: var(--c-accent-soft);
+}
+
+.typeahead__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  strong {
+    font-weight: var(--fw-bold);
+  }
+}
+
+.typeahead__count {
+  flex: none;
+  font-size: var(--t-xs);
+  color: var(--c-ink-soft);
+}

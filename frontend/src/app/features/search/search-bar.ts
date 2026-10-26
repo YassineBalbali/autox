@@ -2,10 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, ou
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, map, of, startWith, switchMap } from 'rxjs';
 
-import { Make, Model } from '../../core/api';
+import { CatalogueSuggestion, Make, Model } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
 import { Icon } from '../../shared/ui/icon';
 import { SearchQuery } from './search-query';
+import { SearchTypeahead } from './search-typeahead';
 
 /** What the bar is holding before "Rechercher" is pressed. Strings: these are form fields. */
 interface Draft {
@@ -41,7 +42,7 @@ const OLDEST_YEAR = 2000;
  */
 @Component({
   selector: 'app-search-bar',
-  imports: [Icon],
+  imports: [Icon, SearchTypeahead],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './search-bar.html',
   styleUrl: './search-bar.scss',
@@ -121,6 +122,27 @@ export class SearchBar {
       // A model belongs to one make: changing the make empties it.
       ...(field === 'make' ? { model: '' } : {}),
     }));
+  }
+
+  protected setText(text: string): void {
+    this.draft.update((draft) => ({ ...draft, text }));
+  }
+
+  /**
+   * A suggestion picked under the text field: searched for at once, as its make and model.
+   *
+   * <p>The text goes — "Audi A3" as words would also have to appear in a listing's title —
+   * and the price and year in the draft come along, as they would with "Rechercher".
+   */
+  protected pick(suggestion: CatalogueSuggestion): void {
+    const draft = this.draft();
+    this.submitted.emit({
+      text: null,
+      make: suggestion.makeSlug,
+      model: suggestion.modelSlug ?? null,
+      priceMax: wholeNumber(draft.priceMax),
+      yearMin: wholeNumber(draft.yearMin),
+    });
   }
 
   protected submit(event: Event): void {

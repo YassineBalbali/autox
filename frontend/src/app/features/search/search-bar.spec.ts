@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { BASE_PATH } from '../../core/api';
 import { SearchBar, yearsDownTo } from './search-bar';
+import { SUGGEST_DEBOUNCE_MS } from './search-typeahead';
 import { EMPTY_QUERY, SearchQuery } from './search-query';
 
 const BASE = 'http://api.test';
@@ -264,6 +265,60 @@ describe('SearchBar', () => {
       await render({ ...EMPTY_QUERY, yearMin: 1995 });
 
       expect(field<HTMLSelectElement>('b-annee').value).toBe('1995');
+    });
+  });
+
+  describe('a suggestion picked under the text field', () => {
+    async function suggest(typed: string, suggestions: object[]): Promise<void> {
+      await type('b-q', typed);
+      // Real time: the debounce is the typeahead's to test, here it only has to pass.
+      await new Promise((resolve) => setTimeout(resolve, SUGGEST_DEBOUNCE_MS + 50));
+      backend
+        .expectOne((request) => request.url === `${BASE}/api/v1/catalogue/suggestions` && decodeURIComponent(request.params.get('q') ?? '') === typed)
+        .flush(suggestions);
+      await fixture.whenStable();
+    }
+
+    const A3 = {
+      type: 'MODEL', makeId: 'm-audi', makeSlug: 'audi', makeName: 'Audi',
+      modelId: 'mo-a3', modelSlug: 'a3', modelName: 'A3', label: 'Audi A3', listingCount: 4,
+    };
+    const AUDI = { type: 'MAKE', makeId: 'm-audi', makeSlug: 'audi', makeName: 'Audi', label: 'Audi', listingCount: 9 };
+
+    it('searches by its make and model at once, the text emptied and the rest of the draft kept', async () => {
+      await render({ ...EMPTY_QUERY, make: 'tesla' });
+      await type('b-prix', '20000');
+      await choose('b-annee', '2019');
+      await suggest('audi a', [A3]);
+
+      (root.querySelector('[role="option"]') as HTMLElement).click();
+      await fixture.whenStable();
+
+      // The filters, not the words: "Audi A3" as text would also have to be in the title.
+      expect(host.submissions).toEqual([
+        { text: null, make: 'audi', model: 'a3', priceMax: 20000, yearMin: 2019 },
+      ]);
+    });
+
+    it('searches a make alone, any model', async () => {
+      await render({ ...EMPTY_QUERY, make: 'peugeot', model: '308' });
+      backend.match(`${BASE}/api/v1/reference/makes/m-peugeot/models`).forEach((request) => request.flush(PEUGEOT_MODELS));
+      await suggest('aud', [AUDI]);
+
+      field<HTMLInputElement>('b-q').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+      field<HTMLInputElement>('b-q').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+      await fixture.whenStable();
+
+      expect(host.submissions).toEqual([{ text: null, make: 'audi', model: null, priceMax: null, yearMin: null }]);
+    });
+
+    it('leaves the text to search as text when Enter is pressed with nothing highlighted', async () => {
+      await render();
+      await suggest('audi a', [A3]);
+
+      (root.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+
+      expect(host.submissions).toEqual([{ text: 'audi a', make: null, model: null, priceMax: null, yearMin: null }]);
     });
   });
 });

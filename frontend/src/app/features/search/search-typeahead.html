@@ -1,0 +1,43 @@
+<div class="typeahead">
+  <input
+    class="input"
+    type="search"
+    role="combobox"
+    autocomplete="off"
+    maxlength="120"
+    aria-autocomplete="list"
+    [id]="inputId()"
+    [attr.aria-controls]="listId()"
+    [attr.aria-expanded]="expanded()"
+    [attr.aria-activedescendant]="expanded() && active() >= 0 ? optionId(active()) : null"
+    [placeholder]="placeholder()"
+    [value]="value()"
+    (input)="onInput($event)"
+    (keydown)="onKeydown($event)"
+    (blur)="close()"
+  />
+  <!-- In the page whether shown or not, so aria-controls always names something. -->
+  <ul class="typeahead__list" role="listbox" i18n-aria-label="@@suggestLabel" aria-label="Marques et modèles"
+    [id]="listId()" [hidden]="!expanded()">
+    @for (entry of shown(); track entry.suggestion.makeId + (entry.suggestion.modelId ?? ''); let index = $index) {
+      <!-- mousedown is held back so the field keeps the focus, and the list is still there
+           when the click lands. The options take no focus and no keys of their own, by
+           design: in a combobox the field keeps the focus and its keydown moves through
+           them (aria-activedescendant). Focusable options would break that pattern. -->
+      <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+      <li
+        class="typeahead__option"
+        role="option"
+        [id]="optionId(index)"
+        [class.typeahead__option--active]="index === active()"
+        [attr.aria-selected]="index === active()"
+        (mousedown)="$event.preventDefault()"
+        (mouseenter)="active.set(index)"
+        (click)="pick(entry.suggestion)"
+      >
+        <span class="typeahead__label">{{ entry.before }}<strong>{{ entry.matched }}</strong>{{ entry.after }}</span>
+        <span class="typeahead__count">{{ entry.count }}</span>
+      </li>
+    }
+  </ul>
+</div>

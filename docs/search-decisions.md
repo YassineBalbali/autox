@@ -8,6 +8,27 @@
 | GET | `/api/v1/listings/{id}` | none | public detail, ACTIVE only |
 | GET | `/api/v1/listings/mine` | required | the seller's own list (unchanged) |
 | GET | `/api/v1/listings/mine/{id}` | required | **moved** — was `/listings/{id}` |
+| GET | `/api/v1/catalogue/suggestions?q=` | none | the search bar's typeahead; see below |
+
+### The search bar's suggestions
+
+- **What matches.** A make whose name starts with what was typed; a model whose own name
+  does ("a3"), or whose make's name, a space and the start of its own do ("audi a"). Two to
+  sixty characters; outer spaces dropped, inner runs counted as one.
+- **Case and accents.** Both sides go through `catalogue_search_key()` (V16): PostgreSQL's
+  `unaccent` with its dictionary named by schema, which is what makes the wrapper honestly
+  `IMMUTABLE` and so indexable, then `lower()`. `unaccent` also folds ligatures (œ → oe),
+  which a client-side `normalize('NFD')` does not.
+- **The prefix test is a range** (`key ~>=~ q AND key ~<~ q || U+10FFFF`) on
+  `text_pattern_ops` expression indexes, not `LIKE q || '%'`: the planner rewrites `LIKE`
+  into that range only when the pattern is a constant at planning time, which a prepared
+  statement's generic plan does not have. A typed `%` or `_` needs no escaping either.
+- **No dead ends.** Counts join the listings under the search's own visibility rule; an
+  entry with nothing online is not suggested. Makes first, then the most listed; eight at most.
+- **Cached for a minute**, not the hour of `/reference`: it follows listings, not migrations.
+  Rate-limited with the other public reads; the client asks after a 200 ms pause in typing.
+- **Free-text makes are not suggested.** A listing whose make was typed rather than chosen
+  has no catalogue id to filter on, so it cannot be a structured suggestion.
 
 ### One breaking change to last task's API
 

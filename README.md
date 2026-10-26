@@ -376,6 +376,7 @@ A route guard is a courtesy. The API is what refuses.
 | A seller's listings | `POST /listings`, `GET /listings/mine`, `/mine/quota`, `/mine/{id}`, `PATCH`·`DELETE /listings/{id}`, `POST /listings/{id}/publish`·`unpublish`·`renew`·`sold` | token, owner |
 | Photos | `POST`·`GET /listings/{id}/images`, `POST …/images/{imageId}/confirm`, `PUT …/images/order`, `DELETE …/images/{imageId}` | token, owner |
 | Reference | `GET /reference/countries`, `/enums`, `/makes`, `/makes/{id}/models`, `/features` | none |
+| Search bar suggestions | `GET /catalogue/suggestions?q=` (makes and models with listings online, by prefix, case and accents ignored) | none |
 | Messages | `POST /listings/{id}/conversation`, `GET /conversations`, `/conversations/unread`, `/conversations/{id}`, `POST /conversations/{id}/messages`·`read`, `POST /messages/{id}/report` | token, participant |
 | Moderation | `GET /admin/listings`, `/admin/listings/{id}`, `POST /admin/listings/{id}/approve`·`reject`·`remove`·`reinstate`, `GET /admin/message-reports`, `POST /admin/message-reports/{id}/hide`·`dismiss` | ADMIN |
 | Users | `GET /admin/users` | ADMIN |
