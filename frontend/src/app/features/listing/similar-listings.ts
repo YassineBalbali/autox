@@ -4,8 +4,10 @@ import { catchError, of, startWith, switchMap } from 'rxjs';
 
 import { ListingsPublicService, PublicListingSummary } from '../../core/api';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
+import { PHONE, mediaQuery } from '../../core/ui/media';
 import { FUEL_LABELS, GEARBOX_LABELS, labelOf } from '../../shared/listing/labels.fr';
 import { ListingCard } from '../../shared/listing/listing-card';
+import { ListingRow } from '../../shared/listing/listing-row';
 
 /**
  * "Annonces similaires", at the foot of a listing: three to six other live listings, as the
@@ -22,25 +24,43 @@ import { ListingCard } from '../../shared/listing/listing-card';
  */
 @Component({
   selector: 'app-similar-listings',
-  imports: [ListingCard],
+  imports: [ListingCard, ListingRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (listings().length) {
       <section class="similar" aria-labelledby="titre-similaires">
         <h2 id="titre-similaires" class="similar__title" i18n="@@similarTitle">Annonces similaires</h2>
-        <ul class="similar__grid" role="list">
-          @for (listing of listings(); track listing.id) {
-            <li>
-              <app-listing-card
-                [listing]="listing"
-                [headingLevel]="3"
-                [minorUnit]="minorUnitOf(listing)"
-                [fuelLabel]="fuelLabel(listing)"
-                [gearboxLabel]="gearboxLabel(listing)"
-              />
-            </li>
-          }
-        </ul>
+        @if (phone()) {
+          <!-- A phone: the search's compact row, four or five to a screen, where a card
+               is one per screen and nobody scrolls that far. -->
+          <ul class="similar__list" role="list">
+            @for (listing of listings(); track listing.id) {
+              <li class="similar__item">
+                <app-listing-row
+                  [listing]="listing"
+                  [headingLevel]="3"
+                  [minorUnit]="minorUnitOf(listing)"
+                  [fuelLabel]="fuelLabel(listing)"
+                  [gearboxLabel]="gearboxLabel(listing)"
+                />
+              </li>
+            }
+          </ul>
+        } @else {
+          <ul class="similar__grid" role="list">
+            @for (listing of listings(); track listing.id) {
+              <li>
+                <app-listing-card
+                  [listing]="listing"
+                  [headingLevel]="3"
+                  [minorUnit]="minorUnitOf(listing)"
+                  [fuelLabel]="fuelLabel(listing)"
+                  [gearboxLabel]="gearboxLabel(listing)"
+                />
+              </li>
+            }
+          </ul>
+        }
       </section>
     }
   `,
@@ -49,6 +69,9 @@ import { ListingCard } from '../../shared/listing/listing-card';
 export class SimilarListings {
   private readonly api = inject(ListingsPublicService);
   private readonly reference = inject(ReferenceStore);
+
+  /** The search's compact row on a phone; the cards otherwise, and without matchMedia. */
+  protected readonly phone = mediaQuery(PHONE, false);
 
   /** The listing on the page. */
   readonly listingId = input.required<string>();

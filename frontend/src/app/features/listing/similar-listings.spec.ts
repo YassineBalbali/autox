@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { BASE_PATH, PublicListingSummary } from '../../core/api';
+import { PHONE_SCREEN, stubMedia } from '../../core/ui/dom-testing';
 import { SimilarListings } from './similar-listings';
 
 const BASE = 'http://api.test';
@@ -102,5 +103,26 @@ describe('SimilarListings', () => {
     pending('l2')[0].flush([card('d', 'Clio'), card('e', 'Captur'), card('f', 'Mégane')]);
     await settle();
     expect(titles()).toEqual(['Peugeot Clio', 'Peugeot Captur', 'Peugeot Mégane']);
+  });
+
+  it('uses the search’s compact row on a phone, still under the section’s heading', async () => {
+    // One card per screen means nobody scrolls that far: the rows put four or five there.
+    stubMedia(PHONE_SCREEN);
+    fixture = TestBed.createComponent(Host);
+    root = fixture.nativeElement;
+    await settle();
+    pending('l1').forEach((request) => request.flush([card('a', '208'), card('b', '2008'), card('c', '308')]));
+    await settle();
+
+    expect(root.querySelector('app-listing-card')).toBeNull();
+    const rows = Array.from(root.querySelectorAll('app-listing-row'));
+    expect(rows).toHaveLength(3);
+    expect(rows.map((row) => row.querySelector('.listing__link')?.textContent?.trim())).toEqual([
+      'Peugeot 208',
+      'Peugeot 2008',
+      'Peugeot 308',
+    ]);
+    expect(rows[0].querySelector('.listing__link')?.getAttribute('href')).toBe('/annonces/a');
+    expect(rows[0].querySelector('.listing__title')?.getAttribute('aria-level')).toBe('3');
   });
 });

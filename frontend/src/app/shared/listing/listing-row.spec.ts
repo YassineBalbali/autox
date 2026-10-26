@@ -205,6 +205,12 @@ describe('ListingRow', () => {
       }
     });
 
+    it('is a level-2 heading by default, with no aria-level to say so', async () => {
+      const row = await render();
+
+      expect(row.querySelector('h2.listing__title')?.hasAttribute('aria-level')).toBe(false);
+    });
+
     it('has one link still, whose target is the whole row', async () => {
       const row = await render();
 

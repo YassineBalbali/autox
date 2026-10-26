@@ -97,6 +97,53 @@ const MONTH_AND_YEAR = new Intl.DateTimeFormat('fr-FR', { month: '2-digit', year
       line-height: var(--lh-snug);
       font-variant-numeric: tabular-nums;
     }
+
+    // ---- a phone: one panel, the facts two by two --------------------------------
+    //
+    // Five tiles stacked two to a row take most of a phone's screen for five words. Below
+    // the medium breakpoint they share one panel instead, each a small icon beside its
+    // label and value. The dt steps aside (display: contents) so the icon and the label
+    // are placed in the grid themselves: icon on the left over both lines, label above
+    // value on the right.
+    @media (max-width: calc(t.$bp-md - 0.02px)) {
+      .facts {
+        gap: var(--s-3) var(--s-4);
+        padding: var(--s-3) var(--s-4);
+        background: var(--c-surface);
+        border: 1px solid var(--c-line);
+        border-radius: var(--r-lg);
+        box-shadow: var(--shadow-raised);
+      }
+
+      .facts__tile {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        column-gap: var(--s-2);
+        align-items: center;
+        // Label and value stay together at the top when a neighbour's value wraps.
+        align-content: start;
+        padding: 0;
+        background: none;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .facts__label {
+        display: contents;
+      }
+
+      .facts__icon {
+        grid-row: span 2;
+        width: 2rem;
+        height: 2rem;
+        margin: 0;
+      }
+
+      .facts__value {
+        font-size: var(--t-body);
+      }
+    }
   `,
 })
 export class KeyFacts {

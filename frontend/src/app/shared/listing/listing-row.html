@@ -22,7 +22,9 @@
          so it is on the phone row too. Renders nothing for a listing without one. -->
     <app-price-badge class="listing__phone listing__phone-verdict" [indicator]="listing().priceIndicator" />
 
-    <h2 class="listing__title">
+    <!-- Level 2 under the results' title, 3 under a section heading such as "Annonces
+         similaires"; the element stays an h2 for its styles. -->
+    <h2 class="listing__title" [attr.aria-level]="headingLevel() === 2 ? null : headingLevel()">
       @if (link(); as target) {
         <a class="listing__link" [routerLink]="target">{{ headline().title }}</a>
       } @else {
