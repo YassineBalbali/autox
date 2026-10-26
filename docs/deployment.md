@@ -238,9 +238,16 @@ The seeded sellers' passwords are random and never shown, so nobody can sign in 
 
 **If the seed fails**, the log shows `Application run failed` with the reason. It is
 usually storage: a wrong key, endpoint, region or bucket name. Storage is checked before
-anything is written, so a misconfiguration fails cleanly. If it fails partway regardless,
-the next start reports "Demo data is already present" and skips it. Then do one deploy with
-`AUTOX_DEMO_ACTION=remove` added, and one without it.
+anything is written, so a misconfiguration fails cleanly.
+
+**If the seed stops partway** — the instance restarted or was replaced before the "Seeded"
+line — the site shows the listings written so far, and the next start logs "An earlier demo
+seed stopped partway: N of 152 listings. Nothing seeded." It does not add to a partial seed.
+Do one deploy with `AUTOX_DEMO_ACTION=remove` added (it deletes only what the seed
+recorded, the unfinished draft included), then one without it. Until the "Seeded" line
+appears, do not deploy, restart or save environment variables, and do not push to the
+branch Render deploys from if auto-deploy is on: each of those replaces the instance and
+stops the seed again.
 
 **To reset the demo later** (once visitors have filled it with test listings): deploy once
 with `SPRING_PROFILES_ACTIVE=demo` **and** `AUTOX_DEMO_ACTION=remove`, then once with only
