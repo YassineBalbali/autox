@@ -1,4 +1,10 @@
-<div class="messages" [class.messages--reading]="inbox.selectedId()">
+<!-- On a phone an open conversation is a screen of its own, fixed over the page, so the page
+     under it is held still (data-locks-scroll-narrow). -->
+<div
+  class="messages"
+  [class.messages--reading]="inbox.selectedId()"
+  [attr.data-locks-scroll-narrow]="inbox.selectedId() ? '' : null"
+>
   <section class="messages__list" aria-labelledby="titre-messages">
     <header class="messages__head">
       <h1 id="titre-messages" class="messages__title" i18n="@@messagesTitle">Messages</h1>

@@ -251,6 +251,7 @@ textarea.input {
   // On a phone the row grows instead: a smaller button is a smaller target.
   @include t.touch {
     height: var(--h-control);
+    min-width: var(--h-control);
   }
 }
 

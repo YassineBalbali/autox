@@ -1,3 +1,5 @@
+@use '../../../styles/tokens' as t;
+
 :host {
   display: block;
 }
@@ -33,10 +35,25 @@
 
 .dropzone__text {
   font-weight: var(--fw-semibold);
+
+  // Nothing to drop with a finger.
+  @include t.touch {
+    display: none;
+  }
 }
 
 .dropzone__choose {
   cursor: pointer;
+
+  // On a touch screen the button is the way in: wide, and filled.
+  @include t.touch {
+    width: 100%;
+    height: 48px;
+    background: var(--c-accent);
+    border-color: var(--c-accent);
+    color: var(--c-accent-ink);
+    font-size: var(--t-md);
+  }
 
   // The real input is visually hidden inside the label; the ring goes on the label.
   &:focus-within {

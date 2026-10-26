@@ -151,6 +151,8 @@ export class ListingEditorPage {
 
   protected readonly steps = STEPS;
   protected readonly stepTitles = STEP_TITLES;
+  /** Zero-based, for "Étape 2 sur 4" and the bar under it. */
+  protected readonly stepIndex = computed(() => STEPS.indexOf(this.step()));
   protected readonly limits = LIMITS;
   protected readonly other = OTHER;
   protected readonly myListings = MY_LISTINGS;

@@ -322,6 +322,30 @@ describe('ListingEditorPage', () => {
     });
   });
 
+  describe('on a phone, the progress', () => {
+    const progress = () => root.querySelector('.progress__label')?.textContent?.replace(/\s+/g, ' ').trim();
+    const done = () => root.querySelectorAll('.progress__segment--done').length;
+
+    it('says which step of how many, by name, with a bar of four', async () => {
+      await visit('/vendre');
+
+      expect(progress()).toBe('Étape 1 sur 4 Véhicule');
+      expect(root.querySelectorAll('.progress__segment')).toHaveLength(4);
+      expect(done()).toBe(1);
+      // The bar repeats the words; a screen reader is given the words only.
+      expect(root.querySelector('.progress__bar')?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('moves with the steps', async () => {
+      await visit('/vendre');
+      await fillVehicle();
+      await submit();
+
+      expect(progress()).toBe('Étape 2 sur 4 Prix et description');
+      expect(done()).toBe(2);
+    });
+  });
+
   describe('the power', () => {
     const ENGINES = `${API}/valuation/engines`;
     const engineButtons = () => Array.from(root.querySelectorAll('.editor__engines button')) as HTMLButtonElement[];
