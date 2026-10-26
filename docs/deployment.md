@@ -245,7 +245,9 @@ the next start reports "Demo data is already present" and skips it. Then do one 
 **To reset the demo later** (once visitors have filled it with test listings): deploy once
 with `SPRING_PROFILES_ACTIVE=demo` **and** `AUTOX_DEMO_ACTION=remove`, then once with only
 the profile (seed again), then remove both. Removal deletes exactly what the seed recorded.
-Listings visitors created are left alone; remove those from the moderation screen.
+Listings visitors created are left alone; remove those from the moderation screen. So are
+the demo makes and models those listings use: they stay as ordinary catalogue rows, and the
+next seed reuses them.
 
 A reseed creates the demo makes and models again under new ids, and browsers keep the make
 list for an hour (`Cache-Control: max-age=3600` on `/reference/makes`). For up to an hour

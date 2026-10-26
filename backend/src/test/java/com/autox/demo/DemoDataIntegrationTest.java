@@ -226,6 +226,43 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("removal keeps a demo make and model a visitor's listing uses, and finishes")
+    void removeSparesWhatOthersUse() {
+        // A visitor who sold a Peugeot 308 picked the demo's 308. Deleting it failed on the
+        // foreign key halfway through a removal, after the demo listings had gone.
+        demoData.seed();
+        DemoCatalogue.Vehicle first = DemoCatalogue.vehicles().getFirst();
+        java.util.UUID makeId = jdbcTemplate.queryForObject(
+                "SELECT id FROM vehicle_make WHERE slug = ?", java.util.UUID.class, first.makeSlug());
+        java.util.UUID modelId = jdbcTemplate.queryForObject(
+                "SELECT id FROM vehicle_model WHERE make_id = ? AND slug = ?", java.util.UUID.class,
+                makeId, first.modelSlug());
+        AppUser visitor = createUser(uniqueEmail("visitor"), UserRole.PARTICULIER, UserStatus.ACTIVE);
+        jdbcTemplate.update("""
+                INSERT INTO listing (id, seller_id, status, moderation_status, title,
+                                     price_amount, price_currency_code, country_code,
+                                     postal_code, city, make_id, model_id,
+                                     first_registration_year, mileage_km, fuel_type, gearbox,
+                                     body_type, vehicle_condition, published_at, expires_at,
+                                     created_at, updated_at)
+                VALUES (gen_random_uuid(), ?, 'ACTIVE', 'NOT_REVIEWED', 'Ma voiture',
+                        1500000, 'EUR', 'FR', '75011', 'Paris', ?, ?,
+                        2021, 40000, 'PETROL', 'MANUAL', 'HATCHBACK', 'USED',
+                        now(), now() + interval '60 days', now(), now())
+                """, visitor.getId(), makeId, modelId);
+
+        assertThat(demoData.remove()).isEqualTo(SEEDED);
+
+        assertThat(ledger.exists()).isFalse();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM listing", Integer.class)).isOne();
+        assertThat(jdbcTemplate.queryForList("SELECT id FROM vehicle_model", java.util.UUID.class))
+                .containsExactly(modelId);
+        assertThat(jdbcTemplate.queryForList("SELECT id FROM vehicle_make", java.util.UUID.class))
+                .containsExactly(makeId);
+        jdbcTemplate.update("DELETE FROM listing");
+    }
+
+    @Test
     @DisplayName("removal with nothing seeded is a no-op")
     void removeWithoutSeed() {
         assertThat(demoData.remove()).isZero();
