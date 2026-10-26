@@ -33,6 +33,9 @@ import { Favourites } from './favourites';
     @use '../../../styles/tokens' as t;
 
     :host {
+      // How far inside the button the visible disc starts, on a phone: (44 - 32) / 2.
+      --fav-disc-inset: 6px;
+
       display: block;
       position: relative;
       // Above the stretched link of the result it sits on.
@@ -66,10 +69,27 @@ import { Favourites } from './favourites';
         outline-offset: 2px;
       }
 
-      // A finger's size on a phone; the heart inside stays the same.
+      // On a phone: a finger's target, 44px, but the white disc a buyer sees is 32px inside
+      // it. A 44px disc on a photo a third of the screen wide is a third of the photo, and
+      // its edge and shadow crowd the photo's own. The thumbnail places the button so the
+      // disc, not the target, keeps the same margin from the corner as the photo count.
       @include t.touch {
+        position: relative;
+        isolation: isolate;
         width: 44px;
         height: 44px;
+        background: none;
+        box-shadow: none;
+
+        &::before {
+          content: '';
+          position: absolute;
+          inset: var(--fav-disc-inset);
+          z-index: -1;
+          border-radius: 50%;
+          background: rgb(255 255 255 / 92%);
+          box-shadow: 0 1px 3px rgb(11 31 58 / 25%);
+        }
       }
 
       &[aria-pressed='true'] {
