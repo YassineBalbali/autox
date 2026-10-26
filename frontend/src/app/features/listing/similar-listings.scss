@@ -35,3 +35,12 @@
 .similar__grid {
   @include results.grid;
 }
+
+// A phone: the search's list of rows, each on the same raised surface as there.
+.similar__list {
+  @include results.list;
+}
+
+.similar__item {
+  @include results.surface;
+}

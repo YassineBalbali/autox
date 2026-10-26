@@ -59,6 +59,8 @@ export class ListingRow {
    * screen at once: lazy-loading those delays the very images the user is looking at.
    */
   readonly eager = input(false);
+  /** Where the title sits in the page's outline; the element stays an h2 for its styles. */
+  readonly headingLevel = input(2);
 
   protected readonly headline = computed(() => headlineOf(this.listing()));
 
