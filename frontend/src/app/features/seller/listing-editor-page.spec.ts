@@ -713,6 +713,30 @@ describe('ListingEditorPage', () => {
       expect((control('Modèle (saisie libre)') as HTMLInputElement).value).toBe('City');
     });
 
+    it('lets a listing typed outside the catalogue be linked to it once the catalogue has its make', async () => {
+      // Typed as "Peugeot 308" before the catalogue knew Peugeot. The lists now offer it;
+      // choosing them sends the ids, and the API drops the typed words for them.
+      const typed = listing();
+      await edit('vehicule', {
+        ...typed,
+        vehicle: { ...typed.vehicle, makeId: undefined, modelId: undefined, make: 'Peugeot', model: '308' },
+      });
+      expect((control('Marque') as HTMLSelectElement).value).toBe(OTHER);
+
+      await fill('Marque', 'make-peugeot');
+      await answerModels();
+      await fill('Modèle', 'model-308');
+      await submit();
+
+      const request = open(`${API}/listings/${ID}`)[0];
+      expect(request.request.method).toBe('PATCH');
+      expect(request.request.body).toMatchObject({ makeId: 'make-peugeot', modelId: 'model-308' });
+      expect(request.request.body).not.toHaveProperty('makeText');
+      expect(request.request.body).not.toHaveProperty('modelText');
+      request.flush(listing());
+      await settle();
+    });
+
     it('names the listing in the tab', async () => {
       await edit('vehicule');
 

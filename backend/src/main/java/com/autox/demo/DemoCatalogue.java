@@ -24,8 +24,10 @@ import java.util.List;
  * price, the age and the mileage. The site is judged on details like these.
  *
  * <p>The makes and models are a stand-in for the real vehicle catalogue, which is a
- * dataset this project does not have yet. Ten makes is enough to make the make and model
- * filters work; it is not a catalogue and must not be mistaken for the start of one.
+ * dataset this project does not have yet. Ten makes with listings make the make and model
+ * filters work, and eight more without any ({@link #CATALOGUE_ONLY}) give a seller the
+ * other common makes to choose from; it is not a catalogue and must not be mistaken for
+ * the start of one.
  */
 final class DemoCatalogue {
 
@@ -399,7 +401,41 @@ final class DemoCatalogue {
         return Math.max(step, Math.round(value / (float) step) * step);
     }
 
-    static final List<Make> MAKES = List.of(
+    /**
+     * Makes in the catalogue with no demo listing: the rest of the obvious volume makes on the
+     * French used market (Audi sells about as many used cars as BMW), so that a seller can
+     * choose them, and their models, from the list rather than typing them. The catalogue and
+     * the listings are separate concerns; these exist for the first and stay out of the second.
+     */
+    static final List<Make> CATALOGUE_ONLY = List.of(
+            new Make("audi", "Audi", false, List.of(
+                    new Model("a1", "A1"), new Model("a3", "A3"), new Model("a4", "A4"),
+                    new Model("a5", "A5"), new Model("a6", "A6"), new Model("q2", "Q2"),
+                    new Model("q3", "Q3"), new Model("q5", "Q5"))),
+            new Make("ford", "Ford", false, List.of(
+                    new Model("fiesta", "Fiesta"), new Model("focus", "Focus"), new Model("puma", "Puma"),
+                    new Model("kuga", "Kuga"), new Model("transit-custom", "Transit Custom"))),
+            new Make("opel", "Opel", false, List.of(
+                    new Model("corsa", "Corsa"), new Model("astra", "Astra"), new Model("mokka", "Mokka"),
+                    new Model("crossland", "Crossland"), new Model("grandland", "Grandland"))),
+            new Make("nissan", "Nissan", false, List.of(
+                    new Model("micra", "Micra"), new Model("juke", "Juke"), new Model("qashqai", "Qashqai"),
+                    new Model("x-trail", "X-Trail"), new Model("leaf", "Leaf"))),
+            new Make("kia", "Kia", false, List.of(
+                    new Model("picanto", "Picanto"), new Model("rio", "Rio"), new Model("ceed", "Ceed"),
+                    new Model("niro", "Niro"), new Model("sportage", "Sportage"))),
+            new Make("hyundai", "Hyundai", false, List.of(
+                    new Model("i10", "i10"), new Model("i20", "i20"), new Model("i30", "i30"),
+                    new Model("kona", "Kona"), new Model("tucson", "Tucson"))),
+            new Make("skoda", "Škoda", false, List.of(
+                    new Model("fabia", "Fabia"), new Model("octavia", "Octavia"), new Model("kamiq", "Kamiq"),
+                    new Model("karoq", "Karoq"), new Model("kodiaq", "Kodiaq"))),
+            new Make("seat", "Seat", false, List.of(
+                    new Model("ibiza", "Ibiza"), new Model("leon", "Leon"), new Model("arona", "Arona"),
+                    new Model("ateca", "Ateca"))));
+
+    /** The makes the demo listings are of; each has at least one. */
+    static final List<Make> LISTED_MAKES = List.of(
             new Make("peugeot", "Peugeot", true, List.of(
                     new Model("208", "208"), new Model("308", "308"), new Model("3008", "3008"),
                     new Model("5008", "5008"), new Model("partner", "Partner"))),
@@ -423,6 +459,13 @@ final class DemoCatalogue {
                     new Model("sandero", "Sandero"), new Model("duster", "Duster"))),
             new Make("fiat", "Fiat", false, List.of(
                     new Model("500", "500"))));
+
+    /**
+     * Every make the seed creates: those its listings use, then {@link #CATALOGUE_ONLY}.
+     * After both, so that neither is still null when it is built.
+     */
+    static final List<Make> MAKES = java.util.stream.Stream.concat(
+            LISTED_MAKES.stream(), CATALOGUE_ONLY.stream()).toList();
 
     static final List<Vehicle> VEHICLES = List.of(
             new Vehicle("garage-bellevue", "peugeot", "308", "1.5 BlueHDi 130 Allure Pack",

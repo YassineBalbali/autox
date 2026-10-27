@@ -222,7 +222,7 @@ shell and no one-off jobs, so the profile goes on for one deploy and comes off a
 2. **Logs**: wait for the line
 
    ```
-   Seeded 152 demo listings, 10 demo accounts and 10 demo makes. This is invented data …
+   Seeded 152 demo listings, 10 demo accounts and 18 demo makes. This is invented data …
    ```
 
    Allow **about thirty-five minutes** after startup: a 60-listing seed took about twelve
