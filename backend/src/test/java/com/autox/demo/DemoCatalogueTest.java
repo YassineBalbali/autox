@@ -110,8 +110,14 @@ class DemoCatalogueTest {
                 com.autox.catalog.BodyType.MPV, com.autox.catalog.BodyType.VAN);
         assertThat(perBody.values()).allSatisfy(count -> assertThat(count).isGreaterThanOrEqualTo(3));
         assertThat(vehicles.stream().map(DemoCatalogue.Vehicle::city).distinct()).hasSizeGreaterThanOrEqualTo(8);
-        // Every make in the demo catalogue has at least one car, so no make filter is empty.
-        assertThat(vehicles.stream().map(DemoCatalogue.Vehicle::makeSlug).distinct())
+        // Every make the listings are declared to use has at least one car, so none of their
+        // filters is empty; the makes without any are the ones declared catalogue-only, and
+        // no other. A make added to one list and forgotten in the other fails here.
+        assertThat(vehicles.stream().map(DemoCatalogue.Vehicle::makeSlug).collect(Collectors.toSet()))
+                .isEqualTo(DemoCatalogue.LISTED_MAKES.stream().map(DemoCatalogue.Make::slug).collect(Collectors.toSet()));
+        assertThat(DemoCatalogue.MAKES).hasSize(DemoCatalogue.LISTED_MAKES.size() + DemoCatalogue.CATALOGUE_ONLY.size());
+        // Slugs unique across both: the seeder looks makes up by slug.
+        assertThat(DemoCatalogue.MAKES.stream().map(DemoCatalogue.Make::slug).distinct())
                 .hasSize(DemoCatalogue.MAKES.size());
     }
 
