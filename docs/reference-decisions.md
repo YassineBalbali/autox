@@ -168,3 +168,41 @@ throughput.
   the README, "Deploying behind a proxy".*
 - **Authenticated callers are counted too** on the public paths. The limit is generous enough
   that it does not matter, and exempting them would mean a signed-in scraper is unlimited.
+
+## 3. The demo catalogue's makes, and where each one's basis comes from
+
+The demo catalogue (`DemoCatalogue`) has eighteen makes. Ten are the makes the demo listings
+use. The other eight (`CATALOGUE_ONLY`, added October 2026) have no listings. They are there
+so a seller can choose a common make from the list instead of typing it. They were chosen
+as the obvious volume makes of the French used-car market that the catalogue lacked. Only two
+of the eight were checked against published figures, and the table says which.
+
+| Make | Basis | Figure | Verified? |
+|---|---|---|---|
+| Audi | AAA Data, used-car transactions in France, January–September 2025 | 168 600 (BMW: 181 000) | Figure as reported, see below |
+| Ford | The same source and period | under 132 900, −2.1 % | Figure as reported, see below |
+| Opel | General knowledge of the French market: a long-standing top-20 used make | — | **No** |
+| Nissan | The same | — | **No** |
+| Kia | The same | — | **No** |
+| Hyundai | The same | — | **No** |
+| Škoda | The same | — | **No** |
+| Seat | The same | — | **No** |
+
+**How the two figures were obtained.** From a web search on 26 October 2026, whose result
+summarised AAA Data's nine-month 2025 figures as reported by the *Journal de l'Automobile*'s
+data pages (journalauto.com, "Voitures d'occasion : que retenir de ce troisième trimestre
+2025"). The summary was read; the original AAA Data table was not. The same search found no
+2025 figures for the other six makes, so their place on the list is the author's
+knowledge, not a measurement. Volkswagen, BMW, Mercedes-Benz and Toyota, already in the
+catalogue, ranked above or near Audi in the same figures.
+
+**The models are general knowledge too, unverified.** Each make has four to eight models.
+They were chosen as current or recent nameplates sold new in France and common on the used
+market, such as the Audi A3 and Q3, the Ford Puma and the Škoda Octavia. No sales figure was
+checked for any model, and the lists are not complete ranges.
+
+**What this does not claim.** That these eight are the next eight by volume, in that order;
+that the list is complete, since Mini, Volvo, DS and Suzuki are near the boundary and absent;
+or that the catalogue is anything but a demo stand-in. The class comment says the same: it
+must not be mistaken for the start of a real catalogue. A real one is a licensed dataset,
+not a list typed in from memory.

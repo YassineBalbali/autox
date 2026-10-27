@@ -262,6 +262,23 @@ afterwards, a visitor who loaded the site before the reseed gets no results when
 by make or model, until they reload with the cache cleared. Reseed when nobody is looking,
 or allow that hour before showing the site.
 
+**To add catalogue makes and models to a seeded database** (entries added to
+`DemoCatalogue` since it was seeded), no reset is needed. Deploy once with
+`SPRING_PROFILES_ACTIVE=demo` and no `AUTOX_DEMO_ACTION`, then remove the profile. At
+startup the seed inserts each make and model whose slug is absent, before it checks whether
+listings are present, and writes nothing else: no listing, account or photo is created or
+changed, and an existing entry is never renamed. The log shows:
+
+```
+Demo catalogue: inserted what was missing (makes: 8, models: 42); listings untouched.
+Demo data is already present (152 listings); nothing seeded.
+```
+
+The numbers are for adding the eight makes of October 2026 to a database seeded before them.
+A start that finds nothing to add says `Demo catalogue: complete, nothing added (18 makes).`
+Running it again is harmless. The new makes reach a visitor's make list within the hour the
+browser keeps it.
+
 ## Step 5 — Netlify: the site
 
 `netlify.toml` at the repository root holds the build settings: base directory
