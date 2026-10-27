@@ -60,8 +60,8 @@ enabled today.
 - **JDK 21** — `java -version` should say 21. Needed by the frontend too: the API client
   generator runs on the JVM.
 - **Maven 3.9+** — or use the wrapper if one is added later
-- **Node 24.15+** (or 22.22.3+, or 26+) — what Angular 22 accepts; `frontend/package.json`
-  records it in `engines`
+- **Node 24.22.1+** (or 22.23.4+, or 26.12.1+) — the October 2026 security releases, above
+  what Angular 22 accepts; `frontend/package.json` records it in `engines`
 - **Docker** with Compose — for PostgreSQL, object storage, and the integration tests
 
 ### The start sequence

@@ -270,8 +270,8 @@ frontend job watches `frontend/**` and its own. The snapshot path is in the back
 because that file is the API contract — a snapshot refreshed without the backend change
 behind it must fail the backend's `OpenApiSnapshotTest`.
 
-The frontend job is `npm ci`, generate, lint, build, test. Node is **pinned to 24.20.0**
-rather than `lts/*`: a runner image rolling forward to a Node major Angular has not
+The frontend job is `npm ci`, generate, lint, build, test. Node is **pinned to 24.22.1**
+(the October 2026 security release; 24.20.0 until then) rather than `lts/*`: a runner image rolling forward to a Node major Angular has not
 qualified is a red build with no commit behind it. `package.json` now carries the matching
 `engines` field.
 

@@ -283,7 +283,7 @@ browser keeps it.
 
 `netlify.toml` at the repository root holds the build settings: base directory
 `frontend`, build command `npm run build`, publish directory `dist/frontend/browser`,
-and Node 24.20.0. Netlify itself skips the build when a commit changes nothing under
+and Node 24.22.1. Netlify itself skips the build when a commit changes nothing under
 `frontend/`, so a backend-only commit costs no credits. A change to `netlify.toml` alone
 does not rebuild either, for the same reason.
 

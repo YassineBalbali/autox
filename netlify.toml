@@ -20,5 +20,5 @@
   # trigger one by hand (docs/deployment.md, step 6).
 
 [build.environment]
-  # CI's version. Angular 22 refuses older ones.
-  NODE_VERSION = "24.20.0"
+  # CI's version: the October 2026 security release of Node 24. Keep the two in step.
+  NODE_VERSION = "24.22.1"
