@@ -161,36 +161,50 @@ strength (no endpoint to attack) and a process gap (no record of who promoted wh
 - **The `demo` profile on a production database** would publish sixty invented listings.
   It is profile-gated and removable by ledger, but nothing refuses it.
 
-### R9. The API's JRE still trusts the compromised eMudhra intermediates — medium, waiting on Temurin
+### R9. The compromised eMudhra intermediates — mitigated in the image, waiting on Temurin
 
-Checked on 27 October 2026, against the pinned image `eclipse-temurin:21-jre-alpine@sha256:b48e02e0…`
-(Temurin 21.0.12.1, whose `cacerts` and `blocked.certs` date from 18 August):
+**What was exposed.** Six TLS intermediates whose private keys were recovered (October 2026)
+are issued by "emSign Root TLS CA - G3". That root is not in the JRE's `cacerts`, but it is
+cross-signed by "emSign ECC Root CA - G3" (crt.sh 14658191778, valid to 2039), which was. Java
+does not check revocation in a TLS handshake. So the API would have accepted a certificate made
+with any of those keys, for any host. The keys were weak enough to be recovered independently,
+so forging one cannot be ruled out. An attacker also needs a position on the path between Render
+and Supabase, which is the real barrier.
 
-- **It trusts them.** The six TLS intermediates whose keys were compromised (October 2026) are
-  issued by "emSign Root TLS CA - G3", which is not in `cacerts`. But that root is cross-signed
-  by "emSign ECC Root CA - G3" (crt.sh 14658191778, valid to 2039), which is. Java's own PKIX
-  validator, with this `cacerts` and revocation off, accepts all six. The Sectigo
-  cross-certificates do not chain: "AAA Certificate Services" is not in `cacerts`.
-- **Nothing blocks them.** None of the sixteen certificates is in `blocked.certs`, and Java does
-  not check revocation in a TLS handshake unless `com.sun.net.ssl.checkRevocation` is set.
-- **What it exposes.** The API's calls to Supabase Storage, which validate against `cacerts`. An
-  attacker who can intercept traffic between Render and Supabase can present a certificate
-  issued under one of those keys, and this JVM accepts it. The keys were weak enough to be
-  recovered independently, so being able to forge such a certificate cannot be ruled out. The
-  attacker would also need a network position on that path, and that is the real barrier.
-  Browsers are not affected: they block these intermediates already.
-- **The fix exists but has not shipped as an image.** Temurin 21.0.13+9 (22 October) removes
-  "emSign ECC Root CA - G3" from `cacerts`, and the same check rejects all six. Its binaries
-  are published, but no `eclipse-temurin` Docker image of it exists yet. Re-pin when
-  Dependabot proposes one (weekly for `backend/`), and repeat the check.
+**What was done (27 October 2026).** The Dockerfile's runtime stage deletes "emSign ECC Root CA
+- G3" (SHA-256 `86:A1:EC:BA:…:A3:6B:BE:6B`) from `cacerts`, matched by fingerprint, and fails
+the build if it is still there afterwards. This is OpenJDK's interim advice
+(openjdk.org/emudhra). Checked in the built image with Java's own PKIX validator and the image's
+default truststore:
 
-Not done in the meantime, and deliberately not invented here: OpenJDK's guidance
-(openjdk.org/emudhra) offers deleting the affected roots from `cacerts` or turning revocation
-checking on. Either is a change to the image to make on purpose, not as a side effect.
+- **The six intermediates:** all six are rejected ("does not chain with any of the trust
+  anchors"); all six were accepted before the change.
+- **Supabase Storage** (the project's `/storage/v1/s3` endpoint): TLS succeeds, and the chain
+  ends at "GlobalSign Root CA".
+- **Neon**, with `sslmode=verify-full` (R10): TLS succeeds through the same truststore.
 
-**Separately, and older than this:** the Neon connection uses `sslmode=require`, which in the
-PostgreSQL JDBC driver encrypts but does not validate the server's certificate at all. That is a
-wider exposure on the database path than this one, and `cacerts` plays no part in it.
+**Still open.**
+
+- **The step is temporary.** Temurin 21.0.13+9 (22 October) drops that root itself, and the same
+  check rejects all six with its own `cacerts`. No `eclipse-temurin` image of it existed on
+  27 October. When Dependabot proposes one (weekly for `backend/`), re-pin, check that the
+  build log says the root was "already absent", and delete the step.
+- **The other roots OpenJDK lists are not removed.** "emSign Root CA - G1" and the other emSign
+  roots remain. No cross-certificate from them to "emSign Root TLS CA - G3" appears in the CT
+  logs, so they are not a path to these six. A new cross-certificate would change that. The
+  Sectigo route ("AAA Certificate Services") is not in `cacerts`.
+- **Revocation is still not checked** for any certificate. That is Java's default, and this
+  incident does not change it.
+- **The two code-signing intermediates** do not matter here: the API does not verify signed
+  JARs at runtime.
+
+### R10. The database connection did not verify the server — fixed
+
+`sslmode=require`, as in Neon's connection string, encrypts but accepts any certificate. Anything
+on the path between Render and Neon could pose as the database, read every query and row, and
+take the password. This was wider than R9. Since 27 October 2026 the URL is
+`sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory`, and the API refuses
+to start with a URL for another machine that does not verify (docs/deployment.md, step 1).
 
 ### Checked and found sound
 

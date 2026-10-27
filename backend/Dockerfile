@@ -42,6 +42,32 @@ FROM eclipse-temurin:21-jre-alpine@sha256:b48e02e0ea88d7bfb305335df94923bdef3949
 # this file. A builder that caches layers keeps this one until the line above changes.
 RUN apk upgrade --no-cache
 
+# TEMPORARY — the eMudhra intermediate CA compromise (October 2026). Remove this step once
+# the JRE image above is a Temurin 21.0.13 or later. That release drops this root itself,
+# so the step then reports "already absent", which is the signal to delete it.
+#
+# Six TLS intermediates whose private keys were recovered chain to "emSign Root TLS CA - G3",
+# which is not in this JRE's cacerts. But that root is cross-signed by "emSign ECC Root CA -
+# G3", which is, and Java does not check revocation in a TLS handshake. So until this step,
+# the API would accept a certificate made with any of those keys, for any host, Supabase
+# included. Removing that one root is OpenJDK's interim advice (openjdk.org/emudhra); the
+# others it names either are not in Temurin's cacerts or do not lead to these intermediates.
+# Matched by SHA-256 fingerprint, not by alias, which Temurin spells differently across
+# builds. Checked with the PKIX validator: see docs/weaknesses.md, R9.
+RUN set -eu; \
+    fingerprint='86:A1:EC:BA:08:9C:4A:8D:3B:BE:27:34:C6:12:BA:34:1D:81:3E:04:3C:F9:E8:A8:62:CD:5C:57:A3:6B:BE:6B'; \
+    alias="$(keytool -list -v -cacerts -storepass changeit \
+        | awk -v fp="$fingerprint" '/^Alias name: /{a=substr($0,13)} $1=="SHA256:" && $2==fp {print a}')"; \
+    if [ -n "$alias" ]; then \
+        keytool -delete -cacerts -storepass changeit -alias "$alias"; \
+        echo "Removed emSign ECC Root CA - G3 ($alias) from cacerts"; \
+    else \
+        echo "emSign ECC Root CA - G3 already absent from cacerts: this step can be removed"; \
+    fi; \
+    if keytool -list -v -cacerts -storepass changeit | grep -q "SHA256: $fingerprint"; then \
+        echo "emSign ECC Root CA - G3 is still in cacerts" >&2; exit 1; \
+    fi
+
 RUN addgroup -S -g 10001 autox && adduser -S -u 10001 -G autox -H -s /sbin/nologin autox
 WORKDIR /app
 
