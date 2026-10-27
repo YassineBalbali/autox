@@ -311,6 +311,106 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
         jdbcTemplate.update("DELETE FROM listing WHERE id = ?", visitorListing);
     }
 
+    @Test
+    @DisplayName("on a seeded database, a start inserts the catalogue entries it lacks, renames nothing and touches no listing")
+    void startTopsUpTheCatalogue() {
+        demoData.seed();
+        // An older seed: no Audi at all, Peugeot without its Partner, and a Peugeot that has
+        // since been renamed by hand — a name the top-up must leave as it is.
+        java.util.UUID audi = jdbcTemplate.queryForObject("SELECT id FROM vehicle_make WHERE slug = 'audi'", java.util.UUID.class);
+        jdbcTemplate.update("DELETE FROM demo_seed_ledger WHERE entity_id IN (SELECT id FROM vehicle_model WHERE make_id = ?)", audi);
+        jdbcTemplate.update("DELETE FROM vehicle_model WHERE make_id = ?", audi);
+        jdbcTemplate.update("DELETE FROM demo_seed_ledger WHERE entity_id = ?", audi);
+        jdbcTemplate.update("DELETE FROM vehicle_make WHERE id = ?", audi);
+        java.util.UUID partner = jdbcTemplate.queryForObject(
+                "SELECT m.id FROM vehicle_model m JOIN vehicle_make k ON k.id = m.make_id WHERE k.slug = 'peugeot' AND m.slug = 'partner'",
+                java.util.UUID.class);
+        jdbcTemplate.update("DELETE FROM demo_seed_ledger WHERE entity_id = ?", partner);
+        jdbcTemplate.update("DELETE FROM vehicle_model WHERE id = ?", partner);
+        jdbcTemplate.update("UPDATE vehicle_make SET name = 'Peugeot (renommé)' WHERE slug = 'peugeot'");
+        // And a Ford that the seed did not create, under another name.
+        jdbcTemplate.update("DELETE FROM demo_seed_ledger WHERE entity_id IN (SELECT id FROM vehicle_model WHERE make_id = (SELECT id FROM vehicle_make WHERE slug = 'ford'))");
+        jdbcTemplate.update("DELETE FROM vehicle_model WHERE make_id = (SELECT id FROM vehicle_make WHERE slug = 'ford')");
+        jdbcTemplate.update("DELETE FROM demo_seed_ledger WHERE entity_id = (SELECT id FROM vehicle_make WHERE slug = 'ford')");
+        jdbcTemplate.update("DELETE FROM vehicle_make WHERE slug = 'ford'");
+        java.util.UUID ford = makes.saveAndFlush(VehicleMake.of("ford", "Ford Motor Company")).getId();
+
+        List<java.util.Map<String, Object>> listingsBefore = listingSnapshot();
+        List<java.util.Map<String, Object>> othersBefore = untouchedSnapshot();
+
+        assertThat(demoData.seed()).as("no listing created").isZero();
+
+        // Inserted: Audi and its models, the Partner, Ford's models under the existing Ford.
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT m.slug FROM vehicle_model m JOIN vehicle_make k ON k.id = m.make_id WHERE k.slug = 'audi'", String.class))
+                .containsExactlyInAnyOrder("a1", "a3", "a4", "a5", "a6", "q2", "q3", "q5");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM vehicle_model m JOIN vehicle_make k ON k.id = m.make_id WHERE k.slug = 'peugeot' AND m.slug = 'partner'",
+                Integer.class)).isOne();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM vehicle_model WHERE make_id = ?", Integer.class, ford))
+                .isEqualTo(5);
+        // Not renamed, not re-created, and the Ford it did not make is not recorded as its own.
+        assertThat(jdbcTemplate.queryForObject("SELECT name FROM vehicle_make WHERE slug = 'peugeot'", String.class))
+                .isEqualTo("Peugeot (renommé)");
+        assertThat(jdbcTemplate.queryForObject("SELECT name FROM vehicle_make WHERE slug = 'ford'", String.class))
+                .isEqualTo("Ford Motor Company");
+        assertThat(ledger.ids(DemoLedger.MAKE)).doesNotContain(ford);
+        // What it inserted is the seed's, for a removal to take away.
+        java.util.UUID newAudi = jdbcTemplate.queryForObject("SELECT id FROM vehicle_make WHERE slug = 'audi'", java.util.UUID.class);
+        assertThat(ledger.ids(DemoLedger.MAKE)).contains(newAudi);
+
+        // Listings, their photos, the accounts: exactly as they were.
+        assertThat(listingSnapshot()).isEqualTo(listingsBefore);
+        assertThat(untouchedSnapshot()).isEqualTo(othersBefore);
+
+        // Fords' models go with the demo; the Ford itself, which it did not make, stays.
+        demoData.remove();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM vehicle_make WHERE id = ?", Integer.class, ford)).isOne();
+    }
+
+    @Test
+    @DisplayName("starting again and again adds nothing and changes nothing")
+    void topUpIsIdempotent() {
+        demoData.seed();
+        List<java.util.Map<String, Object>> catalogue = catalogueSnapshot();
+        List<java.util.Map<String, Object>> listingsBefore = listingSnapshot();
+        int ledgerRows = jdbcTemplate.queryForObject("SELECT count(*) FROM demo_seed_ledger", Integer.class);
+
+        for (int start = 0; start < 3; start++) {
+            assertThat(demoData.seed()).isZero();
+            assertThat(demoData.topUpCatalogue()).as("start %d: inserted", start).isZero();
+        }
+
+        assertThat(catalogueSnapshot()).isEqualTo(catalogue);
+        assertThat(listingSnapshot()).isEqualTo(listingsBefore);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM demo_seed_ledger", Integer.class)).isEqualTo(ledgerRows);
+    }
+
+    /** Every column a top-up could conceivably disturb, of every listing. */
+    private List<java.util.Map<String, Object>> listingSnapshot() {
+        return jdbcTemplate.queryForList("""
+                SELECT id, status, moderation_status, title, price_amount, make_id, model_id, make_text, model_text,
+                       published_at, expires_at, updated_at, deleted_at
+                  FROM listing ORDER BY id""");
+    }
+
+    /** Photos, accounts and the price history: the rest of what a seed writes. */
+    private List<java.util.Map<String, Object>> untouchedSnapshot() {
+        return jdbcTemplate.queryForList("""
+                SELECT 'image' AS kind, id::text AS id, storage_key AS detail FROM listing_image
+                UNION ALL SELECT 'variant', id::text, storage_key FROM listing_image_variant
+                UNION ALL SELECT 'user', id::text, email || ' ' || updated_at FROM app_user
+                UNION ALL SELECT 'price', id::text, listing_id::text FROM listing_price_history
+                ORDER BY 1, 2""");
+    }
+
+    private List<java.util.Map<String, Object>> catalogueSnapshot() {
+        return jdbcTemplate.queryForList("""
+                SELECT 'make' AS kind, id, slug, name, active, updated_at FROM vehicle_make
+                UNION ALL SELECT 'model', id, slug, name, active, updated_at FROM vehicle_model
+                ORDER BY 1, 3, 2""");
+    }
+
     /** The make and model ids of the first demo vehicle, as seeded. */
     private java.util.UUID[] firstDemoModel() {
         DemoCatalogue.Vehicle first = DemoCatalogue.vehicles().getFirst();

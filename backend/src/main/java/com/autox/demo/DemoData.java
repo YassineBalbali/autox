@@ -111,8 +111,10 @@ class DemoData {
     }
 
     /**
-     * Seeds once. A second call is a no-op, so leaving the profile switched on across
-     * restarts does not pile up fourteen more listings each time.
+     * Seeds once. A second call creates no listing, account or photo, so leaving the profile
+     * switched on across restarts does not pile up more listings each time. It does insert
+     * any catalogue make or model added to {@link DemoCatalogue} since ({@link #topUpCatalogue}),
+     * and only those: one boot with the profile brings a seeded database's catalogue up to date.
      *
      * @return how many listings were created — zero when the seed was already present
      */
@@ -121,6 +123,9 @@ class DemoData {
         List<DemoCatalogue.Vehicle> vehicles = DemoCatalogue.vehicles();
         int target = Math.min(limit, vehicles.size());
         if (ledger.hasEntries()) {
+            // The catalogue first, and whatever the listings' state: makes and models added to
+            // DemoCatalogue since the seed ran are inserted, and nothing else is written.
+            topUpCatalogue();
             // Only what an earlier seed recorded counts. Removal drops the whole ledger, so a
             // make or model it kept for someone else's listing is not in here, and a seed
             // that was stopped partway is told apart from one that finished.
@@ -146,7 +151,7 @@ class DemoData {
         storage.ensureReady();
 
         Map<String, UUID> sellerIds = seedSellers(france);
-        Map<String, UUID[]> catalogue = seedCatalogue();
+        Map<String, UUID[]> catalogue = seedCatalogue().ids();
 
         int created = 0;
         for (DemoCatalogue.Vehicle vehicle : vehicles.subList(0, target)) {
@@ -244,9 +249,39 @@ class DemoData {
         return ids;
     }
 
-    /** @return {@code "make/model"} slug pair to {@code [makeId, modelId]} */
-    private Map<String, UUID[]> seedCatalogue() {
+    /**
+     * Inserts the makes and models of {@link DemoCatalogue#MAKES} that the database does not
+     * have, on a database already seeded. Listings, accounts and photos are not touched.
+     *
+     * <p>Idempotent: an entry is looked up by its slug — a make by its own, a model by its
+     * make's and its own — and one that exists is left exactly as it is, whatever its name,
+     * whether the seed created it or not. A second run finds everything and inserts nothing.
+     * What it does insert is recorded in the ledger, so a removal takes it away with the rest.
+     *
+     * @return how many makes and models were inserted
+     */
+    int topUpCatalogue() {
+        CatalogueRows rows = seedCatalogue();
+        if (rows.makesAdded() + rows.modelsAdded() == 0) {
+            log.info("Demo catalogue: complete, nothing added ({} makes).", DemoCatalogue.MAKES.size());
+        } else {
+            log.warn("Demo catalogue: inserted what was missing (makes: {}, models: {}); listings untouched.",
+                    rows.makesAdded(), rows.modelsAdded());
+        }
+        return rows.makesAdded() + rows.modelsAdded();
+    }
+
+    /**
+     * @param ids          {@code "make/model"} slug pair to {@code [makeId, modelId]}
+     * @param makesAdded   makes this call inserted
+     * @param modelsAdded  models this call inserted
+     */
+    private record CatalogueRows(Map<String, UUID[]> ids, int makesAdded, int modelsAdded) {
+    }
+
+    private CatalogueRows seedCatalogue() {
         Map<String, UUID[]> ids = new HashMap<>();
+        int[] added = {0, 0};
         for (DemoCatalogue.Make definition : DemoCatalogue.MAKES) {
             // Reuse a make that is already there, and do not write it in the ledger. Slugs
             // are unique, so creating a second "peugeot" would fail — and, more to the
@@ -258,6 +293,7 @@ class DemoData {
                         created.setPopular(definition.popular());
                         makes.saveAndFlush(created);
                         ledger.record(DemoLedger.MAKE, created.getId());
+                        added[0]++;
                         return created;
                     });
 
@@ -271,12 +307,13 @@ class DemoData {
                                     VehicleModel.of(make, modelDefinition.slug(), modelDefinition.name());
                             models.saveAndFlush(created);
                             ledger.record(DemoLedger.MODEL, created.getId());
+                            added[1]++;
                             return created;
                         });
                 ids.put(definition.slug() + "/" + modelDefinition.slug(), new UUID[] {make.getId(), model.getId()});
             }
         }
-        return ids;
+        return new CatalogueRows(ids, added[0], added[1]);
     }
 
     private java.util.Optional<UUID> existingId(String sql, Object... arguments) {

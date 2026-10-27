@@ -406,6 +406,10 @@ final class DemoCatalogue {
      * French used market (Audi sells about as many used cars as BMW), so that a seller can
      * choose them, and their models, from the list rather than typing them. The catalogue and
      * the listings are separate concerns; these exist for the first and stay out of the second.
+     *
+     * <p>Which of the eight rest on published figures and which on general knowledge of the
+     * market, unverified: {@code docs/reference-decisions.md}, section 3. A start with the
+     * demo profile inserts any of these a seeded database lacks ({@code DemoData#topUpCatalogue}).
      */
     static final List<Make> CATALOGUE_ONLY = List.of(
             new Make("audi", "Audi", false, List.of(
