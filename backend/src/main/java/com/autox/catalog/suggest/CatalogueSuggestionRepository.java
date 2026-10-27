@@ -14,6 +14,14 @@ import org.springframework.stereotype.Repository;
  * a model when its own name does ("a3"), or when what was typed is a make's name, a space,
  * and the start of the model's ("audi a").
  *
+ * <p><b>The bounds are scalar subqueries</b> — {@code (SELECT k FROM bounds)}, evaluated once
+ * as an InitPlan — not a row joined in. A value from a joined row reaches a scan only through
+ * a nested loop the planner is free not to choose, and then the range is a filter applied
+ * after reading the whole partial index; an InitPlan's value is a constant to the scan, so
+ * the range is the index condition whatever the plan around it. (The "audi a" branch does
+ * join: there the rest of the prefix differs per make, which is what its index on
+ * {@code (make_id, key)} is for.)
+ *
  * <p><b>The prefix test is a range, not {@code LIKE}.</b> {@code key ~>=~ q AND key ~<~ q ||
  * U+10FFFF} selects exactly the keys starting with {@code q}, and the {@code text_pattern_ops}
  * indexes answer it whatever the plan. {@code LIKE ? || '%'} is turned into that range only
@@ -33,16 +41,16 @@ class CatalogueSuggestionRepository {
                 SELECT k, k || chr(1114111) AS k_end FROM typed
             ), make_hits AS (
                 SELECT mk.id
-                  FROM vehicle_make mk, bounds b
+                  FROM vehicle_make mk
                  WHERE mk.active
-                   AND public.catalogue_search_key(mk.name) ~>=~ b.k
-                   AND public.catalogue_search_key(mk.name) ~<~ b.k_end
+                   AND public.catalogue_search_key(mk.name) ~>=~ (SELECT k FROM bounds)
+                   AND public.catalogue_search_key(mk.name) ~<~ (SELECT k_end FROM bounds)
             ), model_hits AS (
                 SELECT md.id
-                  FROM vehicle_model md, bounds b
+                  FROM vehicle_model md
                  WHERE md.active
-                   AND public.catalogue_search_key(md.name) ~>=~ b.k
-                   AND public.catalogue_search_key(md.name) ~<~ b.k_end
+                   AND public.catalogue_search_key(md.name) ~>=~ (SELECT k FROM bounds)
+                   AND public.catalogue_search_key(md.name) ~<~ (SELECT k_end FROM bounds)
                 UNION
                 SELECT md.id
                   FROM bounds b
