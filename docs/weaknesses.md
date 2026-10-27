@@ -161,6 +161,37 @@ strength (no endpoint to attack) and a process gap (no record of who promoted wh
 - **The `demo` profile on a production database** would publish sixty invented listings.
   It is profile-gated and removable by ledger, but nothing refuses it.
 
+### R9. The API's JRE still trusts the compromised eMudhra intermediates — medium, waiting on Temurin
+
+Checked on 27 October 2026, against the pinned image `eclipse-temurin:21-jre-alpine@sha256:b48e02e0…`
+(Temurin 21.0.12.1, whose `cacerts` and `blocked.certs` date from 18 August):
+
+- **It trusts them.** The six TLS intermediates whose keys were compromised (October 2026) are
+  issued by "emSign Root TLS CA - G3", which is not in `cacerts`. But that root is cross-signed
+  by "emSign ECC Root CA - G3" (crt.sh 14658191778, valid to 2039), which is. Java's own PKIX
+  validator, with this `cacerts` and revocation off, accepts all six. The Sectigo
+  cross-certificates do not chain: "AAA Certificate Services" is not in `cacerts`.
+- **Nothing blocks them.** None of the sixteen certificates is in `blocked.certs`, and Java does
+  not check revocation in a TLS handshake unless `com.sun.net.ssl.checkRevocation` is set.
+- **What it exposes.** The API's calls to Supabase Storage, which validate against `cacerts`. An
+  attacker who can intercept traffic between Render and Supabase can present a certificate
+  issued under one of those keys, and this JVM accepts it. The keys were weak enough to be
+  recovered independently, so being able to forge such a certificate cannot be ruled out. The
+  attacker would also need a network position on that path, and that is the real barrier.
+  Browsers are not affected: they block these intermediates already.
+- **The fix exists but has not shipped as an image.** Temurin 21.0.13+9 (22 October) removes
+  "emSign ECC Root CA - G3" from `cacerts`, and the same check rejects all six. Its binaries
+  are published, but no `eclipse-temurin` Docker image of it exists yet. Re-pin when
+  Dependabot proposes one (weekly for `backend/`), and repeat the check.
+
+Not done in the meantime, and deliberately not invented here: OpenJDK's guidance
+(openjdk.org/emudhra) offers deleting the affected roots from `cacerts` or turning revocation
+checking on. Either is a change to the image to make on purpose, not as a side effect.
+
+**Separately, and older than this:** the Neon connection uses `sslmode=require`, which in the
+PostgreSQL JDBC driver encrypts but does not validate the server's certificate at all. That is a
+wider exposure on the database path than this one, and `cacerts` plays no part in it.
+
 ### Checked and found sound
 
 Stated so they are not re-examined for nothing: ADMIN cannot be self-assigned at

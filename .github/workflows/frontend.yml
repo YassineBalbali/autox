@@ -43,10 +43,12 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          # Pinned to the minimum Angular 22 accepts, not to "lts/*": a runner image
-          # rolling forward to a Node major Angular has not qualified is a red build with
-          # no commit behind it. Keep this in step with the `engines` field in package.json.
-          node-version: '24.20.0'
+          # Pinned, not "lts/*": a runner image rolling forward to a Node major Angular has
+          # not qualified is a red build with no commit behind it. 24.22.1 is the October 2026
+          # security release (Brotli decoder, CVE-2026-111497, and nine others); nothing
+          # older on the 24 line. Keep this in step with netlify.toml and with the `engines`
+          # floor in package.json.
+          node-version: '24.22.1'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
