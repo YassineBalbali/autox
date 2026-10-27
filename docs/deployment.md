@@ -64,11 +64,26 @@ Flyway takes a session-level lock while it migrates, which transaction pooling d
 keep. The API has its own pool, so the direct endpoint is the right one.
 
 **The JDBC URL** — Java does not take Neon's string as it is. The user and password move
-into their own variables, and only `sslmode` is kept:
+into their own variables, and Neon's `sslmode=require` is replaced:
 
 ```
-jdbc:postgresql://NEON_HOST/neondb?sslmode=require
+jdbc:postgresql://NEON_HOST/neondb?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory
 ```
+
+**Why not `sslmode=require`, which Neon's string has:** in the PostgreSQL JDBC driver it
+encrypts the connection and checks nothing. Any certificate is accepted, so anything on the
+path between Render and Neon can pose as the database, read every query and row, and take
+the password. `verify-full` checks that the certificate chains to a trusted root and names
+`NEON_HOST`. The driver's own default trust source is a file, `~/.postgresql/root.crt`,
+which the container does not have. `sslfactory=…DefaultJavaSSLFactory` makes it use the
+JVM's truststore instead, the same one the API's other connections use. Checked on 27
+October 2026 against a Neon endpoint: with these parameters the connection gets past TLS to
+the password exchange. Connecting by IP address instead of `NEON_HOST` is refused, while
+`sslmode=require` accepts it.
+
+**The API refuses to start** with any other setting for a database that is not on its own
+machine. It names the host and the parameters to use, and does so before connecting.
+Local development and the tests connect to `localhost`, which needs no TLS and is exempt.
 
 There is nothing to create in the database. The API builds the schema on its first start.
 
@@ -132,7 +147,7 @@ Every photo a visitor views is egress.
 
    | Variable | Value | From |
    |---|---|---|
-   | `AUTOX_DB_URL` | `jdbc:postgresql://NEON_HOST/neondb?sslmode=require` | Neon |
+   | `AUTOX_DB_URL` | `jdbc:postgresql://NEON_HOST/neondb?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory` | Neon (step 1: why not `require`) |
    | `AUTOX_DB_USERNAME` | `NEON_USER` | Neon |
    | `AUTOX_DB_PASSWORD` | `NEON_PASSWORD` | Neon |
    | `AUTOX_S3_ENDPOINT` | `S3_ENDPOINT` — `https://<ref>.supabase.co/storage/v1/s3` | Supabase |

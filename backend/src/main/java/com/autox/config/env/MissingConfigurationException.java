@@ -25,6 +25,12 @@ public class MissingConfigurationException extends RuntimeException {
             BLANK,
             /** Supplied but the wrong shape, e.g. a datasource URL not starting `jdbc:`. */
             MALFORMED,
+            /**
+             * A datasource URL for another machine that does not verify the server's
+             * certificate ({@link DatabaseTls}). The value is a description naming the host
+             * and the settings found, never the URL, which can carry a password.
+             */
+            UNVERIFIED_TLS,
         }
     }
 

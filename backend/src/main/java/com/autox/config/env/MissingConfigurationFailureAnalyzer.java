@@ -61,6 +61,11 @@ public class MissingConfigurationFailureAnalyzer
             // a straight copy leaves it blank and "is not set" would be a lie.
             case BLANK -> "is set but empty";
             case MALFORMED -> "is set to \"" + finding.actualValue() + "\", which is not valid";
+            // Not missing, but refused all the same: a remote database the driver would accept
+            // any certificate for. The fix is two URL parameters, so the message gives them.
+            case UNVERIFIED_TLS -> finding.actualValue() + ", which does not check the server's"
+                    + " certificate. Its parameters must be " + DatabaseTls.REQUIRED
+                    + ", replacing any sslmode it has (docs/deployment.md, step 1, \"The JDBC URL\")";
         };
     }
 
