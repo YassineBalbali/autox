@@ -266,6 +266,77 @@ class RequiredConfigurationTest {
                 .doesNotContain("another-secret-value");
     }
 
+    // ---- the database connection must verify the server --------------------------------
+
+    private static List<Finding> withDatabaseUrl(String url) {
+        Map<String, Object> properties = validConfiguration();
+        properties.put("spring.datasource.url", url);
+        return RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties));
+    }
+
+    @Test
+    @DisplayName("a remote database with sslmode=require is refused: it encrypts but checks nobody")
+    void requireIsRefusedForARemoteDatabase() {
+        // The URL Neon's console hands out, which is what production ran on.
+        List<Finding> findings = withDatabaseUrl(
+                "jdbc:postgresql://ep-quiet-sun-a1b2c3d4.eu-central-1.aws.neon.tech/neondb?sslmode=require&password=s3cret");
+
+        assertThat(findings).singleElement().satisfies(finding -> {
+            assertThat(finding.setting().variable()).isEqualTo("AUTOX_DB_URL");
+            assertThat(finding.problem()).isEqualTo(Finding.Problem.UNVERIFIED_TLS);
+            assertThat(finding.actualValue()).contains("ep-quiet-sun-a1b2c3d4.eu-central-1.aws.neon.tech", "sslmode=require");
+            // A URL can carry a password; the finding never repeats it.
+            assertThat(finding.actualValue()).doesNotContain("s3cret");
+        });
+    }
+
+    @Test
+    @DisplayName("a remote database with no sslmode, or a weaker one, is refused too")
+    void otherModesAreRefused() {
+        for (String mode : List.of("", "?sslmode=disable", "?sslmode=prefer", "?sslmode=allow", "?sslmode=verify-ca")) {
+            assertThat(withDatabaseUrl("jdbc:postgresql://db.example.com:5432/autox" + mode))
+                    .as(mode).singleElement().extracting(Finding::problem).isEqualTo(Finding.Problem.UNVERIFIED_TLS);
+        }
+    }
+
+    @Test
+    @DisplayName("verify-full needs something to verify against: the JVM's truststore or a root file")
+    void verifyFullNeedsATrustSource() {
+        // Without one the driver looks for ~/.postgresql/root.crt, which the container has not
+        // got, and fails at the first connection instead of here.
+        assertThat(withDatabaseUrl("jdbc:postgresql://db.example.com/autox?sslmode=verify-full"))
+                .singleElement().extracting(Finding::actualValue).asString().contains("no sslfactory or sslrootcert");
+        assertThat(withDatabaseUrl("jdbc:postgresql://db.example.com/autox?" + DatabaseTls.REQUIRED)).isEmpty();
+        assertThat(withDatabaseUrl("jdbc:postgresql://db.example.com/autox?sslmode=VERIFY-FULL&sslrootcert=/etc/ssl/neon.pem")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a database on this machine needs no TLS: local development and its containers")
+    void loopbackIsExempt() {
+        for (String host : List.of("localhost:5433", "127.0.0.1:5433", "[::1]:5433", "LOCALHOST")) {
+            assertThat(withDatabaseUrl("jdbc:postgresql://" + host + "/autox")).as(host).isEmpty();
+        }
+    }
+
+    @Test
+    @DisplayName("with several hosts, every remote one must verify")
+    void everyHostCounts() {
+        assertThat(withDatabaseUrl("jdbc:postgresql://localhost:5433,db.example.com:5432/autox?sslmode=require"))
+                .singleElement().extracting(Finding::actualValue).asString().contains("db.example.com").doesNotContain("localhost");
+    }
+
+    @Test
+    @DisplayName("the refusal says what to add to the URL")
+    void refusalGivesTheFix() {
+        FailureAnalysis analysis = analyze(
+                withDatabaseUrl("jdbc:postgresql://ep-x.eu-central-1.aws.neon.tech/neondb?sslmode=require"), false);
+
+        assertThat(analysis.getDescription())
+                .contains("AUTOX_DB_URL")
+                .contains("does not check the server's certificate")
+                .contains("sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory");
+    }
+
     private static FailureAnalysis analyze(List<Finding> findings, boolean dotenvFound) {
         MissingConfigurationException exception =
                 new MissingConfigurationException(findings, dotenvFound);

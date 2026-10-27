@@ -76,6 +76,9 @@ public class RequiredConfigurationEnvironmentPostProcessor
                 findings.add(new Finding(setting, Finding.Problem.BLANK, value));
             } else if (setting.mustStartWith() != null && !value.startsWith(setting.mustStartWith())) {
                 findings.add(new Finding(setting, Finding.Problem.MALFORMED, value));
+            } else if (setting.variable().equals("AUTOX_DB_URL")) {
+                DatabaseTls.problem(value).ifPresent(problem ->
+                        findings.add(new Finding(setting, Finding.Problem.UNVERIFIED_TLS, problem)));
             }
         }
 
