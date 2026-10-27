@@ -230,36 +230,91 @@ class CatalogueSuggestionIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$").isEmpty());
     }
 
+    /** The V16 indexes, each with the column expression its Index Cond must test. */
+    private static final List<String> SEARCH_INDEXES = List.of(
+            "ix_vehicle_make_search_key", "ix_vehicle_model_search_key", "ix_vehicle_model_make_search_key");
+
     @Test
-    @DisplayName("each prefix test can be answered from the V16 indexes")
-    void indexesServeTheMatch() {
-        // With sequential scans priced out, the plan shows which indexes the statement can
-        // use. A query whose expression did not match the index's could not use it at all.
-        String plan = jdbcTemplate.execute((ConnectionCallback<String>) connection -> {
-            try (var statement = connection.createStatement()) {
-                statement.execute("SET enable_seqscan = off");
+    @DisplayName("each V16 index can answer the prefix test of this query, whatever the data and statistics")
+    void eachIndexServesThePrefixTest() {
+        // What matters is that each index CAN answer the prefix range for this query shape:
+        // that its expression is the query's, character for character, and that the range is
+        // a condition the index accepts. Which index the planner then PREFERS is its call, made
+        // from row counts and statistics. On a small, never-analysed catalogue it is right to
+        // pick a sequential scan, and with three indexes on overlapping expressions any of them
+        // may win, so asserting a preference failed on CI and passed locally on the same code.
+        //
+        // So the choice is forced rather than fed: in a transaction that is always rolled back,
+        // the other two indexes are dropped and sequential scans priced out, which leaves the
+        // index under test as the only cheap way in. Loading rows and running ANALYZE instead
+        // would still leave the choice between the remaining indexes to the planner. And the
+        // check is on the Index Cond, not the index's name: the indexes are partial (WHERE
+        // active), so the planner may scan one whole and filter, which a name alone would
+        // pass. Run twice, on whatever rows the shared database holds and on empty tables.
+        for (boolean emptied : new boolean[] {false, true}) {
+            for (String index : SEARCH_INDEXES) {
+                List<JsonNode> scans = indexScansWith(index, emptied);
+                assertThat(scans).as("%s (emptied tables: %s): an index node using it", index, emptied).isNotEmpty();
+                assertThat(scans).as("%s (emptied tables: %s): the prefix range in its Index Cond", index, emptied)
+                        .anySatisfy(scan -> assertThat(scan.path("Index Cond").asText())
+                                .contains("catalogue_search_key(").contains("~>=~").contains("~<~"));
+                if (index.equals("ix_vehicle_model_make_search_key")) {
+                    // The "audi a" branch: the make's models, then the rest of the prefix.
+                    assertThat(scans).anySatisfy(scan -> assertThat(scan.path("Index Cond").asText()).contains("make_id ="));
+                }
             }
-            StringBuilder text = new StringBuilder();
-            try (PreparedStatement explain = connection.prepareStatement(
-                    "EXPLAIN " + CatalogueSuggestionRepository.SQL)) {
-                explain.setString(1, "audi a");
-                explain.setInt(2, 8);
-                try (ResultSet rows = explain.executeQuery()) {
-                    while (rows.next()) {
-                        text.append(rows.getString(1)).append('\n');
+        }
+    }
+
+    /**
+     * The plan's index nodes using {@code index}, with the other two V16 indexes dropped and
+     * sequential scans priced out, in a transaction rolled back whatever happens.
+     */
+    private List<JsonNode> indexScansWith(String index, boolean emptied) {
+        String plan = jdbcTemplate.execute((ConnectionCallback<String>) connection -> {
+            boolean autoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try (var statement = connection.createStatement()) {
+                for (String other : SEARCH_INDEXES) {
+                    if (!other.equals(index)) {
+                        statement.execute("DROP INDEX " + other);
+                    }
+                }
+                if (emptied) {
+                    statement.execute("DELETE FROM listing");
+                    statement.execute("DELETE FROM vehicle_trim");
+                    statement.execute("DELETE FROM vehicle_model");
+                    statement.execute("DELETE FROM vehicle_make");
+                }
+                statement.execute("SET LOCAL enable_seqscan = off");
+                try (PreparedStatement explain = connection.prepareStatement(
+                        "EXPLAIN (FORMAT JSON) " + CatalogueSuggestionRepository.SQL)) {
+                    explain.setString(1, "audi a");
+                    explain.setInt(2, CatalogueSuggestionController.MAX_RESULTS);
+                    try (ResultSet rows = explain.executeQuery()) {
+                        rows.next();
+                        return rows.getString(1);
                     }
                 }
             } finally {
-                try (var statement = connection.createStatement()) {
-                    statement.execute("RESET enable_seqscan");
-                }
+                connection.rollback();
+                connection.setAutoCommit(autoCommit);
             }
-            return text.toString();
         });
+        List<JsonNode> scans = new ArrayList<>();
+        try {
+            collectIndexScans(objectMapper.readTree(plan).get(0).get("Plan"), index, scans);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
+        return scans;
+    }
 
-        assertThat(plan).contains("ix_vehicle_make_search_key")
-                .contains("ix_vehicle_model_search_key")
-                .contains("ix_vehicle_model_make_search_key");
+    private static void collectIndexScans(JsonNode node, String index, List<JsonNode> into) {
+        if (index.equals(node.path("Index Name").asText())) {
+            into.add(node);
+        }
+        node.path("Plans").forEach(child -> collectIndexScans(child, index, into));
     }
 
     // ---- helpers ----------------------------------------------------------------------
