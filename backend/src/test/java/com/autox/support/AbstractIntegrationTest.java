@@ -39,8 +39,17 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 public abstract class AbstractIntegrationTest {
 
+    /**
+     * Production's version, pinned by digest. Neon runs 16.15. A floating tag such as
+     * {@code 16-alpine} moves to the next minor release without a commit, and the planner can
+     * choose differently between releases: a test that reads a query plan would then pass on
+     * one machine and fail on another for no change in the code. Move this with production.
+     */
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
+            // postgres:16.15-alpine (PostgreSQL 16.15). By digest alone: Testcontainers does not
+            // read a reference with both a tag and a digest as the postgres image.
+            "postgres@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab")
             .withDatabaseName("autox")
             .withUsername("autox")
             .withPassword("autox");

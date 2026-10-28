@@ -235,42 +235,50 @@ class CatalogueSuggestionIntegrationTest extends AbstractIntegrationTest {
             "ix_vehicle_make_search_key", "ix_vehicle_model_search_key", "ix_vehicle_model_make_search_key");
 
     @Test
-    @DisplayName("each V16 index can answer the prefix test of this query, whatever the data and statistics")
+    @DisplayName("each V16 index answers its part of the prefix test, on the same plan on any machine")
     void eachIndexServesThePrefixTest() {
-        // What matters is that each index CAN answer the prefix range for this query shape:
-        // that its expression is the query's, character for character, and that the range is
-        // a condition the index accepts. Which index the planner then PREFERS is its call, made
-        // from row counts and statistics. On a small, never-analysed catalogue it is right to
-        // pick a sequential scan, and with three indexes on overlapping expressions any of them
-        // may win, so asserting a preference failed on CI and passed locally on the same code.
+        // What matters is that each index CAN answer its part of the prefix test for this query
+        // shape: that its expression is the query's, character for character, and that the
+        // range, and on the "audi a" branch the make, are conditions it accepts. Which plan the
+        // planner then PREFERS is its call, made from statistics. So the check fixes everything
+        // the plan depends on, and leaves the planner nothing to decide differently between
+        // two machines on the same PostgreSQL version:
         //
-        // So the choice is forced rather than fed: in a transaction that is always rolled back,
-        // the other two indexes are dropped and sequential scans priced out, which leaves the
-        // index under test as the only cheap way in. Loading rows and running ANALYZE instead
-        // would still leave the choice between the remaining indexes to the planner. And the
-        // check is on the Index Cond, not the index's name: the indexes are partial (WHERE
-        // active), so the planner may scan one whole and filter, which a name alone would
-        // pass. Run twice, on whatever rows the shared database holds and on empty tables.
-        for (boolean emptied : new boolean[] {false, true}) {
-            for (String index : SEARCH_INDEXES) {
-                List<JsonNode> scans = indexScansWith(index, emptied);
-                assertThat(scans).as("%s (emptied tables: %s): an index node using it", index, emptied).isNotEmpty();
-                assertThat(scans).as("%s (emptied tables: %s): the prefix range in its Index Cond", index, emptied)
-                        .anySatisfy(scan -> assertThat(scan.path("Index Cond").asText())
-                                .contains("catalogue_search_key(").contains("~>=~").contains("~<~"));
-                if (index.equals("ix_vehicle_model_make_search_key")) {
-                    // The "audi a" branch: the make's models, then the rest of the prefix.
-                    assertThat(scans).anySatisfy(scan -> assertThat(scan.path("Index Cond").asText()).contains("make_id ="));
-                }
-            }
+        // - The indexes. In a transaction that is always rolled back, the other two are dropped
+        //   and sequential scans priced out, so the index under test is the only cheap way in.
+        // - The data AND the statistics. The catalogue is replaced by a fixed one and ANALYZEd
+        //   in the same transaction. Each table is smaller than ANALYZE's sample, so it reads
+        //   every row, and the statistics are the same on every run. Without this the plan
+        //   followed whatever other tests had left and when autovacuum last ran: on CI, after
+        //   a test class had emptied the catalogue, the tables were analysed as empty, the
+        //   "audi a" branch became a hash join, and make_id was in no Index Cond. The DROP
+        //   INDEX holds the tables' exclusive lock for the transaction, so autovacuum cannot
+        //   analyse them in the middle of the check.
+        //
+        // The fixed catalogue is a realistic size (300 makes of 40 models). Planned against
+        // that, the composite index takes the make AND the start of the model's name as one
+        // Index Cond, which is what it was built for, so that is what is asserted.
+        java.util.Map<String, List<JsonNode>> scansByIndex = new java.util.HashMap<>();
+        for (String index : SEARCH_INDEXES) {
+            List<JsonNode> scans = indexScansWith(index);
+            scansByIndex.put(index, scans);
+            assertThat(scans).as("%s: an index node using it", index).isNotEmpty();
+            assertThat(scans).as("%s: the prefix range in its Index Cond", index)
+                    .anySatisfy(scan -> assertThat(scan.path("Index Cond").asText())
+                            .contains("catalogue_search_key(").contains("~>=~").contains("~<~"));
         }
+        assertThat(scansByIndex.get("ix_vehicle_model_make_search_key"))
+                .as("the \"audi a\" branch: the make and the rest of the prefix, both in the index")
+                .anySatisfy(scan -> assertThat(scan.path("Index Cond").asText())
+                        .contains("make_id =").contains("~>=~").contains("~<~"));
     }
 
     /**
-     * The plan's index nodes using {@code index}, with the other two V16 indexes dropped and
-     * sequential scans priced out, in a transaction rolled back whatever happens.
+     * The plan's index nodes using {@code index}: the other two V16 indexes dropped, sequential
+     * scans priced out, and a fixed, freshly analysed catalogue, all in a transaction rolled back
+     * whatever happens.
      */
-    private List<JsonNode> indexScansWith(String index, boolean emptied) {
+    private List<JsonNode> indexScansWith(String index) {
         String plan = jdbcTemplate.execute((ConnectionCallback<String>) connection -> {
             boolean autoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
@@ -280,12 +288,51 @@ class CatalogueSuggestionIntegrationTest extends AbstractIntegrationTest {
                         statement.execute("DROP INDEX " + other);
                     }
                 }
-                if (emptied) {
-                    statement.execute("DELETE FROM listing");
-                    statement.execute("DELETE FROM vehicle_trim");
-                    statement.execute("DELETE FROM vehicle_model");
-                    statement.execute("DELETE FROM vehicle_make");
+                // TRUNCATE rather than DELETE: inside a transaction it gives the tables and their
+                // indexes new, empty files, which the rollback discards. The planner costs an
+                // index by its size on disk, and rows deleted by earlier tests leave pages behind
+                // until a vacuum; that alone changed the plan. The ids are derived from the row
+                // number, not random, so the indexes are built the same size every time. It also
+                // keeps the ANALYZE below from leaking: ANALYZE writes a table's row count in
+                // place, and after a DELETE that count outlives the rollback; after a TRUNCATE it
+                // is written to the new file's catalogue row, which the rollback discards.
+                statement.execute("TRUNCATE vehicle_make, vehicle_model, vehicle_trim, listing CASCADE");
+                statement.execute("""
+                        INSERT INTO vehicle_make (id, slug, name)
+                        SELECT md5('make-' || g)::uuid, 'make-' || g, CASE WHEN g = 1 THEN 'Audi' ELSE 'Make ' || g END
+                          FROM generate_series(1, 300) g""");
+                statement.execute("""
+                        INSERT INTO vehicle_model (id, make_id, slug, name)
+                        SELECT md5(k.slug || '/model-' || g)::uuid, k.id, 'model-' || g,
+                               CASE WHEN k.name = 'Audi' THEN (CASE WHEN g <= 20 THEN 'A' ELSE 'Q' END) || g
+                                    ELSE 'Model ' || g END
+                          FROM vehicle_make k, generate_series(1, 40) g
+                         ORDER BY k.slug, g""");
+                // Listings too: with none, the cheapest plan starts from the empty listing table
+                // and needs no index on the catalogue at all. One on each of Audi's models and on
+                // every fourth of the others: about three thousand.
+                try (PreparedStatement listings = connection.prepareStatement("""
+                        INSERT INTO listing (id, seller_id, status, moderation_status, title,
+                                             price_amount, price_currency_code, country_code,
+                                             postal_code, city, make_id, model_id,
+                                             first_registration_year, mileage_km, fuel_type, gearbox,
+                                             body_type, vehicle_condition, published_at, expires_at,
+                                             created_at, updated_at)
+                        SELECT md5('listing-' || m.n)::uuid, ?, 'ACTIVE', 'NOT_REVIEWED', 'Annonce',
+                               1500000, 'EUR', 'FR', '75011', 'Paris', m.make_id, m.id,
+                               2021, 40000, 'PETROL', 'MANUAL', 'HATCHBACK', 'USED',
+                               now(), now() + interval '60 days', now(), now()
+                          FROM (SELECT md.id, md.make_id, k.name AS make_name,
+                                       row_number() OVER (ORDER BY k.slug, md.slug) AS n
+                                  FROM vehicle_model md JOIN vehicle_make k ON k.id = md.make_id) m
+                         WHERE m.make_name = 'Audi' OR m.n % 4 = 1
+                         ORDER BY m.n""")) {
+                    listings.setObject(1, seller);
+                    listings.executeUpdate();
                 }
+                statement.execute("ANALYZE vehicle_make");
+                statement.execute("ANALYZE vehicle_model");
+                statement.execute("ANALYZE listing");
                 statement.execute("SET LOCAL enable_seqscan = off");
                 try (PreparedStatement explain = connection.prepareStatement(
                         "EXPLAIN (FORMAT JSON) " + CatalogueSuggestionRepository.SQL)) {
