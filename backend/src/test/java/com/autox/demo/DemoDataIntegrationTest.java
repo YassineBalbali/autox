@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,11 +52,27 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
     @Autowired ObjectStorage storage;
     @Autowired DemoAccounts demoAccounts;
 
+    @BeforeEach
+    void startFromAnEmptyCatalogue() {
+        // These tests count every make and model, so they need the catalogue empty, and the
+        // harness does not empty it between classes. Other classes leave rows behind: the
+        // listing fixtures' BMW and Peugeot, with a trim. Assumed rather than ensured, this
+        // passed when this class ran before those and failed when it ran after them.
+        // ListingTestFixtures recreates its rows when it finds them gone.
+        clearCatalogue();
+    }
+
     @AfterEach
     void leaveNothingBehind() {
         // The shared test database outlives this class, and the catalogue tables are not
         // among the ones the harness truncates between tests.
         demoData.remove();
+        clearCatalogue();
+    }
+
+    /** Trims first: they reference models, which reference makes. */
+    private void clearCatalogue() {
+        jdbcTemplate.update("DELETE FROM vehicle_trim");
         jdbcTemplate.update("DELETE FROM vehicle_model");
         jdbcTemplate.update("DELETE FROM vehicle_make");
     }
