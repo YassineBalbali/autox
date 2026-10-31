@@ -19,9 +19,9 @@
 
     <properties>
         <java.version>21</java.version>
-        <awssdk.version>2.55.12</awssdk.version>
-        <springdoc.version>2.8.9</springdoc.version>
-        <therapi.version>0.15.0</therapi.version>
+        <awssdk.version>2.57.5</awssdk.version>
+        <springdoc.version>2.10.0</springdoc.version>
+        <therapi.version>0.16.0</therapi.version>
 
         <!-- Security overrides of versions the Spring Boot parent manages. Each one is here
              because the dependency scan in CI reported a HIGH or CRITICAL advisory fixed in
