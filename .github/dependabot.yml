@@ -68,6 +68,21 @@ updates:
   # from the 20th, and the next monthly run was a month away. Alpine's own fixes are
   # applied in the Dockerfile (apk upgrade), but the JRE is not an Alpine package: a Java
   # security release reaches the image only through a new digest, so only this picks it up.
+  #
+  # The JDK stays on 21, the release the application targets, in both images. A change of
+  # Java major is a migration, like the others above, so it is never proposed. New digests
+  # still are: that is how Maven 3.9.x and JDK 21.0.x fixes arrive, the tags being floating.
+  #
+  # The semver-major rule does not see a JDK change in the build image. Dependabot reads
+  # "3.9-eclipse-temurin-21" as version 3.9.21 (the JDK becomes the third number), so moving
+  # to "-26" looks like a patch, 3.9.26, and PR #12 proposed it. Hence version ranges: each
+  # excludes every JDK above 21 for one Maven minor and lets 21 itself through. A Maven minor
+  # on 21 ("3.10-eclipse-temurin-21", 3.10.21) is still proposed. Add a line when Maven 3.11
+  # appears.
+  #
+  # The runtime image's tag reads as the JDK itself ("21-jre-alpine" is 21), so a new JDK
+  # is a major and the first rule already stops it. It is named too, so that does not
+  # depend on the wildcard staying.
   - package-ecosystem: docker
     directory: /backend
     schedule:
@@ -75,6 +90,10 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
+      - dependency-name: 'maven'
+        versions: ['>= 3.9.22, < 3.10', '>= 3.10.22, < 3.11']
+      - dependency-name: 'eclipse-temurin'
+        versions: ['>= 22']
     groups:
       dockerfile-images:
         patterns: ['*']
