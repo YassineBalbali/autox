@@ -44,6 +44,10 @@
       "description": "The signed-in account. Requires authentication."
     },
     {
+      "name": "Natural-language search",
+      "description": "A description of a car turned into search filters. Optional: see /capabilities. No authentication."
+    },
+    {
       "name": "Reference",
       "description": "Enum values, equipment vocabulary and the vehicle catalogue"
     },
@@ -120,6 +124,48 @@
             "bearerAuth": []
           }
         ]
+      }
+    },
+    "/api/v1/search/interpret": {
+      "post": {
+        "tags": [
+          "Natural-language search"
+        ],
+        "summary": "Turns a description such as \"SUV diesel automatique moins de 15 000 €\" into the filters\n <code>GET /api/v1/listings</code> takes",
+        "description": "Turns a description such as \"SUV diesel automatique moins de 15 000 €\" into the filters\n <code>GET /api/v1/listings</code> takes. Does not search: apply <code>criteria</code> and search as\n usual.\n\n <p>Only the query is sent to the language model, and every value it returns is checked\n against our enums, the catalogue and fixed bounds; what fails, and what the search cannot\n filter on, is listed in <code>notUnderstood</code>.\n\n <p>404 when the feature is off. 429 <code>RATE_LIMITED</code> beyond ten requests in ten minutes\n from one address. 503 <code>INTERPRETER_UNAVAILABLE</code> when the model times out (five\n seconds), its quota is spent or it fails — then use the ordinary search.",
+        "operationId": "interpret",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterpretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterpretResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/messages/{id}/report": {
@@ -1700,6 +1746,38 @@
         }
       }
     },
+    "/api/v1/search/capabilities": {
+      "get": {
+        "tags": [
+          "Natural-language search"
+        ],
+        "summary": "Which optional search features this server has.",
+        "description": "Which optional search features this server has. A client hides natural-language search\n when <code>interpret</code> is false.",
+        "operationId": "capabilities",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchCapabilities"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/reference/makes": {
       "get": {
         "tags": [
@@ -2785,6 +2863,244 @@
           }
         }
       },
+      "InterpretRequest": {
+        "type": "object",
+        "description": "A visitor's description of the car they want, in their own words.",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "at most 200 characters: a sentence, not a document. It is the only thing sent\n              to the language model.",
+            "example": "SUV diesel automatique moins de 15 000 € en bon état",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "BodyType": {
+        "type": "string",
+        "description": "Mirrors ck_listing_body_type / ck_vehicle_trim_body_type.",
+        "enum": [
+          "HATCHBACK",
+          "SEDAN",
+          "ESTATE",
+          "SUV",
+          "COUPE",
+          "CONVERTIBLE",
+          "MPV",
+          "PICKUP",
+          "VAN",
+          "OTHER"
+        ]
+      },
+      "Drivetrain": {
+        "type": "string",
+        "description": "Mirrors ck_listing_drivetrain / ck_vehicle_trim_drivetrain.",
+        "enum": [
+          "FWD",
+          "RWD",
+          "AWD"
+        ]
+      },
+      "FuelType": {
+        "type": "string",
+        "description": "Mirrors ck_listing_fuel_type / ck_vehicle_trim_fuel_type.",
+        "enum": [
+          "PETROL",
+          "DIESEL",
+          "HYBRID_PETROL",
+          "HYBRID_DIESEL",
+          "PLUGIN_HYBRID",
+          "ELECTRIC",
+          "LPG",
+          "CNG",
+          "HYDROGEN",
+          "ETHANOL",
+          "OTHER"
+        ]
+      },
+      "Gearbox": {
+        "type": "string",
+        "description": "Mirrors ck_listing_gearbox / ck_vehicle_trim_gearbox.",
+        "enum": [
+          "MANUAL",
+          "AUTOMATIC",
+          "SEMI_AUTOMATIC"
+        ]
+      },
+      "InterpretResponse": {
+        "type": "object",
+        "description": "A natural-language search, as filters the listing search accepts.",
+        "properties": {
+          "criteria": {
+            "$ref": "#/components/schemas/ListingSearchCriteria",
+            "description": "the filters, exactly as <code>GET /api/v1/listings</code> takes them: catalogue\n                      ids, prices in the currency's minor units with the currency beside them.\n                      Every value has been checked; none comes straight from the model."
+          },
+          "summary": {
+            "type": "string",
+            "description": "what was applied, in French, for display: \"SUV · Diesel · Automatique ·\n                      ≤ 15 000 €\". Written by the server from <code>criteria</code>, so it never\n                      describes a filter that is not there.",
+            "example": "SUV / 4x4 · Diesel · Automatique · ≤ 15 000 €"
+          },
+          "notUnderstood": {
+            "type": "array",
+            "description": "the parts of the request that could not become a filter — something the\n                      search cannot filter on (\"bon état\", a colour) or a value that failed\n                      checking (a make not in the catalogue). Empty when everything was used.",
+            "example": [
+              "en bon état"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "criteria",
+          "notUnderstood",
+          "summary"
+        ]
+      },
+      "ListingSearchCriteria": {
+        "type": "object",
+        "description": "Everything a buyer can filter on. Every field is optional; an empty criteria object means\n \"all visible listings\".\n\n <p>Make and model can each be given two ways, and both are needed:\n <ul>\n   <li><code>makeId</code> matches the catalogue exactly — precise, and what the frontend's\n       dropdown will send once the catalogue exists.</li>\n   <li><code>make</code> matches the displayed name, catalogue row <em>or</em> free text. Until the\n       catalogue is seeded, every listing identifies its vehicle by text, so an id-only\n       filter would match nothing at all.</li>\n </ul>",
+        "properties": {
+          "makeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "make": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "yearFrom": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1900
+          },
+          "yearTo": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1900
+          },
+          "priceMin": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "priceMax": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "mileageMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "mileageMax": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 3000000,
+            "minimum": 0
+          },
+          "fuelType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FuelType"
+            }
+          },
+          "gearbox": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Gearbox"
+            }
+          },
+          "bodyType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BodyType"
+            }
+          },
+          "drivetrain": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Drivetrain"
+            }
+          },
+          "condition": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VehicleCondition"
+            }
+          },
+          "countryCode": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2}$"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "latMin": {
+            "type": "number"
+          },
+          "latMax": {
+            "type": "number"
+          },
+          "lonMin": {
+            "type": "number"
+          },
+          "lonMax": {
+            "type": "number"
+          },
+          "q": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "priceLevel": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceLevel"
+            }
+          }
+        }
+      },
+      "PriceLevel": {
+        "type": "string",
+        "description": "Where a listing's price sits against comparable listings. See {@link MarketPrice MarketPrice} for what\n \"comparable\" means and where the lines are drawn.",
+        "enum": [
+          "GOOD_DEAL",
+          "MARKET",
+          "ABOVE_MARKET"
+        ]
+      },
+      "VehicleCondition": {
+        "type": "string",
+        "description": "Mirrors ck_listing_condition.",
+        "enum": [
+          "NEW",
+          "USED",
+          "DAMAGED"
+        ]
+      },
       "MessageReportReason": {
         "type": "string",
         "description": "Why a recipient reported a message. Mirrors <code>ck_message_report_reason</code>. A closed list\n for the reason moderation reasons are one: a code can be counted, and shown in the\n moderator's language.",
@@ -2918,22 +3234,6 @@
             "type": "string"
           }
         }
-      },
-      "BodyType": {
-        "type": "string",
-        "description": "Mirrors ck_listing_body_type / ck_vehicle_trim_body_type.",
-        "enum": [
-          "HATCHBACK",
-          "SEDAN",
-          "ESTATE",
-          "SUV",
-          "COUPE",
-          "CONVERTIBLE",
-          "MPV",
-          "PICKUP",
-          "VAN",
-          "OTHER"
-        ]
       },
       "CreateListingRequest": {
         "type": "object",
@@ -3144,15 +3444,6 @@
           "title"
         ]
       },
-      "Drivetrain": {
-        "type": "string",
-        "description": "Mirrors ck_listing_drivetrain / ck_vehicle_trim_drivetrain.",
-        "enum": [
-          "FWD",
-          "RWD",
-          "AWD"
-        ]
-      },
       "EmissionClass": {
         "type": "string",
         "description": "Mirrors ck_listing_emission_class. Drives low-emission-zone filters in FR/DE.",
@@ -3188,32 +3479,6 @@
           "OTHER"
         ]
       },
-      "FuelType": {
-        "type": "string",
-        "description": "Mirrors ck_listing_fuel_type / ck_vehicle_trim_fuel_type.",
-        "enum": [
-          "PETROL",
-          "DIESEL",
-          "HYBRID_PETROL",
-          "HYBRID_DIESEL",
-          "PLUGIN_HYBRID",
-          "ELECTRIC",
-          "LPG",
-          "CNG",
-          "HYDROGEN",
-          "ETHANOL",
-          "OTHER"
-        ]
-      },
-      "Gearbox": {
-        "type": "string",
-        "description": "Mirrors ck_listing_gearbox / ck_vehicle_trim_gearbox.",
-        "enum": [
-          "MANUAL",
-          "AUTOMATIC",
-          "SEMI_AUTOMATIC"
-        ]
-      },
       "InteriorMaterial": {
         "type": "string",
         "description": "Mirrors ck_listing_interior_material.",
@@ -3224,15 +3489,6 @@
           "ALCANTARA",
           "VELOUR",
           "OTHER"
-        ]
-      },
-      "VehicleCondition": {
-        "type": "string",
-        "description": "Mirrors ck_listing_condition.",
-        "enum": [
-          "NEW",
-          "USED",
-          "DAMAGED"
         ]
       },
       "ListingResponse": {
@@ -4540,6 +4796,19 @@
           }
         }
       },
+      "SearchCapabilities": {
+        "type": "object",
+        "description": "Optional search features, and whether this server has them.",
+        "properties": {
+          "interpret": {
+            "type": "boolean",
+            "description": "whether <code>POST /api/v1/search/interpret</code> is configured"
+          }
+        },
+        "required": [
+          "interpret"
+        ]
+      },
       "Make": {
         "type": "object",
         "properties": {
@@ -4705,138 +4974,6 @@
             "description": "when it dies on its own"
           }
         }
-      },
-      "ListingSearchCriteria": {
-        "type": "object",
-        "description": "Everything a buyer can filter on. Every field is optional; an empty criteria object means\n \"all visible listings\".\n\n <p>Make and model can each be given two ways, and both are needed:\n <ul>\n   <li><code>makeId</code> matches the catalogue exactly — precise, and what the frontend's\n       dropdown will send once the catalogue exists.</li>\n   <li><code>make</code> matches the displayed name, catalogue row <em>or</em> free text. Until the\n       catalogue is seeded, every listing identifies its vehicle by text, so an id-only\n       filter would match nothing at all.</li>\n </ul>",
-        "properties": {
-          "makeId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "modelId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "make": {
-            "type": "string",
-            "maxLength": 80,
-            "minLength": 0
-          },
-          "model": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 0
-          },
-          "yearFrom": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 2100,
-            "minimum": 1900
-          },
-          "yearTo": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 2100,
-            "minimum": 1900
-          },
-          "priceMin": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
-          },
-          "priceMax": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
-          },
-          "currency": {
-            "type": "string",
-            "pattern": "^[A-Z]{3}$"
-          },
-          "mileageMin": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          },
-          "mileageMax": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 3000000,
-            "minimum": 0
-          },
-          "fuelType": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FuelType"
-            }
-          },
-          "gearbox": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Gearbox"
-            }
-          },
-          "bodyType": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BodyType"
-            }
-          },
-          "drivetrain": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Drivetrain"
-            }
-          },
-          "condition": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VehicleCondition"
-            }
-          },
-          "countryCode": {
-            "type": "string",
-            "pattern": "^[A-Za-z]{2}$"
-          },
-          "location": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 0
-          },
-          "latMin": {
-            "type": "number"
-          },
-          "latMax": {
-            "type": "number"
-          },
-          "lonMin": {
-            "type": "number"
-          },
-          "lonMax": {
-            "type": "number"
-          },
-          "q": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 0
-          },
-          "priceLevel": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PriceLevel"
-            }
-          }
-        }
-      },
-      "PriceLevel": {
-        "type": "string",
-        "description": "Where a listing's price sits against comparable listings. See {@link MarketPrice MarketPrice} for what\n \"comparable\" means and where the lines are drawn.",
-        "enum": [
-          "GOOD_DEAL",
-          "MARKET",
-          "ABOVE_MARKET"
-        ]
       },
       "SearchSort": {
         "type": "string",
@@ -5683,6 +5820,7 @@
           "UPLOAD_NOT_FOUND",
           "PHOTO_REQUIRED",
           "INVALID_CURSOR",
+          "INTERPRETER_UNAVAILABLE",
           "INTERNAL_ERROR"
         ]
       },

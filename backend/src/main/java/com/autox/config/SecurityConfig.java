@@ -98,6 +98,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/reference/**").permitAll()
                         // The search bar's suggestions, typed by anyone who can search.
                         .requestMatchers(HttpMethod.GET, "/api/v1/catalogue/suggestions").permitAll()
+                        // Natural-language search: describing a car is searching for one. A POST
+                        // only because the description is a body, not because it changes anything.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/search/capabilities").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/search/interpret").permitAll()
                         // The API's own description. Public because a closed spec on a public
                         // API protects nothing: the endpoints are discoverable by using them.
                         // "/v3/api-docs/**" does not cover "/v3/api-docs.yaml" — the YAML form is

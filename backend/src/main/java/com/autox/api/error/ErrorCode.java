@@ -76,5 +76,11 @@ public enum ErrorCode {
     /** The pagination cursor is malformed, or belongs to a different sort order. */
     INVALID_CURSOR,
 
+    /**
+     * Natural-language search could not answer: the language model timed out, its quota is
+     * spent, or it failed. 503. The client falls back to the ordinary search; nothing about the
+     * request was wrong, and the same request may work later.
+     */
+    INTERPRETER_UNAVAILABLE,
     INTERNAL_ERROR
 }

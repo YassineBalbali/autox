@@ -82,7 +82,32 @@ public class RequiredConfigurationEnvironmentPostProcessor
             }
         }
 
+        inspectAi(environment, findings);
         return findings;
+    }
+
+    /**
+     * Natural-language search is optional, so its key is required only once a provider is
+     * chosen. A provider the application does not know is reported rather than left to fail as
+     * a missing bean: "groq " with a stray space, or "Groq", would otherwise be an unreadable
+     * startup failure. Both are normalised the way {@code AiProperties} reads them.
+     */
+    private static void inspectAi(Environment environment, List<Finding> findings) {
+        String provider = resolve(environment, RequiredSetting.AI_PROVIDER);
+        String normalised = provider == null || provider.isBlank()
+                ? "none" : provider.strip().toLowerCase(java.util.Locale.ROOT);
+        if (!normalised.equals("none") && !normalised.equals("groq")) {
+            findings.add(new Finding(RequiredSetting.AI_PROVIDER, Finding.Problem.MALFORMED, provider));
+            return;
+        }
+        if (normalised.equals("groq")) {
+            String key = resolve(environment, RequiredSetting.AI_API_KEY);
+            if (key == null) {
+                findings.add(new Finding(RequiredSetting.AI_API_KEY, Finding.Problem.MISSING, null));
+            } else if (key.isBlank()) {
+                findings.add(new Finding(RequiredSetting.AI_API_KEY, Finding.Problem.BLANK, key));
+            }
+        }
     }
 
     /**

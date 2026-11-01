@@ -93,6 +93,12 @@ public class ApiException extends RuntimeException {
                 retryAfterSeconds);
     }
 
+    /** Natural-language search could not answer; the ordinary search still can. */
+    public static ApiException interpreterUnavailable() {
+        return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.INTERPRETER_UNAVAILABLE,
+                "Natural-language search is unavailable right now. Use the ordinary search.");
+    }
+
     public static ApiException currentPasswordIncorrect() {
         return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.CURRENT_PASSWORD_INCORRECT,
                 "The current password is incorrect.");

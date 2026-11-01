@@ -42,6 +42,18 @@ record RequiredSetting(String property, String variable, String requirement, Str
      * coordinates got defaults, and these four got a failure message good enough that the
      * absence of a default costs a developer ten seconds instead of ten minutes.
      */
+    /** Which natural-language search provider; checked for a known value, not for presence. */
+    static final RequiredSetting AI_PROVIDER = new RequiredSetting(
+            "autox.ai.provider",
+            "AUTOX_AI_PROVIDER",
+            "none (the default: natural-language search off) or groq");
+
+    /** Required only when {@link #AI_PROVIDER} is {@code groq}: the feature is optional. */
+    static final RequiredSetting AI_API_KEY = new RequiredSetting(
+            "autox.ai.api-key",
+            "AUTOX_AI_API_KEY",
+            "the Groq API key (console.groq.com → API Keys), required because AUTOX_AI_PROVIDER is groq");
+
     static List<RequiredSetting> all() {
         return List.of(
                 new RequiredSetting(
