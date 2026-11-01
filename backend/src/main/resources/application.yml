@@ -163,6 +163,21 @@ autox:
       window: PT1M
       block-for: PT1M
 
+  # Natural-language search (POST /api/v1/search/interpret). Off unless a provider is chosen:
+  # `none` hides it in the web app. With `groq`, AUTOX_AI_API_KEY is required at startup. Only
+  # the visitor's query is ever sent to the provider. See docs/ai-search.md.
+  ai:
+    provider: ${AUTOX_AI_PROVIDER:none}
+    api-key: ${AUTOX_AI_API_KEY}
+    model: ${AUTOX_AI_MODEL:openai/gpt-oss-20b}
+    timeout: PT5S
+    # Per address, far below the public read limit: every request spends a shared free
+    # quota. Ten in ten minutes is a visitor rephrasing, not a script.
+    rate-limit:
+      enabled: ${AUTOX_AI_RATE_LIMIT_ENABLED:true}
+      requests-per-window: 10
+      window: PT10M
+
   # How often the background sweeps run. Each touches the database, so on a database that
   # scales to zero each run is a wake-up; a demo with nothing to expire can run them a few
   # times a day. Durations for the two interval sweeps, a Spring cron for the hourly one.

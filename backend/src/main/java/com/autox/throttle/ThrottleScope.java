@@ -42,5 +42,11 @@ public enum ThrottleScope {
      * Conversations started by one account. What a spammer writing to every seller has to
      * do, and what a genuine buyer does a few times a day, so it gets its own, lower cap.
      */
-    CONVERSATION_START
+    CONVERSATION_START,
+
+    /**
+     * Natural-language search requests from one client address. Its own scope, and far below
+     * {@link #PUBLIC_READ}: each one spends a shared language-model quota, not just a query.
+     */
+    SEARCH_INTERPRET
 }

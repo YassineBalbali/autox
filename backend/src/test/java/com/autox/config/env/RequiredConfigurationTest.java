@@ -180,6 +180,65 @@ class RequiredConfigurationTest {
         }
     }
 
+    // --- natural-language search: optional, so its key is conditional ----
+
+    @Test
+    @DisplayName("with no AI provider, or provider none, no AI key is asked for")
+    void aiKeyNotRequiredWhenTheFeatureIsOff() {
+        Map<String, Object> properties = validConfiguration();
+        properties.put("autox.ai.api-key", "${AUTOX_AI_API_KEY}");
+        assertThat(RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties))).isEmpty();
+
+        properties.put("autox.ai.provider", "none");
+        assertThat(RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("provider groq without a key fails at startup, naming AUTOX_AI_API_KEY")
+    void aiKeyRequiredForGroq() {
+        Map<String, Object> properties = validConfiguration();
+        properties.put("autox.ai.provider", "groq");
+        properties.put("autox.ai.api-key", "${AUTOX_AI_API_KEY}");
+
+        assertThat(RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties)))
+                .singleElement().satisfies(finding -> {
+                    assertThat(finding.setting().variable()).isEqualTo("AUTOX_AI_API_KEY");
+                    assertThat(finding.problem()).isEqualTo(Finding.Problem.MISSING);
+                });
+
+        properties.put("autox.ai.api-key", " ");
+        assertThat(RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties)))
+                .extracting(Finding::problem).containsExactly(Finding.Problem.BLANK);
+
+        properties.put("autox.ai.api-key", "gsk_a-key");
+        // Spelt as an operator might, with a capital and a stray space: read the way AiProperties reads it.
+        properties.put("autox.ai.provider", " Groq");
+        assertThat(RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("an unknown AI provider is reported here, not left to fail as a missing bean")
+    void unknownAiProviderIsMalformed() {
+        Map<String, Object> properties = validConfiguration();
+        properties.put("autox.ai.provider", "openai");
+
+        assertThat(RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties)))
+                .singleElement().satisfies(finding -> {
+                    assertThat(finding.setting().variable()).isEqualTo("AUTOX_AI_PROVIDER");
+                    assertThat(finding.problem()).isEqualTo(Finding.Problem.MALFORMED);
+                    assertThat(finding.actualValue()).isEqualTo("openai");
+                });
+    }
+
+    @Test
+    @DisplayName("the AI key, a credential like the others, has no default in application.yml")
+    void aiKeyHasNoDefault() {
+        assertThat(readClasspath("application.yml"))
+                .contains("${AUTOX_AI_API_KEY}")
+                .doesNotContain("${AUTOX_AI_API_KEY:")
+                .contains("${AUTOX_AI_PROVIDER:none}");
+    }
+
     private static String readClasspath(String resource) {
         try (var stream = RequiredConfigurationTest.class.getClassLoader().getResourceAsStream(resource)) {
             assertThat(stream).as(resource + " on the classpath").isNotNull();
