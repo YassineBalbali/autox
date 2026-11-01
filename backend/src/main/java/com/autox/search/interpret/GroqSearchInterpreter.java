@@ -77,11 +77,11 @@ public class GroqSearchInterpreter implements SearchInterpreter {
                     .retrieve()
                     .body(String.class);
         } catch (HttpStatusCodeException e) {
-            // The body of a provider error can echo the request; the status says enough.
             if (e.getStatusCode().value() == 429) {
                 throw unavailable(Reason.QUOTA, "Groq refused for quota (429)", e);
             }
-            throw unavailable(Reason.PROVIDER_ERROR, "Groq answered " + e.getStatusCode().value(), e);
+            throw unavailable(Reason.PROVIDER_ERROR,
+                    "Groq answered " + e.getStatusCode().value() + errorCode(e.getResponseBodyAsString()), e);
         } catch (ResourceAccessException e) {
             if (causedBy(e, HttpTimeoutException.class)) {
                 throw unavailable(Reason.TIMEOUT, "Groq did not answer within " + properties.timeout(), e);
@@ -131,6 +131,23 @@ public class GroqSearchInterpreter implements SearchInterpreter {
             return filters;
         } catch (JsonProcessingException e) {
             throw unavailable(Reason.PROVIDER_ERROR, "Groq's answer is not JSON", e);
+        }
+    }
+
+    /**
+     * Groq's machine-readable error code ({@code json_validate_failed}, {@code model_not_found}…)
+     * for the log, and nothing else from the body: its message can quote the model's output,
+     * which is made from the visitor's text.
+     */
+    private String errorCode(String body) {
+        try {
+            JsonNode error = json.readTree(body == null ? "" : body).path("error");
+            String code = error.path("code").asText("");
+            String type = error.path("type").asText("");
+            String known = !code.isEmpty() ? code : type;
+            return known.matches("[a-z_]{1,64}") ? " (" + known + ")" : "";
+        } catch (JsonProcessingException e) {
+            return "";
         }
     }
 

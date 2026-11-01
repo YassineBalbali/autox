@@ -140,6 +140,10 @@ class GroqSearchInterpreterTest {
         assertThat(properties).doesNotContain("drivetrain", "q", "countryCode");
         assertThat(schema.path("properties").path("fuelType").path("items").path("enum").toString())
                 .contains("DIESEL").doesNotContain("OTHER");
+        // An empty list may come back as null: measured, gpt-oss-20b does, and strict mode on Groq
+        // refused the whole answer rather than constrain it.
+        assertThat(schema.path("properties").path("condition").path("type").toString()).isEqualTo("[\"array\",\"null\"]");
+        assertThat(schema.path("properties").path("notUnderstood").path("type").toString()).isEqualTo("[\"array\",\"null\"]");
     }
 
     @Test
