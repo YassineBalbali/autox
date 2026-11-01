@@ -674,6 +674,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/price-indicator.md` | "Bonne affaire" and the rest: the comparables rule, why, and how it is computed; La Cote, the same rule for a car that is not listed, and its limits |
 | `docs/messaging.md` | Messages between buyers and sellers: who may write, what each side sees, unread, rate limits, reports |
 | `docs/similar-listings.md` | "Annonces similaires": which listings, in what order, and when none are shown |
+| `docs/ai-search.md` | Natural-language search: the prompt, the server-side validation, the evaluation set and its results, the limits |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
 | `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |
