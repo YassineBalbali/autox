@@ -14,8 +14,10 @@
  *   AUTOX_AI_PROVIDER=groq AUTOX_AI_API_KEY=… AUTOX_AI_MODEL=openai/gpt-oss-20b \
  *   AUTOX_AI_RATE_LIMIT_ENABLED=false mvn spring-boot:run
  *
- * Usage: node eval/ai-search/run-eval.mjs [api base url] [--pause seconds] [--label name]
- *   Writes eval/ai-search/results/<date>-<label>.json and prints a Markdown summary.
+ * Usage: node eval/ai-search/run-eval.mjs [api base url] [--set queries|heldout] [--pause seconds] [--label name]
+ *   --set picks the query file: queries.json, the development set (default), or heldout.json,
+ *   written independently and run once against a frozen prompt (see docs/ai-search.md).
+ *   Writes eval/ai-search/results/<date>-<set>-<label>.json and prints a Markdown summary.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -32,6 +34,8 @@ const option = (name, fallback) => {
 // request is around 1 500, so a dozen seconds keeps a run under the limit instead of into it.
 const pauseSeconds = Number(option('--pause', '12'));
 const label = option('--label', 'run');
+const set = option('--set', 'queries');
+if (!/^[a-z-]+$/.test(set)) throw new Error(`--set must be a file name in eval/ai-search, not ${set}`);
 const base = (args[0] ?? 'http://localhost:8081').replace(/\/$/, '');
 
 const FIELDS = ['make', 'model', 'yearFrom', 'yearTo', 'priceMin', 'priceMax', 'mileageMin', 'mileageMax',
@@ -39,7 +43,7 @@ const FIELDS = ['make', 'model', 'yearFrom', 'yearTo', 'priceMin', 'priceMax', '
 const LISTS = new Set(['fuel', 'gearbox', 'body', 'condition']);
 const year = new Date().getFullYear();
 
-const { queries } = JSON.parse(readFileSync(join(here, 'queries.json'), 'utf8'));
+const { queries } = JSON.parse(readFileSync(join(here, `${set}.json`), 'utf8'));
 
 // --- the API's ids, as the slugs the expectations are written in -----------------------
 const getJson = async (path) => {
@@ -132,7 +136,9 @@ for (const [index, query] of queries.entries()) {
   let attempt = 0;
   let response;
   let started;
-  // A 503 here is usually the provider's per-minute limit: wait it out, twice at most.
+  // A 503 can be the provider's per-minute limit, which the eval's own pace can hit and a visitor
+  // would not: wait 30 s and try once more. Not more: a 503 that is the model's answer failing
+  // validation repeats at temperature 0, and is a real failure to report, not to wait out.
   for (;;) {
     started = performance.now();
     response = await fetch(`${base}/api/v1/search/interpret`, {
@@ -140,15 +146,15 @@ for (const [index, query] of queries.entries()) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: query.query }),
     });
-    if (response.status !== 503 || attempt >= 2) break;
+    if (response.status !== 503 || attempt >= 1) break;
     attempt++;
-    process.stderr.write(`  ${query.id}: 503, waiting 60 s (retry ${attempt})\n`);
-    await sleep(60_000);
+    process.stderr.write(`  ${query.id}: 503, waiting 30 s (retry ${attempt})\n`);
+    await sleep(30_000);
   }
   const latencyMs = Math.round(performance.now() - started);
 
   if (!response.ok) {
-    results.push({ id: query.id, query: query.query, status: response.status, latencyMs, failed: true });
+    results.push({ id: query.id, query: query.query, status: response.status, latencyMs, retried: attempt > 0, failed: true });
     process.stderr.write(`  ${query.id}: FAILED ${response.status}\n`);
     continue;
   }
@@ -166,7 +172,7 @@ for (const [index, query] of queries.entries()) {
   const spurious = Array.isArray(query.unsupported) && query.unsupported.length === 0 && body.notUnderstood.length > 0;
 
   results.push({
-    id: query.id, query: query.query, tags: query.tags, status: response.status, latencyMs,
+    id: query.id, query: query.query, tags: query.tags, status: response.status, latencyMs, retried: attempt > 0,
     exact: mistakes.length === 0, mistakes, expected,
     actual: Object.fromEntries(Object.entries(actual).filter(([, v]) => v !== undefined && !(Array.isArray(v) && !v.length))),
     summary: body.summary, notUnderstood: body.notUnderstood, unsupportedRecall, spurious,
@@ -189,12 +195,14 @@ const withoutUnsupported = answered.filter((result) => Array.isArray(queries.fin
   && queries.find((q) => q.id === result.id).unsupported.length === 0);
 
 const report = {
+  set,
   label,
   date: new Date().toISOString(),
   api: base,
   queries: queries.length,
   answered: answered.length,
   failed: results.length - answered.length,
+  retried: results.filter((result) => result.retried).length,
   exactMatch: ratio(answered.filter((result) => result.exact).length, queries.length),
   micro: { precision: ratio(total.tp, total.tp + total.fp), recall: ratio(total.tp, total.tp + total.fn) },
   fields: fieldTable,
@@ -207,13 +215,13 @@ const report = {
 };
 
 mkdirSync(join(here, 'results'), { recursive: true });
-const file = join(here, 'results', `${report.date.slice(0, 10)}-${label}.json`);
+const file = join(here, 'results', `${report.date.slice(0, 10)}-${set}-${label}.json`);
 writeFileSync(file, `${JSON.stringify(report, null, 2)}\n`);
 
 const f = (value) => (value === null ? '–' : (100 * value).toFixed(1) + ' %');
-console.log(`\n### ${label} — ${report.date.slice(0, 10)}\n`);
+console.log(`\n### ${set} · ${label} — ${report.date.slice(0, 10)}\n`);
 console.log(`Exact match: ${f(report.exactMatch)} (${answered.filter((r) => r.exact).length}/${queries.length})` +
-  ` · failed requests: ${report.failed} · micro precision ${f(report.micro.precision)} · micro recall ${f(report.micro.recall)}`);
+  ` · failed requests: ${report.failed} (retried once: ${report.retried}) · micro precision ${f(report.micro.precision)} · micro recall ${f(report.micro.recall)}`);
 console.log(`Not understood: recall of the unsupported parts ${f(report.unsupported.recall)}` +
   ` · spurious on fully supported queries ${f(report.unsupported.spuriousRate)}`);
 console.log(`Latency: p50 ${report.latencyMs.p50} ms · p95 ${report.latencyMs.p95} ms · max ${report.latencyMs.max} ms\n`);

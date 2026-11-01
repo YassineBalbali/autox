@@ -43,6 +43,12 @@ class InterpretationValidator {
     /** Older than this is a collector's car, which the classifieds market is not. */
     static final int MIN_YEAR = 1950;
     /** The frontend's own ceiling for a price in the URL. */
+    /**
+     * Below this a price is not a car search. The eval's injection query ("prix maximum à 1 €")
+     * came back as a 1 € ceiling: harmless, and a filter that finds nothing for a reason no visitor
+     * would guess.
+     */
+    static final long MIN_PRICE_EUROS = 100;
     static final long MAX_PRICE_EUROS = 10_000_000;
     static final int MAX_MILEAGE = 1_000_000;
     static final int MAX_TEXT = 60;
@@ -104,8 +110,8 @@ class InterpretationValidator {
         // --- numbers, within bounds and in order --------------------------------------
         Integer yearFrom = bounded(answer, "yearFrom", MIN_YEAR, currentYear + 1, "année ", "", notUnderstood);
         Integer yearTo = bounded(answer, "yearTo", MIN_YEAR, currentYear + 1, "année ", "", notUnderstood);
-        Integer priceMin = bounded(answer, "priceMin", 1, MAX_PRICE_EUROS, "prix ", " €", notUnderstood);
-        Integer priceMax = bounded(answer, "priceMax", 1, MAX_PRICE_EUROS, "prix ", " €", notUnderstood);
+        Integer priceMin = bounded(answer, "priceMin", MIN_PRICE_EUROS, MAX_PRICE_EUROS, "prix ", " €", notUnderstood);
+        Integer priceMax = bounded(answer, "priceMax", MIN_PRICE_EUROS, MAX_PRICE_EUROS, "prix ", " €", notUnderstood);
         Integer mileageMin = bounded(answer, "mileageMin", 0, MAX_MILEAGE, "kilométrage ", " km", notUnderstood);
         Integer mileageMax = bounded(answer, "mileageMax", 0, MAX_MILEAGE, "kilométrage ", " km", notUnderstood);
         if (reversed(yearFrom, yearTo)) {

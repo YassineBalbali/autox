@@ -19,7 +19,9 @@ import org.springframework.stereotype.Repository;
  *       "serie3");</li>
  *   <li>for a make, exactly one make's key starts with what was written, of at least three
  *       characters ("mercedes"); for a model within a known make, the longest model whose name
- *       starts the written one at a word boundary ("golf gti" is the Golf).</li>
+ *       starts the written one at a word boundary ("golf gti" is the Golf);</li>
+ *   <li>for a model within a known make, the make's one model whose name ends with the written
+ *       one after a space ("3" is the BMW Série 3, "A" the Mercedes-Benz Classe A).</li>
  * </ol>
  * Anything else is no match, and the caller reports the name as not understood. Ambiguity is
  * no match too: a filter on the wrong make is worse than none.
@@ -94,10 +96,16 @@ class CatalogueMatcher {
         }
         // "golf gti": the Golf. The longest, so "série 3 gt" is the Série 3 GT if the
         // catalogue has one, and the Série 3 if it does not.
-        return models.stream()
+        Optional<Model> starting = models.stream()
                 .filter(model -> key.startsWith(model.key() + " "))
                 .max(Comparator.comparingInt(model -> model.key().length()))
                 .map(Keyed::entry);
+        if (starting.isPresent()) {
+            return starting;
+        }
+        // "3" for the Série 3, "A" for the Classe A: a family word French names carry and
+        // people, and models, leave out. Only the make's one model whose name ends that way.
+        return unique(models.stream().filter(model -> model.key().endsWith(" " + key)).toList());
     }
 
     /**

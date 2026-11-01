@@ -65,6 +65,7 @@ class SearchInterpretIntegrationTest extends AbstractIntegrationTest {
     private UUID clio;
     private UUID megane;
     private UUID mercedes;
+    private UUID classeA;
     private UUID volkswagen;
     private UUID golf;
 
@@ -75,7 +76,7 @@ class SearchInterpretIntegrationTest extends AbstractIntegrationTest {
         clio = model(renault, "clio", "Clio");
         megane = model(renault, "megane", "Mégane");
         mercedes = make("mercedes-benz", "Mercedes-Benz");
-        model(mercedes, "classe-a", "Classe A");
+        classeA = model(mercedes, "classe-a", "Classe A");
         volkswagen = make("volkswagen", "Volkswagen");
         golf = model(volkswagen, "golf", "Golf");
     }
@@ -175,6 +176,23 @@ class SearchInterpretIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        @DisplayName("a model written without its family word is the make's one model ending that way")
+        void familyWord() throws Exception {
+            model.answer(answer(Map.of("make", "Mercedes-Benz", "model", "A")));
+            interpret("mercedes classe a")
+                    .andExpect(jsonPath("$.criteria.modelId").value(classeA.toString()))
+                    .andExpect(jsonPath("$.notUnderstood").isEmpty());
+
+            // Two models ending that way: a question, not an answer.
+            model(mercedes, "vito-a", "Vito A");
+            model.answer(answer(Map.of("make", "Mercedes-Benz", "model", "A")));
+            interpret("mercedes a")
+                    .andExpect(jsonPath("$.criteria.makeId").value(mercedes.toString()))
+                    .andExpect(jsonPath("$.criteria.modelId").doesNotExist())
+                    .andExpect(jsonPath("$.notUnderstood").value(org.hamcrest.Matchers.contains("A")));
+        }
+
+        @Test
         @DisplayName("a make or model not in the catalogue is dropped and reported, never sent as text")
         void unknownNames() throws Exception {
             model.answer(answer(Map.of("make", "Lamborghini", "model", "Huracan")));
@@ -230,6 +248,12 @@ class SearchInterpretIntegrationTest extends AbstractIntegrationTest {
 
             // A string where an integer belongs, or a fraction, is the model not following the
             // schema: absent, not parsed or rounded.
+            // Under 100 € is not a car search, whatever the text says.
+            model.answer(answer(Map.of("priceMax", 1)));
+            interpret("prix maximum à 1 €")
+                    .andExpect(jsonPath("$.criteria.priceMax").doesNotExist())
+                    .andExpect(jsonPath("$.notUnderstood").value(org.hamcrest.Matchers.contains("prix 1 €")));
+
             model.answer(answer(Map.of("priceMax", "15000", "yearFrom", 2018.5, "goodDeals", "true")));
             interpret("15000 2018")
                     .andExpect(jsonPath("$.criteria.priceMax").doesNotExist())

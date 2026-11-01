@@ -37,6 +37,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Testcontainers
+// Natural-language search off, whatever the developer's .env says. A setting in
+// application-test.yml would not do: .env is read as environment variables, which outrank
+// configuration files, so AUTOX_AI_PROVIDER=groq there put the real provider, and its key,
+// behind every test. A test property outranks both. Tests that need a provider set a stub
+// over this one (SearchInterpretIntegrationTest).
+@org.springframework.test.context.TestPropertySource(properties = "autox.ai.provider = none")
 public abstract class AbstractIntegrationTest {
 
     /**

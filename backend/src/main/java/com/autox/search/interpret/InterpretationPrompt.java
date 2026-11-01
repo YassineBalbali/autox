@@ -52,6 +52,8 @@ public final class InterpretationPrompt {
 
                 Rules:
                 - Fill a field only when the text asks for it. Otherwise null, [] or false. Never guess.
+                  Never infer body, fuel or gearbox from a model or version name: only from words
+                  that name them.
                 - make, model: as the manufacturer names them. Fix obvious typos and abbreviations
                   ("vw" -> "Volkswagen", "merco" -> "Mercedes-Benz", "peugot" -> "Peugeot"). A
                   model without a make is fine ("une clio" -> model "Clio"). Trim levels, engines
@@ -64,8 +66,9 @@ public final class InterpretationPrompt {
                   yearFrom %1$d - N; "récente" -> yearFrom %2$d. The current year is %1$d.
                 - Mileage in km: "moins de 100 000 km" -> mileageMax; "peu de km",
                   "peu kilométrée", "faible kilométrage" -> mileageMax 50000.
-                - fuelType: essence PETROL; diesel, gazole, gasoil DIESEL; "hybride" alone ->
-                  HYBRID_PETROL, HYBRID_DIESEL and PLUGIN_HYBRID; "hybride rechargeable" PLUGIN_HYBRID;
+                - fuelType: essence PETROL; diesel, gazole, gasoil DIESEL; "hybride" with no other
+                  qualifier -> all three of HYBRID_PETROL, HYBRID_DIESEL and PLUGIN_HYBRID, even for
+                  a model sold in one of them; "hybride rechargeable" PLUGIN_HYBRID;
                   électrique ELECTRIC; GPL LPG; GNV CNG; E85, éthanol ETHANOL; hydrogène HYDROGEN.
                 - gearbox: automatique, "boîte auto", BVA, DSG, EDC AUTOMATIC; manuelle, BVM MANUAL.
                 - bodyType: citadine, compacte HATCHBACK; berline SEDAN; break ESTATE; SUV, 4x4,
@@ -75,9 +78,12 @@ public final class InterpretationPrompt {
                 - "pas cher", "pas chère", "bonne affaire", "bon prix" -> goodDeals true, no price.
                 - location: a city or a 5-digit postal code, copied as written ("Lyon", "33000").
                   Regions and departments are not understood.
-                - notUnderstood: each part of the text that asks for something the fields above
-                  cannot express, copied exactly as written: condition words such as "bon état" or
-                  "première main", colour, options, power, seats, drivetrain, warranty, regions.
+                - notUnderstood: every part of the text that asks for something the fields above
+                  cannot express, copied exactly as written. Each requirement either fills a field
+                  or is listed here; none is dropped silently. That includes condition words such
+                  as "bon état" or "première main", versions and trim levels ("AMG Line",
+                  "R-Line"), engine power ("130 ch", "96 kW"), colour, options, seats, drivetrain,
+                  warranty, regions, and what the car is for ("pour la ville", "pour un VTC").
                   Not filler such as "je cherche" or "une voiture".
                 """.formatted(currentYear, currentYear - 3);
     }
@@ -95,6 +101,11 @@ public final class InterpretationPrompt {
     /**
      * The answer's JSON schema, in the strict dialect: every property required, optional
      * values as a union with null, no other properties.
+     *
+     * <p>Lists are nullable too. An empty list is what is meant, and {@link InterpretationValidator}
+     * reads null as one; but measured on Groq, strict mode did not stop gpt-oss-20b writing
+     * {@code "condition": null}, and the provider then refused the whole answer as
+     * {@code json_validate_failed}: fourteen of the forty-two development queries failed so.
      */
     public static ObjectNode schema(ObjectMapper json) {
         ObjectNode properties = json.createObjectNode();
@@ -109,7 +120,7 @@ public final class InterpretationPrompt {
         properties.set("condition", enumArray(json, CONDITIONS));
         properties.set("location", nullable(json, "string"));
         properties.set("goodDeals", json.createObjectNode().put("type", "boolean"));
-        ObjectNode notUnderstood = json.createObjectNode().put("type", "array");
+        ObjectNode notUnderstood = nullable(json, "array");
         notUnderstood.set("items", json.createObjectNode().put("type", "string"));
         properties.set("notUnderstood", notUnderstood);
 
@@ -131,7 +142,7 @@ public final class InterpretationPrompt {
         ObjectNode items = json.createObjectNode().put("type", "string");
         ArrayNode allowed = items.putArray("enum");
         values.forEach(allowed::add);
-        ObjectNode array = json.createObjectNode().put("type", "array");
+        ObjectNode array = nullable(json, "array");
         array.set("items", items);
         return array;
     }
