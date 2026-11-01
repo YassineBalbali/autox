@@ -19,6 +19,15 @@ spring:
     url: jdbc:postgresql://localhost:1/replaced-by-testcontainers
     username: test
     password: test
+    # Every distinct test configuration is its own cached Spring context with its own pool,
+    # all against the one container, which accepts 100 connections. Production keeps the
+    # whole pool open (minimum-idle = size), so ten contexts held a hundred idle connections
+    # between them and the eleventh could not start: "sorry, too many clients already".
+    # Here an idle context shrinks to one connection after ten seconds. The maximum is
+    # production's, so no test loses concurrency.
+    hikari:
+      minimum-idle: 1
+      idle-timeout: 10000
 
   flyway:
     # So a test can reset the schema if it ever needs to. Never enabled in production.
