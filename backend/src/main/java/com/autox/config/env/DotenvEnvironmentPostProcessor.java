@@ -70,7 +70,7 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
     /**
      * A backstop on how far up to look. The search normally stops at the repository root
      * (see {@link #candidates()}); this only bounds the case where there is no {@code .git}
-     * directory to find, such as an extracted source archive.
+     * to find, such as an extracted source archive.
      */
     static final int MAX_PARENTS = 3;
 
@@ -155,15 +155,27 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
      * repository root, so ascending is necessary. Stopping at the root matters just as
      * much: plenty of developers have a {@code ~/.env} for something else entirely, and
      * silently configuring this application from it would be a genuinely hard afternoon.
-     * The {@code .git} directory marks where to stop.
+     * {@code .git} marks where to stop.
      */
     static List<Path> candidates() {
+        return candidates(Paths.get("").toAbsolutePath());
+    }
+
+    /**
+     * {@link #candidates()} from {@code start} rather than the working directory.
+     *
+     * <p>{@code .git} is a directory in an ordinary clone and a file in a worktree (or a
+     * submodule), a one-line pointer to the real repository. Either marks the root. Looking
+     * for the directory alone walked straight past a worktree's root, and a worktree created
+     * beside the clone, in the home directory, then had {@code ~/.env} as a candidate.
+     */
+    static List<Path> candidates(Path start) {
         List<Path> candidates = new ArrayList<>();
-        Path directory = Paths.get("").toAbsolutePath();
+        Path directory = start;
 
         for (int level = 0; level <= MAX_PARENTS && directory != null; level++) {
             candidates.add(directory.resolve(FILE_NAME));
-            if (Files.isDirectory(directory.resolve(".git"))) {
+            if (Files.exists(directory.resolve(".git"))) {
                 break;
             }
             directory = directory.getParent();

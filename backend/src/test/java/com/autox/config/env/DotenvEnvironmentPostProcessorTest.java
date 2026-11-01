@@ -2,11 +2,14 @@ package com.autox.config.env;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.diagnostics.FailureAnalyzer;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 
@@ -203,5 +206,20 @@ class DotenvEnvironmentPostProcessorTest {
         assertThat(candidates)
                 .as("must never reach the home directory")
                 .noneMatch(candidate -> candidate.getParent().equals(home));
+    }
+
+    @Test
+    @DisplayName("in a git worktree, where .git is a file, the search still stops at its root")
+    void searchStopsAtAWorktreeRoot(@TempDir Path home) throws IOException {
+        // The layout that reached ~/.env: a worktree created beside the clone, in the home
+        // directory, with someone else's .env sitting in that home directory.
+        Files.writeString(home.resolve(".env"), "AUTOX_JWT_SECRET=not-this-application\n");
+        Path worktree = Files.createDirectory(home.resolve("autox-pr15"));
+        Files.writeString(worktree.resolve(".git"), "gitdir: " + home.resolve("autox/.git/worktrees/autox-pr15") + "\n");
+        Path backend = Files.createDirectory(worktree.resolve("backend"));
+
+        assertThat(DotenvEnvironmentPostProcessor.candidates(backend))
+                .as("the backend, then the worktree root and no further")
+                .containsExactly(backend.resolve(".env"), worktree.resolve(".env"));
     }
 }
