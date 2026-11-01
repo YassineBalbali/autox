@@ -19,7 +19,7 @@
 
     <properties>
         <java.version>21</java.version>
-        <awssdk.version>2.57.5</awssdk.version>
+        <awssdk.version>2.57.6</awssdk.version>
         <springdoc.version>2.10.0</springdoc.version>
         <therapi.version>0.16.0</therapi.version>
 
