@@ -1,0 +1,148 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+// ---- "Recherche intelligente" ---------------------------------------------------
+//
+// One dense bar under the hero: a label, a long field and a button on a line at desktop
+// width, stacked on a phone. A panel like the rest of the page, so it reads as another way
+// in to the same search, not as a feature with its own look.
+
+.smart {
+  margin-top: var(--s-5);
+}
+
+.smart__form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: var(--s-4);
+  }
+}
+
+.smart__title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+  color: var(--c-ink);
+  white-space: nowrap;
+
+  app-icon {
+    color: var(--c-accent);
+  }
+}
+
+.smart__input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 var(--s-3);
+  background: var(--c-surface);
+  border: var(--border);
+  border-radius: var(--r-md);
+  font: inherit;
+  font-size: 1rem;
+  color: var(--c-ink);
+
+  &::placeholder {
+    color: var(--c-ink-soft);
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--c-ink-faint);
+  }
+
+  &:focus-visible {
+    border-color: var(--c-accent);
+    outline-offset: 0;
+  }
+
+  &:disabled {
+    background: var(--c-surface-sunk);
+  }
+}
+
+.smart__submit {
+  height: 44px;
+  padding-inline: var(--s-5);
+  font-weight: var(--fw-bold);
+  border-radius: var(--r-md);
+  white-space: nowrap;
+}
+
+// Under the field at desktop width, under everything on a phone.
+.smart__hint {
+  margin: 0;
+  font-size: var(--t-xs);
+  color: var(--c-ink-faint);
+
+  @media (min-width: t.$bp-lg) {
+    grid-column: 2;
+    margin-top: calc(-1 * var(--s-1));
+  }
+}
+
+.smart__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-3);
+  margin: var(--s-2) 0 0;
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--t-sm);
+  color: var(--c-warn);
+  background: var(--c-warn-soft);
+  border-radius: var(--r-md);
+}
+
+.smart__fallback {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  color: var(--c-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+
+  @include t.touch {
+    min-height: 44px;
+  }
+
+  &:hover {
+    color: var(--c-accent-strong);
+  }
+}
+
+.smart__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: smart-spin 0.7s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes smart-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}

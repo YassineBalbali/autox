@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, viewChild } from '@angular/core';
+import { Location } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
@@ -12,6 +13,8 @@ import { ListingRow } from '../../shared/listing/listing-row';
 import { Alert } from '../../shared/ui/alert';
 import { Icon } from '../../shared/ui/icon';
 import { ActiveFilters } from './active-filters';
+import { InterpretationNote } from './interpretation-note';
+import { Interpretation, readInterpretation } from './smart-search';
 import { FUEL_LABELS, GEARBOX_LABELS, SORT_OPTIONS, labelOf } from '../../shared/listing/labels.fr';
 import { SearchBar } from './search-bar';
 import { SearchFilters } from './search-filters';
@@ -64,6 +67,7 @@ import { ViewToggle } from './view-toggle';
   imports: [
     SearchBar,
     ActiveFilters,
+    InterpretationNote,
     SearchFilters,
     ViewToggle,
     ListingRow,
@@ -95,6 +99,18 @@ export class SearchPage {
    * {@link SearchResultsStore.restore}.
    */
   private returning = this.router.getCurrentNavigation()?.trigger === 'popstate';
+
+  /**
+   * The description this search came from, when it came from the home page's natural-language
+   * search: shown above the chips with what was not understood. From the navigation's state,
+   * or the history entry's on a reload or a return — never from the URL, which holds filters.
+   *
+   * <p>Kept while the visitor refines with chips and the sidebar, since what it says stays
+   * true; dropped when they type a new search or clear everything, since then it no longer is.
+   */
+  protected readonly interpretation = signal<Interpretation | null>(
+    readInterpretation(this.router.getCurrentNavigation()?.extras.state ?? inject(Location).getState()),
+  );
 
   /**
    * List or grid. A per-visitor preference rather than part of the search, so it comes
@@ -178,11 +194,18 @@ export class SearchPage {
     inject(DestroyRef).onDestroy(() => this.results.release());
   }
 
+  /** A search typed in the bar replaces the one described on the home page. */
+  protected searchFromBar(patch: Partial<SearchQuery>): void {
+    this.interpretation.set(null);
+    this.applyFilters(patch);
+  }
+
   protected applyFilters(patch: Partial<SearchQuery>): void {
     this.navigate({ ...this.query(), ...patch });
   }
 
   protected clearFilters(): void {
+    this.interpretation.set(null);
     this.navigate(withoutFilters(this.query()));
   }
 

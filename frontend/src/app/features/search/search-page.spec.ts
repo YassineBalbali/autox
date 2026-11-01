@@ -49,6 +49,9 @@ const listing = (id: string, over: Partial<PublicListingSummary> = {}): PublicLi
 @Component({ template: '<p>annonce</p>' })
 class ListingStub {}
 
+@Component({ template: '<p>accueil</p>' })
+class HomeStub {}
+
 /**
  * The search screen, end to end through a real router.
  *
@@ -88,6 +91,8 @@ describe('SearchPage', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([
+          // Where a natural-language search starts from, in the tests that arrive that way.
+          { path: '', pathMatch: 'full', component: HomeStub },
           { path: 'recherche', component: SearchPage },
           { path: 'annonces/:id', component: ListingStub },
         ]),
@@ -927,6 +932,74 @@ describe('SearchPage', () => {
       expect(rows()).toHaveLength(2);
       expect(root.querySelector('app-listing-card')).toBeNull();
       expect(localStorage.getItem('autox.search.view')).toBe('grille');
+    });
+  });
+
+  describe('after a natural-language search', () => {
+    const DESCRIBED = { text: 'SUV diesel moins de 15 000 € en bon état', notUnderstood: ['en bon état'] };
+    const note = () => root.querySelector('app-interpretation-note');
+    const words = (element: Element | null) => element?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    const chips = () => Array.from(root.querySelectorAll<HTMLButtonElement>('.applied__chip'));
+
+    /** Arrives the way the home page sends a visitor: a navigation carrying the description. */
+    async function arriveDescribed(): Promise<void> {
+      await visit('/');
+      await TestBed.inject(Router).navigate(['/recherche'], {
+        queryParams: { carrosserie: 'suv', carburant: 'diesel', prix_max: '15000' },
+        state: { interpretation: DESCRIBED },
+      });
+      root = harness.routeNativeElement as HTMLElement;
+      await settle();
+      answerReference();
+      await settle();
+      await answer([listing('a')]);
+    }
+
+    it('shows what was written and what was not taken into account, above the chips', async () => {
+      await arriveDescribed();
+
+      expect(words(note())).toContain('Recherche intelligente : « SUV diesel moins de 15 000 € en bon état »');
+      expect(words(root.querySelector('.note__missed'))).toBe('Non pris en compte : en bon état');
+      const applied = root.querySelector('app-active-filters') as HTMLElement;
+      expect(note()!.compareDocumentPosition(applied) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      // The understood part is the ordinary chips, each removable.
+      expect(chips().map((chip) => chip.textContent?.replace('×', '').trim())).toEqual([
+        `Jusqu’à 15${NBSP}000 €`,
+        'Diesel',
+        'SUV / 4x4',
+      ]);
+    });
+
+    it('stays while a chip is removed, and goes when a new search is typed', async () => {
+      await arriveDescribed();
+
+      chips().find((chip) => chip.textContent?.includes('Diesel'))!.click();
+      await settle();
+      await answer([listing('a')]);
+      expect(url()).toBe('/recherche?prix_max=15000&carrosserie=suv');
+      expect(note()).not.toBeNull();
+
+      const field = root.querySelector('#b-q') as HTMLInputElement;
+      field.value = 'golf';
+      field.dispatchEvent(new Event('input'));
+      (root.querySelector('app-search-bar button[type="submit"]') as HTMLButtonElement).click();
+      await settle();
+      expect(note()).toBeNull();
+    });
+
+    it('can be dismissed', async () => {
+      await arriveDescribed();
+
+      (root.querySelector('.note__close') as HTMLButtonElement).click();
+      await settle();
+      expect(note()).toBeNull();
+    });
+
+    it('is absent from a search that arrived by link', async () => {
+      await visit('/recherche?carrosserie=suv&carburant=diesel');
+      await answer([listing('a')]);
+
+      expect(note()).toBeNull();
     });
   });
 });

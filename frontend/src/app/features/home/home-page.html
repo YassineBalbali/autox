@@ -1,5 +1,8 @@
 <app-home-hero />
 
+<!-- Natural-language search. Renders nothing unless the server has a provider. -->
+<app-home-smart-search />
+
 <!-- ===== Recent searches: only when there are some ========================= -->
 @if (!recent.isEmpty()) {
   <section class="home-section" aria-labelledby="recent-title">
