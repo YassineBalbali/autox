@@ -169,7 +169,7 @@ autox:
   ai:
     provider: ${AUTOX_AI_PROVIDER:none}
     api-key: ${AUTOX_AI_API_KEY}
-    model: ${AUTOX_AI_MODEL:openai/gpt-oss-20b}
+    model: ${AUTOX_AI_MODEL:openai/gpt-oss-120b}
     timeout: PT5S
     # Per address, far below the public read limit: every request spends a shared free
     # quota. Ten in ten minutes is a visitor rephrasing, not a script.

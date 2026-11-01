@@ -34,7 +34,7 @@ public record AiProperties(
 
     public AiProperties {
         provider = orDefault(provider, NONE).strip().toLowerCase(java.util.Locale.ROOT);
-        model = orDefault(model, "openai/gpt-oss-20b");
+        model = orDefault(model, "openai/gpt-oss-120b");
         baseUrl = orDefault(baseUrl, "https://api.groq.com/openai/v1");
         timeout = timeout == null || timeout.isNegative() || timeout.isZero() ? Duration.ofSeconds(5) : timeout;
         rateLimit = rateLimit == null ? new RateLimit(true, 0, null) : rateLimit;

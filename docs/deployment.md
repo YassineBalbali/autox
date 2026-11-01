@@ -222,7 +222,7 @@ hand (New → Web Service → the repository), these are all of them:
 | `AUTOX_LISTING_PROFESSIONNELACTIVELIMIT` | `3` | Dealers are uncapped by default, and anyone can register as one |
 | `AUTOX_AI_PROVIDER` | `groq` | Turns on natural-language search. Leave unset, or `none`, to keep it off and hidden |
 | `AUTOX_AI_API_KEY` | from console.groq.com → API Keys — **secret** | Required when the provider is `groq`; the API refuses to start without it |
-| `AUTOX_AI_MODEL` | `openai/gpt-oss-20b` | Optional: this is the default. See docs/ai-search.md for why |
+| `AUTOX_AI_MODEL` | `openai/gpt-oss-120b` | Optional: this is the default, chosen on the evaluation in docs/ai-search.md |
 
 `AUTOX_SCHEDULE_STORAGE_CHECK` is not set, so its default applies: twelve hours (see step 2).
 `PORT` is set by Render, and the image listens on it. Do not set `AUTOX_PORT`.
