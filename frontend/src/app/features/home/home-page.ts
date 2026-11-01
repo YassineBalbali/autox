@@ -11,6 +11,7 @@ import { RecentSearches } from '../search/recent-searches';
 import { toQueryParams } from '../search/search-query';
 import { SearchResolver } from '../search/search-resolver';
 import { HomeHero } from './home-hero';
+import { HomeSmartSearch } from './home-smart-search';
 import { BUDGETS, CATEGORIES, Shortcut, TRUST_POINTS } from './home-shortcuts';
 import { RecentSearchCards } from './recent-search-cards';
 import { ShortcutTile } from './shortcut-tile';
@@ -36,7 +37,7 @@ const POPULAR_LIMIT = 10;
  */
 @Component({
   selector: 'app-home-page',
-  imports: [RouterLink, Icon, HomeHero, RecentSearchCards, ShortcutTile],
+  imports: [RouterLink, Icon, HomeHero, HomeSmartSearch, RecentSearchCards, ShortcutTile],
   templateUrl: './home-page.html',
   styleUrl: './home-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

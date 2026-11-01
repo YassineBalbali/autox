@@ -1,6 +1,6 @@
 <div class="search">
   <!-- Full width, above everything: where a search is composed. -->
-  <app-search-bar [query]="query()" (submitted)="applyFilters($event)" />
+  <app-search-bar [query]="query()" (submitted)="searchFromBar($event)" />
 
   <!-- Below the large breakpoint: the way into the filter sheet, and the sort, held at the
        top of the screen while the results scroll under it. -->
@@ -30,6 +30,11 @@
       }
     </select>
   </div>
+
+  <!-- After a natural-language search: what was written, and what of it is not a filter. -->
+  @if (interpretation(); as described) {
+    <app-interpretation-note [interpretation]="described" (dismissed)="interpretation.set(null)" />
+  }
 
   <!-- What is applied, each removable. Renders nothing when no filter is set. -->
   <app-active-filters

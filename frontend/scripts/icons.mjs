@@ -42,6 +42,7 @@ const NAMES = [
   'send',
   'shield-check',
   'sliders-horizontal',
+  'sparkles',
   'store',
   'user',
   'users',

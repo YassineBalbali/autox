@@ -78,6 +78,10 @@ export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = {
   // Only reachable by editing a URL by hand, or by holding a cursor across a sort change.
   [ErrorCode.INVALID_CURSOR]: 'Cette page de résultats n’est plus valable. Relancez la recherche.',
 
+  // --- natural-language search -----------------------------------------
+  // The page offers the ordinary search beside this message, so it need not say how.
+  [ErrorCode.INTERPRETER_UNAVAILABLE]: 'La recherche intelligente est indisponible pour le moment.',
+
   // --- the catch-all ----------------------------------------------------
   [ErrorCode.INTERNAL_ERROR]:
     'Une erreur inattendue s’est produite. Réessayez dans un instant.',
