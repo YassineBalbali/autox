@@ -34,6 +34,26 @@ describe('Vercel deployments', () => {
   });
 });
 
+describe('Render deploys', () => {
+  const workflow = read('.github/workflows/backend.yml');
+  const job = workflow.slice(workflow.indexOf('\n  deploy:\n'));
+
+  it('come from the backend workflow, once it has passed, for a push to main and nothing else', () => {
+    assert.match(job, /^    needs: test$/m);
+    assert.match(job, /^    if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'$/m);
+  });
+
+  it('name the commit that was tested, with the hook URL read from a secret', () => {
+    assert.match(job, /\$\{\{ secrets\.RENDER_DEPLOY_HOOK_URL \}\}/);
+    assert.match(job, /"\$RENDER_DEPLOY_HOOK_URL&ref=\$GITHUB_SHA"/);
+    assert.doesNotMatch(workflow, /api\.render\.com/);
+  });
+
+  it('are not also triggered by Render itself, which a Blueprint sync would restore', () => {
+    assert.match(read('render.yaml'), /^    autoDeployTrigger: 'off'$/m);
+  });
+});
+
 describe("Netlify's ignore command", () => {
   const command = read('netlify.toml').match(/^\s*ignore = '''(.+)'''\r?$/m)[1];
   let work;
