@@ -654,6 +654,7 @@ frontend/
 .github/dependabot.yml           weekly upgrade proposals for every ecosystem
 render.yaml                      the API service on Render (Blueprint); see docs/deployment.md
 netlify.toml                     the site's build on Netlify; see docs/deployment.md
+frontend/vercel.json             the site's build on Vercel; see docs/deployment.md
 
 docs/            why things are the way they are — read these before changing them
 ```

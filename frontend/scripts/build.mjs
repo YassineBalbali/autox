@@ -19,7 +19,7 @@
  * Run through `npm run build`; extra arguments are passed to `ng build`.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,6 +29,7 @@ import {
   inlineScriptProblems,
   originOf,
   originsOf,
+  vercelOutputConfig,
   withAbsoluteUrls,
   withPolicyMeta,
 } from './security-headers.mjs';
@@ -112,6 +113,18 @@ writeFileSync(join(dist, '_headers'), headersFile(options));
 // Deliberately no 404.html: with the rewrite in place it would never be served on Netlify,
 // and on a host that falls back to it the deep links would carry a 404 status.
 writeFileSync(join(dist, '_redirects'), '/*  /index.html  200\n');
+
+// The same site for Vercel, which takes it from .vercel/output when a build leaves one there:
+// the files, less Netlify's two, and the same headers and fallback as Vercel's configuration.
+// Written on every build, so that CI builds what Vercel will deploy.
+const vercelOutput = join(root, '.vercel', 'output');
+rmSync(vercelOutput, { recursive: true, force: true });
+mkdirSync(vercelOutput, { recursive: true });
+cpSync(dist, join(vercelOutput, 'static'), {
+  recursive: true,
+  filter: (path) => ![join(dist, '_headers'), join(dist, '_redirects')].includes(path),
+});
+writeFileSync(join(vercelOutput, 'config.json'), JSON.stringify(vercelOutputConfig(options), null, 2));
 
 const bytes = readdirSync(dist)
   .filter((name) => /\.(js|css)$/.test(name))

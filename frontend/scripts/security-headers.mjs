@@ -127,22 +127,48 @@ export function securityHeaders(options = {}) {
   return headers;
 }
 
-/**
- * A `_headers` file, the format Netlify and Cloudflare Pages read from the site root.
- *
- * Hashed bundles are immutable and cached for a year; `index.html` is never cached, or a
- * deploy would not reach a visitor until their cache expired.
- */
+// Hashed bundles are immutable and cached for a year; `index.html` is never cached, or a
+// deploy would not reach a visitor until their cache expired.
+const NEVER_CACHED = 'no-cache';
+const CACHED_FOR_GOOD = 'public, max-age=31536000, immutable';
+
+/** A `_headers` file, the format Netlify and Cloudflare Pages read from the site root. */
 export function headersFile(options = {}) {
   const lines = ['/*'];
   for (const [name, value] of Object.entries(securityHeaders(options))) {
     lines.push(`  ${name}: ${value}`);
   }
-  lines.push('', '/index.html', '  Cache-Control: no-cache', '');
+  lines.push('', '/index.html', `  Cache-Control: ${NEVER_CACHED}`, '');
   for (const pattern of ['/*.js', '/*.css', '/media/*']) {
-    lines.push(pattern, '  Cache-Control: public, max-age=31536000, immutable', '');
+    lines.push(pattern, `  Cache-Control: ${CACHED_FOR_GOOD}`, '');
   }
   return lines.join('\n');
+}
+
+/**
+ * Vercel's counterpart of `_headers` and `_redirects`: `.vercel/output/config.json`, in its
+ * Build Output API. `vercel.json` cannot do this: it is read before the build, and the policy
+ * names origins only the build knows.
+ *
+ * The order is the routing. Security headers go on every response. Only a path with no file
+ * behind it reaches the fallback, which answers with the app and a 200. The long cache is set
+ * in the `hit` phase, on files that exist, so that a missing `/old-bundle.js` answered with the
+ * app is not cached for a year.
+ */
+export function vercelOutputConfig(options = {}) {
+  const cached = (src, value) => ({ src, headers: { 'Cache-Control': value }, continue: true });
+  return {
+    version: 3,
+    routes: [
+      { src: '^/(.*)$', headers: securityHeaders(options), continue: true },
+      { handle: 'filesystem' },
+      { src: '^/(.*)$', headers: { 'Cache-Control': NEVER_CACHED }, dest: '/index.html' },
+      { handle: 'hit' },
+      cached('^/(?:index\\.html)?$', NEVER_CACHED),
+      cached('^/.*\\.(?:js|css)$', CACHED_FOR_GOOD),
+      cached('^/media/.*$', CACHED_FOR_GOOD),
+    ],
+  };
 }
 
 /**

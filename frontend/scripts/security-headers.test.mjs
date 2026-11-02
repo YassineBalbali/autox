@@ -11,6 +11,7 @@ import {
   originOf,
   originsOf,
   securityHeaders,
+  vercelOutputConfig,
   withAbsoluteUrls,
   withPolicyMeta,
 } from './security-headers.mjs';
@@ -200,5 +201,55 @@ describe('the built page', () => {
     const page = '<meta property="og:image" content="/og-image.png">';
 
     assert.equal(withAbsoluteUrls(page, ''), page);
+  });
+});
+
+describe("Vercel's configuration", () => {
+  const options = { apiOrigin: API, storageOrigins: STORAGE, https: true };
+  const { version, routes } = vercelOutputConfig(options);
+  const phase = (name) => routes.findIndex((route) => route.handle === name);
+  const hitCache = (path) =>
+    routes
+      .slice(phase('hit') + 1)
+      .filter((route) => new RegExp(route.src).test(path))
+      .map((route) => route.headers['Cache-Control']);
+
+  it('is version 3 of the Build Output API', () => {
+    assert.equal(version, 3);
+  });
+
+  it('puts the very headers of _headers on every path, before anything can answer', () => {
+    const [first] = routes;
+
+    assert.deepEqual(first.headers, securityHeaders(options));
+    assert.equal(first.continue, true);
+    assert.ok(new RegExp(first.src).test('/annonces/42'));
+    for (const [name, value] of Object.entries(first.headers)) {
+      assert.ok(headersFile(options).includes(`  ${name}: ${value}\n`), name);
+    }
+  });
+
+  it('answers a path with no file behind it with the app and a 200, after the files', () => {
+    const fallback = routes[phase('filesystem') + 1];
+
+    assert.equal(fallback.dest, '/index.html');
+    assert.ok(new RegExp(fallback.src).test('/annonces/42'));
+    assert.equal(fallback.status, undefined);
+    assert.equal(fallback.headers['Cache-Control'], 'no-cache');
+  });
+
+  it('caches what _headers caches, and only on files that exist', () => {
+    const forGood = 'public, max-age=31536000, immutable';
+
+    assert.ok(phase('filesystem') < phase('hit'));
+    assert.deepEqual(hitCache('/main-ABC123.js'), [forGood]);
+    assert.deepEqual(hitCache('/chunks/styles-ABC123.css'), [forGood]);
+    assert.deepEqual(hitCache('/media/barlow.woff2'), [forGood]);
+    assert.deepEqual(hitCache('/'), ['no-cache']);
+    assert.deepEqual(hitCache('/index.html'), ['no-cache']);
+    assert.deepEqual(hitCache('/robots.txt'), []);
+    for (const route of routes.slice(0, phase('hit'))) {
+      assert.doesNotMatch(route.headers?.['Cache-Control'] ?? '', /immutable/);
+    }
   });
 });
