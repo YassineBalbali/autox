@@ -22,7 +22,7 @@ public class TestDatabaseCleaner {
     @Transactional
     public void truncateTransactionalTables() {
         jdbcTemplate.execute("""
-                TRUNCATE TABLE message_report, message, conversation, moderation_action, listing_feature, listing_image_variant,
+                TRUNCATE TABLE search_interpret_usage, message_report, message, conversation, moderation_action, listing_feature, listing_image_variant,
                                listing_image, listing_price_history, listing, refresh_token,
                                password_reset_token, throttle_counter, pro_profile, app_user
                 RESTART IDENTITY CASCADE

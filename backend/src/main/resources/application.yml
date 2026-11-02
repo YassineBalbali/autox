@@ -201,6 +201,10 @@ autox:
       conversations-per-window: 10
       conversation-window: P1D
 
+  admin:
+    # How long the dashboard's figures are reused before they are counted again.
+    stats-ttl: PT1M
+
   listing:
     # A published listing stays live for this long, then the sweeper expires it.
     # Renewing resets the window from the moment of renewal.

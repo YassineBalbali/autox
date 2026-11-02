@@ -181,8 +181,9 @@ public class MarketPrice {
      * The comparables of the listing aliased {@code l}, as columns {@code mp.comparables} and
      * {@code mp.median}, the median of their prices adjusted to the listing. Joined to
      * nothing for a listing that cannot have an indicator, so those columns are then null.
+     * Public for the admin statistics, which count listings by level with this same rule.
      */
-    static final String LATERAL = """
+    public static final String LATERAL = """
              LEFT JOIN LATERAL (
                 SELECT count(*) AS comparables,
                        percentile_cont(0.5) WITHIN GROUP (ORDER BY %1$s) AS median
@@ -192,7 +193,7 @@ public class MarketPrice {
             """.formatted(ADJUSTED_PRICE, comparable(YEAR_SPAN, true, true));
 
     /** The level of the listing aliased {@code l}, or null; needs {@link #LATERAL}. */
-    static final String LEVEL = """
+    public static final String LEVEL = """
             CASE WHEN mp.comparables >= %1$d THEN
                 CASE WHEN l.price_amount <= (1 - %2$s) * mp.median THEN 'GOOD_DEAL'
                      WHEN l.price_amount >= (1 + %2$s) * mp.median THEN 'ABOVE_MARKET'
