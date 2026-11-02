@@ -1,0 +1,188 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+// The moderation page's label, for the same part of the site.
+.dash__section {
+  color: var(--c-navy);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dash__state {
+  padding-block: var(--s-5);
+}
+
+.dash__heading {
+  margin: 0 0 var(--s-2);
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+}
+
+.dash__note {
+  margin: var(--s-2) 0 0;
+  font-size: var(--t-xs);
+}
+
+// ---- the five states --------------------------------------------------------
+
+.dash__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.dash__tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-0);
+  padding: var(--s-3);
+}
+
+// The one figure here someone has to act on.
+.dash__tile--queue {
+  // A shadow, not a border: the figure stays level with its neighbours'.
+  box-shadow: inset 0 3px 0 var(--c-accent);
+}
+
+.dash__label {
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+}
+
+.dash__figure {
+  font-size: var(--t-xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash__demo {
+  min-height: 1em;
+  font-size: var(--t-xs);
+  font-weight: var(--fw-regular);
+  color: var(--c-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash__demo--inline {
+  display: block;
+}
+
+.dash__link {
+  margin-top: var(--s-1);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-accent);
+
+  &:hover {
+    color: var(--c-accent-strong);
+  }
+
+  @include t.touch {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+// ---- panels -----------------------------------------------------------------
+
+.dash__columns {
+  display: grid;
+  gap: var(--s-4);
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.dash__columns--activity {
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+}
+
+.dash__panel {
+  min-width: 0;
+  padding: var(--s-3) var(--s-4);
+}
+
+.dash__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.dash__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+  cursor: pointer;
+
+  @include t.touch {
+    min-height: 44px;
+  }
+}
+
+.dash__charts {
+  display: grid;
+  gap: var(--s-4);
+
+  @media (min-width: t.$bp-md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+// ---- tables -----------------------------------------------------------------
+
+.dash__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+
+  th,
+  td {
+    padding: var(--s-1) 0;
+    border-bottom: 1px solid var(--c-line);
+    text-align: left;
+    vertical-align: baseline;
+  }
+
+  thead th {
+    font-size: var(--t-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--c-ink-faint);
+  }
+
+  tbody th {
+    font-weight: var(--fw-regular);
+    color: var(--c-ink);
+  }
+
+  tbody tr:last-child th,
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+.dash__table .dash__num {
+  padding-left: var(--s-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
