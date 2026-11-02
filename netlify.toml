@@ -13,11 +13,16 @@
   command = "npm run build"
   # Relative to base.
   publish = "dist/frontend/browser"
-  # No `ignore` command: Netlify already skips a build when nothing under the base directory
-  # changed, so a backend-only commit costs no credits. A custom one comparing commits would
-  # also cancel the manual rebuild a changed build variable needs, since the commit is the
-  # same. The flip side: a commit that changes only this file does not rebuild either —
-  # trigger one by hand (docs/deployment.md, step 6).
+  # Runs from the base directory; 0 skips the build, anything else builds it. Three rules:
+  #   - every context but production is skipped: no deploy previews, no branch deploys;
+  #   - a production build of the commit already built runs: that is a manual rebuild, the only
+  #     way a changed build variable reaches the site;
+  #   - otherwise production builds only if something under frontend/ changed, which is
+  #     Netlify's own default, restated because this command replaces it. A commit that changes
+  #     only this file does not rebuild either: trigger one by hand (docs/deployment.md, step 6).
+  #     Commits it cannot compare build.
+  # frontend/scripts/deploy-config.test.mjs runs this line against a real repository.
+  ignore = '''[ "$CONTEXT" != production ] || { [ "$CACHED_COMMIT_REF" != "$COMMIT_REF" ] && git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- . ; } || exit 1'''
 
 [build.environment]
   # CI's version: the October 2026 security release of Node 24. Keep the two in step.

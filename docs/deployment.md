@@ -301,9 +301,10 @@ browser keeps it.
 
 `netlify.toml` at the repository root holds the build settings: base directory
 `frontend`, build command `npm run build`, publish directory `dist/frontend/browser`,
-and Node 24.22.1. Netlify itself skips the build when a commit changes nothing under
-`frontend/`, so a backend-only commit costs no credits. A change to `netlify.toml` alone
-does not rebuild either, for the same reason.
+and Node 24.22.1. Its `ignore` command builds production only, and only when a commit
+changes something under `frontend/`, so a backend-only commit costs no credits and pull
+requests get no preview. A change to `netlify.toml` alone does not rebuild either, for the
+same reason.
 
 1. app.netlify.com → **Add new project → Import an existing project → GitHub** → choose
    `YassineBalbali/autox`.
@@ -343,8 +344,9 @@ headers, while `robots.txt`, the preview image and the scripts were served as fi
 Netlify's `_headers` parser read every rule without error.
 
 **Credits.** The free plan has 300 credits a month. A production deploy costs 15 and
-bandwidth 20 per GB; deploy previews are free. That allows about fifteen to twenty
-production deploys a month. Backend-only commits do not count: their builds are skipped.
+bandwidth 20 per GB. That allows about fifteen to twenty production deploys a month. Once
+the balance is gone, Netlify's documentation says every site on the account is paused until
+the next cycle. Backend-only commits do not count: their builds are skipped.
 Photos are served by Supabase, not Netlify, so the site's own bandwidth is small.
 
 ## Step 6 — Close the loop
@@ -363,6 +365,45 @@ Open the site. If Netlify or Render gave you a different URL from the one you pl
 Supabase needs no change: it has no origin list.
 
 A custom domain later means the same edits, with the new origin.
+
+## Moving the site to Vercel
+
+`frontend/vercel.json` holds the build. The dashboard only needs the root directory and the
+three build variables:
+
+1. vercel.com → **Add New → Project** → import `YassineBalbali/autox`. **Project Name** sets
+   the address: `<name>.vercel.app`. **Root Directory**: `frontend`. **Framework Preset**:
+   Other. Leave the build and output overrides off: `vercel.json` wins over them.
+2. Add `AUTOX_API_BASE_URL`, `AUTOX_STORAGE_ORIGINS` and `AUTOX_SITE_URL` for the Production
+   environment, with the values in step 5 and the new address as `AUTOX_SITE_URL`. Deploy. If
+   Vercel gave a different address, correct `AUTOX_SITE_URL` and redeploy.
+3. **Render → Environment**: add the new origin to `AUTOX_CORS_ALLOWED_ORIGINS`, after a comma
+   and keeping the Netlify one, so both sites work during the move. Once the new site is
+   checked, point `AUTOX_PASSWORD_RESET_URL` at it: there is only one, so reset links open
+   whichever site it names.
+
+Three things differ from Netlify:
+
+- **Only `main` deploys.** `git.deploymentEnabled` turns off every other branch. Its rule is
+  `**`, because `*` does not match a slash, and Dependabot's branches have several. Vercel
+  reads the rule from the commit it is given, so a branch cut before this file existed has no
+  such rule: rebase it, or it deploys.
+- **The Node version comes from `scripts/pinned-node.sh`.** Vercel offers majors only, so the
+  commands in `vercel.json` fetch 24.22.1 and check its checksum. Vercel's build image has
+  Java 11, the level the generator's jar is compiled for.
+- **The headers are in `.vercel/output/config.json`,** written by `npm run build` from the same
+  functions as `_headers`. `vercel.json` is read before the build, too early to know the
+  origins in the policy, and with a Build Output folder there is no output directory to set.
+
+Check the result, with `SITE` the new address:
+
+```bash
+curl -sI SITE/annonces/1       # 200, Content-Security-Policy naming API and storage, no-cache
+curl -sI SITE/robots.txt       # 200, text/plain: a real file is not replaced by the app
+curl -sI SITE/missing.js       # 200, the app, and no year-long Cache-Control
+```
+
+and one hashed script from the page source, which should carry `immutable`.
 
 ## Step 7 — The uptime monitor
 
