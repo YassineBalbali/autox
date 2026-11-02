@@ -147,6 +147,8 @@ the real photo upload and the real publish step.
   those rows by id plus their stored photos — never "anything that looks like demo data".
   A make that was already in the catalogue is reused, not recorded, and so not deleted.
 - **Not sign-in-able.** The accounts have random passwords nobody is told.
+- **Already moderated.** The listings are created approved, by the system rather than by an
+  administrator, so the moderation queue holds what visitors publish.
 
 Sixty, because a page of results is 24: it takes more than two pages before "voir plus"
 and keyset pagination can be exercised in a browser at all. Fourteen are written by hand
@@ -244,8 +246,8 @@ SQL
 ```
 
 Sign out and in again — the role travels in the access token — and "Administration"
-appears in the account menu. The demo seed's listings are all awaiting review, so the
-moderation queue has sixty entries to try it on.
+appears in the account menu. The demo seed's listings are created approved, so they are under
+"En ligne" and the queue is empty: publish a listing from another account to try it.
 
 ### Ports already in use
 

@@ -267,6 +267,22 @@ appears, do not deploy, restart or save environment variables, and do not push t
 branch Render deploys from if auto-deploy is on: each of those replaces the instance and
 stops the seed again.
 
+**To clear demo listings out of the moderation queue** (a database seeded before they were
+created approved), no reset is needed either. Deploy once with `SPRING_PROFILES_ACTIVE=demo`
+and no `AUTOX_DEMO_ACTION`, then remove the profile. At startup the seed approves the
+listings in its ledger that are online and unreviewed, and changes nothing else. A listing a
+moderator refused or removed keeps that verdict, and visitors' listings stay in the queue. The
+approval is the system's, so it adds nothing to the moderation trail. The log shows:
+
+```
+Demo catalogue: complete, nothing added (18 makes).
+Demo listings: approved 152 awaiting moderation, by the system; nothing else changed.
+Demo data is already present (152 listings); nothing seeded.
+```
+
+A start with nothing left to approve says `Demo listings: none awaiting moderation, nothing
+approved.` in its place. Running it again is harmless.
+
 **To reset the demo later** (once visitors have filled it with test listings): deploy once
 with `SPRING_PROFILES_ACTIVE=demo` **and** `AUTOX_DEMO_ACTION=remove`, then once with only
 the profile (seed again), then remove both. Removal deletes exactly what the seed recorded.
@@ -503,7 +519,8 @@ There is no endpoint that makes an administrator, on purpose:
    It should show `ADMIN`. If it shows no row, the address does not match as typed:
    emails are stored in lower case, so type it in lower case.
 3. **Sign out and in again**: the role travels in the access token. "Administration" then
-   appears in the account menu, with the seeded listings waiting in the moderation queue.
+   appears in the account menu. The queue holds only what visitors published: seeded listings
+   are created approved, and are under "En ligne".
 
 ## Step 10 — Check from outside
 
