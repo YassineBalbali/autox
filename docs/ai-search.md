@@ -191,6 +191,18 @@ cannot describe a filter that is not applied, and it cannot carry model text to 
   shared link is a search, not a conversation. The note survives a reload and a return, stays
   while chips are removed, and goes when a new search is typed.
 
+## Usage counts
+
+The admin dashboard shows how the feature is used, from one row per Paris day in
+`search_interpret_usage` (V18):
+
+- `requests`: those that reached the model, so not ones refused for length or by the rate limit;
+- `failed`: of those, the ones answered 503;
+- `with_not_understood`: of the answered ones, those with at least one part not understood.
+
+**Counts only.** The table has no column a query could be stored in, and a test holds it to
+that. A failure to count is logged and never fails the search.
+
 ## Evaluation
 
 `eval/ai-search/` holds the evaluation, which is not part of CI:

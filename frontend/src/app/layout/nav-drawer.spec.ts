@@ -168,7 +168,7 @@ describe('NavDrawer', () => {
     auth.setUser({ id: 'u-1', email: 'admin@exemple.fr', role: UserRole.ADMIN });
     await fixture.whenStable();
 
-    expect(links()).toContainEqual(['Administration', '/admin/moderation']);
+    expect(links()).toContainEqual(['Administration', '/admin']);
   });
 
   it('shows how many conversations wait, in figures and in words', async () => {

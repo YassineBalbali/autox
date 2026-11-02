@@ -132,7 +132,7 @@ describe('routes', () => {
     expect(results.canActivate).toBeUndefined();
   });
 
-  it('guards the administration by role, and sends /admin to its one screen', () => {
+  it('guards the administration by role, with the dashboard as its landing page', () => {
     const moderation = routes.find((route) => route.path === 'admin/moderation')!;
     // A role guard, not the session guard: being signed in is not enough. (It also turns
     // away a visitor with no session, which is why it stands alone.)
@@ -141,8 +141,11 @@ describe('routes', () => {
     expect(moderation.title).toContain('AutoX');
 
     const index = routes.find((route) => route.path === 'admin')!;
-    expect(index.redirectTo).toBe('admin/moderation');
+    expect(index.redirectTo).toBeUndefined();
     expect(index.pathMatch).toBe('full');
+    expect(index.canActivate).toHaveLength(1);
+    expect(index.canActivate![0]).not.toBe(authGuard);
+    expect(index.title).toContain('Tableau de bord');
     // Nothing else lives under /admin unguarded.
     for (const route of routes.filter((candidate) => candidate.path?.startsWith('admin/'))) {
       expect(route.canActivate, route.path).toHaveLength(1);

@@ -286,7 +286,7 @@ describe('SiteHeader', () => {
 
       expect(entries()[0]).toBe('Administration');
       const link = Array.from(fixture.nativeElement.querySelectorAll('.account-menu__item'))[0] as HTMLAnchorElement;
-      expect(link.getAttribute('href')).toBe('/admin/moderation');
+      expect(link.getAttribute('href')).toBe('/admin');
     });
 
     it.each([UserRole.PARTICULIER, UserRole.PROFESSIONNEL])('is not offered to a %s', async (role) => {

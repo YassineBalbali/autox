@@ -183,11 +183,19 @@ export const routes: Routes = [
 
   // ---- administration -----------------------------------------------------
   //
-  // One screen today. `roleGuard` also turns away a visitor with no session, so it is
-  // the only guard needed — and it is a courtesy: the API refuses every call these
-  // screens make to anyone who is not an administrator.
+  // `roleGuard` also turns away a visitor with no session, so it is the only guard needed —
+  // and it is a courtesy: the API refuses every call these screens make to anyone who is not
+  // an administrator.
 
-  { path: 'admin', pathMatch: 'full', redirectTo: 'admin/moderation' },
+  {
+    // The landing page: what is happening on the site, with a way into the queue.
+    path: 'admin',
+    pathMatch: 'full',
+    canActivate: [roleGuard(UserRole.ADMIN)],
+    title: 'Tableau de bord · AutoX',
+    loadComponent: () =>
+      import('./features/admin/admin-dashboard-page').then((m) => m.AdminDashboardPage),
+  },
   {
     // The list and the page number are in the query string: `?vue=`, `?page=`.
     path: 'admin/moderation',

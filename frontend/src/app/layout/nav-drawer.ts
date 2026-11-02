@@ -121,7 +121,7 @@ import { NavItem } from './primary-nav';
               Appareils connectés
             </a>
             @if (isAdmin()) {
-              <a class="drawer__link" routerLink="/admin/moderation" routerLinkActive="drawer__link--active" [replaceUrl]="true" (click)="leave()" i18n="@@headerAdmin">
+              <a class="drawer__link" routerLink="/admin" routerLinkActive="drawer__link--active" [replaceUrl]="true" (click)="leave()" i18n="@@headerAdmin">
                 Administration
               </a>
             }
