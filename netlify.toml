@@ -1,4 +1,5 @@
-# The site on Netlify. docs/deployment.md, step 5, is the full procedure.
+# The site on Netlify, until it is shut down: the site is now on Vercel (frontend/vercel.json).
+# docs/deployment.md, step 5, says what to remove with this file.
 #
 # Only the build is described here. The security headers and the single-page fallback are
 # written into the published folder by `npm run build` (scripts/build.mjs) as _headers and
@@ -19,7 +20,7 @@
   #     way a changed build variable reaches the site;
   #   - otherwise production builds only if something under frontend/ changed, which is
   #     Netlify's own default, restated because this command replaces it. A commit that changes
-  #     only this file does not rebuild either: trigger one by hand (docs/deployment.md, step 6).
+  #     only this file does not rebuild either: trigger one by hand (docs/deployment.md, step 5).
   #     Commits it cannot compare build.
   # frontend/scripts/deploy-config.test.mjs runs this line against a real repository.
   ignore = '''[ "$CONTEXT" != production ] || { [ "$CACHED_COMMIT_REF" != "$COMMIT_REF" ] && git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- . ; } || exit 1'''

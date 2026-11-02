@@ -7,7 +7,7 @@ The public demo runs on four free services:
 | Database | **Neon**, free plan | PostgreSQL 16 that sleeps after five idle minutes |
 | Photos | **Supabase Storage**, free plan | A private bucket, reached over Supabase's S3-compatible endpoint; the browser uploads to it with URLs the API signs |
 | API | **Render**, free web service | The Docker image in `backend/Dockerfile`, 512 MB, a tenth of a CPU |
-| Site | **Netlify**, free plan | The Angular build, with its security headers in `_headers` and its single-page fallback in `_redirects` |
+| Site | **Vercel**, Hobby plan | The Angular build, with its security headers and single-page fallback in `.vercel/output/config.json` |
 
 Do the steps below in order. Each service needs values from those created before it. The
 one circular dependency (the API and the site each need the other's URL) is closed in
@@ -28,16 +28,16 @@ committed, pasted in an issue, or put anywhere but the service that needs them.
 | `S3_ACCESS_KEY_ID` | Supabase (step 2) — **secret** | |
 | `S3_SECRET_ACCESS_KEY` | Supabase (step 2) — **secret** | |
 | `API` | The Render service name (step 3) | `https://autox-api-kyuo.onrender.com` |
-| `SITE` | The Netlify project name (step 5) | `https://autox-demo.netlify.app` |
+| `SITE` | The Vercel project name (step 5) | `https://autox-demo.vercel.app` |
 
-**Choose the two names now**: a Render service name and a Netlify project name (it becomes
-`<name>.netlify.app`). **Expect Render to add a suffix.** The real deployment asked for
+**Choose the two names now**: a Render service name and a Vercel project name (it becomes
+`<name>.vercel.app`). **Expect Render to add a suffix.** The real deployment asked for
 `autox-api` and got `https://autox-api-kyuo.onrender.com`, because Render appends random
-characters when a name is taken, which short names usually are. Netlify kept
+characters when a name is taken, which short names usually are. Vercel kept
 `autox-demo`. Either way, the real URL is the one the service shows you once it exists, and
 step 6 corrects everything that used the planned one.
 
-**Commit and push first.** Render and Netlify build from GitHub, so they deploy what is on
+**Commit and push first.** Render and Vercel build from GitHub, so they deploy what is on
 `main`, not what is on your machine.
 
 ---
@@ -114,7 +114,7 @@ keys below can reach every bucket in the project, so **give AutoX a project of i
 
    ```bash
    curl -s -i -X OPTIONS "S3_ENDPOINT/autox-photos/cors-check.jpg" \
-     -H "Origin: https://autox-demo.netlify.app" \
+     -H "Origin: https://autox-demo.vercel.app" \
      -H "Access-Control-Request-Method: PUT" \
      -H "Access-Control-Request-Headers: content-type" | grep -i -E '^HTTP|^access-control'
    ```
@@ -153,8 +153,8 @@ Every photo a visitor views is egress.
    | `AUTOX_S3_ENDPOINT` | `S3_ENDPOINT` — `https://<ref>.supabase.co/storage/v1/s3` | Supabase |
    | `AUTOX_S3_ACCESS_KEY` | `S3_ACCESS_KEY_ID` | Supabase |
    | `AUTOX_S3_SECRET_KEY` | `S3_SECRET_ACCESS_KEY` | Supabase |
-   | `AUTOX_CORS_ALLOWED_ORIGINS` | `SITE` — e.g. `https://autox-demo.netlify.app`, no trailing slash | Netlify (planned) |
-   | `AUTOX_PASSWORD_RESET_URL` | `SITE` + `/reinitialiser-mot-de-passe` | Netlify (planned) |
+   | `AUTOX_CORS_ALLOWED_ORIGINS` | `SITE` — e.g. `https://autox-demo.vercel.app`, no trailing slash. While Netlify is still up, comma-separated with no spaces: `https://autox-demo.vercel.app,https://autox-demo.netlify.app`. The Netlify origin is transitional: remove it when Netlify is shut down (step 5) | Vercel (planned) |
+   | `AUTOX_PASSWORD_RESET_URL` | `SITE` + `/reinitialiser-mot-de-passe` — e.g. `https://autox-demo.vercel.app/reinitialiser-mot-de-passe` | Vercel (planned) |
    | `AUTOX_JWT_ISSUER` | `API` — e.g. `https://autox-api-kyuo.onrender.com` | Render (planned) |
 
    Render asks for these **only this once**. Later changes go through the service's
@@ -328,7 +328,58 @@ A start that finds nothing to add says `Demo catalogue: complete, nothing added 
 Running it again is harmless. The new makes reach a visitor's make list within the hour the
 browser keeps it.
 
-## Step 5 — Netlify: the site
+## Step 5 — Vercel: the site
+
+`frontend/vercel.json` holds the build. The dashboard only needs the root directory and the
+three build variables:
+
+1. vercel.com → **Add New → Project** → import `YassineBalbali/autox`. **Project Name** sets
+   the address: `<name>.vercel.app`. **Root Directory**: `frontend`. **Framework Preset**:
+   Other. Leave the build and output overrides off: `vercel.json` wins over them.
+2. Add these for the Production environment. They are compiled into the site, because a static
+   site has no server to read them at run time. Changing one means rebuilding.
+
+   | Variable | Value | From |
+   |---|---|---|
+   | `AUTOX_API_BASE_URL` | `API` — e.g. `https://autox-api-kyuo.onrender.com` | Render |
+   | `AUTOX_STORAGE_ORIGINS` | `S3_ENDPOINT` — the full endpoint is fine; the build keeps its origin, `https://<ref>.supabase.co` | Supabase |
+   | `AUTOX_SITE_URL` | `SITE` — e.g. `https://autox-demo.vercel.app` | Vercel |
+
+3. **Deploy.** At the end, the build log prints the API, storage and site URLs it used, and
+   the security policy. Check them there.
+
+Three things about this build:
+
+- **Only `main` deploys.** `git.deploymentEnabled` turns off every other branch. Its rule is
+  `**`, because `*` does not match a slash, and Dependabot's branches have several. Vercel
+  reads the rule from the commit it is given, so a branch cut before this file existed has no
+  such rule: rebase it, or it deploys.
+- **The Node version comes from `scripts/pinned-node.sh`.** Vercel offers majors only, so the
+  commands in `vercel.json` fetch 24.22.1 and check its checksum. Vercel's build image has
+  Java 11, the level the generator's jar is compiled for.
+- **The headers are in `.vercel/output/config.json`,** written by `npm run build` from the same
+  functions as `_headers`. `vercel.json` is read before the build, too early to know the
+  origins in the policy, and with a Build Output folder there is no output directory to set.
+
+Check the result, with `SITE` the new address:
+
+```bash
+curl -sI SITE/annonces/1       # 200, Content-Security-Policy naming API and storage, no-cache
+curl -sI SITE/robots.txt       # 200, text/plain: a real file is not replaced by the app
+curl -sI SITE/missing.js       # 200, the app, and no year-long Cache-Control
+```
+
+and one hashed script from the page source, which should carry `immutable`.
+
+### Netlify, until it is shut down
+
+The site moved to Vercel in November 2026. Netlify stays up during the move, which is why its
+origin is still in `AUTOX_CORS_ALLOWED_ORIGINS`. **To shut it down:** remove
+`https://autox-demo.netlify.app` from that variable, delete the site on Netlify, and delete
+`netlify.toml`. The rest of this section then goes too.
+
+A rebuild is the only way a changed build variable reaches this site: **Deploys → Trigger deploy
+→ Clear cache and deploy project**.
 
 `netlify.toml` at the repository root holds the build settings: base directory
 `frontend`, build command `npm run build`, publish directory `dist/frontend/browser`,
@@ -382,59 +433,18 @@ Photos are served by Supabase, not Netlify, so the site's own bandwidth is small
 
 ## Step 6 — Close the loop
 
-Open the site. If Netlify or Render gave you a different URL from the one you planned:
+Open the site. If Vercel or Render gave you a different URL from the one you planned:
 
 - **Render → Environment**: correct `AUTOX_CORS_ALLOWED_ORIGINS`, `AUTOX_PASSWORD_RESET_URL`
   and `AUTOX_JWT_ISSUER`, then save (it redeploys).
-- **Netlify → Environment variables**: correct `AUTOX_API_BASE_URL` / `AUTOX_SITE_URL`, then
-  **Deploys → Trigger deploy → Clear cache and deploy project**. A rebuild is the only way a
-  build-time value changes. Check that the log ends with the `[build]` lines showing the new
-  values. If it says instead that no changes were detected in the base directory, rebuild
-  through a **build hook**: Project configuration → Build & deploy → Build hooks → Add, then
-  `curl -X POST -d {} <hook URL>`. Netlify never skips a build a hook triggers.
+- **Vercel → Settings → Environment Variables**: correct `AUTOX_API_BASE_URL` /
+  `AUTOX_SITE_URL`, then **Deployments → the latest one → Redeploy**. A rebuild is the only way
+  a build-time value changes. Check that the log ends with the `[build]` lines showing the new
+  values.
 
 Supabase needs no change: it has no origin list.
 
 A custom domain later means the same edits, with the new origin.
-
-## Moving the site to Vercel
-
-`frontend/vercel.json` holds the build. The dashboard only needs the root directory and the
-three build variables:
-
-1. vercel.com → **Add New → Project** → import `YassineBalbali/autox`. **Project Name** sets
-   the address: `<name>.vercel.app`. **Root Directory**: `frontend`. **Framework Preset**:
-   Other. Leave the build and output overrides off: `vercel.json` wins over them.
-2. Add `AUTOX_API_BASE_URL`, `AUTOX_STORAGE_ORIGINS` and `AUTOX_SITE_URL` for the Production
-   environment, with the values in step 5 and the new address as `AUTOX_SITE_URL`. Deploy. If
-   Vercel gave a different address, correct `AUTOX_SITE_URL` and redeploy.
-3. **Render → Environment**: add the new origin to `AUTOX_CORS_ALLOWED_ORIGINS`, after a comma
-   and keeping the Netlify one, so both sites work during the move. Once the new site is
-   checked, point `AUTOX_PASSWORD_RESET_URL` at it: there is only one, so reset links open
-   whichever site it names.
-
-Three things differ from Netlify:
-
-- **Only `main` deploys.** `git.deploymentEnabled` turns off every other branch. Its rule is
-  `**`, because `*` does not match a slash, and Dependabot's branches have several. Vercel
-  reads the rule from the commit it is given, so a branch cut before this file existed has no
-  such rule: rebase it, or it deploys.
-- **The Node version comes from `scripts/pinned-node.sh`.** Vercel offers majors only, so the
-  commands in `vercel.json` fetch 24.22.1 and check its checksum. Vercel's build image has
-  Java 11, the level the generator's jar is compiled for.
-- **The headers are in `.vercel/output/config.json`,** written by `npm run build` from the same
-  functions as `_headers`. `vercel.json` is read before the build, too early to know the
-  origins in the policy, and with a Build Output folder there is no output directory to set.
-
-Check the result, with `SITE` the new address:
-
-```bash
-curl -sI SITE/annonces/1       # 200, Content-Security-Policy naming API and storage, no-cache
-curl -sI SITE/robots.txt       # 200, text/plain: a real file is not replaced by the app
-curl -sI SITE/missing.js       # 200, the app, and no year-long Cache-Control
-```
-
-and one hashed script from the page source, which should carry `immutable`.
 
 ## Step 7 — The uptime monitor
 
@@ -624,9 +634,9 @@ variables above):
 - **Cold starts.** If the monitor stops, the first visitor waits for a full start (about
   three minutes). If Neon is asleep, the first query waits about a second. If Supabase has
   paused, photos are missing until it is resumed.
-- **Netlify deploy previews** (pull requests) get their own URLs. Those URLs are not in
-  `AUTOX_CORS_ALLOWED_ORIGINS`, so the previews load but cannot reach the API. That is
-  deliberate.
+- **No preview deployments.** Vercel deploys `main` only, and Netlify builds production only.
+  A preview's URL would not be in `AUTOX_CORS_ALLOWED_ORIGINS` anyway, so it could not reach
+  the API.
 - **Swagger UI** is public at `API/swagger-ui.html`, which for a portfolio is arguably the
   point.
 
