@@ -2506,6 +2506,38 @@
         ]
       }
     },
+    "/api/v1/admin/stats": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Figures for the dashboard, each split into real activity and demo seed.",
+        "description": "Figures for the dashboard, each split into real activity and demo seed. At most about a\n minute old: see <code>generatedAt</code>.",
+        "operationId": "stats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStats"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/message-reports": {
       "get": {
         "tags": [
@@ -5604,6 +5636,229 @@
             "type": "boolean"
           }
         }
+      },
+      "Activity": {
+        "type": "object",
+        "description": "Listings created, accounts registered and messages sent in a period.",
+        "properties": {
+          "newListings": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "registrations": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "messages": {
+            "$ref": "#/components/schemas/Split"
+          }
+        },
+        "required": [
+          "messages",
+          "newListings",
+          "registrations"
+        ]
+      },
+      "AdminStats": {
+        "type": "object",
+        "description": "Figures for the admin dashboard, real activity and demo seed apart.",
+        "properties": {
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "when these figures were computed; they are cached for about a minute"
+          },
+          "demoDataPresent": {
+            "type": "boolean",
+            "description": "whether the demo ledger exists, i.e. whether the demo columns can be\n                        anything but zero"
+          },
+          "listings": {
+            "$ref": "#/components/schemas/ListingsByStatus",
+            "description": "listings now, by state"
+          },
+          "last7Days": {
+            "$ref": "#/components/schemas/Activity",
+            "description": "activity in the last 7 × 24 hours"
+          },
+          "last30Days": {
+            "$ref": "#/components/schemas/Activity",
+            "description": "activity in the last 30 × 24 hours"
+          },
+          "daily": {
+            "type": "array",
+            "description": "new listings and registrations per Paris day, the 30 days up to\n                        today, oldest first, days without any included",
+            "items": {
+              "$ref": "#/components/schemas/DailyActivity"
+            }
+          },
+          "topMakes": {
+            "type": "array",
+            "description": "the makes with the most published listings, at most ten, by real\n                        listings first",
+            "items": {
+              "$ref": "#/components/schemas/MakeCount"
+            }
+          },
+          "priceVerdicts": {
+            "$ref": "#/components/schemas/PriceVerdicts",
+            "description": "published listings by price indicator, computed by the same rule as\n                        the badge on the site"
+          },
+          "searchLast7Days": {
+            "$ref": "#/components/schemas/SearchUsage",
+            "description": "natural-language search, the last 7 Paris days including today"
+          },
+          "searchLast30Days": {
+            "$ref": "#/components/schemas/SearchUsage",
+            "description": "the same over 30 days"
+          }
+        },
+        "required": [
+          "daily",
+          "demoDataPresent",
+          "generatedAt",
+          "last30Days",
+          "last7Days",
+          "listings",
+          "priceVerdicts",
+          "searchLast30Days",
+          "searchLast7Days",
+          "topMakes"
+        ]
+      },
+      "DailyActivity": {
+        "type": "object",
+        "description": "New listings and registrations on one Paris day.",
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date"
+          },
+          "newListings": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "registrations": {
+            "$ref": "#/components/schemas/Split"
+          }
+        },
+        "required": [
+          "day",
+          "newListings",
+          "registrations"
+        ]
+      },
+      "ListingsByStatus": {
+        "type": "object",
+        "description": "Listings by state, now.",
+        "properties": {
+          "published": {
+            "$ref": "#/components/schemas/Split",
+            "description": "online: what a visitor can find"
+          },
+          "pendingModeration": {
+            "$ref": "#/components/schemas/Split",
+            "description": "online and not yet reviewed: the moderation queue, a part of\n                          <code>published</code>"
+          },
+          "rejected": {
+            "$ref": "#/components/schemas/Split",
+            "description": "refused by a moderator"
+          },
+          "sold": {
+            "$ref": "#/components/schemas/Split",
+            "description": "marked sold"
+          },
+          "expired": {
+            "$ref": "#/components/schemas/Split",
+            "description": "expired, not renewed"
+          }
+        },
+        "required": [
+          "expired",
+          "pendingModeration",
+          "published",
+          "rejected",
+          "sold"
+        ]
+      },
+      "MakeCount": {
+        "type": "object",
+        "description": "A make and how many listings of it are published.",
+        "properties": {
+          "make": {
+            "type": "string"
+          },
+          "published": {
+            "$ref": "#/components/schemas/Split"
+          }
+        },
+        "required": [
+          "make",
+          "published"
+        ]
+      },
+      "PriceVerdicts": {
+        "type": "object",
+        "description": "Published listings by price indicator.",
+        "properties": {
+          "goodDeal": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "market": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "aboveMarket": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "noVerdict": {
+            "$ref": "#/components/schemas/Split"
+          }
+        },
+        "required": [
+          "aboveMarket",
+          "goodDeal",
+          "market",
+          "noVerdict"
+        ]
+      },
+      "SearchUsage": {
+        "type": "object",
+        "description": "Natural-language search usage in a period: counts only.",
+        "properties": {
+          "requests": {
+            "type": "integer",
+            "format": "int64",
+            "description": "requests that reached the language model"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int64",
+            "description": "of those, answered 503 (timeout, quota, provider error)"
+          },
+          "withNotUnderstood": {
+            "type": "integer",
+            "format": "int64",
+            "description": "of the answered ones, those with at least one part not understood"
+          }
+        },
+        "required": [
+          "failed",
+          "requests",
+          "withNotUnderstood"
+        ]
+      },
+      "Split": {
+        "type": "object",
+        "description": "A count split into real activity and demo seed.",
+        "properties": {
+          "real": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "demo": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "demo",
+          "real"
+        ]
       },
       "ContextMessage": {
         "type": "object",

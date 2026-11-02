@@ -344,6 +344,35 @@ class SearchInterpretIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.interpret").value(true));
     }
 
+    // ---- usage counts -------------------------------------------------------------------
+
+    @Test
+    @DisplayName("each answered or failed request is counted by outcome; refused ones are not")
+    void usageCounts() throws Exception {
+        model.answer(answer(Map.of("bodyType", List.of("SUV"))));
+        interpret("SUV").andExpect(status().isOk());
+        model.answer(answer(Map.of("notUnderstood", List.of("rouge"))));
+        interpret("rouge").andExpect(status().isOk());
+        model.fail(Reason.TIMEOUT);
+        interpret("SUV diesel").andExpect(status().isServiceUnavailable());
+        // Too long: never reached the model.
+        interpret("a".repeat(201)).andExpect(status().isBadRequest());
+
+        assertThat(jdbcTemplate.queryForMap(
+                        "SELECT sum(requests) AS r, sum(failed) AS f, sum(with_not_understood) AS n FROM search_interpret_usage"))
+                .containsEntry("r", 3L).containsEntry("f", 1L).containsEntry("n", 1L);
+    }
+
+    @Test
+    @DisplayName("the usage table has counts and a date, and no column a query could be stored in")
+    void usageStoresCountsOnly() {
+        assertThat(jdbcTemplate.queryForList("""
+                SELECT column_name || ':' || data_type FROM information_schema.columns
+                 WHERE table_name = 'search_interpret_usage'""", String.class))
+                .containsExactlyInAnyOrder("day:date", "requests:integer", "failed:integer",
+                        "with_not_understood:integer");
+    }
+
     // ---- helpers ------------------------------------------------------------------------
 
     private ResultActions interpret(String query) throws Exception {

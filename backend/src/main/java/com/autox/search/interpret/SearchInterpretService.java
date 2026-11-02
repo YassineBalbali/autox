@@ -27,13 +27,15 @@ public class SearchInterpretService {
     private final InterpretationValidator validator;
     private final InterpretRateLimit rateLimit;
     private final CurrencyRepository currencies;
+    private final InterpretUsage usage;
 
     SearchInterpretService(SearchInterpreter interpreter, InterpretationValidator validator,
-                           InterpretRateLimit rateLimit, CurrencyRepository currencies) {
+                           InterpretRateLimit rateLimit, CurrencyRepository currencies, InterpretUsage usage) {
         this.interpreter = interpreter;
         this.validator = validator;
         this.rateLimit = rateLimit;
         this.currencies = currencies;
+        this.usage = usage;
     }
 
     public SearchCapabilities capabilities() {
@@ -55,9 +57,14 @@ public class SearchInterpretService {
         try {
             answer = interpreter.interpret(text);
         } catch (InterpreterUnavailableException e) {
+            usage.record(InterpretUsage.Outcome.FAILED);
             throw ApiException.interpreterUnavailable();
         }
         int minorUnit = currencies.findById(CURRENCY).map(Currency::getMinorUnit).orElse((short) 2);
-        return validator.validate(answer, text, Year.now().getValue(), minorUnit);
+        InterpretResponse response = validator.validate(answer, text, Year.now().getValue(), minorUnit);
+        // Counted once the answer is known; never the text, only how it went (see InterpretUsage).
+        usage.record(response.notUnderstood().isEmpty()
+                ? InterpretUsage.Outcome.UNDERSTOOD : InterpretUsage.Outcome.PARTLY_UNDERSTOOD);
+        return response;
     }
 }
