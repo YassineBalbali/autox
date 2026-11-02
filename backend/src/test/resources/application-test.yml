@@ -56,11 +56,13 @@ autox:
     registration-throttle:
       enabled: false
 
+  admin:
+    # Uncached: a test counts what it has just inserted. The cache itself is tested directly.
+    stats-ttl: PT0S
+
   mail:
-    # Pinned rather than inherited: production reads ${AUTOX_MAIL_PROVIDER:log}, and a
-    # developer who has that variable set for their own reasons should not change what the
-    # suite tests. AccountOperationsIntegrationTest overrides this with a recording sender.
-    provider: log
+    # The provider is pinned on AbstractIntegrationTest, not here: .env is read as environment
+    # variables, which outrank this file.
     # A recognisable value, asserted on in the reset-email test.
     password-reset-url: https://autox.test/reset-password
 
