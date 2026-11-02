@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.autox.catalog.VehicleMake;
 import com.autox.catalog.VehicleMakeRepository;
+import com.autox.listing.ListingRepository;
 import com.autox.storage.ObjectStorage;
 import com.autox.user.AppUser;
 import com.autox.user.UserRole;
@@ -19,8 +20,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ApplicationContext;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
@@ -51,6 +56,7 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
     @Autowired VehicleMakeRepository makes;
     @Autowired ObjectStorage storage;
     @Autowired DemoAccounts demoAccounts;
+    @Autowired ListingRepository listings;
 
     @BeforeEach
     void startFromAnEmptyCatalogue() {
@@ -401,6 +407,86 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
         assertThat(catalogueSnapshot()).isEqualTo(catalogue);
         assertThat(listingSnapshot()).isEqualTo(listingsBefore);
         assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM demo_seed_ledger", Integer.class)).isEqualTo(ledgerRows);
+    }
+
+    @Test
+    @DisplayName("seeded listings are already moderated: approved, online, and with no person in the trail")
+    void seedApprovesItsListings() {
+        demoData.seed();
+
+        assertThat(jdbcTemplate.queryForList("SELECT moderation_status FROM listing WHERE status = 'ACTIVE'", String.class))
+                .hasSize(SEEDED)
+                .containsOnly("APPROVED");
+        assertThat(listings.findAwaitingReview(PageRequest.of(0, 60)).getTotalElements()).isZero();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM moderation_action", Integer.class)).isZero();
+    }
+
+    @Test
+    @DisplayName("a start approves the seed's listings left in the queue, through the ledger, and touches nothing else")
+    void startApprovesWhatAnOlderSeedLeftPending() {
+        demoData.seed();
+        // What an older seed left: everything in the queue...
+        List<java.util.UUID> seeded = ledger.ids(DemoLedger.LISTING);
+        jdbcTemplate.update("UPDATE listing SET moderation_status = 'NOT_REVIEWED'");
+        // ...but for one a moderator refused, one sold and one draft, none of them in the queue.
+        java.util.UUID refused = seeded.get(0);
+        java.util.UUID sold = seeded.get(1);
+        java.util.UUID draft = seeded.get(2);
+        jdbcTemplate.update("UPDATE listing SET status = 'REMOVED', moderation_status = 'REJECTED' WHERE id = ?", refused);
+        jdbcTemplate.update("UPDATE listing SET status = 'SOLD' WHERE id = ?", sold);
+        jdbcTemplate.update("UPDATE listing SET status = 'DRAFT' WHERE id = ?", draft);
+        // And a visitor's listing, in the queue and not the seed's, on a demo model.
+        java.util.UUID[] demoModel = firstDemoModel();
+        java.util.UUID visitor = insertVisitorListing(demoModel[0], demoModel[1]);
+        List<java.util.Map<String, Object>> photosAndAccounts = untouchedSnapshot();
+        List<java.util.Map<String, Object>> everythingButTheVerdict = jdbcTemplate.queryForList("""
+                SELECT id, status, title, description, price_amount, make_id, model_id, seller_id,
+                       published_at, expires_at, created_at, updated_at, deleted_at, version
+                  FROM listing ORDER BY id""");
+
+        assertThat(demoData.seed()).as("no listing created").isZero();
+
+        assertThat(verdictOf(refused)).isEqualTo("REJECTED");
+        assertThat(verdictOf(sold)).isEqualTo("NOT_REVIEWED");
+        assertThat(verdictOf(draft)).isEqualTo("NOT_REVIEWED");
+        assertThat(verdictOf(visitor)).isEqualTo("NOT_REVIEWED");
+        assertThat(seeded.subList(3, SEEDED)).allSatisfy(id -> assertThat(verdictOf(id)).isEqualTo("APPROVED"));
+
+        // The queue now holds the visitor's listing, alone.
+        assertThat(listings.findAwaitingReview(PageRequest.of(0, 60)).map(listing -> listing.getId()).getContent())
+                .containsExactly(visitor);
+        assertThat(jdbcTemplate.queryForList("""
+                SELECT id, status, title, description, price_amount, make_id, model_id, seller_id,
+                       published_at, expires_at, created_at, updated_at, deleted_at, version
+                  FROM listing ORDER BY id""")).isEqualTo(everythingButTheVerdict);
+        assertThat(untouchedSnapshot()).isEqualTo(photosAndAccounts);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM moderation_action", Integer.class)).isZero();
+
+        jdbcTemplate.update("DELETE FROM listing WHERE id = ?", visitor);
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    @DisplayName("the approval says what it did, and a second start finds nothing to do")
+    void approvalIsIdempotentAndSaysSo(CapturedOutput output) {
+        demoData.seed();
+        jdbcTemplate.update("UPDATE listing SET moderation_status = 'NOT_REVIEWED'");
+
+        demoData.seed();
+        assertThat(output).contains(
+                "Demo listings: approved " + SEEDED + " awaiting moderation, by the system; nothing else changed.");
+        assertThat(output).doesNotContain("Demo listings: none awaiting moderation");
+
+        List<java.util.Map<String, Object>> after = listingSnapshot();
+        assertThat(demoData.approvePending()).isZero();
+        demoData.seed();
+
+        assertThat(output).contains("Demo listings: none awaiting moderation, nothing approved.");
+        assertThat(listingSnapshot()).isEqualTo(after);
+    }
+
+    private String verdictOf(java.util.UUID listingId) {
+        return jdbcTemplate.queryForObject("SELECT moderation_status FROM listing WHERE id = ?", String.class, listingId);
     }
 
     /** Every column a top-up could conceivably disturb, of every listing. */

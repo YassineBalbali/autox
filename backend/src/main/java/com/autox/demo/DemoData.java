@@ -115,6 +115,7 @@ class DemoData {
      * switched on across restarts does not pile up more listings each time. It does insert
      * any catalogue make or model added to {@link DemoCatalogue} since ({@link #topUpCatalogue}),
      * and only those: one boot with the profile brings a seeded database's catalogue up to date.
+     * It also approves the seed's listings still awaiting moderation ({@link #approvePending}).
      *
      * @return how many listings were created — zero when the seed was already present
      */
@@ -126,6 +127,7 @@ class DemoData {
             // The catalogue first, and whatever the listings' state: makes and models added to
             // DemoCatalogue since the seed ran are inserted, and nothing else is written.
             topUpCatalogue();
+            approvePending();
             // Only what an earlier seed recorded counts. Removal drops the whole ledger, so a
             // make or model it kept for someone else's listing is not in here, and a seed
             // that was stopped partway is told apart from one that finished.
@@ -272,6 +274,35 @@ class DemoData {
     }
 
     /**
+     * Approves the seed's listings still in the moderation queue, on a database already seeded.
+     * An earlier seed left them there: the queue is for what visitors publish, and invented
+     * listings buried the real ones in it.
+     *
+     * <p>Through the ledger, so no visitor's listing can be reached, and only what the queue
+     * holds: a listing a moderator refused or removed keeps that verdict, and a sold one or a
+     * draft is not awaiting anyone. It sets the verdict and nothing else, not even
+     * {@code updated_at}. A second run finds nothing to approve.
+     *
+     * <p>Approved by the system, so with no {@code moderation_action} row: that trail names the
+     * administrator who decided, and here none did.
+     *
+     * @return how many listings were approved
+     */
+    int approvePending() {
+        int approved = jdbc.update("""
+                UPDATE listing SET moderation_status = 'APPROVED'
+                 WHERE status = 'ACTIVE' AND moderation_status = 'NOT_REVIEWED' AND deleted_at IS NULL
+                   AND id IN (SELECT entity_id FROM demo_seed_ledger WHERE entity_type = ?)""",
+                DemoLedger.LISTING);
+        if (approved == 0) {
+            log.info("Demo listings: none awaiting moderation, nothing approved.");
+        } else {
+            log.warn("Demo listings: approved {} awaiting moderation, by the system; nothing else changed.", approved);
+        }
+        return approved;
+    }
+
+    /**
      * @param ids          {@code "make/model"} slug pair to {@code [makeId, modelId]}
      * @param makesAdded   makes this call inserted
      * @param modelsAdded  models this call inserted
@@ -391,7 +422,13 @@ class DemoData {
         // The one direct write, and it is why this is a seeder and not a script against the
         // API: every listing published in the same second would make "plus récentes" an
         // arbitrary order. Spreading the dates is the only way to see sorting work.
-        jdbc.update("UPDATE listing SET published_at = now() - make_interval(days => ?) WHERE id = ?",
+        //
+        // And already moderated, approved by the system: the queue is for what visitors
+        // publish. No moderation_action row, for the reason given on approvePending.
+        jdbc.update("""
+                UPDATE listing SET moderation_status = 'APPROVED',
+                                   published_at = now() - make_interval(days => ?)
+                 WHERE id = ?""",
                 vehicle.publishedDaysAgo(), listingId);
     }
 
