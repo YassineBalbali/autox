@@ -1,6 +1,6 @@
 # AutoX
 
-**Live demo: [autox-demo.netlify.app](https://autox-demo.netlify.app)**
+**Live demo: [autox-demo.vercel.app](https://autox-demo.vercel.app)**
 
 A used-car marketplace in French, built as a **portfolio project**. The listings, sellers
 and prices on the live site are invented — none of those cars is for sale — and accounts
@@ -20,7 +20,7 @@ cars and open a listing. A seller can register, create a listing in four steps w
 uploaded straight to object storage, publish it, and pause, renew, mark as sold or delete
 it. An administrator reviews what was published, refuses or takes down a listing with a
 reason, and reinstates it. The interface is French and designed for a desktop screen. The
-demo runs on Netlify (site), Render (API), Neon (PostgreSQL) and Supabase Storage (photos);
+demo runs on Vercel (site), Render (API), Neon (PostgreSQL) and Supabase Storage (photos);
 `docs/deployment.md` is how.
 
 **What it is not:** a real marketplace. A buyer can write to a seller through the site, but
@@ -360,7 +360,8 @@ of the interface.
 | `/mes-annonces` | signed in | The seller's listings (`?statut=`) |
 | `/mes-annonces/:id/modifier` | signed in | Edit a listing (`?etape=`) |
 | `/messages`, `/messages/:id` | signed in | Conversations with buyers and sellers, the open one beside the list |
-| `/admin` → `/admin/moderation` | admin | Moderation (`?vue=`, `?page=`) |
+| `/admin` | admin | Dashboard |
+| `/admin/moderation` | admin | Moderation (`?vue=`, `?page=`) |
 | `/admin/moderation/messages` | admin | Reported messages |
 | `/guide-de-style` | anyone, unlinked | Tokens and shared components, rendered |
 | `/acces-refuse`, anything else | anyone | Refused; not found |
@@ -561,15 +562,16 @@ has to name the API and the photo storage, so three variables are read **at buil
 
 With none set, the policy allows the site's own origin only, which is what CI builds. The
 build fails if Angular ever emits inline script, which the policy would block in production.
-It also writes `_redirects` with `/*  /index.html  200`, Netlify's single-page fallback, so a
-shared link to a listing is served the app with a 200 rather than a 404. There is no
-`404.html`, on purpose. `netlify.toml` holds the build settings.
+A shared link to a listing is served the app with a 200 rather than a 404: there is a
+single-page fallback and, on purpose, no `404.html`. The same build writes the headers and the
+fallback for both hosts: `.vercel/output/config.json` for Vercel, whose build settings are in
+`frontend/vercel.json`, and `_headers` and `_redirects` for Netlify, whose are in `netlify.toml`.
 
 ### Deploying
 
 `docs/deployment.md` walks through the demo's deployment step by step: Neon for PostgreSQL,
 Supabase Storage for photos, Render for the API (`backend/Dockerfile`, `render.yaml`) and
-Netlify for the site (`netlify.toml`). It lists every variable, says which service each value comes
+Vercel for the site (`frontend/vercel.json`). It lists every variable, says which service each value comes
 from, and covers seeding, the first administrator and the checks to run afterwards.
 
 ### Deploying behind a proxy
@@ -655,8 +657,8 @@ frontend/
 .github/workflows/frontend.yml   CI: install, lint, build, test, on frontend/**
 .github/dependabot.yml           weekly upgrade proposals for every ecosystem
 render.yaml                      the API service on Render (Blueprint); see docs/deployment.md
-netlify.toml                     the site's build on Netlify; see docs/deployment.md
 frontend/vercel.json             the site's build on Vercel; see docs/deployment.md
+netlify.toml                     the site's build on Netlify, until it is shut down
 
 docs/            why things are the way they are — read these before changing them
 ```
@@ -681,7 +683,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |
 | `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |
-| `docs/deployment.md` | **Deploying the demo**, step by step: Neon, Supabase Storage, Render, Netlify — every variable, seeding, the first admin, the checks afterwards. |
+| `docs/deployment.md` | **Deploying the demo**, step by step: Neon, Supabase Storage, Render, Vercel — every variable, seeding, the first admin, the checks afterwards. |
 | `docs/frontend-decisions.md` | The generated API client, the single in-flight refresh, token storage, guards, error translation, design tokens |
 
 ---
