@@ -13,11 +13,10 @@ services:
     region: frankfurt
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    # Only a backend change redeploys the API, and only once CI has passed on the commit.
-    buildFilter:
-      paths:
-        - backend/**
-    autoDeployTrigger: checksPass
+    # Off: the backend workflow triggers each deploy, through the deploy hook, once it has passed
+    # (docs/deployment.md, step 3). Quoted, because a bare off is a boolean in YAML. Set here as
+    # well as in the dashboard, or a Blueprint sync would turn auto-deploy back on.
+    autoDeployTrigger: 'off'
     # Liveness, not /actuator/health: Render checks every few seconds, and the full health
     # check queries PostgreSQL — which would keep Neon awake around the clock.
     healthCheckPath: /actuator/health/liveness

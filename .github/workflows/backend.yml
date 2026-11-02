@@ -81,7 +81,7 @@ jobs:
         run: mvn -B --no-transfer-progress clean verify
 
       # The image Render deploys, built from the Dockerfile here: a Dockerfile that no
-      # longer builds fails this check rather than the deploy, which waits for it.
+      # longer builds fails this job rather than the deploy, which needs it.
       - name: Build the container image
         run: docker build -t autox-api:ci .
 
@@ -117,3 +117,29 @@ jobs:
           name: surefire-reports
           path: backend/target/surefire-reports/
           retention-days: 14
+
+  # Render deploys on this workflow's word alone. Its own "after CI checks pass" waits for every
+  # check on the commit, the site hosts' included, and a commit they block never reaches the API.
+  #
+  # A push to main only: not the weekly run, which has nothing new to ship, and not a branch.
+  # Render deploys the branch's latest commit unless told otherwise, so `ref` names the commit
+  # that was tested. The URL already carries a query string: its key, which is why it is a secret.
+  deploy:
+    name: deploy to Render
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+
+    steps:
+      - name: Trigger the deploy hook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::The repository secret RENDER_DEPLOY_HOOK_URL is not set; nothing was deployed."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --retry 3 --max-time 30 \
+            --request POST "$RENDER_DEPLOY_HOOK_URL&ref=$GITHUB_SHA"

@@ -198,8 +198,7 @@ hand (New → Web Service → the repository), these are all of them:
 | Docker build context | `./backend` |
 | Instance type | Free |
 | Health check path | `/actuator/health/liveness` |
-| Auto-deploy | After CI checks pass |
-| Build filter | `backend/**` |
+| Auto-deploy | Off |
 
 | Variable | Value | Why |
 |---|---|---|
@@ -229,6 +228,22 @@ hand (New → Web Service → the repository), these are all of them:
 
 There is no `.env` in the image. If a required variable is missing, the API stops at
 startup and the log names the variable.
+
+**Deploys come from CI.** A push to `main` that passes the backend workflow calls Render's
+deploy hook for that exact commit. Render's "After CI checks pass" is not used: it waits for
+every check on the commit, including the site hosts', so one of them being blocked stopped the
+API from deploying. To set it up:
+
+1. Render → `autox-api` → **Settings** → **Deploy Hook**: copy the URL. It is a **secret**.
+2. GitHub → the repository → **Settings → Secrets and variables → Actions → New repository
+   secret**: name `RENDER_DEPLOY_HOOK_URL`, value the URL.
+3. Render → **Settings** → **Auto-Deploy**: **Off**. `render.yaml` says the same, so a
+   Blueprint sync keeps it that way.
+
+The workflow runs only for changes under `backend/`, to `frontend/openapi.json` or to itself,
+so a change to the last two redeploys the same code. Without the secret the `deploy to Render`
+job fails and says so. A new URL from **Regenerate Hook** has to be put in the secret again, or
+the job fails with a 401. To deploy by hand: Render → **Manual Deploy**.
 
 ## Step 4 — The demo data
 
@@ -264,8 +279,8 @@ seed stopped partway: N of 152 listings. Nothing seeded." It does not add to a p
 Do one deploy with `AUTOX_DEMO_ACTION=remove` added (it deletes only what the seed
 recorded, the unfinished draft included), then one without it. Until the "Seeded" line
 appears, do not deploy, restart or save environment variables, and do not push to the
-branch Render deploys from if auto-deploy is on: each of those replaces the instance and
-stops the seed again.
+branch Render deploys from if the push changes `backend/`: each of those replaces the instance
+and stops the seed again.
 
 **To clear demo listings out of the moderation queue** (a database seeded before they were
 created approved), no reset is needed either. Deploy once with `SPRING_PROFILES_ACTIVE=demo`
