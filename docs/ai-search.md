@@ -227,6 +227,11 @@ queries pass would score well on them and mean nothing. So:
    The held-out set then ran **once per model**, and nothing changed afterwards.
 4. **Choice of model** on the held-out numbers, latency included.
 
+**The prompt has changed once since that freeze,** on purpose: damaged vehicles became their own
+filter in November 2026, so the prompt gained a `damage` rule and lost `DAMAGED` from `condition`.
+The held-out set was neither edited nor run again. **Its figures below therefore describe the
+prompt at e224d3d, not the current one.** See [After the damage filter](#after-the-damage-filter).
+
 **Writing the held-out expectations.** The expected filters were written from the wording. Three
 ambiguous ones were settled with the set's author before any run:
 
@@ -243,7 +248,7 @@ the prompt, so held-out query h02 measures that disagreement honestly.
 
 The development set covers:
 
-- makes, models, fuel, gearbox, body type, condition, price, year, mileage and place;
+- makes, models, fuel, gearbox, body type, condition, damage, price, year, mileage and place;
 - colloquial forms (*pas chère*, *récente*, *boîte auto*, *12k*, *moins de 5 ans*);
 - abbreviations (*vw*, *DSG*) and typos (*renaut megane*, *peugot 208*);
 - 14 queries with parts the search cannot filter on;
@@ -351,6 +356,32 @@ What remained:
 
 These numbers are on the set the prompt was tuned against. They show what the round fixed, and
 they are not the estimate of quality.
+
+#### After the damage filter
+
+One run of the development set on gpt-oss-120b, with no tuning afterwards. The set grew from 42
+queries to 48: six new ones on damage, and the old *accidentée pour pièces* now expects the filter.
+
+| | Tuned, e224d3d (42) | With damage: all 48 | With damage: the same 42 |
+|---|---:|---:|---:|
+| Exact match | 95.2 % (40/42) | 91.7 % (44/48) | 92.9 % (39/42) |
+| Requests failed | 0 | 0 | 0 |
+| Not understood reported | 71.4 % | 71.4 % | 71.4 % |
+| Spurious not-understood | 0.0 % | 3.0 % | |
+| Latency p50 / p95 | 793 / 1 327 ms | 967 / 1 313 ms | |
+
+- **The damage field itself:** 100 % precision and recall on its 6 queries. *Non accidentée*
+  correctly leaves the default.
+- **One miss among the damage queries:** *Golf non roulante moins de 3000 €* got the filter right
+  and also a hatchback nobody asked for, inferred from the model.
+- **On the original 42:** *moins de 5 ans dans une ville* now passes, and *après 2019* still fails.
+  Two are new misses: *Dacia Duster 4x4* reports "4x4" as not understood instead of filtering on
+  SUV, which is also the one spurious report, and *audi a3 sportback s line* infers a hatchback.
+
+One run cannot tell an effect of the longer prompt from the model's run-to-run variation, so these
+two are recorded and not explained. The misses are visible to the visitor, as a filter chip or a
+"not understood" line. Measuring whether the prompt lost anything would take a new held-out set:
+the existing one has been seen, and running it again would not be the estimate it was.
 
 **Held-out set (12), prompt frozen, one run per model.** This is the estimate:
 

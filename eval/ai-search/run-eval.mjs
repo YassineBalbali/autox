@@ -39,7 +39,7 @@ if (!/^[a-z-]+$/.test(set)) throw new Error(`--set must be a file name in eval/a
 const base = (args[0] ?? 'http://localhost:8081').replace(/\/$/, '');
 
 const FIELDS = ['make', 'model', 'yearFrom', 'yearTo', 'priceMin', 'priceMax', 'mileageMin', 'mileageMax',
-  'fuel', 'gearbox', 'body', 'condition', 'location', 'goodDeals'];
+  'fuel', 'gearbox', 'body', 'condition', 'damage', 'location', 'goodDeals'];
 const LISTS = new Set(['fuel', 'gearbox', 'body', 'condition']);
 const year = new Date().getFullYear();
 
@@ -85,6 +85,7 @@ async function normalise(criteria) {
     gearbox: criteria.gearbox ?? [],
     body: criteria.bodyType ?? [],
     condition: criteria.condition ?? [],
+    damage: criteria.damage ?? undefined,
     location: criteria.location ?? undefined,
     goodDeals: (criteria.priceLevel ?? []).includes('GOOD_DEAL') || undefined,
   };
