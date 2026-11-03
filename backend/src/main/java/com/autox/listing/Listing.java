@@ -183,6 +183,21 @@ public class Listing extends BaseEntity {
     @Column(name = "vehicle_condition", length = 16, nullable = false)
     private VehicleCondition vehicleCondition = VehicleCondition.USED;
 
+    /** Declared by the seller. Out of search by default, never a comparable, never given a verdict. */
+    @Column(name = "damaged", nullable = false)
+    private boolean damaged;
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.ARRAY)
+    @Column(name = "damage_types", columnDefinition = "text[]")
+    private String[] damageTypes;
+
+    /** Whether it runs. Null only on a listing from before sellers were asked: see V20. */
+    @Column(name = "damage_running")
+    private Boolean damageRunning;
+
+    @Column(name = "damage_description")
+    private String damageDescription;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "exterior_color", length = 16)
     private ExteriorColor exteriorColor;
@@ -310,6 +325,39 @@ public class Listing extends BaseEntity {
         }
         moderationStatus = ModerationStatus.NOT_REVIEWED;
         return true;
+    }
+
+    public boolean isDamaged() {
+        return damaged;
+    }
+
+    /** In the enum's order, so that two declarations of the same types compare as equal. */
+    public java.util.List<DamageType> getDamageTypes() {
+        return damageTypes == null
+                ? java.util.List.of()
+                : java.util.Arrays.stream(damageTypes).map(DamageType::valueOf).sorted().toList();
+    }
+
+    public Boolean getDamageRunning() {
+        return damageRunning;
+    }
+
+    public String getDamageDescription() {
+        return damageDescription;
+    }
+
+    public void declareDamage(java.util.Collection<DamageType> types, boolean running, String description) {
+        damaged = true;
+        damageTypes = types.stream().sorted().map(Enum::name).toArray(String[]::new);
+        damageRunning = running;
+        damageDescription = description;
+    }
+
+    public void declareUndamaged() {
+        damaged = false;
+        damageTypes = null;
+        damageRunning = null;
+        damageDescription = null;
     }
 
     public String getTitle() {

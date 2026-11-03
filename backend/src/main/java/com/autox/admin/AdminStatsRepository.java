@@ -88,11 +88,12 @@ class AdminStatsRepository {
                         split("l.status = 'ACTIVE' AND l.moderation_status = 'NOT_REVIEWED'", "pending"),
                         split("l.moderation_status = 'REJECTED'", "rejected"),
                         split("l.status = 'SOLD'", "sold"),
-                        split("l.status = 'EXPIRED'", "expired"))
+                        split("l.status = 'EXPIRED'", "expired"),
+                        split(ListingSearchRepository.visible("l") + " AND l.damaged", "damaged"))
                 + " FROM " + LISTINGS;
         return jdbc.queryForObject(sql, (row, index) -> new ListingsByStatus(
                 split(row, "published"), split(row, "pending"), split(row, "rejected"),
-                split(row, "sold"), split(row, "expired")));
+                split(row, "sold"), split(row, "expired"), split(row, "damaged")));
     }
 
     /** Activity in the last {@code days} × 24 hours. */

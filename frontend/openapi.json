@@ -3168,6 +3168,15 @@
           "OTHER"
         ]
       },
+      "DamageFilter": {
+        "type": "string",
+        "description": "Whether a search includes damaged vehicles. Leaving it out means {@link com.autox.search.DamageFilter#UNDAMAGED #UNDAMAGED}: nobody\n looking for a car to drive should have to ask not to be shown wrecks.",
+        "enum": [
+          "UNDAMAGED",
+          "DAMAGED_ONLY",
+          "ALL"
+        ]
+      },
       "Drivetrain": {
         "type": "string",
         "description": "Mirrors ck_listing_drivetrain / ck_vehicle_trim_drivetrain.",
@@ -3353,6 +3362,9 @@
             "items": {
               "$ref": "#/components/schemas/PriceLevel"
             }
+          },
+          "damage": {
+            "$ref": "#/components/schemas/DamageFilter"
           }
         }
       },
@@ -3370,8 +3382,7 @@
         "description": "Mirrors ck_listing_condition.",
         "enum": [
           "NEW",
-          "USED",
-          "DAMAGED"
+          "USED"
         ]
       },
       "MessageReportReason": {
@@ -3704,6 +3715,9 @@
               "minLength": 0
             },
             "uniqueItems": true
+          },
+          "damage": {
+            "$ref": "#/components/schemas/DamageDeclaration"
           }
         },
         "required": [
@@ -3715,6 +3729,45 @@
           "powerHp",
           "priceAmount",
           "title"
+        ]
+      },
+      "DamageDeclaration": {
+        "type": "object",
+        "description": "What a seller declares about damage. <code>damaged</code> false says the vehicle is undamaged and\n clears anything declared before; true needs all three of the others.",
+        "properties": {
+          "damaged": {
+            "type": "boolean"
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DamageType"
+            },
+            "uniqueItems": true
+          },
+          "running": {
+            "type": "boolean",
+            "description": "whether it runs: \"roulant\" or \"non roulant\""
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "damaged"
+        ]
+      },
+      "DamageType": {
+        "type": "string",
+        "description": "What happened to a damaged vehicle. Several may apply. Mirrors ck_listing_damage.",
+        "enum": [
+          "BODYWORK",
+          "MECHANICAL",
+          "HAIL",
+          "FLOOD",
+          "OTHER"
         ]
       },
       "EmissionClass": {
@@ -3763,6 +3816,25 @@
           "VELOUR",
           "OTHER"
         ]
+      },
+      "DamageView": {
+        "type": "object",
+        "description": "A listing's declared damage, wherever the listing is shown; null on an undamaged one.",
+        "properties": {
+          "types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DamageType"
+            }
+          },
+          "running": {
+            "type": "boolean",
+            "description": "null only on a listing from before sellers were asked: see V20"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
       },
       "ListingResponse": {
         "type": "object",
@@ -3863,6 +3935,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "damage": {
+            "$ref": "#/components/schemas/DamageView"
           },
           "images": {
             "type": "array",
@@ -5133,6 +5208,9 @@
               "minLength": 0
             },
             "uniqueItems": true
+          },
+          "damage": {
+            "$ref": "#/components/schemas/DamageDeclaration"
           }
         }
       },
@@ -5686,6 +5764,9 @@
           "publishedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "damage": {
+            "$ref": "#/components/schemas/DamageView"
           }
         }
       },
@@ -5781,6 +5862,9 @@
           },
           "emissionClass": {
             "type": "string"
+          },
+          "damage": {
+            "$ref": "#/components/schemas/DamageView"
           },
           "featureCodes": {
             "type": "array",
@@ -6327,9 +6411,14 @@
           "expired": {
             "$ref": "#/components/schemas/Split",
             "description": "expired, not renewed"
+          },
+          "damaged": {
+            "$ref": "#/components/schemas/Split",
+            "description": "Published and declared damaged: these are also counted in published."
           }
         },
         "required": [
+          "damaged",
           "expired",
           "pendingModeration",
           "published",

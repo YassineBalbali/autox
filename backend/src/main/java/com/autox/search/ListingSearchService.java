@@ -187,7 +187,8 @@ public class ListingSearchService {
                     coverOf(covers.get(row.id())),
                     photoCounts.getOrDefault(row.id(), 0),
                     indicators.get(row.id()),
-                    row.publishedAt()));
+                    row.publishedAt(),
+                    row.damage()));
         }
         return summaries;
     }

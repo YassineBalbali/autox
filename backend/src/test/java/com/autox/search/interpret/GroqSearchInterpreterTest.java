@@ -143,6 +143,11 @@ class GroqSearchInterpreterTest {
         // An empty list may come back as null: measured, gpt-oss-20b does, and strict mode on Groq
         // refused the whole answer rather than constrain it.
         assertThat(schema.path("properties").path("condition").path("type").toString()).isEqualTo("[\"array\",\"null\"]");
+        // The filter's two changes from the default, or nothing; and no second way to say it.
+        assertThat(schema.path("properties").path("damage").path("enum").toString())
+                .isEqualTo("[\"DAMAGED_ONLY\",\"ALL\",null]");
+        assertThat(schema.path("properties").path("condition").path("items").path("enum").toString())
+                .doesNotContain("DAMAGED");
         assertThat(schema.path("properties").path("notUnderstood").path("type").toString()).isEqualTo("[\"array\",\"null\"]");
     }
 

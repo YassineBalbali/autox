@@ -4,6 +4,7 @@ import com.autox.catalog.BodyType;
 import com.autox.catalog.FuelType;
 import com.autox.catalog.Gearbox;
 import com.autox.listing.VehicleCondition;
+import com.autox.search.DamageFilter;
 import com.autox.search.ListingSearchCriteria;
 import com.autox.search.PriceLevel;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -68,7 +69,7 @@ class InterpretationValidator {
             Map.entry(BodyType.CONVERTIBLE, "Cabriolet"), Map.entry(BodyType.MPV, "Monospace"),
             Map.entry(BodyType.PICKUP, "Pick-up"), Map.entry(BodyType.VAN, "Utilitaire"), Map.entry(BodyType.OTHER, "Autre"));
     private static final Map<VehicleCondition, String> CONDITION_LABELS = Map.of(
-            VehicleCondition.NEW, "Neuf", VehicleCondition.USED, "Occasion", VehicleCondition.DAMAGED, "Accidenté");
+            VehicleCondition.NEW, "Neuf", VehicleCondition.USED, "Occasion");
 
     private final CatalogueMatcher catalogue;
 
@@ -133,6 +134,13 @@ class InterpretationValidator {
         List<BodyType> bodies = enums(answer, "bodyType", BodyType.class, notUnderstood);
         List<VehicleCondition> conditions = enums(answer, "condition", VehicleCondition.class, notUnderstood);
 
+        // Only a change from the default: UNDAMAGED is what no answer at all already means.
+        DamageFilter damage = switch (answer.path("damage").asText("")) {
+            case "DAMAGED_ONLY" -> DamageFilter.DAMAGED_ONLY;
+            case "ALL" -> DamageFilter.ALL;
+            default -> null;
+        };
+
         // --- place: only one the visitor actually wrote --------------------------------
         String location = text(answer, "location");
         if (location != null && !foldedQuery.contains(fold(location))) {
@@ -169,9 +177,10 @@ class InterpretationValidator {
                 null, location,
                 null, null, null, null,
                 null,
-                goodDeals ? List.of(PriceLevel.GOOD_DEAL) : null);
+                goodDeals ? List.of(PriceLevel.GOOD_DEAL) : null,
+                damage);
 
-        String summary = summary(make, model, bodies, fuels, gearboxes, conditions,
+        String summary = summary(make, model, bodies, fuels, gearboxes, conditions, damage,
                 priceMin, priceMax, yearFrom, yearTo, mileageMin, mileageMax, location, goodDeals);
         return new InterpretResponse(criteria, summary,
                 notUnderstood.stream().limit(MAX_NOT_UNDERSTOOD).toList());
@@ -252,7 +261,7 @@ class InterpretationValidator {
 
     private static String summary(CatalogueMatcher.Make make, CatalogueMatcher.Model model,
                                   List<BodyType> bodies, List<FuelType> fuels, List<Gearbox> gearboxes,
-                                  List<VehicleCondition> conditions, Integer priceMin, Integer priceMax,
+                                  List<VehicleCondition> conditions, DamageFilter damage, Integer priceMin, Integer priceMax,
                                   Integer yearFrom, Integer yearTo, Integer mileageMin, Integer mileageMax,
                                   String location, boolean goodDeals) {
         List<String> parts = new ArrayList<>();
@@ -263,6 +272,11 @@ class InterpretationValidator {
         addLabels(parts, fuels, FUEL_LABELS::get);
         addLabels(parts, gearboxes, GEARBOX_LABELS::get);
         addLabels(parts, conditions, CONDITION_LABELS::get);
+        if (damage == DamageFilter.DAMAGED_ONLY) {
+            parts.add("Véhicules endommagés");
+        } else if (damage == DamageFilter.ALL) {
+            parts.add("Endommagés inclus");
+        }
         range(parts, priceMin, priceMax, " €");
         if (yearFrom != null && yearFrom.equals(yearTo)) {
             parts.add(String.valueOf(yearFrom));

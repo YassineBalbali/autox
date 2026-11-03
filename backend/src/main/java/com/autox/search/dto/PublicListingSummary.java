@@ -48,7 +48,10 @@ public record PublicListingSummary(
         /** Against comparable listings; null when there is not enough to compare with. */
         PriceIndicator priceIndicator,
 
-        Instant publishedAt) {
+        Instant publishedAt,
+
+        /** Null on an undamaged vehicle. */
+        com.autox.listing.dto.DamageView damage) {
 
     /** What a buyer sees about who is selling: a name and whether it is a trade seller. */
     public record SellerCard(UUID id, String displayName, String role) {

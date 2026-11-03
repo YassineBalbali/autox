@@ -114,6 +114,15 @@ final class DemoDetails {
         return codes;
     }
 
+    /** The same for a damaged vehicle, whose state its seller has declared and this must not contradict. */
+    static String damagedDescription(DemoCatalogue.DamagedVehicle damaged) {
+        DemoCatalogue.Vehicle vehicle = damaged.vehicle();
+        return String.join("\n\n",
+                vehicle.title() + ".",
+                "Vendu en l’état, sans garantie. À voir à " + vehicle.city() + " sur rendez-vous.",
+                "Annonce de démonstration : ce véhicule n’existe pas. Il sert à illustrer le site.");
+    }
+
     /** A few sentences in the register of a real listing, and one that says it is not one. */
     static String description(DemoCatalogue.Vehicle vehicle) {
         String state = vehicle.condition() == VehicleCondition.NEW

@@ -60,6 +60,9 @@ public record ListingResponse(
 
         List<String> featureCodes,
 
+        /** Null on an undamaged vehicle. */
+        DamageView damage,
+
         /** Ready photos in gallery order; the first is the cover. */
         List<ImageResponse> images,
 
@@ -99,6 +102,7 @@ public record ListingResponse(
                 listing.getEmissionClass(),
                 listing.getVin(),
                 listing.getFeatures().stream().map(VehicleFeature::getCode).sorted().toList(),
+                DamageView.from(listing),
                 images == null ? List.of() : images,
                 listing.getViewCount(),
                 listing.getPublishedAt(),

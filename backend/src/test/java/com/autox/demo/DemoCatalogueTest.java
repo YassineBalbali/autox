@@ -35,6 +35,35 @@ class DemoCatalogueTest {
     }
 
     @Test
+    @DisplayName("the damaged vehicles are complete, on makes, models and sellers the seed creates")
+    void damagedVehicles() {
+        java.util.Set<String> titles = new java.util.HashSet<>();
+        vehicles.forEach(vehicle -> titles.add(vehicle.title()));
+        java.util.Set<String> sellers = new java.util.HashSet<>();
+        DemoCatalogue.SELLERS.forEach(seller -> sellers.add(seller.key()));
+
+        assertThat(DemoCatalogue.DAMAGED).hasSize(8);
+        // Both answers and every type are there to see in the filter.
+        assertThat(DemoCatalogue.DAMAGED).anyMatch(DemoCatalogue.DamagedVehicle::running);
+        assertThat(DemoCatalogue.DAMAGED).anyMatch(damaged -> !damaged.running());
+        assertThat(DemoCatalogue.DAMAGED.stream().flatMap(damaged -> damaged.types().stream()).distinct())
+                .containsExactlyInAnyOrder(com.autox.listing.DamageType.values());
+        assertThat(DemoCatalogue.DAMAGED).allSatisfy(damaged -> {
+            DemoCatalogue.Vehicle vehicle = damaged.vehicle();
+            // The title is how a later start knows it has this one.
+            assertThat(titles.add(vehicle.title())).as(vehicle.title()).isTrue();
+            assertThat(damaged.types()).isNotEmpty();
+            assertThat(damaged.description()).isNotBlank();
+            assertThat(sellers).contains(vehicle.sellerKey());
+            assertThat(DemoCatalogue.MAKES)
+                    .filteredOn(make -> make.slug().equals(vehicle.makeSlug()))
+                    .singleElement()
+                    .satisfies(make -> assertThat(make.models()).extracting(DemoCatalogue.Model::slug)
+                            .contains(vehicle.modelSlug()));
+        });
+    }
+
+    @Test
     @DisplayName("the set is identical on every call")
     void deterministic() {
         // Same cars on every machine: a screenshot in a bug report can be reproduced.

@@ -88,7 +88,10 @@ public record UpdateListingRequest(
         String vin,
 
         /** Replaces the whole set when present. An empty set clears every feature. */
-        Set<@NotBlank @Size(max = 60) String> featureCodes) {
+        Set<@NotBlank @Size(max = 60) String> featureCodes,
+
+        /** Replaces what was declared when present. {@code damaged: false} clears it. */
+        @jakarta.validation.Valid DamageDeclaration damage) {
 
     @Schema(hidden = true)
     @AssertTrue(message = "supply makeId or makeText, not both")

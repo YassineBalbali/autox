@@ -137,6 +137,8 @@ public class ReferenceService {
         published.put("BodyType", BodyType.class);
         published.put("Drivetrain", Drivetrain.class);
         published.put("VehicleCondition", VehicleCondition.class);
+        published.put("DamageType", com.autox.listing.DamageType.class);
+        published.put("DamageFilter", com.autox.search.DamageFilter.class);
         published.put("ExteriorColor", ExteriorColor.class);
         published.put("InteriorMaterial", InteriorMaterial.class);
         published.put("EmissionClass", EmissionClass.class);

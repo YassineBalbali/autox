@@ -154,6 +154,7 @@ public class MarketPrice {
                    AND c.id <> l.id
                    AND c.price_currency_code = l.price_currency_code
                    AND c.vehicle_condition <> 'NEW'
+                   AND NOT c.damaged
                    AND c.first_registration_year BETWEEN l.first_registration_year - %1$d
                                                      AND l.first_registration_year + %1$d
                 """.formatted(yearSpan));
@@ -180,7 +181,9 @@ public class MarketPrice {
     /**
      * The comparables of the listing aliased {@code l}, as columns {@code mp.comparables} and
      * {@code mp.median}, the median of their prices adjusted to the listing. Joined to
-     * nothing for a listing that cannot have an indicator, so those columns are then null.
+     * nothing for a listing that cannot have an indicator, so those columns are then null. A
+     * damaged car is one of those, and is never a comparable either: its price says nothing about
+     * the market for intact ones, nor theirs about it.
      * Public for the admin statistics, which count listings by level with this same rule.
      */
     public static final String LATERAL = """
@@ -190,6 +193,7 @@ public class MarketPrice {
                   FROM listing c
                  WHERE %2$s
              ) mp ON l.model_id IS NOT NULL AND l.power_hp IS NOT NULL AND l.vehicle_condition <> 'NEW'
+                 AND NOT l.damaged
             """.formatted(ADJUSTED_PRICE, comparable(YEAR_SPAN, true, true));
 
     /** The level of the listing aliased {@code l}, or null; needs {@link #LATERAL}. */

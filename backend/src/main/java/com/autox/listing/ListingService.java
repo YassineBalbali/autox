@@ -228,6 +228,7 @@ public class ListingService {
         if (request.featureCodes() != null) {
             replaceFeatures(listing, request.featureCodes());
         }
+        applyDamage(listing, request.damage());
 
         listings.save(listing);
         log.info("Listing {} created as DRAFT by {}", listing.getId(), callerId);
@@ -363,6 +364,7 @@ public class ListingService {
         if (request.featureCodes() != null) {
             replaceFeatures(listing, request.featureCodes());
         }
+        applyDamage(listing, request.damage());
 
         recordPriceChange(listing, priceBefore, currencyBefore);
 
@@ -534,6 +536,17 @@ public class ListingService {
      * removing one withdraws the approval where that happens, in
      * {@code ListingImageService}.
      */
+    private static void applyDamage(Listing listing, com.autox.listing.dto.DamageDeclaration damage) {
+        if (damage == null) {
+            return;
+        }
+        if (damage.damaged()) {
+            listing.declareDamage(damage.types(), damage.running(), damage.description().trim());
+        } else {
+            listing.declareUndamaged();
+        }
+    }
+
     private static List<Object> contentOf(Listing listing) {
         List<Object> content = new java.util.ArrayList<>();
         content.add(listing.getTitle());
@@ -575,6 +588,10 @@ public class ListingService {
         content.add(listing.getCo2EmissionsGKm());
         content.add(listing.getEmissionClass());
         content.add(listing.getVin());
+        content.add(listing.isDamaged());
+        content.add(listing.getDamageTypes());
+        content.add(listing.getDamageRunning());
+        content.add(listing.getDamageDescription());
         content.add(listing.getFeatures().stream().map(VehicleFeature::getCode).sorted().toList());
         return content;
     }
