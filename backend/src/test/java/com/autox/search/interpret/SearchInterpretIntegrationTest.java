@@ -373,6 +373,32 @@ class SearchInterpretIntegrationTest extends AbstractIntegrationTest {
                         "with_not_understood:integer");
     }
 
+    @Test
+    @DisplayName("a damaged vehicle is asked for through the search's own filter, and said so")
+    void damage() throws Exception {
+        model.answer(answer(Map.of("damage", "DAMAGED_ONLY")));
+        interpret("voiture accidentée")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.criteria.damage").value("DAMAGED_ONLY"))
+                .andExpect(jsonPath("$.summary").value("Véhicules endommagés"));
+
+        model.answer(answer(Map.of("damage", "ALL")));
+        interpret("clio même accidentée")
+                .andExpect(jsonPath("$.criteria.damage").value("ALL"));
+    }
+
+    @Test
+    @DisplayName("no answer about damage, or one the filter does not know, leaves the default")
+    void damageDefault() throws Exception {
+        model.answer(answer(Map.of()));
+        interpret("clio").andExpect(jsonPath("$.criteria.damage").doesNotExist());
+
+        for (String value : List.of("UNDAMAGED", "EVERYTHING")) {
+            model.answer(answer(Map.of("damage", value)));
+            interpret("clio").andExpect(jsonPath("$.criteria.damage").doesNotExist());
+        }
+    }
+
     // ---- helpers ------------------------------------------------------------------------
 
     private ResultActions interpret(String query) throws Exception {
@@ -392,6 +418,7 @@ class SearchInterpretIntegrationTest extends AbstractIntegrationTest {
         for (String list : List.of("fuelType", "gearbox", "bodyType", "condition", "notUnderstood")) {
             answer.put(list, List.of());
         }
+        answer.put("damage", null);
         answer.put("location", null);
         answer.put("goodDeals", false);
         answer.putAll(fields);

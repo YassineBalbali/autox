@@ -46,6 +46,9 @@ public record PublicListingDetail(
         Integer co2EmissionsGKm,
         String emissionClass,
 
+        /** Null on an undamaged vehicle. */
+        com.autox.listing.dto.DamageView damage,
+
         /** Equipment codes; the frontend holds the translations. */
         List<String> featureCodes,
         List<ImageResponse> images,
@@ -81,6 +84,7 @@ public record PublicListingDetail(
                 listing.getTechnicalInspectionValidUntil(),
                 toInteger(listing.getCo2EmissionsGKm()),
                 name(listing.getEmissionClass()),
+                com.autox.listing.dto.DamageView.from(listing),
                 listing.getFeatures().stream().map(VehicleFeature::getCode).sorted().toList(),
                 images,
                 priceIndicator,

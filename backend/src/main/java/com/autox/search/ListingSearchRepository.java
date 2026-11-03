@@ -75,6 +75,10 @@ public class ListingSearchRepository {
                    l.drivetrain,
                    l.power_hp,
                    l.vehicle_condition,
+                   l.damaged,
+                   l.damage_types,
+                   l.damage_running,
+                   l.damage_description,
                    l.published_at,
                    l.country_code,
                    COALESCE(gp.city, l.city)               AS city,
@@ -222,6 +226,14 @@ public class ListingSearchRepository {
         appendEnumFilter(sql, parameters, "drivetrain", "drivetrain", criteria.drivetrain());
         appendEnumFilter(sql, parameters, "vehicle_condition", "condition", criteria.condition());
 
+        // On the server, not left to each client: leaving it out excludes damaged vehicles.
+        DamageFilter damage = criteria.damage() == null ? DamageFilter.UNDAMAGED : criteria.damage();
+        if (damage == DamageFilter.UNDAMAGED) {
+            sql.append(" AND NOT l.damaged");
+        } else if (damage == DamageFilter.DAMAGED_ONLY) {
+            sql.append(" AND l.damaged");
+        }
+
         if (hasText(criteria.countryCode())) {
             sql.append(" AND l.country_code = :countryCode");
             parameters.addValue("countryCode", criteria.countryCode().toUpperCase(Locale.ROOT));
@@ -357,7 +369,16 @@ public class ListingSearchRepository {
                 rs.getString("version_text"),
                 rs.getObject("seller_id", UUID.class),
                 rs.getString("seller_name"),
-                rs.getString("seller_role"));
+                rs.getString("seller_role"),
+                damageOf(rs));
+    }
+
+    private static com.autox.listing.dto.DamageView damageOf(java.sql.ResultSet rs) throws java.sql.SQLException {
+        boolean damaged = rs.getBoolean("damaged");
+        return com.autox.listing.dto.DamageView.of(damaged,
+                damaged ? (String[]) rs.getArray("damage_types").getArray() : null,
+                (Boolean) rs.getObject("damage_running"),
+                rs.getString("damage_description"));
     }
 
     /** One search result, straight from the projection. */
@@ -385,7 +406,8 @@ public class ListingSearchRepository {
             String version,
             UUID sellerId,
             String sellerName,
-            String sellerRole) {
+            String sellerRole,
+            com.autox.listing.dto.DamageView damage) {
     }
 
     /** Cover images for a page of results, in one query rather than one per row. */

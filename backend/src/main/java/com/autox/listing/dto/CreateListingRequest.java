@@ -96,7 +96,10 @@ public record CreateListingRequest(
                 message = "must be 17 characters, excluding I, O and Q")
         String vin,
 
-        Set<@NotBlank @Size(max = 60) String> featureCodes) {
+        Set<@NotBlank @Size(max = 60) String> featureCodes,
+
+        /** Left out, the vehicle is undamaged. */
+        @jakarta.validation.Valid DamageDeclaration damage) {
 
     @Schema(hidden = true)
     @AssertTrue(message = "supply exactly one of makeId or makeText")

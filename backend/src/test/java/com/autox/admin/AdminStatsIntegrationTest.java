@@ -75,7 +75,7 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
         JsonNode stats = stats();
 
         assertThat(stats.path("demoDataPresent").asBoolean()).isFalse();
-        for (String state : List.of("published", "pendingModeration", "rejected", "sold", "expired")) {
+        for (String state : List.of("published", "pendingModeration", "rejected", "sold", "expired", "damaged")) {
             assertSplit(stats.path("listings").path(state), 0, 0);
         }
         assertSplit(stats.path("last30Days").path("newListings"), 0, 0);

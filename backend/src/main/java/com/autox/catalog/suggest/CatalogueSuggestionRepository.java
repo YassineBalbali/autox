@@ -82,7 +82,7 @@ class CatalogueSuggestionRepository {
             ) suggestions
              ORDER BY type = 'MAKE' DESC, listing_count DESC, label, model_id NULLS FIRST
              LIMIT ?
-            """.formatted(ListingSearchRepository.visible("l"));
+            """.formatted(ListingSearchRepository.visible("l") + " AND NOT l.damaged");
 
     private final JdbcTemplate jdbc;
 

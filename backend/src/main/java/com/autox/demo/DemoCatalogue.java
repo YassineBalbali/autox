@@ -4,6 +4,7 @@ import com.autox.catalog.BodyType;
 import com.autox.catalog.FuelType;
 import com.autox.catalog.Gearbox;
 import com.autox.listing.ExteriorColor;
+import com.autox.listing.DamageType;
 import com.autox.listing.VehicleCondition;
 import com.autox.user.UserRole;
 import java.util.List;
@@ -470,6 +471,72 @@ final class DemoCatalogue {
      */
     static final List<Make> MAKES = java.util.stream.Stream.concat(
             LISTED_MAKES.stream(), CATALOGUE_ONLY.stream()).toList();
+
+    /** A demo listing of a damaged vehicle: the car, and what its seller declares about it. */
+    record DamagedVehicle(Vehicle vehicle, java.util.Set<DamageType> types, boolean running, String description) {
+    }
+
+    /**
+     * On top of {@link #SIZE}, and added to a database that is already seeded. The titles are how
+     * a later start knows which of them it has, so they stay unique.
+     */
+    static final List<DamagedVehicle> DAMAGED = List.of(
+            new DamagedVehicle(new Vehicle("garage-bellevue", "peugeot", "308", "1.5 BlueHDi 130 Allure",
+                    "Peugeot 308 BlueHDi 130 accidentée à l’avant", 7_900, 2020, 5, 88_200,
+                    FuelType.DIESEL, Gearbox.MANUAL, BodyType.HATCHBACK, 130, VehicleCondition.USED,
+                    ExteriorColor.GREY, "Lyon", "69003", 3),
+                    java.util.Set.of(DamageType.BODYWORK), false,
+                    "Choc avant à faible vitesse : pare-chocs, capot et phare droit à remplacer, radiateur "
+                            + "touché. Airbags non déclenchés. Ne démarre plus, enlèvement sur plateau."),
+            new DamagedVehicle(new Vehicle("camille", "renault", "clio", "1.0 TCe 90 Evolution",
+                    "Renault Clio TCe 90 grêlée", 8_400, 2021, 4, 47_500,
+                    FuelType.PETROL, Gearbox.MANUAL, BodyType.HATCHBACK, 90, VehicleCondition.USED,
+                    ExteriorColor.WHITE, "Toulouse", "31000", 6),
+                    java.util.Set.of(DamageType.HAIL), true,
+                    "Orage de grêle : nombreux impacts sur le capot, le toit et le hayon. Pare-brise intact. "
+                            + "Roule normalement, devis de débosselage disponible."),
+            new DamagedVehicle(new Vehicle("auto-atlantique", "volkswagen", "golf", "2.0 TDI 150 Carat",
+                    "Volkswagen Golf 2.0 TDI 150 moteur HS", 6_500, 2018, 9, 142_000,
+                    FuelType.DIESEL, Gearbox.AUTOMATIC, BodyType.HATCHBACK, 150, VehicleCondition.USED,
+                    ExteriorColor.BLACK, "Nantes", "44000", 9),
+                    java.util.Set.of(DamageType.MECHANICAL), false,
+                    "Casse de la courroie de distribution : moteur à remplacer. Carrosserie et intérieur en "
+                            + "bon état. Non roulante, à enlever sur plateau."),
+            new DamagedVehicle(new Vehicle("thomas", "citroen", "c3", "1.2 PureTech 83 Feel",
+                    "Citroën C3 PureTech 83 inondée", 2_900, 2019, 2, 71_300,
+                    FuelType.PETROL, Gearbox.MANUAL, BodyType.HATCHBACK, 83, VehicleCondition.USED,
+                    ExteriorColor.RED, "Nîmes", "30000", 12),
+                    java.util.Set.of(DamageType.FLOOD), false,
+                    "Eau jusqu’aux sièges lors d’une crue. Électronique hors service et moquettes à remplacer. "
+                            + "Ne démarre pas. Vendue en l’état."),
+            new DamagedVehicle(new Vehicle("sud-automobiles", "bmw", "serie-3", "320d xDrive M Sport",
+                    "BMW Série 3 320d accidentée côté droit", 11_500, 2020, 7, 96_400,
+                    FuelType.DIESEL, Gearbox.AUTOMATIC, BodyType.SEDAN, 190, VehicleCondition.USED,
+                    ExteriorColor.BLUE, "Marseille", "13008", 15),
+                    java.util.Set.of(DamageType.BODYWORK, DamageType.MECHANICAL), false,
+                    "Choc latéral droit : portières, aile et train avant touchés, direction à contrôler. "
+                            + "Non roulante. Rapport d’expertise disponible."),
+            new DamagedVehicle(new Vehicle("nord-vo", "dacia", "duster", "1.5 dCi 115 Prestige",
+                    "Dacia Duster dCi 115 portière enfoncée", 9_900, 2021, 3, 58_900,
+                    FuelType.DIESEL, Gearbox.MANUAL, BodyType.SUV, 115, VehicleCondition.USED,
+                    ExteriorColor.GREY, "Lille", "59000", 18),
+                    java.util.Set.of(DamageType.BODYWORK), true,
+                    "Portière arrière gauche enfoncée et bas de caisse rayé, sans atteinte à la structure. "
+                            + "Roule normalement, contrôle technique à jour."),
+            new DamagedVehicle(new Vehicle("julien", "toyota", "yaris", "1.5 Hybride 116 Dynamic",
+                    "Toyota Yaris Hybride 116 grêlée, pare-brise fissuré", 10_200, 2021, 6, 39_800,
+                    FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC, BodyType.HATCHBACK, 116, VehicleCondition.USED,
+                    ExteriorColor.SILVER, "Bordeaux", "33000", 21),
+                    java.util.Set.of(DamageType.HAIL, DamageType.BODYWORK), true,
+                    "Impacts de grêle sur toute la carrosserie, pare-brise fissuré à remplacer avant de "
+                            + "passer le contrôle technique. Mécanique saine, roule."),
+            new DamagedVehicle(new Vehicle("karim", "peugeot", "208", "1.2 PureTech 75 Active",
+                    "Peugeot 208 PureTech 75 pour pièces", 900, 2016, 11, 168_000,
+                    FuelType.PETROL, Gearbox.MANUAL, BodyType.HATCHBACK, 75, VehicleCondition.USED,
+                    ExteriorColor.WHITE, "Strasbourg", "67000", 25),
+                    java.util.Set.of(DamageType.OTHER), false,
+                    "Vendue pour pièces : boîte de vitesses hors d’usage et corrosion avancée du soubassement. "
+                            + "Ni réparable ni roulante. Sièges et optiques en bon état."));
 
     static final List<Vehicle> VEHICLES = List.of(
             new Vehicle("garage-bellevue", "peugeot", "308", "1.5 BlueHDi 130 Allure Pack",

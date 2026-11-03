@@ -95,6 +95,7 @@ public class SimilarListings {
                AND c.price_amount BETWEEN t.price_amount * (1 - %7$s) AND t.price_amount * (1 + %7$s)
                AND c.id <> t.id
                AND c.price_currency_code = t.price_currency_code
+               AND c.damaged = t.damaged
                AND %6$s
             UNION ALL
             SELECT c.id, 2 AS kind,
@@ -107,6 +108,7 @@ public class SimilarListings {
              WHERE c.price_amount BETWEEN t.price_amount * (1 - %2$s) AND t.price_amount * (1 + %2$s)
                AND c.id <> t.id
                AND c.price_currency_code = t.price_currency_code
+               AND c.damaged = t.damaged
                AND %6$s
             """.formatted(YEAR_SPAN, PRICE_SPAN, MarketPrice.POWER_SPAN,
                     SAME_CAR.formatted("c"), SAME_CAR.formatted("t"), ListingSearchRepository.visible("c"),

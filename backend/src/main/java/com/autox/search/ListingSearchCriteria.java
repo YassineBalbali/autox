@@ -77,7 +77,10 @@ public record ListingSearchCriteria(
          * Only listings whose price indicator is one of these: "les bonnes affaires". A
          * listing without an indicator matches none. Appended last, like {@code q}.
          */
-        List<PriceLevel> priceLevel) {
+        List<PriceLevel> priceLevel,
+
+        /** Left out, damaged vehicles are excluded. Appended last, like {@code q}. */
+        DamageFilter damage) {
 
     public boolean hasBoundingBox() {
         return latMin != null && latMax != null && lonMin != null && lonMax != null;

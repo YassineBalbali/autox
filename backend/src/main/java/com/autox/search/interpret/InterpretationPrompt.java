@@ -15,7 +15,7 @@ import java.util.List;
  * OpenAI-compatible chat API with structured output takes these as they are.
  *
  * <p><b>The schema is the filter set the search already has, minus what a link cannot carry.</b>
- * Make, model, year, price, mileage, fuel, gearbox, body, condition, place and "good deals".
+ * Make, model, year, price, mileage, fuel, gearbox, body, condition, damage, place and "good deals".
  * Not drivetrain and not free text: the results page has no URL parameter for the first, and
  * the second would let the model smuggle anything into a {@code LIKE}. A request for something
  * outside this list has nowhere to go but {@code notUnderstood}, which is the point.
@@ -74,7 +74,11 @@ public final class InterpretationPrompt {
                 - bodyType: citadine, compacte HATCHBACK; berline SEDAN; break ESTATE; SUV, 4x4,
                   crossover SUV; coupé COUPE; cabriolet, décapotable CONVERTIBLE; monospace MPV;
                   pick-up PICKUP; utilitaire, fourgon, camionnette VAN.
-                - condition: neuve, "0 km" NEW; "d'occasion" USED; accidentée, "pour pièces" DAMAGED.
+                - condition: neuve, "0 km" NEW; "d'occasion" USED.
+                - damage: accidentée, endommagée, sinistrée, grêlée, inondée, épave, "pour pièces",
+                  "non roulante", "moteur HS" -> DAMAGED_ONLY; "accidentée ou non", "même
+                  accidentée", "endommagée ou pas" -> ALL. Otherwise null, including for "non
+                  accidentée" and "sans dégâts": undamaged is what a search shows by default.
                 - "pas cher", "pas chère", "bonne affaire", "bon prix" -> goodDeals true, no price.
                 - location: a city or a 5-digit postal code, copied as written ("Lyon", "33000").
                   Regions and departments are not understood.
@@ -118,6 +122,9 @@ public final class InterpretationPrompt {
         properties.set("gearbox", enumArray(json, GEARBOXES));
         properties.set("bodyType", enumArray(json, BODIES));
         properties.set("condition", enumArray(json, CONDITIONS));
+        ObjectNode damage = nullable(json, "string");
+        damage.putArray("enum").add("DAMAGED_ONLY").add("ALL").addNull();
+        properties.set("damage", damage);
         properties.set("location", nullable(json, "string"));
         properties.set("goodDeals", json.createObjectNode().put("type", "boolean"));
         ObjectNode notUnderstood = nullable(json, "array");
