@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, catchError, combineLatest, map, of, shareReplay, switchMap, take } from 'rxjs';
+import { DamageFilter } from '../../core/api';
 
 import {
   ListingSearchCriteria,
@@ -66,6 +67,7 @@ export function queryFromCriteria(
     gearbox: [...(criteria.gearbox ?? [])].sort(),
     body: [...(criteria.bodyType ?? [])].sort(),
     condition: [...(criteria.condition ?? [])].sort(),
+    damage: criteria.damage ?? DamageFilter.UNDAMAGED,
     location: criteria.location ?? null,
     goodDeals: (criteria.priceLevel ?? []).includes(PriceLevel.GOOD_DEAL),
   };

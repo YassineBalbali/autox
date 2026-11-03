@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { PriceLevel, PublicListingSummary } from '../../core/api';
+import { DamageType, PriceLevel, PublicListingSummary } from '../../core/api';
 import { NBSP } from '../format/number';
 import { ListingCard } from './listing-card';
 import { ListingRow } from './listing-row';
@@ -143,6 +143,30 @@ describe('ListingCard', () => {
 
     expect(card.querySelector('.card__price app-price-badge')?.textContent).toContain('Au-dessus du marché');
     expect(row.querySelector('.listing__aside app-price-badge')?.textContent).toContain('Au-dessus du marché');
+  });
+
+  it('says a vehicle is damaged, how, and whether it runs, before the price', async () => {
+    const { card, row } = await render({
+      ...LISTING,
+      damage: { types: [DamageType.BODYWORK], running: false, description: 'Choc avant.' },
+    });
+
+    for (const root of [card, row]) {
+      const notice = root.querySelector('[data-damage]') as HTMLElement;
+      expect(notice.textContent).toContain('Véhicule endommagé');
+      expect(notice.textContent).toContain('Carrosserie · Non roulant');
+      expect(notice.textContent).toContain('Choc avant.');
+      const price = root.querySelector('app-price') as HTMLElement;
+      expect(notice.compareDocumentPosition(price) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it('says nothing of the kind about an undamaged vehicle', async () => {
+    const { card, row } = await render();
+    for (const root of [card, row]) {
+      expect(root.querySelector('[data-damage]')).toBeNull();
+      expect(root.textContent).not.toContain('endommagé');
+    }
   });
 
   it('survives a listing with almost nothing on it', async () => {

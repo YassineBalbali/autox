@@ -41,6 +41,9 @@ import {
 } from '../../shared/listing/labels.fr';
 import { PhotoGallery } from '../../shared/listing/photo-gallery';
 import { Price } from '../../shared/listing/price';
+import { DamageNotice } from '../../shared/listing/damage-notice';
+import { DamageType } from '../../core/api';
+import { DAMAGE_TYPE_LABELS } from '../../shared/listing/labels.fr';
 import { SpecLine } from '../../shared/listing/spec-line';
 import { Alert } from '../../shared/ui/alert';
 import { NotFound } from '../../shared/ui/not-found';
@@ -55,7 +58,10 @@ import {
   offerValueOf,
   suggestedTitle,
   vehiclePrefill,
+  damageValidators,
+  NOT_RUNNING,
   powerValidators,
+  RUNNING,
   toCreateRequest,
   toOfferUpdate,
   toVehicleUpdate,
@@ -107,6 +113,7 @@ export const MY_LISTINGS = '/mes-annonces';
   imports: [
     ReactiveFormsModule,
     RouterLink,
+    DamageNotice,
     TextField,
     SelectField,
     Alert,
@@ -212,6 +219,27 @@ export class ListingEditorPage {
     this.reference.enums().pipe(catchError(() => of({} as Record<string, string[]>))),
     { initialValue: {} as Record<string, string[]> },
   );
+
+  /** Whether the damage fields are showing; a mirror, as below. */
+  protected readonly damaged = toSignal(this.vehicle.controls.damaged.valueChanges, {
+    initialValue: this.vehicle.controls.damaged.value,
+  });
+  protected readonly damageTypes = toSignal(this.vehicle.controls.damageTypes.valueChanges, {
+    initialValue: this.vehicle.controls.damageTypes.value,
+  });
+  protected readonly damageTypeOptions = (Object.values(DamageType) as DamageType[]).map((value) => ({
+    value,
+    label: DAMAGE_TYPE_LABELS[value],
+  }));
+  protected readonly maxDamageDescription = LIMITS.damageDescription;
+  protected readonly running = RUNNING;
+  protected readonly notRunning = NOT_RUNNING;
+
+  protected toggleDamageType(type: DamageType, chosen: boolean): void {
+    const control = this.vehicle.controls.damageTypes;
+    control.setValue(chosen ? [...control.value, type] : control.value.filter((entry) => entry !== type));
+    control.markAsTouched();
+  }
 
   /** Mirrors of the two controls the template branches on; see RegisterPage.role. */
   protected readonly make = toSignal(this.vehicle.controls.make.valueChanges, {
@@ -332,6 +360,7 @@ export class ListingEditorPage {
       this.vehicle.controls.model.setValue('', { emitEvent: true });
       this.syncVehicleRules();
     });
+    this.vehicle.controls.damaged.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.syncVehicleRules());
     this.vehicle.controls.model.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.syncVehicleRules());
 
     // The catalogue arriving can change which fields are required.
@@ -592,7 +621,8 @@ export class ListingEditorPage {
    * never be valid for a reason the seller cannot see.
    */
   private syncVehicleRules(): void {
-    const { makeText, model, modelText, power } = this.vehicle.controls;
+    const { makeText, model, modelText, power, damaged, damageTypes, damageRunning, damageDescription } =
+      this.vehicle.controls;
     const value = this.vehicle.getRawValue();
     const makes = this.makes() ?? [];
     const typedMake = makeIsTyped(value, makes);
@@ -607,7 +637,11 @@ export class ListingEditorPage {
     );
     // Required, except on a listing saved before the field existed and still without one.
     power.setValidators(powerValidators(!this.powerMissing()));
-    for (const control of [makeText, model, modelText, power]) {
+    const damage = damageValidators(damaged.value);
+    damageTypes.setValidators(damage.types);
+    damageRunning.setValidators(damage.running);
+    damageDescription.setValidators(damage.description);
+    for (const control of [makeText, model, modelText, power, damageTypes, damageRunning, damageDescription]) {
       control.updateValueAndValidity({ emitEvent: false });
     }
     // With no catalogue at all there is no list to choose from: the make is typed.

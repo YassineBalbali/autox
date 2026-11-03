@@ -1,7 +1,7 @@
 import { convertToParamMap } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
-import { BodyType, FuelType, Gearbox, SearchSort, VehicleCondition } from '../../core/api';
+import { DamageFilter, BodyType, FuelType, Gearbox, SearchSort, VehicleCondition } from '../../core/api';
 import {
   EMPTY_QUERY,
   SearchQuery,
@@ -61,9 +61,46 @@ describe('parseQuery', () => {
       gearbox: [Gearbox.AUTOMATIC],
       body: [BodyType.SUV],
       condition: [VehicleCondition.USED],
+      damage: DamageFilter.UNDAMAGED,
       location: 'Lyon',
       goodDeals: true,
       sort: SearchSort.PRICE_ASC,
+    });
+  });
+
+  describe('État du véhicule', () => {
+    it('leaves damaged vehicles out unless a link asks for them, and says nothing to the API', () => {
+      const query = parse({});
+
+      expect(query.damage).toBe(DamageFilter.UNDAMAGED);
+      expect(toCriteria(query, {}, 'EUR', 2).damage).toBeUndefined();
+      expect(toQueryParams(query)).toEqual({});
+      expect(activeFilterCount(query)).toBe(0);
+    });
+
+    it.each([
+      ['endommages', DamageFilter.DAMAGED_ONLY],
+      ['tous', DamageFilter.ALL],
+    ])('reads %s, sends it, keeps it in the link and counts it as a filter', (slug, filter) => {
+      const query = parse({ etat_vehicule: slug });
+
+      expect(query.damage).toBe(filter);
+      expect(toCriteria(query, {}, 'EUR', 2).damage).toBe(filter);
+      expect(toQueryParams(query)).toEqual({ etat_vehicule: slug });
+      expect(activeFilterCount(query)).toBe(1);
+    });
+
+    it('ignores a value it does not know', () => {
+      expect(parse({ etat_vehicule: 'n-importe-quoi' }).damage).toBe(DamageFilter.UNDAMAGED);
+    });
+
+    it('keeps an old link meaning what it meant: etat=DAMAGED asked for damaged vehicles', () => {
+      const query = parse({ etat: 'DAMAGED' });
+
+      expect(query.damage).toBe(DamageFilter.DAMAGED_ONLY);
+      expect(query.condition).toEqual([]);
+      expect(parse({ etat: 'USED,DAMAGED' }).condition).toEqual([VehicleCondition.USED]);
+      expect(parse({ etat: 'USED' }).damage).toBe(DamageFilter.UNDAMAGED);
     });
   });
 
@@ -190,6 +227,7 @@ describe('toQueryParams', () => {
       gearbox: [Gearbox.AUTOMATIC, Gearbox.MANUAL],
       body: [],
       condition: [VehicleCondition.USED],
+      damage: DamageFilter.ALL,
       location: 'Villeurbanne',
       goodDeals: true,
       sort: SearchSort.PRICE_DESC,

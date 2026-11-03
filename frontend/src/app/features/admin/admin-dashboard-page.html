@@ -62,9 +62,15 @@
               <strong class="dash__figure">{{ number(s.listings.expired.real) }}</strong>
               <span class="dash__demo">{{ demoNote(s.listings.expired) }}</span>
             </li>
+            <li class="panel dash__tile" data-figure="damaged">
+              <span class="dash__label" i18n="@@dashboardDamaged">Endommagées</span>
+              <strong class="dash__figure">{{ number(s.listings.damaged.real) }}</strong>
+              <span class="dash__demo">{{ demoNote(s.listings.damaged) }}</span>
+            </li>
           </ul>
           <p class="meta dash__note" i18n="@@dashboardPendingNote">
-            Une annonce en attente de modération est déjà en ligne : elle compte aussi parmi les publiées.
+            Une annonce en attente de modération est déjà en ligne : elle compte aussi parmi les publiées,
+            comme une annonce endommagée en ligne.
           </p>
         </section>
 

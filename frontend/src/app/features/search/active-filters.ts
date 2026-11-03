@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { DamageFilter } from '../../core/api';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs';
 
@@ -93,6 +94,13 @@ export function describeFilters(query: SearchQuery, names: VehicleNames = {}): A
       key: `condition:${value}`,
       label: labelOf(CONDITION_LABELS, value),
       remove: { condition: query.condition.filter((entry) => entry !== value) },
+    });
+  }
+  if (query.damage !== DamageFilter.UNDAMAGED) {
+    filters.push({
+      key: 'damage',
+      label: query.damage === DamageFilter.ALL ? 'Endommagés inclus' : 'Endommagés uniquement',
+      remove: { damage: DamageFilter.UNDAMAGED },
     });
   }
 

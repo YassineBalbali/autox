@@ -233,6 +233,32 @@ describe('ListingEditorPage', () => {
       backend.expectNone(`${API}/listings`);
     });
 
+    it('shows the damage fields only once the vehicle is declared damaged, then requires them', async () => {
+      await visit('/vendre');
+      await fillVehicle();
+      const damaged = () => root.querySelector('[data-field="damaged"]') as HTMLInputElement;
+      expect(damaged().checked).toBe(false);
+      expect(root.querySelector('[data-section="damage"]')).toBeNull();
+
+      damaged().click();
+      await settle();
+      expect(root.querySelector('[data-section="damage"]')).not.toBeNull();
+
+      (root.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle();
+      expect(root.querySelector('[data-error="damage-types"]')).not.toBeNull();
+      expect(root.querySelector('[data-error="damage-running"]')).not.toBeNull();
+      expect(root.querySelector('[data-section="damage"] .field__error[aria-live]')).not.toBeNull();
+
+      // Unticked, nothing hidden can stop the form.
+      damaged().click();
+      await settle();
+      expect(root.querySelector('[data-section="damage"]')).toBeNull();
+      (root.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle();
+      expect(root.querySelector('.field__error')).toBeNull();
+    });
+
     it('offers the catalogue’s makes, then a way out of the catalogue', async () => {
       await visit('/vendre');
 
@@ -601,6 +627,7 @@ describe('ListingEditorPage', () => {
         powerKw: 96,
         gearbox: 'MANUAL',
         condition: 'USED',
+        damage: { damaged: false },
         title: 'Peugeot 308 BlueHDi 130',
         description: 'Première main.',
         // 15 990 €, in cents.

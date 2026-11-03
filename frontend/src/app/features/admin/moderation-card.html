@@ -31,6 +31,9 @@
     </div>
 
     <div class="card__details stack">
+      @if (listing().damage) {
+        <app-damage-notice [damage]="listing().damage" />
+      }
       <div class="card__price">
         @if (listing().priceAmount !== undefined) {
           <app-price

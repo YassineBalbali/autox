@@ -64,6 +64,18 @@
       </div>
     </fieldset>
 
+    <!-- One of three, always one: the first is what a search with no choice shows. -->
+    <fieldset class="filters__group" data-filter="damage">
+      <legend i18n="@@filterDamage">État du véhicule</legend>
+      <div class="filters__chips">
+        @for (option of damageOptions; track option.value) {
+          <app-filter-chip [active]="query().damage === option.value" (toggled)="changed.emit({ damage: option.value })">
+            {{ option.label }}
+          </app-filter-chip>
+        }
+      </div>
+    </fieldset>
+
     <!-- ====================================================== multi-choice -->
     @for (group of groups(); track group.key) {
       <fieldset class="filters__group">

@@ -214,6 +214,70 @@
                 [options]="conditionOptions()"
               />
 
+              <div class="field">
+                <span class="field__label" aria-hidden="true"></span>
+                <label class="check">
+                  <input type="checkbox" [formControl]="vehicle.controls.damaged" data-field="damaged" />
+                  <span i18n="@@fieldDamaged">Ce véhicule est endommagé</span>
+                </label>
+              </div>
+
+              @if (damaged()) {
+                <div class="damage-fields stack" data-section="damage">
+                  <fieldset class="damage-fields__group">
+                    <legend class="field__label" i18n="@@fieldDamageTypes">Type de dommage</legend>
+                    <div class="damage-fields__options">
+                      @for (option of damageTypeOptions; track option.value) {
+                        <label class="check">
+                          <input
+                            type="checkbox"
+                            [attr.data-damage-type]="option.value"
+                            [checked]="damageTypes().includes(option.value)"
+                            (change)="toggleDamageType(option.value, $any($event.target).checked)"
+                          />
+                          <span>{{ option.label }}</span>
+                        </label>
+                      }
+                    </div>
+                    @if (vehicle.controls.damageTypes.touched && vehicle.controls.damageTypes.invalid) {
+                      <p class="field__error" data-error="damage-types" i18n="@@fieldDamageTypesRequired">
+                        Choisissez au moins un type de dommage.
+                      </p>
+                    }
+                  </fieldset>
+
+                  <fieldset class="damage-fields__group">
+                    <legend class="field__label" i18n="@@fieldDamageRunning">Le véhicule roule-t-il ?</legend>
+                    <div class="damage-fields__options">
+                      <label class="check">
+                        <input type="radio" [formControl]="vehicle.controls.damageRunning" [value]="running" />
+                        <span i18n="@@damageRunning">Roulant</span>
+                      </label>
+                      <label class="check">
+                        <input type="radio" [formControl]="vehicle.controls.damageRunning" [value]="notRunning" />
+                        <span i18n="@@damageNotRunning">Non roulant</span>
+                      </label>
+                    </div>
+                    @if (vehicle.controls.damageRunning.touched && vehicle.controls.damageRunning.invalid) {
+                      <p class="field__error" data-error="damage-running" i18n="@@fieldDamageRunningRequired">
+                        Indiquez si le véhicule roule.
+                      </p>
+                    }
+                  </fieldset>
+
+                  <app-text-field
+                    label="Description des dommages"
+                    i18n-label="@@fieldDamageDescription"
+                    type="textarea"
+                    hint="Ce qui est abîmé, ce qui fonctionne encore. Elle s’affiche avant le prix."
+                    i18n-hint="@@fieldDamageDescriptionHint"
+                    [rows]="4"
+                    [maxLength]="maxDamageDescription"
+                    [control]="vehicle.controls.damageDescription"
+                  />
+                </div>
+              }
+
               <div class="form-actions">
                 <button class="btn btn--primary" type="submit" [disabled]="saving()">
                   @if (editing()) {
@@ -353,6 +417,9 @@
                     [gearbox]="previewGearbox()"
                     [powerHp]="item.vehicle?.powerHp"
                   />
+                  @if (item.damage) {
+                    <app-damage-notice [damage]="item.damage" />
+                  }
                   @if (item.priceAmount !== undefined) {
                     <div class="preview__price">
                       <app-price
