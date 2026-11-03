@@ -55,6 +55,13 @@ public enum ErrorCode {
     UNSUPPORTED_MEDIA_TYPE,
     CONFLICT,
 
+    /** An administrator tried to suspend, demote or otherwise act on their own account. */
+    ADMIN_SELF_ACTION,
+    /** The action would leave nobody able to administer the site. */
+    LAST_ADMIN,
+    /** Nobody can sign in to a demo account, so it cannot be made an administrator. */
+    DEMO_ACCOUNT_CANNOT_BE_ADMIN,
+
     /** The seller already has as many live listings as their account allows. */
     ACTIVE_LISTING_LIMIT_REACHED,
 

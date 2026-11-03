@@ -183,6 +183,21 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_CURSOR, detail);
     }
 
+    public static ApiException adminSelfAction() {
+        return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.ADMIN_SELF_ACTION,
+                "An administrator cannot perform this action on their own account.");
+    }
+
+    public static ApiException lastAdmin() {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.LAST_ADMIN,
+                "This is the last administrator able to sign in.");
+    }
+
+    public static ApiException demoAccountCannotBeAdmin() {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.DEMO_ACCOUNT_CANNOT_BE_ADMIN,
+                "Nobody can sign in to a demo account, so it cannot be made an administrator.");
+    }
+
     public static ApiException forbidden(String detail) {
         return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN, detail);
     }

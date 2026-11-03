@@ -553,6 +553,25 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("removal takes a demo account an administrator acted on, and the record of it stays")
+    void removeKeepsTheRecordOfAdminActions() {
+        // A foreign key from the record to the account would make this removal fail halfway.
+        demoData.seed();
+        java.util.UUID demoUser = ledger.ids(DemoLedger.USER).getFirst();
+        jdbcTemplate.update("""
+                INSERT INTO admin_user_action (id, admin_id, admin_email, target_user_id, target_email, action,
+                                               reason, previous_value, new_value)
+                VALUES (gen_random_uuid(), gen_random_uuid(), 'admin@autox.test', ?, 'demo@demo.autox.invalid',
+                        'SUSPEND', 'Test', 'ACTIVE', 'SUSPENDED')""", demoUser);
+
+        demoData.remove();
+
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM app_user WHERE id = ?", Integer.class, demoUser)).isZero();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM admin_user_action WHERE target_user_id = ?",
+                Integer.class, demoUser)).isOne();
+    }
+
+    @Test
     @DisplayName("removal with nothing seeded is a no-op")
     void removeWithoutSeed() {
         assertThat(demoData.remove()).isZero();

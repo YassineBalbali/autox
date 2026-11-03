@@ -101,11 +101,12 @@ public class MessagingService {
     @Transactional
     public ConversationDetail reply(UUID senderId, UUID conversationId, String body) {
         MessagingRepository.Header header = participantHeader(senderId, conversationId);
+        // First: a suspended sender's conversations are closed too, and that is not what to tell them.
+        requireOpenAccount(senderId);
         if (!header.canReply()) {
             throw ApiException.conflict("This conversation is closed: the listing was taken down, "
                     + "or one of the accounts is no longer open.");
         }
-        requireOpenAccount(senderId);
         String text = clean(body);
         allow(senderId, false);
 

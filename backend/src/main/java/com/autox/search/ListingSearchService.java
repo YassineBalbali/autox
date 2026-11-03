@@ -12,6 +12,7 @@ import com.autox.search.dto.PriceIndicator;
 import com.autox.search.dto.PublicListingDetail;
 import com.autox.search.dto.PublicListingSummary;
 import com.autox.storage.ObjectStorage;
+import com.autox.user.UserStatus;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -142,7 +143,8 @@ public class ListingSearchService {
         return listing.getStatus() == ListingStatus.ACTIVE
                 && listing.getModerationStatus() != ModerationStatus.REJECTED
                 && listing.getDeletedAt() == null
-                && (listing.getExpiresAt() == null || listing.getExpiresAt().isAfter(Instant.now()));
+                && (listing.getExpiresAt() == null || listing.getExpiresAt().isAfter(Instant.now()))
+                && listing.getSeller().getStatus() != UserStatus.SUSPENDED;
     }
 
     private List<PublicListingSummary> toSummaries(List<ListingSearchRepository.SearchRow> rows) {

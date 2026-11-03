@@ -1126,6 +1126,173 @@
         }
       }
     },
+    "/api/v1/admin/users/{id}/suspend": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "suspendUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspendUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserActionResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/role": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "changeUserRole",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeUserRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserActionResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/reactivate": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "reactivateUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactivateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserActionResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/message-reports/{id}/hide": {
       "post": {
         "tags": [
@@ -2441,9 +2608,9 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Accounts, newest first, optionally filtered by role",
-        "description": "Accounts, newest first, optionally filtered by role. Paginated by page number rather\n than by cursor: this is an operator tool over a slowly growing table, where jumping to\n a page is worth more than the consistency a cursor gives.\n\n <p>Closed accounts are excluded. Password hashes are never included.",
-        "operationId": "list_1",
+        "summary": "Accounts, newest first",
+        "description": "Accounts, newest first. Paginated by page number rather than by cursor: this is an\n operator tool over a slowly growing table, where jumping to a page is worth more than the\n consistency a cursor gives.\n\n <p>Closed accounts are excluded. Password hashes are never included.",
+        "operationId": "userList",
         "parameters": [
           {
             "name": "page",
@@ -2469,11 +2636,39 @@
             }
           },
           {
+            "name": "q",
+            "in": "query",
+            "description": "part of a display name or an address, whatever its case",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "minLength": 0
+            }
+          },
+          {
             "name": "role",
             "in": "query",
             "required": false,
             "schema": {
               "$ref": "#/components/schemas/UserRole"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/UserStatus"
+            }
+          },
+          {
+            "name": "demo",
+            "in": "query",
+            "description": "true for the demo seed's accounts only, false for everyone else's",
+            "required": false,
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -2483,7 +2678,53 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PageResponseUserSummary"
+                  "$ref": "#/components/schemas/PageResponseAdminUserRow"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "userDetail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserDetail"
                 }
               }
             }
@@ -4100,6 +4341,294 @@
           "password"
         ]
       },
+      "SuspendUserRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "AdminListingHistoryEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingTitle": {
+            "type": "string"
+          },
+          "action": {
+            "$ref": "#/components/schemas/ModerationActionType"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "adminName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminUserActionEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "$ref": "#/components/schemas/AdminUserActionType"
+          },
+          "adminEmail": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "previousValue": {
+            "type": "string"
+          },
+          "newValue": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminUserActionResult": {
+        "type": "object",
+        "description": "The account after an action. <code>accessTokenTtlSeconds</code> is how long an access token\n issued just before a suspension can still be used: it cannot be recalled.",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AdminUserDetail"
+          },
+          "revokedSessions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accessTokenTtlSeconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminUserActionType": {
+        "type": "string",
+        "description": "Mirrors ck_admin_user_action.",
+        "enum": [
+          "SUSPEND",
+          "REACTIVATE",
+          "CHANGE_ROLE"
+        ]
+      },
+      "AdminUserActivity": {
+        "type": "object",
+        "properties": {
+          "listings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "listingsOnline": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "conversations": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "messagesSent": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reportsFiled": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reportsReceived": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "activeSessions": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminUserDetail": {
+        "type": "object",
+        "description": "The whole account, with what it has done and what was done about it.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "phoneVerifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "emailVerifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastLoginAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "demo": {
+            "type": "boolean"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "registrationNumber": {
+            "type": "string"
+          },
+          "activity": {
+            "$ref": "#/components/schemas/AdminUserActivity"
+          },
+          "listings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminUserListing"
+            }
+          },
+          "moderationHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminListingHistoryEntry"
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminUserActionEntry"
+            }
+          },
+          "accessTokenTtlSeconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminUserListing": {
+        "type": "object",
+        "description": "<code>online</code>: a visitor can open it right now, so a link to it leads somewhere.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ListingStatus"
+          },
+          "moderationStatus": {
+            "$ref": "#/components/schemas/ModerationStatus"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "online": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ModerationActionType": {
+        "type": "string",
+        "description": "Mirrors ck_moderation_action. REJECT and REMOVE require a reason code.",
+        "enum": [
+          "APPROVE",
+          "REJECT",
+          "REMOVE",
+          "REINSTATE"
+        ]
+      },
+      "ChangeUserRoleRequest": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "ReactivateUserRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        }
+      },
       "ModerationDecisionRequest": {
         "type": "object",
         "description": "Why a listing is being refused or taken down.\n\n <p>The reason is required: a listing that disappears without one cannot be explained to\n its seller or defended in a dispute. The note is the moderator's own words, kept for\n other moderators, and required only when the reason is <code>OTHER</code>.",
@@ -4191,16 +4720,6 @@
             "format": "date-time"
           }
         }
-      },
-      "ModerationActionType": {
-        "type": "string",
-        "description": "Mirrors ck_moderation_action. REJECT and REMOVE require a reason code.",
-        "enum": [
-          "APPROVE",
-          "REJECT",
-          "REMOVE",
-          "REINSTATE"
-        ]
       },
       "ModerationEntry": {
         "type": "object",
@@ -5606,14 +6125,56 @@
           "type"
         ]
       },
-      "PageResponseUserSummary": {
+      "AdminUserRow": {
+        "type": "object",
+        "description": "A line of the list.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "listingCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "demo": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageResponseAdminUserRow": {
         "type": "object",
         "description": "The envelope every list endpoint returns.\n\n <p>Spring's own <code>Page</code> serialises its internal structure, which would tie the\n public contract to a Spring Data version. This is our shape, and it is the only\n one a mobile client has to understand.\n\n <p>Offset paging is correct for admin tables. Public search will use a keyset\n cursor instead — same envelope, with a <code>nextCursor</code> added — because offset\n paging skips and repeats rows while listings are being inserted underneath.",
         "properties": {
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/UserSummary"
+              "$ref": "#/components/schemas/AdminUserRow"
             }
           },
           "page": {
@@ -6066,6 +6627,9 @@
           "METHOD_NOT_ALLOWED",
           "UNSUPPORTED_MEDIA_TYPE",
           "CONFLICT",
+          "ADMIN_SELF_ACTION",
+          "LAST_ADMIN",
+          "DEMO_ACCOUNT_CANNOT_BE_ADMIN",
           "ACTIVE_LISTING_LIMIT_REACHED",
           "CONCURRENT_MODIFICATION",
           "UNSUPPORTED_IMAGE_TYPE",

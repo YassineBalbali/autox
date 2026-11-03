@@ -1,25 +1,37 @@
 package com.autox.admin;
 
+import com.autox.admin.AdminUsers.AdminUserActionResult;
+import com.autox.admin.AdminUsers.AdminUserDetail;
+import com.autox.admin.AdminUsers.AdminUserRow;
+import com.autox.admin.AdminUsers.ChangeUserRoleRequest;
+import com.autox.admin.AdminUsers.ReactivateUserRequest;
+import com.autox.admin.AdminUsers.SuspendUserRequest;
 import com.autox.api.PageResponse;
-import com.autox.user.AppUserRepository;
+import com.autox.user.CurrentUser;
 import com.autox.user.UserRole;
-import com.autox.user.dto.UserSummary;
+import com.autox.user.UserStatus;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
+import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The one admin-only endpoint in this task. It exists so role-based authorisation is
- * real and testable rather than configured-but-unexercised; listing moderation
- * endpoints come with the listings work.
+ * Accounts, for administrators: find one, read it, suspend it, reactivate it, change its role.
+ * The rules are in {@link AdminUserService}.
  *
  * <p>Guarded twice on purpose: by path in {@code SecurityConfig} and by
  * {@code @PreAuthorize} here, so moving the controller cannot silently unguard it.
@@ -34,29 +46,58 @@ public class AdminUserController {
 
     private static final int MAX_PAGE_SIZE = 100;
 
-    private final AppUserRepository users;
+    private final AdminUserService service;
 
-    public AdminUserController(AppUserRepository users) {
-        this.users = users;
+    public AdminUserController(AdminUserService service) {
+        this.service = service;
     }
 
     /**
-     * Accounts, newest first, optionally filtered by role. Paginated by page number rather
-     * than by cursor: this is an operator tool over a slowly growing table, where jumping to
-     * a page is worth more than the consistency a cursor gives.
+     * Accounts, newest first. Paginated by page number rather than by cursor: this is an
+     * operator tool over a slowly growing table, where jumping to a page is worth more than the
+     * consistency a cursor gives.
      *
      * <p>Closed accounts are excluded. Password hashes are never included.
+     *
+     * @param q    part of a display name or an address, whatever its case
+     * @param demo true for the demo seed's accounts only, false for everyone else's
      */
     @GetMapping
-    @Transactional(readOnly = true)
-    public PageResponse<UserSummary> list(
+    public PageResponse<AdminUserRow> userList(
+            @AuthenticationPrincipal Jwt token,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(MAX_PAGE_SIZE) int size,
-            @RequestParam(required = false) UserRole role) {
+            @RequestParam(required = false) @Size(max = 255) String q,
+            @RequestParam(required = false) UserRole role,
+            @RequestParam(required = false) UserStatus status,
+            @RequestParam(required = false) Boolean demo) {
 
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return PageResponse.of(
-                role == null ? users.findAllActive(pageRequest) : users.findAllActiveByRole(role, pageRequest),
-                UserSummary::from);
+                service.list(CurrentUser.id(token), new AdminUserRepository.Filter(q, role, status, demo),
+                        PageRequest.of(page, size)),
+                Function.identity());
+    }
+
+    @GetMapping("/{id}")
+    public AdminUserDetail userDetail(@AuthenticationPrincipal Jwt token, @PathVariable UUID id) {
+        return service.detail(CurrentUser.id(token), id);
+    }
+
+    @PostMapping("/{id}/suspend")
+    public AdminUserActionResult suspendUser(@AuthenticationPrincipal Jwt token, @PathVariable UUID id,
+                                         @Valid @RequestBody SuspendUserRequest request) {
+        return service.suspend(CurrentUser.id(token), id, request.reason());
+    }
+
+    @PostMapping("/{id}/reactivate")
+    public AdminUserActionResult reactivateUser(@AuthenticationPrincipal Jwt token, @PathVariable UUID id,
+                                            @Valid @RequestBody(required = false) ReactivateUserRequest request) {
+        return service.reactivate(CurrentUser.id(token), id, request == null ? null : request.note());
+    }
+
+    @PostMapping("/{id}/role")
+    public AdminUserActionResult changeUserRole(@AuthenticationPrincipal Jwt token, @PathVariable UUID id,
+                                            @Valid @RequestBody ChangeUserRoleRequest request) {
+        return service.changeRole(CurrentUser.id(token), id, request.role(), request.note());
     }
 }
