@@ -260,13 +260,6 @@ public class Listing extends BaseEntity {
     protected Listing() {
     }
 
-    /** The condition every public query and partial index applies. */
-    public boolean isPubliclyVisible() {
-        return status == ListingStatus.ACTIVE
-                && moderationStatus != ModerationStatus.REJECTED
-                && deletedAt == null;
-    }
-
     public void addImage(ListingImage image) {
         image.setListing(this);
         image.setPosition((short) images.size());

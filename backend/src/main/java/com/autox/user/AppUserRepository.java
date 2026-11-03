@@ -1,6 +1,7 @@
 package com.autox.user;
 
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,19 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
 
     @Query("select u from AppUser u where u.deletedAt is null and u.role = :role")
     Page<AppUser> findAllActiveByRole(@Param("role") UserRole role, Pageable pageable);
+
+    /**
+     * Locks every administrator's row and the given account's, in id order so that two callers
+     * cannot deadlock. See {@code AdminUserService}: an administrator can only be removed by
+     * whoever holds these.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select u from AppUser u
+             where u.id = :id or (u.role = com.autox.user.UserRole.ADMIN and u.deletedAt is null)
+             order by u.id
+            """)
+    List<AppUser> lockAdministratorsAnd(@Param("id") UUID id);
 
     /**
      * Takes a row lock on the seller, so that counting their active listings and then

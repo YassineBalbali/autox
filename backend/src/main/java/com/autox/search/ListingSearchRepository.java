@@ -44,6 +44,9 @@ public class ListingSearchRepository {
     /**
      * {@link #VISIBLE} for a listing table under another alias: {@link MarketPrice}'s
      * comparables, and whether the listing a conversation is about is still online.
+     *
+     * <p>A suspended seller's listings are out of it, and that is all a suspension does to them:
+     * nothing is written to the listing, so lifting it brings every one of them back as it was.
      */
     public static String visible(String alias) {
         return """
@@ -51,6 +54,9 @@ public class ListingSearchRepository {
                   AND %1$s.moderation_status <> 'REJECTED'
                   AND %1$s.deleted_at IS NULL
                   AND (%1$s.expires_at IS NULL OR %1$s.expires_at > now())
+                  AND NOT EXISTS (SELECT 1 FROM app_user listing_seller
+                                   WHERE listing_seller.id = %1$s.seller_id
+                                     AND listing_seller.status = 'SUSPENDED')
                 """.formatted(alias);
     }
 
