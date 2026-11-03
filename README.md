@@ -421,6 +421,20 @@ Then `Authorization: Bearer <accessToken>`.
 Roles: **PARTICULIER** (private seller, free, capped at 5 live listings), **PROFESSIONNEL**
 (dealer, uncapped until subscription tiers exist), **ADMIN**.
 
+### Damaged vehicles
+
+A seller can declare a vehicle damaged: one or more types (carrosserie, mécanique, grêle,
+inondation, autre), whether it runs, and a description, all three required. A listing is
+undamaged unless declared otherwise.
+
+- **Search leaves them out by default, on the server.** `damage` on `GET /listings` is
+  `UNDAMAGED` when absent, `DAMAGED_ONLY` or `ALL` when asked. Suggestions leave them out too,
+  and similar listings keep damaged and intact cars apart.
+- **They are never compared.** A damaged car is not a comparable for the price indicator or La
+  Cote, and gets no verdict of its own: its price says nothing about the market for intact ones.
+- **Changing the declaration, in any direction, sends the listing back to moderation,** like any
+  other change of content.
+
 ### Accounts
 
 An administrator can suspend an account (a reason is required), reactivate it and change its

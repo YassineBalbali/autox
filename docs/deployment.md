@@ -255,7 +255,7 @@ shell and no one-off jobs, so the profile goes on for one deploy and comes off a
 2. **Logs**: wait for the line
 
    ```
-   Seeded 152 demo listings, 10 demo accounts and 18 demo makes. This is invented data …
+   Seeded 160 demo listings, 10 demo accounts and 18 demo makes. This is invented data …
    ```
 
    Allow **about thirty-five minutes** after startup: a 60-listing seed took about twelve
@@ -297,6 +297,20 @@ Demo data is already present (152 listings); nothing seeded.
 
 A start with nothing left to approve says `Demo listings: none awaiting moderation, nothing
 approved.` in its place. Running it again is harmless.
+
+**To add the damaged demo vehicles to a seeded database**, no reset is needed: the same single
+deploy with `SPRING_PROFILES_ACTIVE=demo` and no `AUTOX_DEMO_ACTION`, then remove the profile. It
+creates the 8 of `DemoCatalogue.DAMAGED` that are missing, each through the real upload and
+publish steps, already approved and recorded in the ledger, so a removal takes them too. Allow a
+few minutes, and do not deploy again until the lines below appear. The log shows:
+
+```
+Demo damaged listings: added 8 of 8; other listings untouched.
+Demo data is already present (160 listings); nothing seeded.
+```
+
+A later start says `Demo damaged listings: complete, nothing added (8 listings).` A listing is
+recognised by its title among those in the ledger, so a visitor's listing can never count as one.
 
 **To reset the demo later** (once visitors have filled it with test listings): deploy once
 with `SPRING_PROFILES_ACTIVE=demo` **and** `AUTOX_DEMO_ACTION=remove`, then once with only
