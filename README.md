@@ -363,6 +363,7 @@ of the interface.
 | `/admin` | admin | Dashboard |
 | `/admin/moderation` | admin | Moderation (`?vue=`, `?page=`) |
 | `/admin/moderation/messages` | admin | Reported messages |
+| `/admin/utilisateurs`, `/admin/utilisateurs/:id` | admin | Accounts (`?q=`, `?role=`, `?statut=`, `?comptes=`, `?page=`), and one account |
 | `/guide-de-style` | anyone, unlinked | Tokens and shared components, rendered |
 | `/acces-refuse`, anything else | anyone | Refused; not found |
 
@@ -382,7 +383,7 @@ A route guard is a courtesy. The API is what refuses.
 | Search bar suggestions | `GET /catalogue/suggestions?q=` (makes and models with listings online, by prefix, case and accents ignored) | none |
 | Messages | `POST /listings/{id}/conversation`, `GET /conversations`, `/conversations/unread`, `/conversations/{id}`, `POST /conversations/{id}/messages`·`read`, `POST /messages/{id}/report` | token, participant |
 | Moderation | `GET /admin/listings`, `/admin/listings/{id}`, `POST /admin/listings/{id}/approve`·`reject`·`remove`·`reinstate`, `GET /admin/message-reports`, `POST /admin/message-reports/{id}/hide`·`dismiss` | ADMIN |
-| Users | `GET /admin/users` | ADMIN |
+| Users | `GET /admin/users` (`q`, `role`, `status`, `demo`), `/admin/users/{id}`, `POST /admin/users/{id}/suspend`·`reactivate`·`role` | ADMIN |
 
 ### Conventions that apply everywhere
 
@@ -419,6 +420,27 @@ Then `Authorization: Bearer <accessToken>`.
 
 Roles: **PARTICULIER** (private seller, free, capped at 5 live listings), **PROFESSIONNEL**
 (dealer, uncapped until subscription tiers exist), **ADMIN**.
+
+### Accounts
+
+An administrator can suspend an account (a reason is required), reactivate it and change its
+role. Everything below is enforced by the API, in `AdminUserService`:
+
+- **Nobody acts on their own account, and an administrator always remains.** The last
+  administrator able to sign in cannot be suspended or demoted. Each action locks the
+  administrators' rows, so two of them demoting each other at once leave one.
+- **The row decides, not the token.** A token keeps saying ADMIN for up to 15 minutes after a
+  demotion or a suspension, so these endpoints also read the caller's account.
+- **A suspension takes effect at once, except for one token.** Every refresh token is revoked,
+  signing in is refused, sending a message is refused and the account's listings leave the
+  public site. An access token already issued cannot be recalled: it still authenticates for up
+  to 15 minutes (`autox.auth.access-token-ttl`), and the API reports that figure.
+- **Nothing is deleted or rewritten.** A suspended seller's listings are hidden by one condition
+  in `ListingSearchRepository.visible`, so reactivation brings them back as they were. It also
+  restores the status the account had, rather than setting ACTIVE.
+- **Every action is recorded:** `admin_user_action` holds who, what, on whom, why and when, and
+  is append-only. It has no foreign keys and copies the addresses, because the record has to
+  outlive the accounts it names. There is no audit log page yet.
 
 ### Moderation
 

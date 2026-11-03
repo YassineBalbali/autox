@@ -275,8 +275,7 @@ else, and listings expire silently after 60 days.
 ### W8. Moderation works for one moderator and a short queue — frontend and backend
 
 Enough to do the job, and no more: no search or filter (finding one listing means paging
-to it), no view of a seller's other listings, no user administration screen although
-`GET /admin/users` exists, no reports inbox (R3), and when a listing returns to the queue
+to it), no reports inbox (R3), and when a listing returns to the queue
 after an edit the card says so but cannot show *what* changed.
 
 ### W9. The backend is operationally blind, and so is the frontend — both

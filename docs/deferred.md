@@ -94,12 +94,14 @@ The decisions are built: queue, approve, reject, takedown, reinstate, the trail,
 return to the queue when an approved listing's content is edited. What a moderation
 *system* needs beyond them is not:
 
-- **Account suspension.** `UserStatus.SUSPENDED` blocks sign-in and nothing sets it; the
-  search's visibility rule does not look at the seller's status either. Needs an endpoint,
-  a screen, and one more condition in `ListingSearchRepository.VISIBLE`.
 - **Reporting by users.** No endpoint, no page. The footer's "Signaler une annonce" entry
   is declared and hidden until its route exists.
-- **User administration.** `GET /api/v1/admin/users` exists and no screen uses it.
+- **An audit log page.** `admin_user_action` records every action on an account; only the
+  account's own page shows its lines.
+- **Telling a suspended user why.** The reason is for administrators: the account is only told
+  that it is suspended, and no message is sent.
+- **Email verification.** Nothing sets `email_verified_at` or the ACTIVE status yet, so nearly
+  every account reads "E-mail non vérifié" in the administration.
 - **Telling the seller.** A takedown's reason is shown on the seller's dashboard
   (`removalReason`); no message is sent.
 - **What changed.** A listing back in the queue after an edit carries

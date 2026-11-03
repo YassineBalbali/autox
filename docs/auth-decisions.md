@@ -13,7 +13,7 @@ rotation, unverified emails may sign in, logout ends one device's session.
 | POST | `/api/v1/auth/logout` | refresh token in body | 204 |
 | GET | `/api/v1/me` | Bearer | own profile |
 | PATCH | `/api/v1/me` | Bearer | updated profile |
-| GET | `/api/v1/admin/users` | Bearer, ADMIN | paginated user list |
+| GET | `/api/v1/admin/users` | Bearer, ADMIN | paginated user list; the rest of user management is in the README, "Accounts" |
 
 Error shape is RFC 9457 `application/problem+json` with a stable `code` member and,
 for validation failures, a flat `errors` array.
@@ -103,7 +103,8 @@ of disruption). Refresh tokens are unaffected — they are random, not signed.
 `hasRole('ADMIN')` reads the `role` claim, so no database hit per request. The
 consequence: a role change or a suspension takes up to 15 minutes to be felt on
 access-token-authenticated calls. Refresh is checked against the database every
-time, so a suspension bites within one token cycle at the latest.
+time, so a suspension bites within one token cycle at the latest. Sending a message and the
+administrators' user endpoints read the account's row as well, so a stale token gets nothing there.
 
 If you ever need instant revocation, that is a token blocklist in Redis — real
 infrastructure, and a tax on every request. I would not.
