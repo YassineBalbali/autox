@@ -1,5 +1,7 @@
 import {
   BodyType,
+  DamageFilter,
+  DamageType,
   EmissionClass,
   ExteriorColor,
   FeatureCategory,
@@ -61,7 +63,21 @@ export const BODY_LABELS: Record<BodyType, string> = {
 export const CONDITION_LABELS: Record<VehicleCondition, string> = {
   [VehicleCondition.NEW]: 'Neuf',
   [VehicleCondition.USED]: 'Occasion',
-  [VehicleCondition.DAMAGED]: 'Accidenté',
+};
+
+export const DAMAGE_TYPE_LABELS: Record<DamageType, string> = {
+  [DamageType.BODYWORK]: 'Carrosserie',
+  [DamageType.MECHANICAL]: 'Mécanique',
+  [DamageType.HAIL]: 'Grêle',
+  [DamageType.FLOOD]: 'Inondation',
+  [DamageType.OTHER]: 'Autre',
+};
+
+/** "État du véhicule", in the order the filter offers them: the default first. */
+export const DAMAGE_FILTER_LABELS: Record<DamageFilter, string> = {
+  [DamageFilter.UNDAMAGED]: 'Non endommagés',
+  [DamageFilter.DAMAGED_ONLY]: 'Endommagés uniquement',
+  [DamageFilter.ALL]: 'Tous',
 };
 
 export const COLOR_LABELS: Record<ExteriorColor, string> = {

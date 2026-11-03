@@ -2,6 +2,7 @@ import { ParamMap, Params } from '@angular/router';
 
 import {
   BodyType,
+  DamageFilter,
   FuelType,
   Gearbox,
   ListingSearchCriteria,
@@ -39,6 +40,8 @@ export interface SearchQuery {
   readonly gearbox: readonly Gearbox[];
   readonly body: readonly BodyType[];
   readonly condition: readonly VehicleCondition[];
+  /** Damaged vehicles: out of a search unless it asks for them. */
+  readonly damage: DamageFilter;
   readonly location: string | null;
   /** Only listings the price indicator calls a good deal. */
   readonly goodDeals: boolean;
@@ -61,6 +64,7 @@ export const EMPTY_QUERY: SearchQuery = {
   gearbox: [],
   body: [],
   condition: [],
+  damage: DamageFilter.UNDAMAGED,
   location: null,
   goodDeals: false,
   sort: DEFAULT_SORT,
@@ -88,6 +92,7 @@ export const PARAM = {
   gearbox: 'boite',
   body: 'carrosserie',
   condition: 'etat',
+  damage: 'etat_vehicule',
   location: 'lieu',
   goodDeals: 'bonnes_affaires',
   sort: 'tri',
@@ -99,6 +104,12 @@ const SORT_SLUGS: Record<SearchSort, string> = {
   [SearchSort.PRICE_ASC]: 'prix-croissant',
   [SearchSort.PRICE_DESC]: 'prix-decroissant',
   [SearchSort.MILEAGE_ASC]: 'km-croissant',
+};
+
+/** "État du véhicule" to its slug in the URL. The default has none: it is simply absent. */
+const DAMAGE_SLUGS: Partial<Record<DamageFilter, string>> = {
+  [DamageFilter.DAMAGED_ONLY]: 'endommages',
+  [DamageFilter.ALL]: 'tous',
 };
 
 /** The bounds the API validates against — `ListingSearchCriteria` on the backend. */
@@ -151,6 +162,7 @@ export function parseQuery(params: ParamMap): SearchQuery {
     gearbox: enumList(params.get(PARAM.gearbox), Gearbox),
     body: enumList(params.get(PARAM.body), BodyType),
     condition: enumList(params.get(PARAM.condition), VehicleCondition),
+    damage: damageFromParams(params),
     location: text(params.get(PARAM.location)),
     // "1" and nothing else: a flag in a link is on or absent.
     goodDeals: params.get(PARAM.goodDeals) === '1',
@@ -187,6 +199,7 @@ export function toQueryParams(query: SearchQuery): Params {
   put(PARAM.gearbox, enumSlugs(query.gearbox));
   put(PARAM.body, enumSlugs(query.body));
   put(PARAM.condition, enumSlugs(query.condition));
+  put(PARAM.damage, DAMAGE_SLUGS[query.damage] ?? null);
   put(PARAM.location, query.location);
   put(PARAM.goodDeals, query.goodDeals ? '1' : null);
   put(PARAM.sort, query.sort === DEFAULT_SORT ? null : SORT_SLUGS[query.sort]);
@@ -239,6 +252,8 @@ export function toCriteria(
     gearbox: query.gearbox.length ? [...query.gearbox] : undefined,
     bodyType: query.body.length ? [...query.body] : undefined,
     condition: query.condition.length ? [...query.condition] : undefined,
+    // Left out for the default, which is also the API's.
+    damage: query.damage === DamageFilter.UNDAMAGED ? undefined : query.damage,
     location: query.location ?? undefined,
     priceLevel: query.goodDeals ? [PriceLevel.GOOD_DEAL] : undefined,
   });
@@ -257,6 +272,7 @@ export function activeFilterCount(query: SearchQuery): number {
     query.gearbox.length || null,
     query.body.length || null,
     query.condition.length || null,
+    query.damage === DamageFilter.UNDAMAGED ? null : query.damage,
     query.location,
     query.goodDeals || null,
   ].filter((value) => value !== null && value !== undefined).length;
@@ -291,6 +307,20 @@ function text(raw: string | null, max = MAX_TEXT): string | null {
 }
 
 /** `plugin-hybrid,diesel` to `[DIESEL, PLUGIN_HYBRID]`: known values only, once each. */
+/**
+ * The filter, or what an older link asked for: "damaged" used to be a value of `etat`, and a link
+ * once shared has to keep meaning the same thing.
+ */
+function damageFromParams(params: ParamMap): DamageFilter {
+  const slug = params.get(PARAM.damage);
+  const chosen = (Object.keys(DAMAGE_SLUGS) as DamageFilter[]).find((filter) => DAMAGE_SLUGS[filter] === slug);
+  if (chosen) {
+    return chosen;
+  }
+  const legacy = (params.get(PARAM.condition) ?? '').toUpperCase().split(',');
+  return legacy.includes('DAMAGED') ? DamageFilter.DAMAGED_ONLY : DamageFilter.UNDAMAGED;
+}
+
 function enumList<T extends string>(raw: string | null, type: Record<string, T>): T[] {
   if (!raw) {
     return [];

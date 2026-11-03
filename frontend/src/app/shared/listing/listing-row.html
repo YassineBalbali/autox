@@ -7,6 +7,11 @@
   />
 
   <div class="listing__main">
+    <!-- Ahead of the price, which on a phone comes next. -->
+    @if (listing().damage) {
+      <app-damage-notice [damage]="listing().damage" [compact]="true" />
+    }
+
     <!-- Phones: the price first, over the title — on a narrow row it is what the eye looks
          for, and there is no third column to put it in. -->
     @if (listing().priceAmount !== undefined) {

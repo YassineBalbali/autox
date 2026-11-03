@@ -9,6 +9,11 @@
     }
   </div>
 
+  <!-- Ahead of the price: what it is the price of. Never collapsed. -->
+  @if (listing().damage) {
+    <app-damage-notice [damage]="listing().damage" />
+  }
+
   @if (listing().priceAmount !== undefined) {
     <div class="summary__price">
       <app-price

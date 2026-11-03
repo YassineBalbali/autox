@@ -28,7 +28,14 @@ const days = (fill: (index: number) => { listings: number; demoListings?: number
 const EMPTY: AdminStats = {
   generatedAt: '2026-11-02T10:00:00Z',
   demoDataPresent: false,
-  listings: { published: split(0), pendingModeration: split(0), rejected: split(0), sold: split(0), expired: split(0) },
+  listings: {
+    published: split(0),
+    pendingModeration: split(0),
+    rejected: split(0),
+    sold: split(0),
+    expired: split(0),
+    damaged: split(0),
+  },
   last7Days: { newListings: split(0), registrations: split(0), messages: split(0) },
   last30Days: { newListings: split(0), registrations: split(0), messages: split(0) },
   daily: days(() => ({ listings: 0 })),
@@ -47,6 +54,7 @@ const SEEDED: AdminStats = {
     rejected: split(2),
     sold: split(3, 4),
     expired: split(5),
+    damaged: split(6, 8),
   },
   last7Days: { newListings: split(1, 152), registrations: split(6, 12), messages: split(7) },
   last30Days: { newListings: split(8, 152), registrations: split(9, 12), messages: split(10) },
@@ -120,6 +128,8 @@ describe('AdminDashboardPage', () => {
     expect(figure('sold')).toBe('3');
     expect(demo('sold')).toBe('+ 4 démo');
     expect(figure('expired')).toBe('5');
+    expect(figure('damaged')).toBe('6');
+    expect(demo('damaged')).toBe('+ 8 démo');
     expect(words(root.querySelector('header'))).toContain('Chiffre principal : l’activité réelle.');
   });
 

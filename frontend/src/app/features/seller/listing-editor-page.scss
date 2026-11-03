@@ -170,6 +170,26 @@ button.steps__link {
   font-size: var(--t-sm);
 }
 
+// The damage declaration, set apart from the fields every vehicle has.
+.damage-fields {
+  padding: var(--s-3);
+  border-left: 3px solid var(--c-danger);
+  background: var(--c-surface-sunk);
+}
+
+.damage-fields__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.damage-fields__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-4);
+  margin-top: var(--s-1);
+}
+
 .check {
   display: inline-flex;
   align-items: center;

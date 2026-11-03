@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input, viewChild } from '
 import { PublicListingDetail } from '../../core/api';
 import { NBSP } from '../../shared/format/number';
 import { formatDateFr } from '../../shared/format/date';
+import { DamageNotice } from '../../shared/listing/damage-notice';
 import { Price, formatPrice } from '../../shared/listing/price';
 import { PriceBadge } from '../../shared/listing/price-badge';
 import { SellerBadge } from '../../shared/listing/seller-badge';
@@ -23,7 +24,7 @@ const MONTH_AND_YEAR = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: '
  */
 @Component({
   selector: 'app-listing-summary',
-  imports: [Price, PriceBadge, SellerBadge, Icon, ContactSeller],
+  imports: [DamageNotice, Price, PriceBadge, SellerBadge, Icon, ContactSeller],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-summary.html',
   styleUrl: './listing-summary.scss',

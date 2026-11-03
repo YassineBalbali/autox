@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { RouterLink } from '@angular/router';
 
 import { PublicListingSummary } from '../../core/api';
+import { DamageNotice } from './damage-notice';
 import { Icon } from '../ui/icon';
 import { ListingThumb } from './listing-thumb';
 import { Price } from './price';
@@ -25,7 +26,7 @@ import { headlineOf, listingLink, placeOf } from './summary';
  */
 @Component({
   selector: 'app-listing-card',
-  imports: [Price, PriceBadge, SpecFacts, SellerBadge, ListingThumb, Icon, RouterLink],
+  imports: [DamageNotice, Price, PriceBadge, SpecFacts, SellerBadge, ListingThumb, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card">
@@ -56,6 +57,10 @@ import { headlineOf, listingLink, placeOf } from './summary';
           [electric]="electric()"
           [gearbox]="gearboxLabel()"
         />
+
+        @if (listing().damage) {
+          <app-damage-notice [damage]="listing().damage" [compact]="true" />
+        }
 
         <div class="card__price">
           @if (listing().priceAmount !== undefined) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BodyType, FuelType, Gearbox, ListingSearchCriteria, PriceLevel } from '../../core/api';
+import { DamageFilter, BodyType, FuelType, Gearbox, ListingSearchCriteria, PriceLevel } from '../../core/api';
 import { EMPTY_QUERY, toQueryParams } from './search-query';
 import { INTERPRETATION_STATE, queryFromCriteria, readInterpretation } from './smart-search';
 
@@ -9,6 +9,14 @@ const MAKES = [
   { id: 'm-noslug', name: 'Sans lien' },
 ];
 const MODELS = [{ id: 'r-clio', slug: 'clio', name: 'Clio' }];
+
+describe('a damaged vehicle asked for in words', () => {
+  it('becomes the filter, and no answer about it leaves the default', () => {
+    expect(queryFromCriteria({ damage: DamageFilter.DAMAGED_ONLY }, [], [], 2).damage).toBe(DamageFilter.DAMAGED_ONLY);
+    expect(queryFromCriteria({ damage: DamageFilter.ALL }, [], [], 2).damage).toBe(DamageFilter.ALL);
+    expect(queryFromCriteria({}, [], [], 2).damage).toBe(DamageFilter.UNDAMAGED);
+  });
+});
 
 describe('queryFromCriteria', () => {
   it('turns the API criteria into the search the URL carries', () => {

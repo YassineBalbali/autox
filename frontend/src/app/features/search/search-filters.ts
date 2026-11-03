@@ -14,7 +14,7 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 
-import { BodyType, FuelType, Gearbox, ResultCount, VehicleCondition } from '../../core/api';
+import { BodyType, DamageFilter, FuelType, Gearbox, ResultCount, VehicleCondition } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
 import { WIDE, mediaQuery } from '../../core/ui/media';
 import { OverlayEntry, OverlayHistory } from '../../core/ui/overlay-history';
@@ -24,6 +24,7 @@ import { FilterChip } from '../../shared/ui/filter-chip';
 import {
   BODY_LABELS,
   CONDITION_LABELS,
+  DAMAGE_FILTER_LABELS,
   FUEL_LABELS,
   GEARBOX_LABELS,
   labelOf,
@@ -148,13 +149,17 @@ export class SearchFilters {
     { initialValue: {} as Record<string, string[]> },
   );
 
+  protected readonly damageOptions = [DamageFilter.UNDAMAGED, DamageFilter.DAMAGED_ONLY, DamageFilter.ALL].map(
+    (value) => ({ value, label: DAMAGE_FILTER_LABELS[value] }),
+  );
+
   protected readonly groups = computed<ChoiceGroup[]>(() => {
     const enums = this.enums();
     return [
       group('fuel', 'Carburant', enums['FuelType'], FuelType, FUEL_LABELS),
       group('gearbox', 'Boîte de vitesses', enums['Gearbox'], Gearbox, GEARBOX_LABELS),
       group('body', 'Carrosserie', enums['BodyType'], BodyType, BODY_LABELS),
-      group('condition', 'État', enums['VehicleCondition'], VehicleCondition, CONDITION_LABELS),
+      group('condition', 'Neuf ou occasion', enums['VehicleCondition'], VehicleCondition, CONDITION_LABELS),
     ].filter((entry) => entry.options.length > 0);
   });
 

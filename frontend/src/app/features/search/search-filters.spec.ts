@@ -239,10 +239,11 @@ describe('SearchFilters', () => {
         'Prix (€)',
         'Kilométrage (km)',
         'Prix du marché',
+        'État du véhicule',
         'Carburant',
         'Boîte de vitesses',
         'Carrosserie',
-        'État',
+        'Neuf ou occasion',
         'Localisation',
       ]);
       expect(root.querySelector('#f-marque')).toBeNull();
@@ -321,10 +322,11 @@ describe('SearchFilters', () => {
         'Prix (€)',
         'Kilométrage (km)',
         'Prix du marché',
+        'État du véhicule',
         'Carburant',
         'Boîte de vitesses',
         'Carrosserie',
-        'État',
+        'Neuf ou occasion',
         'Localisation',
       ]);
       // The sheet has its own heading; the sidebar's would be a second "Filtres".

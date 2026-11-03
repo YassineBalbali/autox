@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { FuelType, Gearbox, ListingResponse, Make, Model, VehicleCondition } from '../../core/api';
-import {
+import { DamageType, FuelType, Gearbox, ListingResponse, Make, Model, VehicleCondition } from '../../core/api';
+import { RUNNING, NOT_RUNNING, damageValidators,
   LIMITS,
   Market,
   OTHER,
@@ -53,6 +53,10 @@ describe('listing form', () => {
     gearbox: Gearbox.MANUAL,
     body: '',
     condition: VehicleCondition.USED,
+    damaged: false,
+    damageTypes: [],
+    damageRunning: '',
+    damageDescription: '',
     ...over,
   });
 
@@ -113,6 +117,52 @@ describe('listing form', () => {
       const form = vehicleForm();
       form.controls.mileage.setValue('0');
       expect(form.controls.mileage.errors).toBeNull();
+    });
+  });
+
+  describe('declaring damage', () => {
+    it('asks nothing of an undamaged vehicle', () => {
+      const rules = damageValidators(false);
+      expect(rules.types).toEqual([]);
+      expect(rules.running).toEqual([]);
+    });
+
+    it('needs a type, whether it runs and a description of a damaged one', () => {
+      const form = vehicleForm();
+      const rules = damageValidators(true);
+      form.controls.damageTypes.setValidators(rules.types);
+      form.controls.damageRunning.setValidators(rules.running);
+      form.controls.damageDescription.setValidators(rules.description);
+      for (const control of [form.controls.damageTypes, form.controls.damageRunning, form.controls.damageDescription]) {
+        control.updateValueAndValidity();
+        expect(control.invalid).toBe(true);
+      }
+
+      form.controls.damageTypes.setValue([DamageType.HAIL]);
+      form.controls.damageRunning.setValue(RUNNING);
+      form.controls.damageDescription.setValue('   ');
+      expect(form.controls.damageTypes.valid).toBe(true);
+      expect(form.controls.damageRunning.valid).toBe(true);
+      expect(form.controls.damageDescription.invalid).toBe(true);
+
+      form.controls.damageDescription.setValue('Grêle sur le capot.');
+      expect(form.controls.damageDescription.valid).toBe(true);
+    });
+
+    it('round-trips a declaration, and asks again when it never said whether it runs', () => {
+      const damaged = {
+        damage: { types: [DamageType.HAIL, DamageType.FLOOD], running: false, description: 'Grêle.' },
+      } as unknown as ListingResponse;
+      expect(vehicleValueOf(damaged)).toMatchObject({
+        damaged: true,
+        damageTypes: [DamageType.HAIL, DamageType.FLOOD],
+        damageRunning: NOT_RUNNING,
+        damageDescription: 'Grêle.',
+      });
+
+      const unknown = { damage: { types: [DamageType.OTHER], description: 'x' } } as unknown as ListingResponse;
+      expect(vehicleValueOf(unknown).damageRunning).toBe('');
+      expect(vehicleValueOf({} as ListingResponse)).toMatchObject({ damaged: false, damageTypes: [] });
     });
   });
 
@@ -187,6 +237,7 @@ describe('listing form', () => {
         gearbox: Gearbox.MANUAL,
         bodyType: undefined,
         condition: VehicleCondition.USED,
+        damage: { damaged: false },
         title: 'Peugeot 308 BlueHDi 130',
         description: 'Première main.',
         priceAmount: 1_599_000,
@@ -286,6 +337,10 @@ describe('listing form', () => {
         gearbox: Gearbox.MANUAL,
         body: '',
         condition: VehicleCondition.USED,
+        damaged: false,
+        damageTypes: [],
+        damageRunning: '',
+        damageDescription: '',
       });
     });
 

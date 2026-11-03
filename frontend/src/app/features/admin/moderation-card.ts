@@ -21,6 +21,7 @@ import {
   MODERATION_STATUS_LABELS,
   reasonRequiresNote,
 } from '../../shared/listing/moderation.fr';
+import { DamageNotice } from '../../shared/listing/damage-notice';
 import { PhotoGallery } from '../../shared/listing/photo-gallery';
 import { Price } from '../../shared/listing/price';
 import { SpecLine } from '../../shared/listing/spec-line';
@@ -68,7 +69,7 @@ interface TrailLine {
  */
 @Component({
   selector: 'app-moderation-card',
-  imports: [ReactiveFormsModule, RouterLink, PhotoGallery, Price, SpecLine, SelectField, TextField, Alert],
+  imports: [ReactiveFormsModule, RouterLink, DamageNotice, PhotoGallery, Price, SpecLine, SelectField, TextField, Alert],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './moderation-card.html',
   styleUrl: './moderation-card.scss',

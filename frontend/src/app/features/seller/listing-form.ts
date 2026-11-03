@@ -1,6 +1,6 @@
-import { FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
+import { AbstractControl, ValidationErrors, FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
 
-import {
+import { DamageDeclaration, DamageType,
   BodyType,
   CreateListingRequest,
   FuelType,
@@ -33,6 +33,7 @@ export const LIMITS = {
   makeText: 80,
   modelText: 120,
   version: 160,
+  damageDescription: 2000,
   postalCode: 12,
   city: 120,
   maxPrice: 10_000_000,
@@ -63,7 +64,33 @@ export function vehicleForm(now = new Date()) {
     gearbox: text([requiredText()]),
     body: text(),
     condition: text([requiredText()]),
+    /** The rest of the declaration is required only once this is ticked: `damageValidators`. */
+    damaged: new FormControl(false, { nonNullable: true }),
+    damageTypes: new FormControl<DamageType[]>([], { nonNullable: true }),
+    /** {@link RUNNING} or {@link NOT_RUNNING}, or empty until the seller has said. */
+    damageRunning: text(),
+    damageDescription: text([Validators.maxLength(LIMITS.damageDescription)]),
   });
+}
+
+export const RUNNING = 'roulant';
+export const NOT_RUNNING = 'non-roulant';
+
+/** At least one box ticked. */
+function someChosen(control: AbstractControl): ValidationErrors | null {
+  return (control.value as readonly unknown[]).length > 0 ? null : { required: true };
+}
+
+/** What a damaged vehicle has to state. Nothing, for one that is not. */
+export function damageValidators(damaged: boolean): {
+  types: ValidatorFn[];
+  running: ValidatorFn[];
+  description: ValidatorFn[];
+} {
+  const length = Validators.maxLength(LIMITS.damageDescription);
+  return damaged
+    ? { types: [someChosen], running: [requiredText()], description: [requiredText(), length] }
+    : { types: [], running: [], description: [length] };
 }
 
 /**
@@ -227,7 +254,20 @@ function vehiclePayload(value: VehicleValue, makes: readonly Make[], models: rea
     gearbox: value.gearbox as Gearbox,
     bodyType: (value.body || undefined) as BodyType | undefined,
     condition: value.condition as VehicleCondition,
+    damage: damageDeclaration(value),
   };
+}
+
+/** Always sent, so that unticking the box on an edit clears what was declared. */
+function damageDeclaration(value: VehicleValue): DamageDeclaration {
+  return value.damaged
+    ? {
+        damaged: true,
+        types: value.damageTypes as unknown as Set<DamageType>,
+        running: value.damageRunning === RUNNING,
+        description: value.damageDescription.trim(),
+      }
+    : { damaged: false };
 }
 
 /** The power in both units the API keeps, or nothing when none was typed. */
@@ -308,6 +348,11 @@ export function vehicleValueOf(listing: ListingResponse): VehicleValue {
     gearbox: vehicle.gearbox ?? '',
     body: vehicle.bodyType ?? '',
     condition: listing.condition ?? '',
+    damaged: !!listing.damage,
+    damageTypes: [...((listing.damage?.types ?? []) as Iterable<DamageType>)],
+    // Unknown on a listing from before sellers were asked: left for the seller to answer.
+    damageRunning: listing.damage?.running === true ? RUNNING : listing.damage?.running === false ? NOT_RUNNING : '',
+    damageDescription: listing.damage?.description ?? '',
   };
 }
 
