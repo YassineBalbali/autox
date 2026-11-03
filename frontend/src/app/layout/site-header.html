@@ -19,6 +19,18 @@
           {{ item.label }}
         </a>
       }
+      <!-- Only once the role is known to be ADMIN: see SiteHeader.isAdmin. -->
+      @if (isAdmin()) {
+        <a
+          class="header__nav-link"
+          routerLink="/admin"
+          routerLinkActive="header__nav-link--active"
+          data-nav="admin"
+          i18n="@@headerAdmin"
+        >
+          Administration
+        </a>
+      }
     </nav>
   }
 

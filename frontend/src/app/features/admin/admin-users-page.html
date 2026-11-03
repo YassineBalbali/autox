@@ -1,0 +1,144 @@
+<div class="stack users">
+  <header>
+    <p class="users__section" i18n="@@adminSection">Administration</p>
+    <h1 class="page-title" i18n="@@usersTitle">Utilisateurs</h1>
+  </header>
+
+  <form class="panel users__filters" role="search" (submit)="$event.preventDefault(); applyFilter('q', search.value)">
+    <div class="field users__search">
+      <label class="field__label" for="users-q" i18n="@@usersSearch">Nom ou e-mail</label>
+      <div class="users__search-row">
+        <input #search class="input" id="users-q" type="search" maxlength="255" [value]="q() ?? ''" />
+        <button class="btn btn--primary" type="submit" i18n="@@usersSearchAction">Rechercher</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="users-role" i18n="@@usersRole">Rôle</label>
+      <select #roleSelect class="input" id="users-role" (change)="applyFilter('role', roleSelect.value)">
+        <option value="" [selected]="!roleFilter()" i18n="@@usersAllRoles">Tous</option>
+        @for (entry of roles; track entry) {
+          <option [value]="entry" [selected]="entry === roleFilter()">{{ roleLabels[entry] }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="users-status" i18n="@@usersStatus">Statut</label>
+      <select #statusSelect class="input" id="users-status" (change)="applyFilter('statut', statusSelect.value)">
+        <option value="" [selected]="!statusFilter()" i18n="@@usersAllStatuses">Tous</option>
+        @for (entry of statuses; track entry) {
+          <option [value]="entry" [selected]="entry === statusFilter()">{{ statusLabels[entry] }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="users-accounts" i18n="@@usersAccounts">Comptes</label>
+      <select #accountsSelect class="input" id="users-accounts" (change)="applyFilter('comptes', accountsSelect.value)">
+        <option value="" [selected]="!accountsFilter()" i18n="@@usersAllAccounts">Tous</option>
+        <option value="reels" [selected]="accountsFilter() === 'reels'" i18n="@@usersRealAccounts">Réels</option>
+        <option value="demo" [selected]="accountsFilter() === 'demo'" i18n="@@usersDemoAccounts">Démonstration</option>
+      </select>
+    </div>
+  </form>
+
+  @switch (state()) {
+    @case ('loading') {
+      <div class="panel users__state" aria-busy="true">
+        <p class="meta" i18n="@@usersLoading">Chargement des comptes…</p>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="panel stack">
+        <app-alert kind="error">{{ loadFailure() }}</app-alert>
+        <div>
+          <button class="btn btn--quiet" type="button" (click)="reload()" i18n="@@retry">Réessayer</button>
+        </div>
+      </div>
+    }
+
+    @case ('ready') {
+      @if (items().length === 0) {
+        <div class="panel users__state" data-empty="users">
+          @if (filtered()) {
+            <p i18n="@@usersNoMatch">Aucun compte ne correspond à cette recherche.</p>
+          } @else {
+            <p i18n="@@usersNone">Aucun compte.</p>
+          }
+        </div>
+      } @else {
+        <p class="meta" data-count>{{ countLine() }}</p>
+
+        <div class="panel users__scroll">
+          <table class="users__table">
+            <thead>
+              <tr>
+                <th scope="col" i18n="@@usersColumnName">Nom</th>
+                <th scope="col" i18n="@@usersColumnEmail">E-mail</th>
+                <th scope="col" i18n="@@usersRole">Rôle</th>
+                <th scope="col" i18n="@@usersStatus">Statut</th>
+                <th scope="col" i18n="@@usersColumnCreated">Inscription</th>
+                <th scope="col" class="users__num" i18n="@@usersColumnListings">Annonces</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of items(); track user.id) {
+                <tr data-user>
+                  <td>
+                    <a [routerLink]="['/admin/utilisateurs', user.id]">{{ user.displayName }}</a>
+                    @if (user.demo) {
+                      <span class="tag users__demo" data-demo i18n="@@usersDemoTag">Démo</span>
+                    }
+                  </td>
+                  <td class="users__email">{{ user.email }}</td>
+                  <td>{{ roleLabels[user.role!] }}</td>
+                  <td>
+                    @if (user.status === suspended) {
+                      <span class="tag tag--danger">{{ statusLabels[user.status!] }}</span>
+                    } @else {
+                      {{ statusLabels[user.status!] }}
+                    }
+                  </td>
+                  <td class="users__date">{{ date(user.createdAt) }}</td>
+                  <td class="users__num">{{ number(user.listingCount ?? 0) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (totalPages() > 1) {
+          <nav class="users__pages" aria-label="Pagination" i18n-aria-label="@@pagination">
+            @if (hasPrevious()) {
+              <a
+                class="btn btn--quiet"
+                routerLink="/admin/utilisateurs"
+                [queryParams]="{ page: pageIndex() === 1 ? null : pageIndex() }"
+                queryParamsHandling="merge"
+                rel="prev"
+                i18n="@@pagePrevious"
+              >
+                ← Page précédente
+              </a>
+            }
+            <span class="meta">Page {{ pageIndex() + 1 }} sur {{ totalPages() }}</span>
+            @if (hasNext()) {
+              <a
+                class="btn btn--quiet"
+                routerLink="/admin/utilisateurs"
+                [queryParams]="{ page: pageIndex() + 2 }"
+                queryParamsHandling="merge"
+                rel="next"
+                i18n="@@pageNext"
+              >
+                Page suivante →
+              </a>
+            }
+          </nav>
+        }
+      }
+    }
+  }
+</div>

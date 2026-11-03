@@ -1,4 +1,5 @@
 import { Route } from '@angular/router';
+import { ADMIN_NAV } from './features/admin/admin-layout';
 import { describe, expect, it } from 'vitest';
 
 import { routes } from './app.routes';
@@ -132,23 +133,30 @@ describe('routes', () => {
     expect(results.canActivate).toBeUndefined();
   });
 
-  it('guards the administration by role, with the dashboard as its landing page', () => {
-    const moderation = routes.find((route) => route.path === 'admin/moderation')!;
+  it('guards the whole administration by role, with the dashboard as its landing page', () => {
+    const admin = routes.find((route) => route.path === 'admin')!;
     // A role guard, not the session guard: being signed in is not enough. (It also turns
     // away a visitor with no session, which is why it stands alone.)
-    expect(moderation.canActivate).toHaveLength(1);
-    expect(moderation.canActivate![0]).not.toBe(authGuard);
-    expect(moderation.title).toContain('AutoX');
+    expect(admin.canActivate).toHaveLength(1);
+    expect(admin.canActivate![0]).not.toBe(authGuard);
+    expect(admin.redirectTo).toBeUndefined();
 
-    const index = routes.find((route) => route.path === 'admin')!;
-    expect(index.redirectTo).toBeUndefined();
-    expect(index.pathMatch).toBe('full');
-    expect(index.canActivate).toHaveLength(1);
-    expect(index.canActivate![0]).not.toBe(authGuard);
-    expect(index.title).toContain('Tableau de bord');
-    // Nothing else lives under /admin unguarded.
-    for (const route of routes.filter((candidate) => candidate.path?.startsWith('admin/'))) {
-      expect(route.canActivate, route.path).toHaveLength(1);
+    const landing = admin.children!.find((route) => route.path === '')!;
+    expect(landing.pathMatch).toBe('full');
+    expect(landing.title).toContain('Tableau de bord');
+    for (const route of admin.children!) {
+      expect(route.title, route.path).toContain('AutoX');
+    }
+    // Every page is inside the guarded frame: none lives beside it, unguarded.
+    expect(routes.filter((candidate) => candidate.path?.startsWith('admin/'))).toEqual([]);
+  });
+
+  it('has a page behind every entry of the administration sidebar', () => {
+    const pages = routes.find((route) => route.path === 'admin')!.children!;
+    for (const item of ADMIN_NAV) {
+      const page = pages.find((route) => route.path === item.path);
+      expect(page, item.label).toBeDefined();
+      expect(page!.loadComponent, item.label).toBeTypeOf('function');
     }
   });
 
