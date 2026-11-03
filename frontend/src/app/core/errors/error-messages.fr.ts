@@ -60,6 +60,12 @@ export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = {
   [ErrorCode.UNSUPPORTED_MEDIA_TYPE]: 'Ce format de fichier n’est pas accepté.',
   [ErrorCode.CONFLICT]: 'Cette action n’est pas possible dans l’état actuel.',
 
+  // --- administration ---------------------------------------------------
+  [ErrorCode.ADMIN_SELF_ACTION]: 'Un administrateur ne peut pas effectuer cette action sur son propre compte.',
+  [ErrorCode.LAST_ADMIN]: 'C’est le dernier administrateur en mesure de se connecter : cette action est refusée.',
+  [ErrorCode.DEMO_ACCOUNT_CANNOT_BE_ADMIN]:
+    'Personne ne peut se connecter à un compte de démonstration : il ne peut pas devenir administrateur.',
+
   // --- listings ---------------------------------------------------------
   [ErrorCode.ACTIVE_LISTING_LIMIT_REACHED]:
     'Vous avez atteint le nombre maximum d’annonces en ligne. Mettez-en une en pause ou supprimez-la.',

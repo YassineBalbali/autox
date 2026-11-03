@@ -169,6 +169,10 @@ describe('NavDrawer', () => {
     await fixture.whenStable();
 
     expect(links()).toContainEqual(['Administration', '/admin']);
+    // With the primary navigation, as in the desktop header.
+    const entry = dialog().querySelector('[data-nav="admin"]') as HTMLElement;
+    expect(entry.closest('nav')).not.toBeNull();
+    expect(dialog().querySelectorAll('a[href="/admin"]')).toHaveLength(1);
   });
 
   it('shows how many conversations wait, in figures and in words', async () => {

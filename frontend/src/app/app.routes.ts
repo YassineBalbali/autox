@@ -188,27 +188,46 @@ export const routes: Routes = [
   // an administrator.
 
   {
-    // The landing page: what is happening on the site, with a way into the queue.
+    // One frame, the sidebar, and every page of the back office inside it. The guard on the
+    // parent covers them all, so a page added here cannot be left out of it.
     path: 'admin',
-    pathMatch: 'full',
     canActivate: [roleGuard(UserRole.ADMIN)],
-    title: 'Tableau de bord · AutoX',
-    loadComponent: () =>
-      import('./features/admin/admin-dashboard-page').then((m) => m.AdminDashboardPage),
-  },
-  {
-    // The list and the page number are in the query string: `?vue=`, `?page=`.
-    path: 'admin/moderation',
-    canActivate: [roleGuard(UserRole.ADMIN)],
-    title: 'Modération · AutoX',
-    loadComponent: () => import('./features/admin/moderation-page').then((m) => m.ModerationPage),
-  },
-  {
-    path: 'admin/moderation/messages',
-    canActivate: [roleGuard(UserRole.ADMIN)],
-    title: 'Messages signalés · AutoX',
-    loadComponent: () =>
-      import('./features/admin/reported-messages-page').then((m) => m.ReportedMessagesPage),
+    title: 'Administration · AutoX',
+    loadComponent: () => import('./features/admin/admin-layout').then((m) => m.AdminLayout),
+    children: [
+      {
+        // The landing page: what is happening on the site, with a way into the queue.
+        path: '',
+        pathMatch: 'full',
+        title: 'Tableau de bord · AutoX',
+        loadComponent: () =>
+          import('./features/admin/admin-dashboard-page').then((m) => m.AdminDashboardPage),
+      },
+      {
+        // The list and the page number are in the query string: `?vue=`, `?page=`.
+        path: 'moderation',
+        title: 'Modération · AutoX',
+        loadComponent: () => import('./features/admin/moderation-page').then((m) => m.ModerationPage),
+      },
+      {
+        path: 'moderation/messages',
+        title: 'Messages signalés · AutoX',
+        loadComponent: () =>
+          import('./features/admin/reported-messages-page').then((m) => m.ReportedMessagesPage),
+      },
+      {
+        // The filters and the page number are in the query string.
+        path: 'utilisateurs',
+        title: 'Utilisateurs · AutoX',
+        loadComponent: () => import('./features/admin/admin-users-page').then((m) => m.AdminUsersPage),
+      },
+      {
+        path: 'utilisateurs/:id',
+        title: 'Utilisateur · AutoX',
+        loadComponent: () =>
+          import('./features/admin/admin-user-detail-page').then((m) => m.AdminUserDetailPage),
+      },
+    ],
   },
 
   // ---- internal -----------------------------------------------------------

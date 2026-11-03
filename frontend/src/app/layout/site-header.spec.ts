@@ -278,6 +278,34 @@ describe('SiteHeader', () => {
         (item as HTMLElement).textContent?.trim(),
       );
 
+    it('is in the main navigation for an administrator, as well as in the menu', async () => {
+      await render(true);
+      auth.setUser({ id: 'u-1', email: 'admin@exemple.fr', role: UserRole.ADMIN });
+      await fixture.whenStable();
+
+      const link = query('.header__nav [data-nav="admin"]') as HTMLAnchorElement;
+      expect(link.textContent).toContain('Administration');
+      expect(link.getAttribute('href')).toBe('/admin');
+    });
+
+    it.each([UserRole.PARTICULIER, UserRole.PROFESSIONNEL])('is not in the main navigation of a %s', async (role) => {
+      await render(true);
+      auth.setUser({ id: 'u-1', email: 'vendeur@exemple.fr', role });
+      await fixture.whenStable();
+
+      expect(query('[data-nav="admin"]')).toBeNull();
+    });
+
+    it('is not in the main navigation while the role is unknown, or of a visitor', async () => {
+      await render(true);
+      await fixture.whenStable();
+      expect(query('[data-nav="admin"]')).toBeNull();
+
+      await render(false);
+      await fixture.whenStable();
+      expect(query('[data-nav="admin"]')).toBeNull();
+    });
+
     it('is offered to an administrator, first in the menu', async () => {
       await render(true);
       auth.setUser({ id: 'u-1', email: 'admin@exemple.fr', role: UserRole.ADMIN });

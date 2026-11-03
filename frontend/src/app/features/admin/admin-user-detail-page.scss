@@ -1,0 +1,102 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+.account__state {
+  padding-block: var(--s-5);
+}
+
+.account__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+  margin: var(--s-1) 0 0;
+}
+
+.account__columns {
+  display: grid;
+  gap: var(--s-3);
+
+  @media (min-width: t.$bp-xl) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+}
+
+.account__panel {
+  min-width: 0;
+  padding: var(--s-3) var(--s-4);
+}
+
+.account__heading {
+  margin: 0 0 var(--s-2);
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+}
+
+.account__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+// A wide table on a narrow screen scrolls inside itself, not the page.
+.account__scroll {
+  overflow-x: auto;
+
+  .account__table {
+    min-width: 36rem;
+  }
+}
+
+.account__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+
+  th,
+  td {
+    padding: var(--s-1) var(--s-3) var(--s-1) 0;
+    border-bottom: 1px solid var(--c-line);
+    text-align: left;
+    vertical-align: baseline;
+  }
+
+  th:last-child,
+  td:last-child {
+    padding-right: 0;
+  }
+
+  thead th {
+    font-size: var(--t-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--c-ink-faint);
+    white-space: nowrap;
+  }
+
+  tbody th {
+    font-weight: var(--fw-regular);
+    color: var(--c-ink);
+  }
+
+  tbody tr:last-child th,
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+.account__table .account__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.account__date {
+  white-space: nowrap;
+}
+
+.account__more {
+  margin: var(--s-2) 0 0;
+}

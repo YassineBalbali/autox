@@ -1,0 +1,360 @@
+<div class="stack account">
+  <p><a routerLink="/admin/utilisateurs" i18n="@@usersBack">← Utilisateurs</a></p>
+
+  @switch (state()) {
+    @case ('loading') {
+      <div class="panel account__state" aria-busy="true">
+        <p class="meta" i18n="@@userLoading">Chargement du compte…</p>
+      </div>
+    }
+
+    @case ('missing') {
+      <div class="panel account__state" data-state="missing">
+        <p i18n="@@userMissing">Ce compte n’existe pas ou a été fermé.</p>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="panel stack">
+        <app-alert kind="error">{{ loadFailure() }}</app-alert>
+        <div>
+          <button class="btn btn--quiet" type="button" (click)="load()" i18n="@@retry">Réessayer</button>
+        </div>
+      </div>
+    }
+
+    @case ('ready') {
+      @if (user(); as account) {
+        <header>
+          <h1 class="page-title">{{ account.displayName }}</h1>
+          <p class="account__tags">
+            <span class="tag tag--accent" data-tag="role">{{ roleLabels[account.role!] }}</span>
+            <span class="tag" [class.tag--danger]="isSuspended()" data-tag="status">{{ statusLabels[account.status!] }}</span>
+            @if (account.demo) {
+              <span class="tag" data-tag="demo" i18n="@@userDemoTag">Compte de démonstration</span>
+            }
+          </p>
+        </header>
+
+        @if (notice()) {
+          <app-alert kind="success">{{ notice() }}</app-alert>
+        }
+
+        @if (suspension(); as current) {
+          <app-alert kind="info" data-suspension>
+            <ng-container i18n="@@userSuspendedSince">Suspendu le</ng-container> {{ dateTime(current.createdAt) }}
+            <ng-container i18n="@@userSuspendedBy">par</ng-container> {{ current.adminEmail }} : {{ current.reason }}
+          </app-alert>
+        }
+
+        <div class="account__columns">
+          <section class="panel account__panel">
+            <h2 class="account__heading" i18n="@@userInformation">Compte</h2>
+            <dl class="readout">
+              <div>
+                <dt class="readout__term" i18n="@@fieldEmail">Adresse e-mail</dt>
+                <dd class="readout__value" data-field="email">
+                  {{ account.email }}
+                  @if (!account.emailVerifiedAt) {
+                    <span class="meta" i18n="@@userNotVerified">(non vérifiée)</span>
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt class="readout__term" i18n="@@userPhone">Téléphone</dt>
+                <dd class="readout__value" data-field="phone">{{ account.phone || '–' }}</dd>
+              </div>
+              @if (account.firstName || account.lastName) {
+                <div>
+                  <dt class="readout__term" i18n="@@userFullName">Prénom et nom</dt>
+                  <dd class="readout__value">{{ account.firstName }} {{ account.lastName }}</dd>
+                </div>
+              }
+              @if (account.companyName) {
+                <div>
+                  <dt class="readout__term" i18n="@@userCompany">Entreprise</dt>
+                  <dd class="readout__value">
+                    {{ account.companyName }}
+                    @if (account.registrationNumber) {
+                      <span class="meta">{{ account.registrationNumber }}</span>
+                    }
+                  </dd>
+                </div>
+              }
+              <div>
+                <dt class="readout__term" i18n="@@userCountry">Pays</dt>
+                <dd class="readout__value">{{ account.countryCode }}</dd>
+              </div>
+              <div>
+                <dt class="readout__term" i18n="@@userCreated">Inscription</dt>
+                <dd class="readout__value">{{ date(account.createdAt) }}</dd>
+              </div>
+              <div>
+                <dt class="readout__term" i18n="@@userLastLogin">Dernière connexion</dt>
+                <dd class="readout__value">{{ dateTime(account.lastLoginAt) || '–' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="panel account__panel">
+            <h2 class="account__heading" i18n="@@userActivity">Activité</h2>
+            @if (account.activity; as activity) {
+              <table class="account__table" data-table="activity">
+                <tbody>
+                  <tr><th scope="row" i18n="@@userActivityListings">Annonces</th><td class="account__num">{{ number(activity.listings ?? 0) }}</td></tr>
+                  <tr><th scope="row" i18n="@@userActivityOnline">Dont publiées</th><td class="account__num">{{ number(activity.listingsOnline ?? 0) }}</td></tr>
+                  <tr><th scope="row" i18n="@@userActivityConversations">Conversations</th><td class="account__num">{{ number(activity.conversations ?? 0) }}</td></tr>
+                  <tr><th scope="row" i18n="@@userActivityMessages">Messages envoyés</th><td class="account__num">{{ number(activity.messagesSent ?? 0) }}</td></tr>
+                  <tr><th scope="row" i18n="@@userActivityFiled">Signalements faits</th><td class="account__num">{{ number(activity.reportsFiled ?? 0) }}</td></tr>
+                  <tr><th scope="row" i18n="@@userActivityReceived">Signalements reçus</th><td class="account__num">{{ number(activity.reportsReceived ?? 0) }}</td></tr>
+                  <tr><th scope="row" i18n="@@userActivitySessions">Sessions ouvertes</th><td class="account__num">{{ number(activity.activeSessions ?? 0) }}</td></tr>
+                </tbody>
+              </table>
+            }
+          </section>
+        </div>
+
+        <section class="panel account__panel stack" data-section="actions">
+          <h2 class="account__heading" i18n="@@userActions">Actions</h2>
+
+          @if (failure()) {
+            <app-alert kind="error" data-failure>{{ failure() }}</app-alert>
+          }
+
+          @if (isSelf()) {
+            <p class="meta" data-self i18n="@@userSelf">
+              C’est votre compte : un administrateur ne peut ni se suspendre ni changer son propre rôle.
+            </p>
+          } @else {
+            @switch (step()) {
+              @case ('suspend') {
+                <form class="stack form--rows" (submit)="$event.preventDefault(); confirmSuspension()" novalidate>
+                  <p i18n="@@userSuspendExplain">
+                    Le compte ne pourra plus se connecter ni envoyer de messages. Toutes ses sessions sont fermées
+                    et ses annonces sont masquées du public ; rien n’est supprimé, et tout revient à la réactivation.
+                  </p>
+                  <p class="meta" data-token-lifetime>
+                    <ng-container i18n="@@userSuspendToken">Un jeton d’accès déjà émis ne peut pas être rappelé : il reste utilisable au plus</ng-container>
+                    {{ tokenLifetime() }}.
+                  </p>
+                  <app-text-field
+                    label="Motif de la suspension"
+                    i18n-label="@@userSuspendReason"
+                    type="textarea"
+                    hint="Conservé dans l’historique du compte. Visible des administrateurs uniquement."
+                    i18n-hint="@@userSuspendReasonHint"
+                    [rows]="3"
+                    [maxLength]="maxReason"
+                    [control]="reason"
+                  />
+                  <div class="form-actions">
+                    <button class="btn btn--danger" type="submit" data-action="confirm-suspend" [disabled]="busy()" i18n="@@userSuspendConfirm">
+                      Suspendre le compte
+                    </button>
+                    <button class="btn btn--quiet" type="button" (click)="close()" i18n="@@cancel">Annuler</button>
+                  </div>
+                </form>
+              }
+
+              @case ('reactivate') {
+                <form class="stack form--rows" (submit)="$event.preventDefault(); confirmReactivation()" novalidate>
+                  <p i18n="@@userReactivateQuestion">
+                    Réactiver ce compte ? Il pourra se reconnecter et envoyer des messages, et ses annonces reviennent en ligne.
+                  </p>
+                  <app-text-field
+                    label="Note"
+                    i18n-label="@@userNote"
+                    type="textarea"
+                    [optional]="true"
+                    [rows]="2"
+                    [maxLength]="maxReason"
+                    [control]="note"
+                  />
+                  <div class="form-actions">
+                    <button class="btn btn--primary" type="submit" data-action="confirm-reactivate" [disabled]="busy()" i18n="@@userReactivateConfirm">
+                      Réactiver le compte
+                    </button>
+                    <button class="btn btn--quiet" type="button" (click)="close()" i18n="@@cancel">Annuler</button>
+                  </div>
+                </form>
+              }
+
+              @case ('choose-role') {
+                <form class="stack form--rows" (submit)="$event.preventDefault(); chooseRole()" novalidate>
+                  <app-select-field
+                    label="Nouveau rôle"
+                    i18n-label="@@userNewRole"
+                    [control]="newRole"
+                    [options]="roleOptions()"
+                  />
+                  <div class="form-actions">
+                    <button class="btn btn--primary" type="submit" data-action="choose-role" i18n="@@userRoleContinue">Continuer</button>
+                    <button class="btn btn--quiet" type="button" (click)="close()" i18n="@@cancel">Annuler</button>
+                  </div>
+                </form>
+              }
+
+              @case ('confirm-role') {
+                <form class="stack form--rows" (submit)="$event.preventDefault(); confirmRole()" novalidate>
+                  <p data-role-question>
+                    <ng-container i18n="@@userRoleFrom">Passer ce compte de</ng-container>&ngsp;
+                    <strong>{{ roleLabels[account.role!] }}</strong>&ngsp;
+                    <ng-container i18n="@@userRoleTo">à</ng-container>&ngsp;
+                    <strong>{{ roleLabels[chosenRole()!] }}</strong> ?
+                  </p>
+                  <p class="meta">
+                    <ng-container i18n="@@userRoleDelay">Le changement s’applique à sa prochaine connexion, ou d’ici</ng-container>
+                    {{ tokenLifetime() }} <ng-container i18n="@@userRoleDelayEnd">au plus.</ng-container>
+                  </p>
+                  <app-text-field
+                    label="Note"
+                    i18n-label="@@userNote"
+                    type="textarea"
+                    [optional]="true"
+                    [rows]="2"
+                    [maxLength]="maxReason"
+                    [control]="note"
+                  />
+                  <div class="form-actions">
+                    <button class="btn btn--primary" type="submit" data-action="confirm-role" [disabled]="busy()" i18n="@@userRoleConfirm">
+                      Confirmer le changement
+                    </button>
+                    <button class="btn btn--quiet" type="button" (click)="close()" i18n="@@cancel">Annuler</button>
+                  </div>
+                </form>
+              }
+
+              @default {
+                <div class="account__buttons">
+                  @if (isSuspended()) {
+                    <button class="btn btn--primary" type="button" data-action="reactivate" (click)="openStep('reactivate')" i18n="@@userReactivate">
+                      Réactiver
+                    </button>
+                  } @else {
+                    <button class="btn btn--danger" type="button" data-action="suspend" (click)="openStep('suspend')" i18n="@@userSuspend">
+                      Suspendre
+                    </button>
+                  }
+                  <button class="btn btn--quiet" type="button" data-action="change-role" (click)="openStep('choose-role')" i18n="@@userChangeRole">
+                    Changer le rôle
+                  </button>
+                </div>
+              }
+            }
+          }
+        </section>
+
+        <section class="panel account__panel" data-section="listings">
+          <h2 class="account__heading" i18n="@@userListings">Annonces</h2>
+          @if (listings().length === 0) {
+            <p class="meta" data-empty="listings" i18n="@@userNoListings">Aucune annonce.</p>
+          } @else {
+            <div class="account__scroll">
+              <table class="account__table">
+                <thead>
+                  <tr>
+                    <th scope="col" i18n="@@userListingTitle">Annonce</th>
+                    <th scope="col" i18n="@@usersStatus">Statut</th>
+                    <th scope="col" class="account__num" i18n="@@userListingPrice">Prix</th>
+                    <th scope="col" i18n="@@userListingCreated">Créée le</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (listing of listings(); track listing.id) {
+                    <tr data-listing>
+                      <th scope="row">
+                        <!-- A link only where it leads somewhere: the page answers 404 for anything a visitor cannot see. -->
+                        @if (listing.online) {
+                          <a [routerLink]="['/annonces', listing.id]" target="_blank" rel="noopener">{{ listing.title }}</a>
+                        } @else {
+                          {{ listing.title }}
+                        }
+                      </th>
+                      <td>{{ listingState(listing) }}</td>
+                      <td class="account__num">{{ price(listing) }}</td>
+                      <td class="account__date">{{ date(listing.createdAt) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (moreListings()) {
+              <p class="meta account__more">
+                {{ listings().length }} <ng-container i18n="@@userMoreListings">annonces les plus récentes sur</ng-container> {{ number(moreListings()) }}.
+              </p>
+            }
+          }
+        </section>
+
+        <section class="panel account__panel" data-section="moderation">
+          <h2 class="account__heading" i18n="@@userModerationHistory">Historique de modération de ses annonces</h2>
+          @if (history().length === 0) {
+            <p class="meta" data-empty="moderation" i18n="@@userNoModeration">Aucune décision de modération.</p>
+          } @else {
+            <div class="account__scroll">
+              <table class="account__table">
+                <thead>
+                  <tr>
+                    <th scope="col" i18n="@@userDate">Date</th>
+                    <th scope="col" i18n="@@userListingTitle">Annonce</th>
+                    <th scope="col" i18n="@@userDecision">Décision</th>
+                    <th scope="col" i18n="@@userNote">Note</th>
+                    <th scope="col" i18n="@@userBy">Par</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (entry of history(); track entry.id) {
+                    <tr data-history>
+                      <td class="account__date">{{ dateTime(entry.createdAt) }}</td>
+                      <td>{{ entry.listingTitle }}</td>
+                      <td>
+                        {{ entry.what }}
+                        @if (entry.why) {
+                          <span class="meta">{{ entry.why }}</span>
+                        }
+                      </td>
+                      <td>{{ entry.note }}</td>
+                      <td>{{ entry.adminName }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+
+        <section class="panel account__panel" data-section="account-actions">
+          <h2 class="account__heading" i18n="@@userAdminActions">Actions des administrateurs sur ce compte</h2>
+          @if (actions().length === 0) {
+            <p class="meta" data-empty="actions" i18n="@@userNoAdminActions">Aucune action.</p>
+          } @else {
+            <div class="account__scroll">
+              <table class="account__table">
+                <thead>
+                  <tr>
+                    <th scope="col" i18n="@@userDate">Date</th>
+                    <th scope="col" i18n="@@userAction">Action</th>
+                    <th scope="col" i18n="@@userChange">Changement</th>
+                    <th scope="col" i18n="@@userReason">Motif ou note</th>
+                    <th scope="col" i18n="@@userBy">Par</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (entry of actions(); track entry.id) {
+                    <tr data-action-row>
+                      <td class="account__date">{{ dateTime(entry.createdAt) }}</td>
+                      <td>{{ entry.what }}</td>
+                      <td>{{ value(entry.previousValue) }} → {{ value(entry.newValue) }}</td>
+                      <td>{{ entry.reason }}</td>
+                      <td>{{ entry.adminEmail }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+      }
+    }
+  }
+</div>

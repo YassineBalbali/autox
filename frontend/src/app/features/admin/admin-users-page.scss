@@ -1,0 +1,96 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+// The moderation page's label, for the same part of the site.
+.users__section {
+  color: var(--c-navy);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.users__filters {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-3);
+
+  @media (min-width: t.$bp-md) {
+    grid-template-columns: minmax(0, 2.5fr) repeat(3, minmax(0, 1fr));
+    align-items: end;
+  }
+}
+
+.users__search-row {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.users__state {
+  padding-block: var(--s-5);
+}
+
+// A wide table on a narrow screen scrolls inside itself, not the page.
+.users__scroll {
+  overflow-x: auto;
+}
+
+.users__table {
+  width: 100%;
+  // Below this, addresses break a letter at a time: the panel scrolls instead.
+  min-width: 42rem;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+
+  th,
+  td {
+    padding: var(--s-2) var(--s-3);
+    border-bottom: 1px solid var(--c-line);
+    text-align: left;
+    vertical-align: baseline;
+  }
+
+  thead th {
+    background: var(--c-surface-sunk);
+    font-size: var(--t-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--c-ink-soft);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover {
+    background: var(--c-surface-sunk);
+  }
+}
+
+.users__table .users__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.users__email {
+  overflow-wrap: anywhere;
+}
+
+.users__date {
+  white-space: nowrap;
+}
+
+.users__demo {
+  margin-left: var(--s-1);
+}
+
+.users__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+}

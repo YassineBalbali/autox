@@ -88,6 +88,19 @@ import { NavItem } from './primary-nav';
               {{ item.label }}
             </a>
           }
+          @if (isAdmin()) {
+            <a
+              class="drawer__link drawer__link--primary"
+              routerLink="/admin"
+              routerLinkActive="drawer__link--active"
+              [replaceUrl]="true"
+              data-nav="admin"
+              (click)="leave()"
+              i18n="@@headerAdmin"
+            >
+              Administration
+            </a>
+          }
         </nav>
 
         @if (signedIn()) {
@@ -120,11 +133,6 @@ import { NavItem } from './primary-nav';
             <a class="drawer__link" routerLink="/mon-compte/sessions" routerLinkActive="drawer__link--active" [replaceUrl]="true" (click)="leave()" i18n="@@navSessions">
               Appareils connectés
             </a>
-            @if (isAdmin()) {
-              <a class="drawer__link" routerLink="/admin" routerLinkActive="drawer__link--active" [replaceUrl]="true" (click)="leave()" i18n="@@headerAdmin">
-                Administration
-              </a>
-            }
             <button class="drawer__link drawer__link--danger" type="button" (click)="signOut()">
               <app-icon name="log-out" [size]="18" />
               <span i18n="@@signOut">Se déconnecter</span>
