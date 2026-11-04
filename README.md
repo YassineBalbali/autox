@@ -660,6 +660,7 @@ backend/
                   (listing/image); moderation decisions and their trail
     admin/        the administrator-only controllers: moderation, the user list
     search/       public search and detail; keyset cursors
+    savedsearch/  saved searches and their daily e-mail: docs/saved-searches.md
     reference/    countries and currencies; the reference endpoints
     catalog/      vehicle make/model/trim, equipment vocabulary
     throttle/     the shared counter: login, reset requests, the public rate limit
