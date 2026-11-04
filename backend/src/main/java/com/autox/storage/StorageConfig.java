@@ -23,6 +23,7 @@ public class StorageConfig {
 
     @Bean
     S3Client s3Client(StorageProperties properties) {
+        InvalidCookieWarningFilter.install();
         var builder = S3Client.builder()
                 .region(Region.of(properties.region()))
                 .credentialsProvider(credentials(properties))
