@@ -528,9 +528,9 @@ Two things a client has to get right:
   was issued with.
 - **A reset also ends every session**, so the user signs in again on every device.
 
-**There is no mail provider configured.** `autox.mail.provider=log` writes the email — reset
-link included — to the application log, which is how the flow is usable locally and is a
-credential leak anywhere else. Production needs an `EmailSender` bean and the property set.
+**Mail goes through an outbox, and through Brevo in production** (`docs/email.md`). With
+`autox.mail.provider=log`, the local default, the email — link included — is written to the
+application log, which is how the flows are usable locally and is a credential leak anywhere else.
 
 ---
 
@@ -568,9 +568,11 @@ code.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `AUTOX_MAIL_PROVIDER` | `log` | **`log` writes the message to the application log instead of sending it.** That makes the password reset flow walkable locally — the link is in the console — and is a credential leak in production, since anyone who can read the log can take over any account. It warns at every startup. A real provider is an `EmailSender` bean conditional on its own value here. |
-| `AUTOX_MAIL_FROM` | `no-reply@autox.local` | Unused by the logging sender; required by every real one. |
-| `AUTOX_MAIL_FROM_NAME` | `AutoX` | |
+| `AUTOX_MAIL_PROVIDER` | `log` | **`log` writes the message to the application log instead of sending it.** That makes the reset and verification flows walkable locally — the link is in the console — and is a credential leak in production, since anyone who can read the log can take over any account. It warns at every startup. `brevo` sends through Brevo, and requires the next four at startup. |
+| `AUTOX_MAIL_API_KEY` | — | The Brevo API key. Never commit it. |
+| `AUTOX_MAIL_FROM` | — | A sender verified in Brevo. |
+| `AUTOX_MAIL_FROM_NAME` | — | The name mail is sent under. |
+| `AUTOX_SITE_URL` | `http://localhost:4200` with `log` | The web app's origin, which the verification and new-message emails link to. |
 | `AUTOX_PASSWORD_RESET_URL` | `http://localhost:4200/reinitialiser-mot-de-passe` | The frontend page that takes the token; the email links to it with `?token=…`. The API cannot guess it — the web app is deployed separately. |
 
 ### Optional
@@ -662,7 +664,7 @@ backend/
     catalog/      vehicle make/model/trim, equipment vocabulary
     throttle/     the shared counter: login, reset requests, the public rate limit
     scheduling/   one-instance-at-a-time coordination for the sweepers
-    mail/         the EmailSender interface and its logging stand-in
+    mail/         the outbox, its poller, the templates, and the Brevo and logging senders
     storage/      the ObjectStorage interface and its S3 implementation
     config/       security, JWT, MVC, OpenAPI
       env/          .env loading, and the fail-fast check that names a missing variable
