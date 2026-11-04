@@ -118,14 +118,13 @@ infrastructure, and a tax on every request. I would not.
 
 ## 6. Deliberately absent
 
-- **Email verification sending.** `email_verified_at` exists and the claim is in the
-  token; nothing sets it yet. Needs an email provider and a `GET /auth/verify`
-  endpoint. The decision we made — publishing requires a verified email — is
-  enforced when listings are built.
+- ~~**Email verification sending.**~~ **Built later**, for accounts created since, as a
+  `POST /auth/email/verify`: a GET would let a mail scanner spend the link. Publishing and
+  messaging need a verified address, read from the account rather than this claim. See
+  `docs/email.md`.
 - ~~**Password change and password reset.**~~ **Built later** — `POST /api/v1/me/password`
   and the `/auth/password/forgot` + `/reset` pair, both revoking every session via
-  `PASSWORD_CHANGED`. What is still absent is a real mail provider: `EmailSender` has a
-  logging implementation only. See `docs/account-and-correctness-decisions.md`.
+  `PASSWORD_CHANGED`. See `docs/account-and-correctness-decisions.md`.
 - ~~**Session list / "sign out everywhere".**~~ **Built later** as
   `GET`/`DELETE /api/v1/me/sessions`, keyed on the rotation family rather than the token
   row. There is no separate "sign out everywhere": changing the password does it, and the

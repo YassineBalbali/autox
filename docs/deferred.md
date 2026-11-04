@@ -100,8 +100,9 @@ return to the queue when an approved listing's content is edited. What a moderat
   account's own page shows its lines.
 - **Telling a suspended user why.** The reason is for administrators: the account is only told
   that it is suspended, and no message is sent.
-- **Email verification.** Nothing sets `email_verified_at` or the ACTIVE status yet, so nearly
-  every account reads "E-mail non vérifié" in the administration.
+- **Email verification of existing accounts.** New accounts have to verify (`docs/email.md`).
+  Accounts from before it can, and until they do they read "E-mail non vérifié" in the
+  administration.
 - **Telling the seller.** A takedown's reason is shown on the seller's dashboard
   (`removalReason`); no message is sent.
 - **What changed.** A listing back in the queue after an edit carries
@@ -119,8 +120,8 @@ return to the queue when an approved listing's content is edited. What a moderat
 | | |
 |---|---|
 | Password change, reset, session list and revoke | Built, both sides. |
-| **A real mail provider** | **Missing.** `EmailSender` has one implementation, which logs the message — reset link included. One bean and one property; templates and their French go with it (bodies are English, and the recipient's locale already travels on every `EmailMessage`). |
-| **Email verification** | **Missing.** The column exists and is never set. |
+| **A real mail provider** | Built: Brevo, through an outbox. See `docs/email.md`. |
+| **Email verification** | Built, on sign-up, with the account page's "Renvoyer le lien". See `docs/email.md`. |
 | **Closing an account, exporting its data** | **Missing.** `UserStatus.DELETED` exists and nothing sets it. |
 | **Terms and privacy at registration** | **Missing**, with the pages themselves. |
 

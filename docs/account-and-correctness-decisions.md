@@ -128,10 +128,13 @@ Other decisions:
   eligible: it can already sign in, so being locked out of it is just as much of a dead end.
 - **A reset does not verify the email address.** It arguably demonstrates control of the
   inbox, and flipping `PENDING_VERIFICATION` to `ACTIVE` here was considered and dropped:
-  verification is a flow that does not exist yet, and inventing half of it inside the
-  password form is how two half-flows end up disagreeing.
+  verification is its own flow (`docs/email.md`), and doing half of it inside the password
+  form is how two half-flows end up disagreeing.
 
 ### Email: an interface and a logging implementation
+
+*Since built on: an outbox, a Brevo sender, and French templates that replaced the English bodies
+and the locale on `EmailMessage`. See `docs/email.md`. The reasoning about selection below stands.*
 
 `EmailSender` is one method. `LoggingEmailSender` writes the message to the log instead of
 sending it, which is what makes the reset flow walkable in development — the link is in the

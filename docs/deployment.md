@@ -156,6 +156,9 @@ Every photo a visitor views is egress.
    | `AUTOX_CORS_ALLOWED_ORIGINS` | `SITE` — e.g. `https://autox-demo.vercel.app`, no trailing slash. While Netlify is still up, comma-separated with no spaces: `https://autox-demo.vercel.app,https://autox-demo.netlify.app`. The Netlify origin is transitional: remove it when Netlify is shut down (step 5) | Vercel (planned) |
    | `AUTOX_PASSWORD_RESET_URL` | `SITE` + `/reinitialiser-mot-de-passe` — e.g. `https://autox-demo.vercel.app/reinitialiser-mot-de-passe` | Vercel (planned) |
    | `AUTOX_JWT_ISSUER` | `API` — e.g. `https://autox-api-kyuo.onrender.com` | Render (planned) |
+   | `AUTOX_MAIL_API_KEY` | The Brevo API key | Brevo → SMTP & API → API keys |
+   | `AUTOX_MAIL_FROM` | A sender verified in Brevo | Brevo → Senders |
+   | `AUTOX_SITE_URL` | `SITE` — e.g. `https://autox-demo.vercel.app`, no trailing slash | Vercel (planned) |
 
    Render asks for these **only this once**. Later changes go through the service's
    **Environment** page, never through `render.yaml`.
@@ -219,6 +222,8 @@ hand (New → Web Service → the repository), these are all of them:
 | `SERVER_TOMCAT_THREADS_MAX` | `20` | 200 threads' stacks do not fit in 512 MB |
 | `AUTOX_LISTING_EXPIRYDAYS` | `3650` | The default 60 days would expire every seeded listing two months in |
 | `AUTOX_LISTING_PROFESSIONNELACTIVELIMIT` | `3` | Dealers are uncapped by default, and anyone can register as one |
+| `AUTOX_MAIL_PROVIDER` | `brevo` | Without it mail goes to the log, reset and verification links included, and nobody can verify an address. See `docs/email.md` |
+| `AUTOX_MAIL_FROM_NAME` | `AutoX` | |
 | `AUTOX_AI_PROVIDER` | `groq` | Turns on natural-language search. Leave unset, or `none`, to keep it off and hidden |
 | `AUTOX_AI_API_KEY` | from console.groq.com → API Keys — **secret** | Required when the provider is `groq`; the API refuses to start without it |
 | `AUTOX_AI_MODEL` | `openai/gpt-oss-120b` | Optional: this is the default, chosen on the evaluation in docs/ai-search.md |
@@ -464,8 +469,8 @@ Photos are served by Supabase, not Netlify, so the site's own bandwidth is small
 
 Open the site. If Vercel or Render gave you a different URL from the one you planned:
 
-- **Render → Environment**: correct `AUTOX_CORS_ALLOWED_ORIGINS`, `AUTOX_PASSWORD_RESET_URL`
-  and `AUTOX_JWT_ISSUER`, then save (it redeploys).
+- **Render → Environment**: correct `AUTOX_CORS_ALLOWED_ORIGINS`, `AUTOX_PASSWORD_RESET_URL`,
+  `AUTOX_SITE_URL` and `AUTOX_JWT_ISSUER`, then save (it redeploys).
 - **Vercel → Settings → Environment Variables**: correct `AUTOX_API_BASE_URL` /
   `AUTOX_SITE_URL`, then **Deployments → the latest one → Redeploy**. A rebuild is the only way
   a build-time value changes. Check that the log ends with the `[build]` lines showing the new
@@ -596,6 +601,7 @@ has 730. **Neon must therefore sleep for most of the month**, and three things w
 |---|---|
 | The connection pool pinging its open connections every two minutes | `AUTOX_DB_POOL_MIN_IDLE=0`, `AUTOX_DB_IDLE_TIMEOUT_MS=60000`: the pool empties after a minute idle |
 | The background sweeps, every 10 and 15 minutes | Every 6 hours (`AUTOX_SCHEDULE_*`) |
+| The email poller, every 30 seconds | It asks the database only when mail is known to be waiting or due, or every 6 hours (`docs/email.md`) |
 | Health checks that query the database | Render and the uptime monitor both use `/actuator/health/liveness`, which does not |
 
 The storage check does not touch Neon: it talks to Supabase only.
