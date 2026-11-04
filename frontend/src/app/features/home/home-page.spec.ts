@@ -196,12 +196,30 @@ describe('HomePage', () => {
       expect(TestBed.inject(Router).url).toBe('/recherche?marque=peugeot&lieu=69');
     });
 
-    it('has "Acheter" as the current tab and "Vendre" as a way to /vendre', async () => {
+    it('has "Acheter" as the current tab, "Louer" beside it and "Vendre" as a way to /vendre', async () => {
       await visit();
-      const [buy, sell] = Array.from(root.querySelectorAll<HTMLAnchorElement>('.finder__tab'));
+      const [buy, lease, sell] = Array.from(root.querySelectorAll<HTMLElement>('.finder__tab'));
 
-      expect(buy.getAttribute('aria-current')).toBe('page');
+      expect(buy.getAttribute('aria-pressed')).toBe('true');
+      expect(lease.getAttribute('aria-pressed')).toBe('false');
       expect(sell.getAttribute('href')).toBe('/vendre');
+    });
+
+    it('asks for a monthly budget under "Louer", and searches leasing offers', async () => {
+      await visit();
+      const tab = (offer: string) => root.querySelector(`.finder__tab[data-offer="${offer}"]`) as HTMLButtonElement;
+
+      tab('LEASING').click();
+      await settle();
+
+      expect(tab('LEASING').getAttribute('aria-pressed')).toBe('true');
+      const monthly = root.querySelector('select[data-field="monthly"]') as HTMLSelectElement;
+      monthly.value = '300';
+      monthly.dispatchEvent(new Event('change'));
+      (root.querySelector('.finder') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle();
+
+      expect(TestBed.inject(Router).url).toBe('/recherche?offre=location&mensualite_max=300');
     });
   });
 

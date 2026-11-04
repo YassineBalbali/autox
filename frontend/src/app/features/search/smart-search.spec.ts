@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DamageFilter, BodyType, FuelType, Gearbox, ListingSearchCriteria, PriceLevel } from '../../core/api';
+import { DamageFilter, BodyType, FuelType, Gearbox, LeasingType, ListingSearchCriteria, OfferType, PriceLevel } from '../../core/api';
 import { EMPTY_QUERY, toQueryParams } from './search-query';
 import { INTERPRETATION_STATE, queryFromCriteria, readInterpretation } from './smart-search';
 
@@ -9,6 +9,36 @@ const MAKES = [
   { id: 'm-noslug', name: 'Sans lien' },
 ];
 const MODELS = [{ id: 'r-clio', slug: 'clio', name: 'Clio' }];
+
+describe('a leasing offer asked for in words', () => {
+  it('becomes the leasing search, with its terms in whole euros', () => {
+    expect(
+      queryFromCriteria(
+        {
+          offer: OfferType.LEASING,
+          leasingType: [LeasingType.LOA],
+          currency: 'EUR',
+          monthlyMax: 30000,
+          durationMin: 24,
+          mileageAllowanceMin: 15000,
+        },
+        [],
+        [],
+        2,
+      ),
+    ).toMatchObject({
+      offer: OfferType.LEASING,
+      leasingType: [LeasingType.LOA],
+      monthlyMax: 300,
+      durationMin: 24,
+      allowanceMin: 15000,
+    });
+  });
+
+  it('leaves any other answer on the sale search', () => {
+    expect(queryFromCriteria({}, [], [], 2).offer).toBe(OfferType.SALE);
+  });
+});
 
 describe('a damaged vehicle asked for in words', () => {
   it('becomes the filter, and no answer about it leaves the default', () => {

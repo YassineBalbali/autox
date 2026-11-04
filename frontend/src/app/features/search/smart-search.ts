@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, catchError, combineLatest, map, of, shareReplay, switchMap, take } from 'rxjs';
-import { DamageFilter } from '../../core/api';
+import { DamageFilter, OfferType } from '../../core/api';
 
 import {
   ListingSearchCriteria,
@@ -68,6 +68,13 @@ export function queryFromCriteria(
     body: [...(criteria.bodyType ?? [])].sort(),
     condition: [...(criteria.condition ?? [])].sort(),
     damage: criteria.damage ?? DamageFilter.UNDAMAGED,
+    offer: criteria.offer ?? OfferType.SALE,
+    leasingType: [...(criteria.leasingType ?? [])].sort(),
+    monthlyMin: whole(criteria.monthlyMin),
+    monthlyMax: whole(criteria.monthlyMax),
+    durationMin: criteria.durationMin ?? null,
+    durationMax: criteria.durationMax ?? null,
+    allowanceMin: criteria.mileageAllowanceMin ?? null,
     location: criteria.location ?? null,
     goodDeals: (criteria.priceLevel ?? []).includes(PriceLevel.GOOD_DEAL),
   };

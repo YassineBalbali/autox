@@ -1,4 +1,7 @@
 <div class="search">
+  <!-- Two searches, not one with a filter: sales and leasing offers never mix. -->
+  <app-offer-switch class="search__offer" [offer]="query().offer" (changed)="setOffer($event)" />
+
   <!-- Full width, above everything: where a search is composed. -->
   <app-search-bar [query]="query()" (submitted)="searchFromBar($event)" />
 
@@ -23,7 +26,7 @@
 
     <label class="visually-hidden" for="tri-mobile" i18n="@@searchSortLabel">Trier par</label>
     <select class="input search__sort-compact" id="tri-mobile" (change)="setSort($event)">
-      @for (option of sortOptions; track option.value) {
+      @for (option of sortOptions(); track option.value) {
         <option [value]="option.value" [selected]="option.value === query().sort">
           {{ option.label }}
         </option>
@@ -34,6 +37,11 @@
   <!-- After a natural-language search: what was written, and what of it is not a filter. -->
   @if (interpretation(); as described) {
     <app-interpretation-note [interpretation]="described" (dismissed)="interpretation.set(null)" />
+  }
+
+  <!-- These results state monthly payments, and LOA is consumer credit: docs/leasing.md. -->
+  @if (leasing()) {
+    <p class="search__mention" data-mention>{{ creditMention }}</p>
   }
 
   <!-- What is applied, each removable. Renders nothing when no filter is set. -->
@@ -81,7 +89,7 @@
           <div class="search__sort">
             <label for="tri" i18n="@@searchSortLabel">Trier par</label>
             <select class="input" id="tri" (change)="setSort($event)">
-              @for (option of sortOptions; track option.value) {
+              @for (option of sortOptions(); track option.value) {
                 <option [value]="option.value" [selected]="option.value === query().sort">
                   {{ option.label }}
                 </option>

@@ -14,7 +14,16 @@
     <app-damage-notice [damage]="listing().damage" />
   }
 
-  @if (listing().priceAmount !== undefined) {
+  @if (listing().leasing; as leasing) {
+    <div class="summary__price">
+      <app-leasing-offer
+        [leasing]="leasing"
+        [priceAmount]="listing().priceAmount"
+        [currency]="listing().currencyCode ?? 'EUR'"
+        [minorUnit]="minorUnit()"
+      />
+    </div>
+  } @else if (listing().priceAmount !== undefined) {
     <div class="summary__price">
       <app-price
         size="detail"

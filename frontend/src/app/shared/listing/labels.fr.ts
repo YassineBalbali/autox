@@ -146,6 +146,15 @@ export const SORT_OPTIONS: readonly { value: SearchSort; label: string }[] = [
   { value: SearchSort.MILEAGE_ASC, label: 'Kilométrage croissant' },
 ];
 
+/** The same for leasing offers, which are sorted by their terms. */
+export const LEASING_SORT_OPTIONS: readonly { value: SearchSort; label: string }[] = [
+  { value: SearchSort.NEWEST, label: 'Plus récentes' },
+  { value: SearchSort.MONTHLY_ASC, label: 'Mensualité croissante' },
+  { value: SearchSort.MONTHLY_DESC, label: 'Mensualité décroissante' },
+  { value: SearchSort.DURATION_ASC, label: 'Durée croissante' },
+  { value: SearchSort.MILEAGE_ALLOWANCE_DESC, label: 'Kilométrage annuel décroissant' },
+];
+
 /**
  * The label for a value, or the value itself when there is none.
  *

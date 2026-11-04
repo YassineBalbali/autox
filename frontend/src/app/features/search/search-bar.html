@@ -52,12 +52,14 @@
     }
   </div>
 
-  <div class="bar__field bar__field--narrow">
-    <label class="bar__label" for="b-prix" i18n="@@barPriceMax">Prix max (€)</label>
-    <input class="input" id="b-prix" type="text" inputmode="numeric" autocomplete="off"
-      placeholder="Ex. 15000" i18n-placeholder="@@barPricePlaceholder"
-      [value]="draft().priceMax" (input)="set('priceMax', $event)" />
-  </div>
+  @if (query().offer !== leasing) {
+    <div class="bar__field bar__field--narrow">
+      <label class="bar__label" for="b-prix" i18n="@@barPriceMax">Prix max (€)</label>
+      <input class="input" id="b-prix" type="text" inputmode="numeric" autocomplete="off"
+        placeholder="Ex. 15000" i18n-placeholder="@@barPricePlaceholder"
+        [value]="draft().priceMax" (input)="set('priceMax', $event)" />
+    </div>
+  }
 
   <div class="bar__field bar__field--narrow">
     <label class="bar__label" for="b-annee" i18n="@@barYearMin">Année min.</label>

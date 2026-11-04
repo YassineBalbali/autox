@@ -637,6 +637,7 @@ describe('ListingEditorPage', () => {
         postalCode: '69003',
         city: 'Lyon',
         countryCode: 'FR',
+        offer: { offerType: 'SALE' },
       });
     });
 

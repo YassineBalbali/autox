@@ -19,13 +19,18 @@
 
 .finder__tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   border-bottom: var(--divider);
 }
 
 .finder__tab {
   padding: var(--s-2) 0;
   text-align: center;
+  // Two of these are buttons, the third a link: they read as one row.
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
   font-size: var(--t-md);
   font-weight: var(--fw-semibold);
   color: var(--c-ink-soft);

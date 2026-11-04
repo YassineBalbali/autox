@@ -4,7 +4,7 @@ import { Component, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { DamageFilter, BASE_PATH, FuelType, Gearbox, ResultCount } from '../../core/api';
+import { DamageFilter, BASE_PATH, FuelType, Gearbox, OfferType, ResultCount } from '../../core/api';
 import { PHONE_SCREEN, stubDialogs, stubMedia } from '../../core/ui/dom-testing';
 import { SearchFilters, showLabel } from './search-filters';
 import { EMPTY_QUERY, SearchQuery } from './search-query';
@@ -65,6 +65,41 @@ describe('SearchFilters', () => {
     await fixture.whenStable();
     return fixture.nativeElement;
   }
+
+  describe('a leasing search', () => {
+    const LEASING = { ...EMPTY_QUERY, offer: OfferType.LEASING };
+    const LEASING_ENUMS = { values: { ...ENUMS.values, LeasingType: ['LOA', 'LLD'] } };
+    const legends = (root: HTMLElement) => Array.from(root.querySelectorAll('legend')).map((node) => node.textContent?.trim());
+
+    it('filters by the terms, and offers nothing that only a sale has', async () => {
+      const root = await render(LEASING, LEASING_ENUMS);
+
+      expect(legends(root)).toEqual(
+        expect.arrayContaining(['Mensualité (€/mois)', 'Durée (mois)', 'Kilométrage annuel minimum', 'Type de location']),
+      );
+      expect(legends(root)).not.toContain('Prix (€)');
+      expect(legends(root)).not.toContain('Prix du marché');
+      expect(legends(root)).not.toContain('État du véhicule');
+    });
+
+    it('offers none of the terms on a sale', async () => {
+      const root = await render(EMPTY_QUERY, LEASING_ENUMS);
+
+      expect(legends(root)).toContain('Prix (€)');
+      expect(legends(root)).not.toContain('Mensualité (€/mois)');
+      expect(legends(root)).not.toContain('Type de location');
+    });
+
+    it('reports a monthly budget as the field that changed', async () => {
+      const root = await render(LEASING, LEASING_ENUMS);
+      const max = root.querySelector('[data-filter="monthly"] input[aria-label="Mensualité maximum"]') as HTMLInputElement;
+
+      max.value = '300';
+      max.dispatchEvent(new Event('change'));
+
+      expect(host.patches).toEqual([{ monthlyMax: 300 }]);
+    });
+  });
 
   const chips = (root: HTMLElement, legend: string) => {
     const group = Array.from(root.querySelectorAll('fieldset')).find((fieldset) =>

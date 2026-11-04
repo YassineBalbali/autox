@@ -14,7 +14,7 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 
-import { BodyType, DamageFilter, FuelType, Gearbox, ResultCount, VehicleCondition } from '../../core/api';
+import { BodyType, DamageFilter, FuelType, Gearbox, LeasingType, ResultCount, VehicleCondition } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
 import { WIDE, mediaQuery } from '../../core/ui/media';
 import { OverlayEntry, OverlayHistory } from '../../core/ui/overlay-history';
@@ -29,17 +29,29 @@ import {
   GEARBOX_LABELS,
   labelOf,
 } from '../../shared/listing/labels.fr';
-import { SearchQuery, activeFilterCount, allowsGoodDeals } from './search-query';
+import { LEASING_TYPE_LABELS } from '../../shared/listing/leasing.fr';
+import { SearchQuery, activeFilterCount, allowsGoodDeals, isLeasing } from './search-query';
 import { VehicleFilter } from './vehicle-filter';
 
 /** One multi-choice filter: its key in the query, its heading, its options. */
 interface ChoiceGroup {
-  readonly key: 'fuel' | 'gearbox' | 'body' | 'condition';
+  readonly key: 'fuel' | 'gearbox' | 'body' | 'condition' | 'leasingType';
   readonly legend: string;
   readonly options: readonly { value: string; label: string }[];
 }
 
-type RangeKey = 'yearMin' | 'yearMax' | 'priceMin' | 'priceMax' | 'mileageMin' | 'mileageMax';
+type RangeKey =
+  | 'yearMin'
+  | 'yearMax'
+  | 'priceMin'
+  | 'priceMax'
+  | 'mileageMin'
+  | 'mileageMax'
+  | 'monthlyMin'
+  | 'monthlyMax'
+  | 'durationMin'
+  | 'durationMax'
+  | 'allowanceMin';
 
 /**
  * The filter sidebar.
@@ -150,6 +162,7 @@ export class SearchFilters {
   );
 
   protected readonly goodDealsAllowed = computed(() => allowsGoodDeals(this.query()));
+  protected readonly leasing = computed(() => isLeasing(this.query()));
 
   protected readonly damageOptions = [DamageFilter.UNDAMAGED, DamageFilter.DAMAGED_ONLY, DamageFilter.ALL].map(
     (value) => ({ value, label: DAMAGE_FILTER_LABELS[value] }),
@@ -158,6 +171,7 @@ export class SearchFilters {
   protected readonly groups = computed<ChoiceGroup[]>(() => {
     const enums = this.enums();
     return [
+      ...(this.leasing() ? [group('leasingType', 'Type de location', enums['LeasingType'], LeasingType, LEASING_TYPE_LABELS)] : []),
       group('fuel', 'Carburant', enums['FuelType'], FuelType, FUEL_LABELS),
       group('gearbox', 'Boîte de vitesses', enums['Gearbox'], Gearbox, GEARBOX_LABELS),
       group('body', 'Carrosserie', enums['BodyType'], BodyType, BODY_LABELS),

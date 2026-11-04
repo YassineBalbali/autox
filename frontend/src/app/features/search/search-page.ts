@@ -4,7 +4,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, map, switchMap } from 'rxjs';
 
-import { PublicListingSummary, ResultCount, SearchSort } from '../../core/api';
+import { OfferType, PublicListingSummary, ResultCount, SearchSort } from '../../core/api';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
 import { PHONE, mediaQuery } from '../../core/ui/media';
 import { formatIntegerFr } from '../../shared/format/number';
@@ -15,10 +15,12 @@ import { Icon } from '../../shared/ui/icon';
 import { ActiveFilters } from './active-filters';
 import { InterpretationNote } from './interpretation-note';
 import { Interpretation, readInterpretation } from './smart-search';
-import { FUEL_LABELS, GEARBOX_LABELS, SORT_OPTIONS, labelOf } from '../../shared/listing/labels.fr';
+import { CREDIT_MENTION } from '../../shared/listing/leasing.fr';
+import { OfferSwitch } from './offer-switch';
+import { FUEL_LABELS, GEARBOX_LABELS, LEASING_SORT_OPTIONS, SORT_OPTIONS, labelOf } from '../../shared/listing/labels.fr';
 import { SearchBar } from './search-bar';
 import { SearchFilters } from './search-filters';
-import {
+import { isLeasing, switchOffer,
   SearchQuery,
   activeFilterCount,
   parseQuery,
@@ -65,6 +67,7 @@ import { ViewToggle } from './view-toggle';
 @Component({
   selector: 'app-search-page',
   imports: [
+    OfferSwitch,
     SearchBar,
     ActiveFilters,
     InterpretationNote,
@@ -137,7 +140,9 @@ export class SearchPage {
    */
   protected readonly sheetCount = computed(() => activeFilterCount({ ...this.query(), text: null }));
 
-  protected readonly sortOptions = SORT_OPTIONS;
+  protected readonly leasing = computed(() => isLeasing(this.query()));
+  protected readonly sortOptions = computed(() => (this.leasing() ? LEASING_SORT_OPTIONS : SORT_OPTIONS));
+  protected readonly creditMention = CREDIT_MENTION;
 
   private readonly query$ = this.route.queryParamMap.pipe(map(parseQuery));
 
@@ -198,6 +203,11 @@ export class SearchPage {
   protected searchFromBar(patch: Partial<SearchQuery>): void {
     this.interpretation.set(null);
     this.applyFilters(patch);
+  }
+
+  protected setOffer(offer: OfferType): void {
+    this.interpretation.set(null);
+    this.navigate(switchOffer(this.query(), offer));
   }
 
   protected applyFilters(patch: Partial<SearchQuery>): void {
