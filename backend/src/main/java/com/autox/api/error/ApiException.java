@@ -121,6 +121,16 @@ public class ApiException extends RuntimeException {
                 "This verification link is no longer valid. Request a new one.");
     }
 
+    public static ApiException savedSearchLimitReached(int limit) {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.SAVED_SEARCH_LIMIT_REACHED,
+                "An account can have at most " + limit + " saved searches.");
+    }
+
+    public static ApiException invalidUnsubscribeToken() {
+        return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_UNSUBSCRIBE_TOKEN,
+                "This unsubscribe link is not valid.");
+    }
+
     public static ApiException emailNotVerified() {
         return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.EMAIL_NOT_VERIFIED,
                 "Verify your email address first.");

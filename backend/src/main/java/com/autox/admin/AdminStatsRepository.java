@@ -185,11 +185,17 @@ class AdminStatsRepository {
     AdminStats.EmailCounts emailCounts(int days) {
         return jdbc.queryForObject("""
                 SELECT count(*) FILTER (WHERE status = 'SENT') AS sent,
-                       count(*) FILTER (WHERE status = 'FAILED') AS failed
+                       count(*) FILTER (WHERE status = 'FAILED') AS failed,
+                       count(*) FILTER (WHERE status = 'SENT' AND email_type = 'SAVED_SEARCH_DIGEST') AS alerts
                   FROM outbox_email
                  WHERE created_at > now() - make_interval(days => %d)
                 """.formatted(days),
-                (rs, row) -> new AdminStats.EmailCounts(rs.getLong("sent"), rs.getLong("failed")));
+                (rs, row) -> new AdminStats.EmailCounts(rs.getLong("sent"), rs.getLong("failed"), rs.getLong("alerts")));
+    }
+
+    long activeSavedSearches() {
+        Long count = jdbc.queryForObject("SELECT count(*) FROM saved_search WHERE paused_at IS NULL", Long.class);
+        return count == null ? 0 : count;
     }
 
     SearchUsage searchUsage(int days) {

@@ -79,7 +79,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/password/forgot",
                                 "/api/v1/auth/password/reset",
                                 // The link can be opened on a device that is not signed in.
-                                "/api/v1/auth/email/verify").permitAll()
+                                "/api/v1/auth/email/verify",
+                                // From a link in an e-mail: the signed token is the authority.
+                                "/api/v1/saved-searches/unsubscribe").permitAll()
                         // Liveness and readiness for a load balancer, which has no account.
                         // Only `health` is exposed, and it is configured to return a status
                         // and nothing else — see `management.*` in application.yml.

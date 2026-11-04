@@ -140,6 +140,15 @@ public class ListingSearchRepository {
      */
     public int countUpTo(ListingSearchCriteria criteria, int cap) {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
+        StringBuilder sql = countableMatches(criteria, parameters);
+        sql.append(" LIMIT :limit) bounded");
+        parameters.addValue("limit", cap + 1);
+
+        Integer count = jdbc.queryForObject(sql.toString(), parameters, Integer.class);
+        return count == null ? 0 : count;
+    }
+
+    private StringBuilder countableMatches(ListingSearchCriteria criteria, MapSqlParameterSource parameters) {
         StringBuilder sql = new StringBuilder("""
                 SELECT count(*) FROM (
                     SELECT 1
@@ -148,13 +157,51 @@ public class ListingSearchRepository {
                       LEFT JOIN vehicle_model mo ON mo.id = l.model_id
                       LEFT JOIN geo_place gp     ON gp.id = l.geo_place_id
                     """).append(marketJoin(criteria)).append(" WHERE ").append(VISIBLE);
-
         appendFilters(criteria, sql, parameters);
+        return sql;
+    }
+
+    /**
+     * What is new in a saved search, by the very filters {@link #search} applies: same visibility,
+     * same {@code appendFilters}. So an alert holds nothing the results page would not show, and a
+     * new filter reaches alerts by itself. The rest is only "new": published after {@code since},
+     * not the searcher's own, and not already sent for this search.
+     *
+     * @param sentFor the saved search whose sent listings to leave out, or {@code null}
+     */
+    public List<SearchRow> publishedSince(ListingSearchCriteria criteria, SearchSort sort, Instant since,
+                                          UUID excludedSeller, UUID sentFor, int limit) {
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        StringBuilder sql = new StringBuilder(SELECT).append(marketJoin(criteria)).append(" WHERE ").append(VISIBLE);
+        appendFilters(criteria, sql, parameters);
+        appendNew(since, excludedSeller, sentFor, sql, parameters);
+        sql.append(" ORDER BY ").append(sort.orderByClause()).append(" LIMIT :limit");
+        parameters.addValue("limit", limit);
+        return jdbc.query(sql.toString(), parameters, ListingSearchRepository::mapRow);
+    }
+
+    /** How many {@link #publishedSince} would find, counted no further than {@code cap + 1}. */
+    public int countPublishedSince(ListingSearchCriteria criteria, Instant since, UUID excludedSeller, UUID sentFor,
+                                   int cap) {
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        StringBuilder sql = countableMatches(criteria, parameters);
+        appendNew(since, excludedSeller, sentFor, sql, parameters);
         sql.append(" LIMIT :limit) bounded");
         parameters.addValue("limit", cap + 1);
-
         Integer count = jdbc.queryForObject(sql.toString(), parameters, Integer.class);
         return count == null ? 0 : count;
+    }
+
+    private static void appendNew(Instant since, UUID excludedSeller, UUID sentFor, StringBuilder sql,
+                                  MapSqlParameterSource parameters) {
+        sql.append(" AND l.published_at > :since AND l.seller_id <> :excludedSeller");
+        parameters.addValue("since", Timestamp.from(since));
+        parameters.addValue("excludedSeller", excludedSeller);
+        if (sentFor != null) {
+            sql.append(" AND NOT EXISTS (SELECT 1 FROM saved_search_sent sent"
+                    + " WHERE sent.saved_search_id = :sentFor AND sent.listing_id = l.id)");
+            parameters.addValue("sentFor", sentFor);
+        }
     }
 
     /** The statement the search would run, for diagnostics and plan checks. */

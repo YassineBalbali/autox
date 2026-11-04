@@ -29,6 +29,7 @@ import java.util.List;
  * @param searchLast30Days the same over 30 days
  * @param emailsLast7Days  transactional email written in the last 7 × 24 hours, by outcome
  * @param emailsLast30Days the same over 30 × 24 hours
+ * @param activeSavedSearches saved searches now, not paused
  */
 @Schema(description = "Figures for the admin dashboard, real activity and demo seed apart.")
 public record AdminStats(
@@ -43,7 +44,8 @@ public record AdminStats(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SearchUsage searchLast7Days,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SearchUsage searchLast30Days,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmailCounts emailsLast7Days,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmailCounts emailsLast30Days) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmailCounts emailsLast30Days,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long activeSavedSearches) {
 
     /** A count, apart: what real users did, and what the demo seed created. */
     @Schema(description = "A count split into real activity and demo seed.")
@@ -129,10 +131,12 @@ public record AdminStats(
      *
      * @param sent   handed to the provider, which is not the same as delivered
      * @param failed given up on after the last attempt
+     * @param alertsSent of {@code sent}, saved searches' daily e-mails
      */
     @Schema(description = "Transactional email in a period, by outcome.")
     public record EmailCounts(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long sent,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long failed) {
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long failed,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long alertsSent) {
     }
 }

@@ -71,6 +71,11 @@ public enum ErrorCode {
     /** The seller already has as many live listings as their account allows. */
     ACTIVE_LISTING_LIMIT_REACHED,
 
+    /** The account already has as many saved searches as it may. */
+    SAVED_SEARCH_LIMIT_REACHED,
+    /** An unsubscribe link that was not signed here. */
+    INVALID_UNSUBSCRIBE_TOKEN,
+
     /** A leasing offer is for a dealer's account. */
     LEASING_PROFESSIONAL_ONLY,
 

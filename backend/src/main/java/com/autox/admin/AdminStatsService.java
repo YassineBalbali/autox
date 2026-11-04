@@ -55,7 +55,8 @@ public class AdminStatsService {
                 repository.searchUsage(7),
                 repository.searchUsage(30),
                 repository.emailCounts(7),
-                repository.emailCounts(30));
+                repository.emailCounts(30),
+                repository.activeSavedSearches());
         computedAt = now;
         return cached;
     }

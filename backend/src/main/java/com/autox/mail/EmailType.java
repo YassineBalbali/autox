@@ -4,5 +4,6 @@ package com.autox.mail;
 public enum EmailType {
     PASSWORD_RESET,
     EMAIL_VERIFICATION,
-    NEW_MESSAGE
+    NEW_MESSAGE,
+    SAVED_SEARCH_DIGEST
 }
