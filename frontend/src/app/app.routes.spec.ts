@@ -151,6 +151,15 @@ describe('routes', () => {
     expect(routes.filter((candidate) => candidate.path?.startsWith('admin/'))).toEqual([]);
   });
 
+  it('still serves reported messages at their address, which is where the sidebar leads', async () => {
+    const pages = routes.find((route) => route.path === 'admin')!.children!;
+    const page = pages.find((route) => route.path === 'moderation/messages')!;
+
+    const { ReportedMessagesPage } = await import('./features/admin/reported-messages-page');
+    expect(await page.loadComponent!()).toBe(ReportedMessagesPage);
+    expect(ADMIN_NAV.find((item) => item.label === 'Signalements')?.path).toBe('moderation/messages');
+  });
+
   it('has a page behind every entry of the administration sidebar', () => {
     const pages = routes.find((route) => route.path === 'admin')!.children!;
     for (const item of ADMIN_NAV) {

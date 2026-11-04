@@ -7,7 +7,6 @@ import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { SellerBadge } from '../../shared/listing/seller-badge';
 import { Alert } from '../../shared/ui/alert';
 import { REPORT_REASONS, sentAtFull } from '../messages/messaging';
-import { VIEWS } from './moderation-page';
 
 const PAGE_SIZE = 10;
 
@@ -30,7 +29,6 @@ export class ReportedMessagesPage {
   private readonly api = inject(AdminService);
   private readonly errors = inject(ErrorMessageService);
 
-  protected readonly views = VIEWS;
   protected readonly sentAtFull = sentAtFull;
 
   protected readonly items = signal<ReportedMessage[]>([]);

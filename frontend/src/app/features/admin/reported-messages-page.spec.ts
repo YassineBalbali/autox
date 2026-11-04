@@ -81,13 +81,11 @@ describe('ReportedMessagesPage', () => {
     expect(reported.querySelector('.context__body')?.textContent).toBe('Payez par mandat <b>cash</b>');
   });
 
-  it('is the fourth tab of moderation, and the one marked current', async () => {
+  it('says how many wait, with no second navigation: the sidebar is the way between pages', async () => {
     await show([report('r1')]);
-    const tabs = Array.from(root.querySelectorAll('.moderation__view'));
 
-    expect(tabs).toHaveLength(4);
-    expect(tabs[3].getAttribute('aria-current')).toBe('page');
-    expect(tabs[3].textContent).toContain('Messages signalés (1)');
+    expect(root.querySelector('[data-count]')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('1 en attente');
+    expect(root.querySelector('.moderation__views')).toBeNull();
   });
 
   it('hides a message through its own endpoint, says what that did, and fetches the queue again', async () => {
