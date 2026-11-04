@@ -14,7 +14,8 @@ import { legacySearchRedirect } from './features/search/legacy-search-redirect';
  * <p>Paths are French, because they are part of the interface the user reads. The two the
  * plumbing needs by name are in `auth.routes.ts`, and one of them — the password reset
  * page — has to match `autox.mail.password-reset-url` on the backend exactly, since that is
- * what the emailed link points at.
+ * what the emailed link points at. So do `verifier-email` and `messages/:id`, with the paths
+ * `EmailVerificationService` and `NewMessageNotifier` link to.
  *
  * <p>The home page is a way in to the search — a short form, the visitor's recent
  * searches, and shortcuts by make, budget and kind of car — and the results are at
@@ -84,6 +85,14 @@ export const routes: Routes = [
     title: 'Nouveau mot de passe · AutoX',
     loadComponent: () =>
       import('./features/auth/reset-password-page').then((m) => m.ResetPasswordPage),
+  },
+
+  {
+    // The verification email links here (autox.mail.site-url + this path). The token arrives
+    // as `?token=…`, like the reset page's. Public: the link may be opened on another device.
+    path: 'verifier-email',
+    title: 'Vérification de votre adresse · AutoX',
+    loadComponent: () => import('./features/auth/verify-email-page').then((m) => m.VerifyEmailPage),
   },
 
   // ---- the account section -----------------------------------------------

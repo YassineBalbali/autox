@@ -40,8 +40,55 @@ const PROFILE: UserProfileResponse = {
   countryCode: 'FR',
   locale: 'fr-FR',
   emailVerified: true,
+  emailVerificationPending: false,
   createdAt: '2026-03-01T09:15:00Z',
 };
+
+/** What the account screen says about an unverified address, by who it is said to. */
+describe('ProfilePage: the address', () => {
+  async function show(profile: UserProfileResponse): Promise<HTMLElement> {
+    TestBed.configureTestingModule({
+      imports: [ProfilePage],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        AccountProfileStore,
+        { provide: BASE_PATH, useValue: BASE },
+        { provide: TOKEN_STORE, useClass: InMemoryTokenStore },
+      ],
+    });
+    const fixture = TestBed.createComponent(ProfilePage);
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne(`${BASE}/api/v1/me`).flush(profile);
+    await fixture.whenStable();
+    return fixture.nativeElement;
+  }
+
+  it('a new account is told plainly what it cannot do yet, with the way to get a link', async () => {
+    const root = await show({ ...PROFILE, emailVerified: false, emailVerificationPending: true });
+
+    const banner = root.querySelector('[data-verify-banner]');
+    expect(banner?.textContent).toContain('E-mail non vérifié');
+    expect(banner?.textContent).toContain('pas publier d’annonce ni envoyer de message');
+    expect(banner?.querySelector('[data-action="resend"]')).not.toBeNull();
+  });
+
+  it('an account from before sees the banner, and is not told it cannot do anything', async () => {
+    const root = await show({ ...PROFILE, emailVerified: false, emailVerificationPending: false });
+
+    const banner = root.querySelector('[data-verify-banner]');
+    expect(banner?.textContent).toContain('E-mail non vérifié');
+    expect(banner?.textContent).not.toContain('pas publier');
+    expect(banner?.querySelector('[data-action="resend"]')).not.toBeNull();
+  });
+
+  it('a verified account sees nothing about it', async () => {
+    const root = await show(PROFILE);
+
+    expect(root.querySelector('[data-verify-banner]')).toBeNull();
+  });
+});
 
 /**
  * The account screen.

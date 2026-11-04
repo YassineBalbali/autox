@@ -14,6 +14,7 @@ import {
   ListingSummary,
   ModerationReason,
 } from '../../core/api';
+import { TOKEN_STORE } from '../../core/auth/token-store';
 import { FlashService } from '../../core/ui/flash.service';
 import { NBSP } from '../../shared/format/number';
 import { MyListingsPage, statusOfSlug } from './my-listings-page';
@@ -101,6 +102,7 @@ describe('MyListingsPage', () => {
           withComponentInputBinding(),
         ),
         { provide: BASE_PATH, useValue: BASE },
+        { provide: TOKEN_STORE, useValue: { read: () => null, write: () => undefined, clear: () => undefined } },
       ],
     });
     backend = TestBed.inject(HttpTestingController);

@@ -25,6 +25,8 @@ import { Alert } from '../../shared/ui/alert';
 import { Icon } from '../../shared/ui/icon';
 import { Inbox } from './inbox';
 import { MessageThread } from './message-thread';
+import { AuthService } from '../../core/auth/auth.service';
+import { EmailVerificationNotice } from '../../shared/account/email-verification-notice';
 import { MESSAGE_MAX_LENGTH, sendFailure } from './messaging';
 
 /**
@@ -37,13 +39,14 @@ import { MESSAGE_MAX_LENGTH, sendFailure } from './messaging';
  */
 @Component({
   selector: 'app-conversation-view',
-  imports: [RouterLink, Price, SellerBadge, Alert, Icon, MessageThread],
+  imports: [RouterLink, Price, SellerBadge, Alert, Icon, MessageThread, EmailVerificationNotice],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './conversation-view.html',
   styleUrl: './conversation-view.scss',
 })
 export class ConversationView implements OnDestroy {
   private readonly api = inject(MessagesService);
+  private readonly auth = inject(AuthService);
   private readonly errors = inject(ErrorMessageService);
   private readonly inbox = inject(Inbox);
   private readonly unread = inject(UnreadMessages);
@@ -56,6 +59,8 @@ export class ConversationView implements OnDestroy {
   protected readonly loadFailure = signal<string | null>(null);
 
   protected readonly draft = signal('');
+  /** This account can read but not write until it verifies its address. */
+  protected readonly mustVerify = computed(() => this.auth.user()?.emailVerificationPending === true);
   protected readonly sending = signal(false);
   protected readonly sendError = signal<string | null>(null);
   protected readonly maxLength = MESSAGE_MAX_LENGTH;

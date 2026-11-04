@@ -7,6 +7,7 @@ import { TextField } from '../../shared/forms/text-field';
 import { formatDateFr } from '../../shared/format/date';
 import { MAX_LENGTHS, phoneValidators, requiredText } from '../../shared/forms/validation';
 import { submitState } from '../../shared/forms/submit-state';
+import { EmailVerificationNotice } from '../../shared/account/email-verification-notice';
 import { Alert } from '../../shared/ui/alert';
 import { AccountProfileStore } from './account-profile.store';
 
@@ -28,7 +29,7 @@ import { AccountProfileStore } from './account-profile.store';
  */
 @Component({
   selector: 'app-profile-page',
-  imports: [ReactiveFormsModule, TextField, Alert],
+  imports: [ReactiveFormsModule, TextField, Alert, EmailVerificationNotice],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './profile-page.html',
   styleUrl: './account.scss',

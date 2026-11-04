@@ -12,6 +12,8 @@ import { formatDateFr } from '../../shared/format/date';
 import { formatIntegerFr, NBSP } from '../../shared/format/number';
 import { MODERATION_REASON_LABELS } from '../../shared/listing/moderation.fr';
 import { Price } from '../../shared/listing/price';
+import { AuthService } from '../../core/auth/auth.service';
+import { EmailVerificationNotice } from '../../shared/account/email-verification-notice';
 import { Alert } from '../../shared/ui/alert';
 import {
   ACTION_LABELS,
@@ -68,13 +70,14 @@ interface Row {
  */
 @Component({
   selector: 'app-my-listings-page',
-  imports: [RouterLink, Alert, Price],
+  imports: [RouterLink, Alert, Price, EmailVerificationNotice],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './my-listings-page.html',
   styleUrl: './my-listings-page.scss',
 })
 export class MyListingsPage {
   private readonly api = inject(ListingsSellerService);
+  private readonly auth = inject(AuthService);
   private readonly errors = inject(ErrorMessageService);
   private readonly reference = inject(ReferenceStore);
 
@@ -105,6 +108,8 @@ export class MyListingsPage {
   protected readonly quota = signal<ListingQuota | null>(null);
   /** The message carried over from the screen before — "Votre annonce est en ligne." */
   protected readonly notice = signal<string | null>(inject(FlashService).take());
+  /** Publishing needs a verified address; drafts do not. */
+  protected readonly mustVerify = computed(() => this.auth.user()?.emailVerificationPending === true);
 
   /** The listing an action is running on. One at a time. */
   protected readonly busy = signal<string | null>(null);

@@ -95,6 +95,33 @@ describe('ContactSeller', () => {
     expect(root.querySelector('a[href="/messages"]')).not.toBeNull();
   });
 
+  it('tells an account that has to verify its address, instead of a form that would be refused', async () => {
+    await render('buyer-1');
+    TestBed.inject(AuthService).setUser({ id: 'buyer-1', emailVerificationPending: true } as UserSummary);
+    await settle();
+
+    expect(button()).toBeNull();
+    expect(textarea()).toBeNull();
+    expect(root.textContent).toContain('Vérifiez votre adresse e-mail pour écrire au vendeur');
+    expect(root.querySelector('[data-action="resend"]')).not.toBeNull();
+  });
+
+  it('from the phone’s bottom bar, leads an account that has to verify to the notice, and opens nothing', async () => {
+    await render('buyer-1');
+    TestBed.inject(AuthService).setUser({ id: 'buyer-1', emailVerificationPending: true } as UserSummary);
+    await settle();
+    const scrolled: unknown[] = [];
+    root.querySelector('app-contact-seller')!.scrollIntoView = (options?: unknown) => {
+      scrolled.push(options);
+    };
+
+    fixture.componentInstance.contact().engage();
+    await settle();
+
+    expect(scrolled).toHaveLength(1);
+    expect(textarea()).toBeNull();
+  });
+
   it('opens a form with a first line to edit, focused, and says what it is for', async () => {
     await render('buyer-1');
     button().click();

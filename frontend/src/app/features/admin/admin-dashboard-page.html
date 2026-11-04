@@ -255,6 +255,35 @@
               </p>
             }
           </section>
+
+          <!-- Transactional email. -->
+          <section class="panel dash__panel" aria-labelledby="dash-emails">
+            <h2 id="dash-emails" class="dash__heading" i18n="@@dashboardEmails">E-mails</h2>
+            <table class="dash__table" data-table="emails">
+              <thead>
+                <tr>
+                  <th scope="col"><span class="visually-hidden" i18n="@@dashboardWhat">Quoi</span></th>
+                  <th scope="col" class="dash__num" i18n="@@dashboard7">7 jours</th>
+                  <th scope="col" class="dash__num" i18n="@@dashboard30">30 jours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-row="sent">
+                  <th scope="row" i18n="@@dashboardEmailsSent">Envoyés</th>
+                  <td class="dash__num"><strong>{{ number(s.emailsLast7Days.sent) }}</strong></td>
+                  <td class="dash__num"><strong>{{ number(s.emailsLast30Days.sent) }}</strong></td>
+                </tr>
+                <tr data-row="failed">
+                  <th scope="row" i18n="@@dashboardEmailsFailed">Échoués</th>
+                  <td class="dash__num">{{ number(s.emailsLast7Days.failed) }}</td>
+                  <td class="dash__num">{{ number(s.emailsLast30Days.failed) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="meta dash__note" i18n="@@dashboardEmailsNote">
+              Envoyés : remis au prestataire, ce qui ne dit pas s’ils sont arrivés. Échoués : abandonnés après cinq tentatives.
+            </p>
+          </section>
         </div>
       }
     }

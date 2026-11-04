@@ -267,6 +267,7 @@ export function userSummaryOf(profile: UserProfileResponse): UserSummary {
     status: profile.status,
     displayName: profile.displayName,
     emailVerified: profile.emailVerified,
+    emailVerificationPending: profile.emailVerificationPending,
     countryCode: profile.countryCode,
     locale: profile.locale,
   };

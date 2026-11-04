@@ -15,6 +15,7 @@ import { MessagesService, PublicListingDetail } from '../../core/api';
 import { RETURN_URL_PARAM, SIGN_IN_ROUTE } from '../../core/auth/auth.routes';
 import { AuthService } from '../../core/auth/auth.service';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
+import { EmailVerificationNotice } from '../../shared/account/email-verification-notice';
 import { Alert } from '../../shared/ui/alert';
 import { Icon } from '../../shared/ui/icon';
 import { MESSAGE_MAX_LENGTH, sendFailure } from '../messages/messaging';
@@ -23,15 +24,15 @@ import { MESSAGE_MAX_LENGTH, sendFailure } from '../messages/messaging';
  * "Contacter le vendeur": the way a buyer reaches a seller. Through the platform only — the
  * seller's email and phone are never shown, and the buyer's are never passed on.
  *
- * <p>Four states: signed out, the link signs in and comes back here; the seller looking at
- * their own listing, a pointer to their messages; anyone else, a message form that opens in
- * place with a first line already written; and sent, a confirmation and the way to the
- * conversation. Writing again continues the same conversation, so there is no state for
+ * <p>Five states: signed out, the link signs in and comes back here; the seller looking at
+ * their own listing, a pointer to their messages; an account that has to verify its address
+ * first, what to do about it; anyone else, a message form that opens in place with a first line
+ * already written; and sent, a confirmation and the way to the conversation. Writing again continues the same conversation, so there is no state for
  * "already contacted".
  */
 @Component({
   selector: 'app-contact-seller',
-  imports: [RouterLink, Alert, Icon],
+  imports: [RouterLink, Alert, Icon, EmailVerificationNotice],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './contact-seller.html',
   styleUrl: './contact-seller.scss',
@@ -41,6 +42,7 @@ export class ContactSeller {
   private readonly api = inject(MessagesService);
   private readonly errors = inject(ErrorMessageService);
   private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly listing = input.required<PublicListingDetail>();
 
@@ -54,6 +56,9 @@ export class ContactSeller {
     const me = this.auth.user()?.id;
     return !!me && me === this.listing().seller?.id;
   });
+
+  /** This account cannot write yet. Known once the profile has loaded, as above. */
+  protected readonly mustVerify = computed(() => this.auth.user()?.emailVerificationPending === true);
 
   /** The message form is open: someone is writing. */
   readonly open = signal(false);
@@ -86,6 +91,9 @@ export class ContactSeller {
       void this.router.navigate([this.signInRoute], { queryParams: this.signInQuery() });
     } else if (this.sentTo()) {
       void this.router.navigate(['/messages', this.sentTo()]);
+    } else if (this.mustVerify()) {
+      // Nothing to open: the notice says what to do, and the bar's button has to lead to it.
+      this.host.nativeElement.scrollIntoView?.({ block: 'center' });
     } else if (!this.ownListing()) {
       this.start();
     }

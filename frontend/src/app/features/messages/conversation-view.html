@@ -66,7 +66,15 @@
           <app-message-thread [conversation]="conversation" (reported)="reported($event)" />
         </div>
 
-        @if (conversation.canReply) {
+        @if (conversation.canReply && mustVerify()) {
+          <div class="composer">
+            <app-email-verification-notice>
+              <ng-container i18n="@@composerMustVerify">
+                Vérifiez votre adresse e-mail pour répondre : cliquez sur le lien que nous vous avons envoyé.
+              </ng-container>
+            </app-email-verification-notice>
+          </div>
+        } @else if (conversation.canReply) {
           <form class="composer" (submit)="send($event)">
             <label class="visually-hidden" for="composer-message" i18n="@@composerLabel">Votre réponse</label>
             <textarea

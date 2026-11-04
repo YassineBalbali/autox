@@ -530,6 +530,14 @@
                 </app-alert>
               } @else {
                 <!-- The rules, stated before the button rather than discovered by pressing it. -->
+                @if (mustVerify()) {
+                  <app-email-verification-notice data-rule="verify">
+                    <ng-container i18n="@@publishMustVerify">
+                      Vérifiez votre adresse e-mail pour mettre l’annonce en ligne : cliquez sur le lien que
+                      nous vous avons envoyé. Votre brouillon est conservé.
+                    </ng-container>
+                  </app-email-verification-notice>
+                }
                 @if (!hasPhoto()) {
                   <app-alert kind="error" data-rule="photo">
                     <ng-container i18n="@@publishNeedsPhoto">

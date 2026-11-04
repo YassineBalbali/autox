@@ -46,6 +46,7 @@ import { LeasingOffer } from '../../shared/listing/leasing-offer';
 import { DamageType } from '../../core/api';
 import { DAMAGE_TYPE_LABELS } from '../../shared/listing/labels.fr';
 import { SpecLine } from '../../shared/listing/spec-line';
+import { EmailVerificationNotice } from '../../shared/account/email-verification-notice';
 import { Alert } from '../../shared/ui/alert';
 import { NotFound } from '../../shared/ui/not-found';
 import { galleryImages, specificationRows } from '../listing/listing-view';
@@ -120,6 +121,7 @@ export const MY_LISTINGS = '/mes-annonces';
     TextField,
     SelectField,
     Alert,
+    EmailVerificationNotice,
     NotFound,
     PhotoUploader,
     PhotoGallery,
@@ -366,8 +368,11 @@ export class ListingEditorPage {
   /** True when a private seller already has as many listings online as they may. */
   protected readonly capReached = computed(() => this.publishable() && this.quota()?.canPublish === false);
 
+  /** Publishing needs a verified address; saving a draft does not. */
+  protected readonly mustVerify = computed(() => this.auth.user()?.emailVerificationPending === true);
+
   protected readonly canPublish = computed(
-    () => this.publishable() && this.hasPhoto() && !this.capReached() && !this.saving(),
+    () => this.publishable() && this.hasPhoto() && !this.capReached() && !this.mustVerify() && !this.saving(),
   );
 
   constructor() {

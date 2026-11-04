@@ -252,6 +252,17 @@ describe('MessagesPage', () => {
       expect(root.querySelector('#composer-hint')?.textContent).toContain('faites vérifier tout chèque de banque');
     });
 
+    it('tells an account that has to verify its address, instead of a reply box', async () => {
+      await visit('/messages/c2', [summary('c2')]);
+      await opened('c2');
+      TestBed.inject(AuthService).setUser({ emailVerificationPending: true });
+      await settle();
+
+      expect(root.querySelector('#composer-message')).toBeNull();
+      expect(text()).toContain('Vérifiez votre adresse e-mail pour répondre');
+      expect(root.querySelector('[data-action="resend"]')).not.toBeNull();
+    });
+
     it('explains a closed conversation instead of offering a reply that would be refused', async () => {
       await visit('/messages/c1', [summary('c1')]);
       await opened('c1', detail('c1', { canReply: false }));

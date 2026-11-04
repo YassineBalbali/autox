@@ -47,6 +47,12 @@ export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = {
   [ErrorCode.INVALID_RESET_TOKEN]:
     'Ce lien de réinitialisation n’est plus valable. Demandez-en un nouveau.',
 
+  // --- verifying an address ---------------------------------------------
+  [ErrorCode.INVALID_VERIFICATION_TOKEN]:
+    'Ce lien de vérification n’est plus valable. Demandez-en un nouveau.',
+  [ErrorCode.EMAIL_NOT_VERIFIED]:
+    'Vérifiez d’abord votre adresse e-mail, avec le lien que nous vous avons envoyé.',
+
   // --- throttling -------------------------------------------------------
   // Both carry retryAfterSeconds; ErrorMessageService appends the wait when it is known,
   // which is why neither sentence names a duration itself.
