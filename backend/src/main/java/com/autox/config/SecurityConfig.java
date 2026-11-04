@@ -12,8 +12,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -44,7 +42,8 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain apiSecurity(HttpSecurity http,
                                     SecurityProblemHandlers problemHandlers,
-                                    CorsConfigurationSource corsConfigurationSource) throws Exception {
+                                    CorsConfigurationSource corsConfigurationSource,
+                                    CurrentAdminAuthenticationConverter authentication) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
@@ -112,7 +111,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(authentication))
                         .authenticationEntryPoint(problemHandlers)
                         .accessDeniedHandler(problemHandlers))
                 .exceptionHandling(handling -> handling
@@ -120,23 +119,6 @@ public class SecurityConfig {
                         .accessDeniedHandler(problemHandlers));
 
         return http.build();
-    }
-
-    /**
-     * Maps the token's {@code role} claim onto a single {@code ROLE_*} authority, so
-     * {@code hasRole("ADMIN")} and {@code @PreAuthorize} work as usual. The role
-     * travels in the token rather than being loaded per request — that is the point
-     * of a stateless API, and the 15-minute access-token lifetime bounds how long a
-     * role change takes to apply.
-     */
-    private JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
-        authorities.setAuthoritiesClaimName(JwtClaims.ROLE);
-        authorities.setAuthorityPrefix("ROLE_");
-
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(authorities);
-        return converter;
     }
 
     /**

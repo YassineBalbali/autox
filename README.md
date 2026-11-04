@@ -443,8 +443,10 @@ role. Everything below is enforced by the API, in `AdminUserService`:
 - **Nobody acts on their own account, and an administrator always remains.** The last
   administrator able to sign in cannot be suspended or demoted. Each action locks the
   administrators' rows, so two of them demoting each other at once leave one.
-- **The row decides, not the token.** A token keeps saying ADMIN for up to 15 minutes after a
-  demotion or a suspension, so these endpoints also read the caller's account.
+- **Administrator rights end at once.** A token keeps saying ADMIN for up to 15 minutes after a
+  demotion or a suspension, so every request with such a token also reads the account's row, in
+  `CurrentAdminAuthenticationConverter`. That covers every admin endpoint, and acting on someone
+  else's listing through the sellers' endpoints.
 - **A suspension takes effect at once, except for one token.** Every refresh token is revoked,
   signing in is refused, sending a message is refused and the account's listings leave the
   public site. An access token already issued cannot be recalled: it still authenticates for up

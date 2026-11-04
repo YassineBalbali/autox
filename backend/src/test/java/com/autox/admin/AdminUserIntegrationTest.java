@@ -37,6 +37,7 @@ class AdminUserIntegrationTest extends AbstractIntegrationTest {
     private static final String PASSWORD = "correct-horse-battery";
 
     @Autowired ProProfileRepository proProfiles;
+    @Autowired AdminUserService service;
 
     // ---- helpers -------------------------------------------------------------------------
 
@@ -178,9 +179,7 @@ class AdminUserIntegrationTest extends AbstractIntegrationTest {
             suspend(colleague, suspended).andExpect(status().isOk());
             suspend(colleague, target).andExpect(status().isOk());
 
-            reactivate(session, suspended)
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.code").value("ADMIN_SELF_ACTION"));
+            reactivate(session, suspended).andExpect(status().isForbidden());
             reactivate(session, target).andExpect(status().isForbidden());
             assertThat(statusOf(suspended)).isEqualTo("SUSPENDED");
             assertThat(statusOf(target)).isEqualTo("SUSPENDED");
@@ -598,22 +597,23 @@ class AdminUserIntegrationTest extends AbstractIntegrationTest {
             assertThat(recordedActions()).isZero();
         }
 
+        private void assertLastAdmin(org.assertj.core.api.ThrowableAssert.ThrowingCallable action) {
+            assertThatThrownBy(action)
+                    .isInstanceOfSatisfying(com.autox.api.error.ApiException.class,
+                            refused -> assertThat(refused.getCode()).isEqualTo(com.autox.api.error.ErrorCode.LAST_ADMIN));
+        }
+
         @Test
         @DisplayName("the last administrator cannot be suspended or demoted, whoever asks")
-        void lastAdmin() throws Exception {
-            // The caller's token still says ADMIN, but their row no longer does: the only way
-            // anyone but the last administrator themselves can try.
+        void lastAdmin() {
+            // At the service, past the check on the way in: someone whose rights ended after it,
+            // the only way anyone but the last administrator themselves can get this far.
             AppUser last = admin();
             AppUser former = admin();
-            JsonNode session = signIn(former);
             jdbcTemplate.update("UPDATE app_user SET role = 'PARTICULIER' WHERE id = ?", former.getId());
 
-            suspend(session, last)
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("LAST_ADMIN"));
-            changeRole(session, last, UserRole.PARTICULIER)
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("LAST_ADMIN"));
+            assertLastAdmin(() -> service.suspend(former.getId(), last.getId(), "Motif"));
+            assertLastAdmin(() -> service.changeRole(former.getId(), last.getId(), UserRole.PARTICULIER, null));
             assertThat(statusOf(last)).isEqualTo("ACTIVE");
             assertThat(roleOf(last)).isEqualTo("ADMIN");
             assertThat(recordedActions()).isZero();
@@ -621,14 +621,27 @@ class AdminUserIntegrationTest extends AbstractIntegrationTest {
 
         @Test
         @DisplayName("a suspended administrator does not count as one left")
-        void suspendedDoesNotCount() throws Exception {
+        void suspendedDoesNotCount() {
             AppUser last = admin();
             createUser(uniqueEmail("admin"), UserRole.ADMIN, UserStatus.SUSPENDED);
             AppUser former = admin();
-            JsonNode session = signIn(former);
             jdbcTemplate.update("UPDATE app_user SET role = 'PARTICULIER' WHERE id = ?", former.getId());
 
-            suspend(session, last).andExpect(jsonPath("$.code").value("LAST_ADMIN"));
+            assertLastAdmin(() -> service.suspend(former.getId(), last.getId(), "Motif"));
+        }
+
+        @Test
+        @DisplayName("rights taken away after the check on the way in are caught under the lock")
+        void rightsEndedOnTheWay() {
+            AppUser former = admin();
+            admin();
+            AppUser target = person();
+            jdbcTemplate.update("UPDATE app_user SET role = 'PARTICULIER' WHERE id = ?", former.getId());
+
+            assertThatThrownBy(() -> service.suspend(former.getId(), target.getId(), "Motif"))
+                    .isInstanceOfSatisfying(com.autox.api.error.ApiException.class,
+                            refused -> assertThat(refused.getCode()).isEqualTo(com.autox.api.error.ErrorCode.FORBIDDEN));
+            assertThat(statusOf(target)).isEqualTo("PENDING_VERIFICATION");
         }
 
         @Test
@@ -668,7 +681,9 @@ class AdminUserIntegrationTest extends AbstractIntegrationTest {
                     Future<Integer> b = pool.submit(second);
                     start.countDown();
 
-                    assertThat(List.of(a.get(), b.get())).containsExactlyInAnyOrder(200, 409);
+                    // The second is refused under the lock (409), or on the way in if the first has
+                    // already finished (403). Either way, exactly one goes through.
+                    assertThat(List.of(a.get(), b.get())).containsOnlyOnce(200).containsAnyOf(403, 409);
                 } finally {
                     pool.shutdownNow();
                 }

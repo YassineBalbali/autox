@@ -64,7 +64,6 @@ public class AdminUserController {
      */
     @GetMapping
     public PageResponse<AdminUserRow> userList(
-            @AuthenticationPrincipal Jwt token,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(MAX_PAGE_SIZE) int size,
             @RequestParam(required = false) @Size(max = 255) String q,
@@ -73,14 +72,14 @@ public class AdminUserController {
             @RequestParam(required = false) Boolean demo) {
 
         return PageResponse.of(
-                service.list(CurrentUser.id(token), new AdminUserRepository.Filter(q, role, status, demo),
+                service.list(new AdminUserRepository.Filter(q, role, status, demo),
                         PageRequest.of(page, size)),
                 Function.identity());
     }
 
     @GetMapping("/{id}")
-    public AdminUserDetail userDetail(@AuthenticationPrincipal Jwt token, @PathVariable UUID id) {
-        return service.detail(CurrentUser.id(token), id);
+    public AdminUserDetail userDetail(@PathVariable UUID id) {
+        return service.detail(id);
     }
 
     @PostMapping("/{id}/suspend")
