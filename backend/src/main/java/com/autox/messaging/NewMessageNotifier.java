@@ -57,7 +57,7 @@ public class NewMessageNotifier {
             return;
         }
         outbox.enqueue(new EmailOutbox.Draft(address, EmailType.NEW_MESSAGE,
-                EmailTemplates.newMessage(sender.displayName(), header.title(),
+                EmailTemplates.newMessage(sender.displayName(), header.listingLabel(),
                         mail.siteUrl() + "/messages/" + conversationId),
                 conversationId));
     }

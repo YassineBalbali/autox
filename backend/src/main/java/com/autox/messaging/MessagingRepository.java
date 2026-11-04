@@ -38,6 +38,8 @@ public class MessagingRepository {
             SELECT c.id, c.listing_id, c.buyer_id, c.seller_id, c.buyer_read_at, c.seller_read_at,
                    c.last_message_at,
                    l.title, l.price_amount, l.price_currency_code,
+                   COALESCE(mk.name, l.make_text) AS make_name, COALESCE(mo.name, l.model_text) AS model_name,
+                   l.version_text,
                    (%1$s) AS online,
                    (l.status <> 'REMOVED' AND l.deleted_at IS NULL AND %2$s AND %3$s) AS can_reply,
                    b.display_name AS buyer_name, b.role AS buyer_role,
@@ -46,6 +48,8 @@ public class MessagingRepository {
               JOIN listing l ON l.id = c.listing_id
               JOIN app_user b ON b.id = c.buyer_id
               JOIN app_user s ON s.id = c.seller_id
+              LEFT JOIN vehicle_make mk ON mk.id = l.make_id
+              LEFT JOIN vehicle_model mo ON mo.id = l.model_id
             """.formatted(ListingSearchRepository.visible("l"),
                     ACCOUNT_OPEN.formatted("b"), ACCOUNT_OPEN.formatted("s"));
 
@@ -353,6 +357,8 @@ public class MessagingRepository {
                 instant(rs.getTimestamp("seller_read_at")),
                 instant(rs.getTimestamp("last_message_at")),
                 rs.getString("title"),
+                com.autox.search.ListingLabel.of(rs.getString("make_name"), rs.getString("model_name"),
+                        rs.getString("version_text"), rs.getString("title")),
                 rs.getLong("price_amount"),
                 rs.getString("price_currency_code"),
                 rs.getBoolean("online"),
@@ -376,7 +382,7 @@ public class MessagingRepository {
     }
 
     public record Header(UUID id, UUID listingId, UUID buyerId, UUID sellerId, Instant buyerReadAt,
-                         Instant sellerReadAt, Instant lastMessageAt, String title, long priceAmount,
+                         Instant sellerReadAt, Instant lastMessageAt, String title, String listingLabel, long priceAmount,
                          String currencyCode, boolean online, boolean canReply, PartyRow buyer, PartyRow seller) {
 
         public boolean hasParticipant(UUID userId) {
