@@ -12,6 +12,12 @@
     <ng-container i18n="@@contactOwnListing">C’est votre annonce. Les messages des acheteurs arrivent dans</ng-container>
     <a routerLink="/messages" i18n="@@contactOwnMessages">vos messages</a>.
   </p>
+} @else if (mustVerify()) {
+  <app-email-verification-notice>
+    <ng-container i18n="@@contactMustVerify">
+      Vérifiez votre adresse e-mail pour écrire au vendeur : cliquez sur le lien que nous vous avons envoyé.
+    </ng-container>
+  </app-email-verification-notice>
 } @else if (sentTo()) {
   <app-alert kind="success">
     <ng-container i18n="@@contactSent">Message envoyé. La réponse du vendeur arrivera dans vos messages.</ng-container>

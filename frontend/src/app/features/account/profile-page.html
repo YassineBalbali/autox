@@ -13,6 +13,23 @@
       </button>
     </div>
   } @else if (profile(); as me) {
+    @if (!me.emailVerified) {
+      <section class="panel stack" data-verify-banner>
+        <app-email-verification-notice>
+          @if (me.emailVerificationPending) {
+            <ng-container i18n="@@verifyBannerHeld">
+              E-mail non vérifié. Tant que vous n’avez pas cliqué sur le lien que nous vous avons envoyé, vous
+              pouvez parcourir les annonces et garder des favoris, mais pas publier d’annonce ni envoyer de message.
+            </ng-container>
+          } @else {
+            <ng-container i18n="@@verifyBannerExisting">
+              E-mail non vérifié. Demandez un lien, puis cliquez dessus pour vérifier votre adresse.
+            </ng-container>
+          }
+        </app-email-verification-notice>
+      </section>
+    }
+
     <!-- id: the sidebar's "Identité" entry anchors here. -->
     <section class="panel stack" id="identite">
       <div class="panel__head"><h2 i18n="@@profileIdentity">Identité</h2></div>

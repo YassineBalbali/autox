@@ -13,6 +13,15 @@
     <app-alert kind="success">{{ notice() }}</app-alert>
   }
 
+  @if (mustVerify()) {
+    <app-email-verification-notice>
+      <ng-container i18n="@@mineMustVerify">
+        Vérifiez votre adresse e-mail pour mettre une annonce en ligne : cliquez sur le lien que nous vous
+        avons envoyé. Vos brouillons sont conservés.
+      </ng-container>
+    </app-email-verification-notice>
+  }
+
   <nav class="mine__filters" aria-label="Filtrer par état" i18n-aria-label="@@mineFilters">
     @for (filter of filters; track filter.slug) {
       <a

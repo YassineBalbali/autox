@@ -45,6 +45,8 @@ const EMPTY: AdminStats = {
   priceVerdicts: { goodDeal: split(0), market: split(0), aboveMarket: split(0), noVerdict: split(0) },
   searchLast7Days: { requests: 0, failed: 0, withNotUnderstood: 0 },
   searchLast30Days: { requests: 0, failed: 0, withNotUnderstood: 0 },
+  emailsLast7Days: { sent: 0, failed: 0 },
+  emailsLast30Days: { sent: 0, failed: 0 },
 };
 
 const SEEDED: AdminStats = {
@@ -67,6 +69,8 @@ const SEEDED: AdminStats = {
   priceVerdicts: { goodDeal: split(1, 20), market: split(0, 90), aboveMarket: split(0, 22), noVerdict: split(0, 20) },
   searchLast7Days: { requests: 15, failed: 3, withNotUnderstood: 6 },
   searchLast30Days: { requests: 40, failed: 0, withNotUnderstood: 10 },
+  emailsLast7Days: { sent: 12, failed: 1 },
+  emailsLast30Days: { sent: 48, failed: 3 },
 };
 
 /** The page through a real router and a fake backend. */
@@ -186,6 +190,15 @@ describe('AdminDashboardPage', () => {
       ['En échec (503)', '20 %', '0 %'],
       ['Avec une partie non comprise', '50 %', '25 %'],
     ]);
+  });
+
+  it('lists emails sent and failed over 7 and 30 days', async () => {
+    await visit(SEEDED);
+
+    const cells = (row: string) =>
+      Array.from(root.querySelectorAll(`[data-table="emails"] [data-row="${row}"] td`)).map((cell) => cell.textContent?.trim());
+    expect(cells('sent')).toEqual(['12', '48']);
+    expect(cells('failed')).toEqual(['1', '3']);
   });
 
   it('plots real activity by default, and adds the demo on request', async () => {

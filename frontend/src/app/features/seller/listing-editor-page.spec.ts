@@ -17,6 +17,7 @@ import {
   ListingStatus,
   VehicleCondition,
 } from '../../core/api';
+import { AuthService } from '../../core/auth/auth.service';
 import { TOKEN_STORE } from '../../core/auth/token-store';
 import { FlashService } from '../../core/ui/flash.service';
 import { NBSP, formatIntegerFr } from '../../shared/format/number';
@@ -913,6 +914,16 @@ describe('ListingEditorPage', () => {
 
       expect(publishButton()?.disabled).toBe(false);
       expect(root.querySelector('[data-rule]')).toBeNull();
+    });
+
+    it('explains, before the button is pressed, that the address has to be verified, and keeps the draft', async () => {
+      await edit('apercu', withPhoto(), ok);
+      TestBed.inject(AuthService).setUser({ emailVerificationPending: true });
+      await harness.fixture.whenStable();
+
+      expect(root.querySelector('[data-rule=verify]')?.textContent).toContain('Votre brouillon est conservé');
+      expect(root.querySelector('[data-rule=verify] [data-action="resend"]')).not.toBeNull();
+      expect(publishButton()?.disabled).toBe(true);
     });
 
     it('explains, before the button is pressed, that a photo is needed', async () => {
