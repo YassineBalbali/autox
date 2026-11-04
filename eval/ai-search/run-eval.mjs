@@ -39,8 +39,9 @@ if (!/^[a-z-]+$/.test(set)) throw new Error(`--set must be a file name in eval/a
 const base = (args[0] ?? 'http://localhost:8081').replace(/\/$/, '');
 
 const FIELDS = ['make', 'model', 'yearFrom', 'yearTo', 'priceMin', 'priceMax', 'mileageMin', 'mileageMax',
-  'fuel', 'gearbox', 'body', 'condition', 'damage', 'location', 'goodDeals'];
-const LISTS = new Set(['fuel', 'gearbox', 'body', 'condition']);
+  'fuel', 'gearbox', 'body', 'condition', 'damage', 'location', 'goodDeals',
+  'offer', 'leasingType', 'monthlyMin', 'monthlyMax', 'durationMin', 'durationMax', 'mileageAllowanceMin'];
+const LISTS = new Set(['fuel', 'gearbox', 'body', 'condition', 'leasingType']);
 const year = new Date().getFullYear();
 
 const { queries } = JSON.parse(readFileSync(join(here, `${set}.json`), 'utf8'));
@@ -86,6 +87,13 @@ async function normalise(criteria) {
     body: criteria.bodyType ?? [],
     condition: criteria.condition ?? [],
     damage: criteria.damage ?? undefined,
+    offer: criteria.offer ?? undefined,
+    leasingType: criteria.leasingType ?? [],
+    monthlyMin: euros(criteria.monthlyMin),
+    monthlyMax: euros(criteria.monthlyMax),
+    durationMin: criteria.durationMin ?? undefined,
+    durationMax: criteria.durationMax ?? undefined,
+    mileageAllowanceMin: criteria.mileageAllowanceMin ?? undefined,
     location: criteria.location ?? undefined,
     goodDeals: (criteria.priceLevel ?? []).includes('GOOD_DEAL') || undefined,
   };

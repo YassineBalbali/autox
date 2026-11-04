@@ -312,6 +312,21 @@ Demo data is already present (160 listings); nothing seeded.
 A later start says `Demo damaged listings: complete, nothing added (8 listings).` A listing is
 recognised by its title among those in the ledger, so a visitor's listing can never count as one.
 
+**To add the demo leasing offers to a seeded database**, it is the same again: one deploy with
+`SPRING_PROFILES_ACTIVE=demo` and no `AUTOX_DEMO_ACTION`, then remove the profile. It creates the
+12 of `DemoCatalogue.LEASED` that are missing, from the existing demo dealers, through the real
+upload and publish steps, already approved and recorded in the ledger. Allow a few minutes, and do
+not deploy again until the lines below appear. The second figure counts everything in the ledger,
+so it depends on what the database held before. The log shows:
+
+```
+Demo leasing offers: added 12 of 12; other listings untouched.
+Demo data is already present (172 listings); nothing seeded.
+```
+
+A later start says `Demo leasing offers: complete, nothing added (12 offers).` As with the damaged
+vehicles, an offer is recognised by its title among those in the ledger.
+
 **To reset the demo later** (once visitors have filled it with test listings): deploy once
 with `SPRING_PROFILES_ACTIVE=demo` **and** `AUTOX_DEMO_ACTION=remove`, then once with only
 the profile (seed again), then remove both. Removal deletes exactly what the seed recorded.

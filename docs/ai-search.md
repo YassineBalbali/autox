@@ -248,7 +248,7 @@ the prompt, so held-out query h02 measures that disagreement honestly.
 
 The development set covers:
 
-- makes, models, fuel, gearbox, body type, condition, damage, price, year, mileage and place;
+- makes, models, fuel, gearbox, body type, condition, damage, leasing, price, year, mileage and place;
 - colloquial forms (*pas chère*, *récente*, *boîte auto*, *12k*, *moins de 5 ans*);
 - abbreviations (*vw*, *DSG*) and typos (*renaut megane*, *peugot 208*);
 - 14 queries with parts the search cannot filter on;
@@ -382,6 +382,32 @@ One run cannot tell an effect of the longer prompt from the model's run-to-run v
 two are recorded and not explained. The misses are visible to the visitor, as a filter chip or a
 "not understood" line. Measuring whether the prompt lost anything would take a new held-out set:
 the existing one has been seen, and running it again would not be the estimate it was.
+
+#### After leasing
+
+One run of the development set on gpt-oss-120b, with no tuning afterwards. The set grew from 48
+queries to 55: six on leasing, and *golf accidentée pas chère*, the live bug that good deals cannot
+apply to damaged vehicles alone.
+
+| | With damage (48) | With leasing (55) |
+|---:|---:|---:|
+| Exact match | 91.7 % (44/48) | 96.4 % (53/55) |
+| Requests failed | 0 | 0 |
+| Not understood reported | 71.4 % | 75.0 % |
+| Spurious not-understood | 3.0 % | 2.6 % |
+| Latency p50 / p95 | 967 / 1 313 ms | 907 / 1 403 ms |
+
+- **The leasing fields:** 100 % precision and recall on `offer` (6), `leasingType` (5) and the terms,
+  but the terms have support of 1 each and `monthlyMin` has none. These queries were written alongside
+  the prompt's leasing rule, and they are few: this says the rule works on them, not how well it
+  works on leasing searches in general.
+- **The two misses are old ones:** *après 2019* reads 2020 where the set expects 2019, and *audi a3
+  sportback s line* infers a hatchback.
+
+Four of the previous run's misses were not repeated. The prompt changed between the runs, and one
+run cannot separate that from the model's run-to-run variation, so the higher figure is not evidence
+of an improvement. The held-out figures below were measured on e224d3d, before damage and leasing,
+and were not run again.
 
 **Held-out set (12), prompt frozen, one run per model.** This is the estimate:
 
