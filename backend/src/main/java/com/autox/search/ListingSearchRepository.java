@@ -79,6 +79,14 @@ public class ListingSearchRepository {
                    l.damage_types,
                    l.damage_running,
                    l.damage_description,
+                   l.offer_type,
+                   l.leasing_type,
+                   l.leasing_monthly,
+                   l.leasing_first_payment,
+                   l.leasing_duration_months,
+                   l.leasing_mileage_per_year,
+                   l.leasing_option_price,
+                   l.leasing_total_cost,
                    l.published_at,
                    l.country_code,
                    COALESCE(gp.city, l.city)               AS city,
@@ -226,6 +234,20 @@ public class ListingSearchRepository {
         appendEnumFilter(sql, parameters, "drivetrain", "drivetrain", criteria.drivetrain());
         appendEnumFilter(sql, parameters, "vehicle_condition", "condition", criteria.condition());
 
+        // A search is for sales or for leasing offers, never both, and leaving it out means sales.
+        if (criteria.offer() == com.autox.listing.OfferType.LEASING) {
+            sql.append(" AND l.offer_type = 'LEASING'");
+            appendEnumFilter(sql, parameters, "leasing_type", "leasingType", criteria.leasingType());
+            appendBound(sql, parameters, "l.leasing_monthly >=", "monthlyMin", criteria.monthlyMin());
+            appendBound(sql, parameters, "l.leasing_monthly <=", "monthlyMax", criteria.monthlyMax());
+            appendBound(sql, parameters, "l.leasing_duration_months >=", "durationMin", criteria.durationMin());
+            appendBound(sql, parameters, "l.leasing_duration_months <=", "durationMax", criteria.durationMax());
+            appendBound(sql, parameters, "l.leasing_mileage_per_year >=", "allowanceMin", criteria.mileageAllowanceMin());
+            appendBound(sql, parameters, "l.leasing_mileage_per_year <=", "allowanceMax", criteria.mileageAllowanceMax());
+        } else {
+            sql.append(" AND l.offer_type = 'SALE'");
+        }
+
         // On the server, not left to each client: leaving it out excludes damaged vehicles.
         DamageFilter damage = criteria.damage() == null ? DamageFilter.UNDAMAGED : criteria.damage();
         if (damage == DamageFilter.UNDAMAGED) {
@@ -370,7 +392,30 @@ public class ListingSearchRepository {
                 rs.getObject("seller_id", UUID.class),
                 rs.getString("seller_name"),
                 rs.getString("seller_role"),
-                damageOf(rs));
+                damageOf(rs),
+                leasingOf(rs));
+    }
+
+    private static void appendBound(StringBuilder sql, MapSqlParameterSource parameters, String comparison,
+                                    String name, Number value) {
+        if (value != null) {
+            sql.append(" AND ").append(comparison).append(" :").append(name);
+            parameters.addValue(name, value);
+        }
+    }
+
+    private static com.autox.listing.dto.LeasingView leasingOf(java.sql.ResultSet rs) throws java.sql.SQLException {
+        if (!"LEASING".equals(rs.getString("offer_type"))) {
+            return null;
+        }
+        return new com.autox.listing.dto.LeasingView(
+                com.autox.listing.LeasingType.valueOf(rs.getString("leasing_type")),
+                rs.getLong("leasing_monthly"),
+                rs.getLong("leasing_first_payment"),
+                rs.getInt("leasing_duration_months"),
+                rs.getInt("leasing_mileage_per_year"),
+                (Long) rs.getObject("leasing_option_price"),
+                rs.getLong("leasing_total_cost"));
     }
 
     private static com.autox.listing.dto.DamageView damageOf(java.sql.ResultSet rs) throws java.sql.SQLException {
@@ -407,7 +452,8 @@ public class ListingSearchRepository {
             UUID sellerId,
             String sellerName,
             String sellerRole,
-            com.autox.listing.dto.DamageView damage) {
+            com.autox.listing.dto.DamageView damage,
+            com.autox.listing.dto.LeasingView leasing) {
     }
 
     /** Cover images for a page of results, in one query rather than one per row. */

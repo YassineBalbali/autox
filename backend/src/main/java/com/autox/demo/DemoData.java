@@ -7,7 +7,9 @@ import com.autox.catalog.VehicleModelRepository;
 import com.autox.listing.ListingImageRepository;
 import com.autox.listing.ListingService;
 import com.autox.listing.dto.CreateListingRequest;
+import com.autox.listing.OfferType;
 import com.autox.listing.dto.DamageDeclaration;
+import com.autox.listing.dto.LeasingDeclaration;
 import com.autox.listing.dto.ImageUploadRequest;
 import com.autox.listing.dto.ImageUploadTicket;
 import com.autox.listing.image.ImageResizer;
@@ -89,6 +91,9 @@ class DemoData {
     /** How many of {@link DemoCatalogue#DAMAGED} to create, for the same reason. */
     private final int damagedLimit;
 
+    /** And of {@link DemoCatalogue#LEASED}. */
+    private final int leasedLimit;
+
     DemoData(DemoLedger ledger, AppUserRepository users, ProProfileRepository proProfiles,
              CountryRepository countries, VehicleMakeRepository makes, VehicleModelRepository models,
              ListingService listings, ListingImageService imageService, ListingImageRepository images,
@@ -96,7 +101,8 @@ class DemoData {
              JdbcTemplate jdbc, PlatformTransactionManager transactionManager,
              @Value("${autox.demo.photo-dir:}") String photoDirectory,
              @Value("${autox.demo.listings:" + DemoCatalogue.SIZE + "}") int limit,
-             @Value("${autox.demo.damaged-listings:8}") int damagedLimit) {
+             @Value("${autox.demo.damaged-listings:8}") int damagedLimit,
+             @Value("${autox.demo.leasing-listings:12}") int leasedLimit) {
         this.ledger = ledger;
         this.users = users;
         this.proProfiles = proProfiles;
@@ -113,6 +119,7 @@ class DemoData {
         this.photoDirectory = photoDirectory;
         this.limit = limit;
         this.damagedLimit = Math.min(damagedLimit, DemoCatalogue.DAMAGED.size());
+        this.leasedLimit = Math.min(leasedLimit, DemoCatalogue.LEASED.size());
         this.transactions = new TransactionTemplate(transactionManager);
     }
 
@@ -140,6 +147,7 @@ class DemoData {
             int recorded = ledger.ids(DemoLedger.LISTING).size();
             if (recorded >= target) {
                 addMissingDamaged();
+                addMissingLeased();
                 log.info("Demo data is already present ({} listings); nothing seeded.",
                         ledger.ids(DemoLedger.LISTING).size());
             } else {
@@ -167,10 +175,11 @@ class DemoData {
         for (DemoCatalogue.Vehicle vehicle : vehicles.subList(0, target)) {
             seedListing(vehicle, sellerIds.get(vehicle.sellerKey()),
                     catalogue.get(vehicle.makeSlug() + "/" + vehicle.modelSlug()),
-                    DemoDetails.description(vehicle), null);
+                    DemoDetails.description(vehicle), null, null);
             created++;
         }
         created += addMissingDamaged();
+        created += addMissingLeased();
 
         log.warn("Seeded {} demo listings, {} demo accounts and {} demo makes. This is invented data "
                         + "— remove it with AUTOX_DEMO_ACTION=remove.",
@@ -284,6 +293,50 @@ class DemoData {
     }
 
     /**
+     * Creates the leasing offers of {@link DemoCatalogue#LEASED} this database lacks, the same way
+     * and on the same terms as {@link #addMissingDamaged}.
+     *
+     * @return how many listings were created
+     */
+    int addMissingLeased() {
+        java.util.Set<String> present = titlesInTheLedger();
+        List<DemoCatalogue.LeasedVehicle> missing = DemoCatalogue.LEASED.subList(0, leasedLimit).stream()
+                .filter(leased -> !present.contains(leased.vehicle().title()))
+                .toList();
+        if (missing.isEmpty()) {
+            log.info("Demo leasing offers: complete, nothing added ({} offers).", leasedLimit);
+            return 0;
+        }
+
+        storage.ensureReady();
+        Map<String, UUID[]> catalogue = seedCatalogue().ids();
+        for (DemoCatalogue.LeasedVehicle leased : missing) {
+            DemoCatalogue.Vehicle vehicle = leased.vehicle();
+            seedListing(vehicle, demoSeller(vehicle), catalogue.get(vehicle.makeSlug() + "/" + vehicle.modelSlug()),
+                    DemoDetails.leasedDescription(leased), null,
+                    new LeasingDeclaration(OfferType.LEASING, leased.type(), leased.monthlyEuros() * 100,
+                            leased.firstPaymentEuros() * 100, leased.durationMonths(), leased.mileagePerYear(),
+                            leased.optionEuros() == null ? null : leased.optionEuros() * 100));
+        }
+        log.warn("Demo leasing offers: added {} of {}; other listings untouched.", missing.size(), leasedLimit);
+        return missing.size();
+    }
+
+    private java.util.Set<String> titlesInTheLedger() {
+        return new java.util.HashSet<>(jdbc.queryForList("""
+                SELECT l.title FROM listing l
+                  JOIN demo_seed_ledger d ON d.entity_type = ? AND d.entity_id = l.id""",
+                String.class, DemoLedger.LISTING));
+    }
+
+    private UUID demoSeller(DemoCatalogue.Vehicle vehicle) {
+        return jdbc.queryForObject("""
+                SELECT u.id FROM app_user u
+                  JOIN demo_seed_ledger d ON d.entity_type = ? AND d.entity_id = u.id
+                 WHERE u.email = ?""", UUID.class, DemoLedger.USER, vehicle.sellerKey() + DemoCatalogue.EMAIL_DOMAIN);
+    }
+
+    /**
      * Approves the seed's listings still in the moderation queue, on a database already seeded.
      * An earlier seed left them there: the queue is for what visitors publish, and invented
      * listings buried the real ones in it.
@@ -324,10 +377,7 @@ class DemoData {
      * @return how many listings were created
      */
     int addMissingDamaged() {
-        java.util.Set<String> present = new java.util.HashSet<>(jdbc.queryForList("""
-                SELECT l.title FROM listing l
-                  JOIN demo_seed_ledger d ON d.entity_type = ? AND d.entity_id = l.id""",
-                String.class, DemoLedger.LISTING));
+        java.util.Set<String> present = titlesInTheLedger();
         List<DemoCatalogue.DamagedVehicle> missing = DemoCatalogue.DAMAGED.subList(0, damagedLimit).stream()
                 .filter(damaged -> !present.contains(damaged.vehicle().title()))
                 .toList();
@@ -341,14 +391,9 @@ class DemoData {
         Map<String, UUID[]> catalogue = seedCatalogue().ids();
         for (DemoCatalogue.DamagedVehicle damaged : missing) {
             DemoCatalogue.Vehicle vehicle = damaged.vehicle();
-            String email = vehicle.sellerKey() + DemoCatalogue.EMAIL_DOMAIN;
-            UUID sellerId = jdbc.queryForObject("""
-                    SELECT u.id FROM app_user u
-                      JOIN demo_seed_ledger d ON d.entity_type = ? AND d.entity_id = u.id
-                     WHERE u.email = ?""", UUID.class, DemoLedger.USER, email);
-            seedListing(vehicle, sellerId, catalogue.get(vehicle.makeSlug() + "/" + vehicle.modelSlug()),
+            seedListing(vehicle, demoSeller(vehicle), catalogue.get(vehicle.makeSlug() + "/" + vehicle.modelSlug()),
                     DemoDetails.damagedDescription(damaged),
-                    new DamageDeclaration(true, damaged.types(), damaged.running(), damaged.description()));
+                    new DamageDeclaration(true, damaged.types(), damaged.running(), damaged.description()), null);
         }
         log.warn("Demo damaged listings: added {} of {}; other listings untouched.", missing.size(), damagedLimit);
         return missing.size();
@@ -404,7 +449,7 @@ class DemoData {
     }
 
     private void seedListing(DemoCatalogue.Vehicle vehicle, UUID sellerId, UUID[] catalogueIds,
-                             String description, DamageDeclaration damage) {
+                             String description, DamageDeclaration damage, LeasingDeclaration offer) {
         CreateListingRequest request = new CreateListingRequest(
                 vehicle.title(),
                 description,
@@ -450,7 +495,8 @@ class DemoData {
                 // does not exist, and the public API does not show it anyway.
                 null,
                 DemoDetails.features(vehicle),
-                damage);
+                damage,
+                offer);
 
         UUID listingId = listings.create(sellerId, request).id();
         ledger.record(DemoLedger.LISTING, listingId);

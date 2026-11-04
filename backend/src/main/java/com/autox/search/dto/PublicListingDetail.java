@@ -49,6 +49,9 @@ public record PublicListingDetail(
         /** Null on an undamaged vehicle. */
         com.autox.listing.dto.DamageView damage,
 
+        /** Null on a sale. On a leasing offer the price above is the vehicle's cash price. */
+        com.autox.listing.dto.LeasingView leasing,
+
         /** Equipment codes; the frontend holds the translations. */
         List<String> featureCodes,
         List<ImageResponse> images,
@@ -85,6 +88,7 @@ public record PublicListingDetail(
                 toInteger(listing.getCo2EmissionsGKm()),
                 name(listing.getEmissionClass()),
                 com.autox.listing.dto.DamageView.from(listing),
+                com.autox.listing.dto.LeasingView.from(listing),
                 listing.getFeatures().stream().map(VehicleFeature::getCode).sorted().toList(),
                 images,
                 priceIndicator,

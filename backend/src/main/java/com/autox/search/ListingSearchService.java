@@ -64,6 +64,11 @@ public class ListingSearchService {
                     "A bounding box needs all four of latMin, latMax, lonMin and lonMax.");
         }
 
+        // Those columns are null on a sale, and a keyset sort needs a value on every row.
+        if (sort.leasingOnly() && criteria.offer() != com.autox.listing.OfferType.LEASING) {
+            throw ApiException.validationFailed("Sort " + sort + " is for leasing offers: pass offer=LEASING.");
+        }
+
         SearchCursor cursor = encodedCursor == null || encodedCursor.isBlank()
                 ? null
                 : SearchCursor.decode(encodedCursor, sort);
@@ -79,7 +84,7 @@ public class ListingSearchService {
         if (hasMore && !page.isEmpty()) {
             ListingSearchRepository.SearchRow last = page.getLast();
             nextCursor = SearchCursor.after(sort, last.publishedAt(), last.priceAmount(),
-                    last.mileageKm(), last.id()).encode();
+                    last.mileageKm(), last.leasing(), last.id()).encode();
         }
 
         return CursorPage.of(toSummaries(page), nextCursor, sort, page.size());
@@ -188,7 +193,8 @@ public class ListingSearchService {
                     photoCounts.getOrDefault(row.id(), 0),
                     indicators.get(row.id()),
                     row.publishedAt(),
-                    row.damage()));
+                    row.damage(),
+                    row.leasing()));
         }
         return summaries;
     }

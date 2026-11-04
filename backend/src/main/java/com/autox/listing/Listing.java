@@ -183,6 +183,33 @@ public class Listing extends BaseEntity {
     @Column(name = "vehicle_condition", length = 16, nullable = false)
     private VehicleCondition vehicleCondition = VehicleCondition.USED;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "offer_type", length = 8, nullable = false)
+    private OfferType offerType = OfferType.SALE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "leasing_type", length = 8)
+    private LeasingType leasingType;
+
+    @Column(name = "leasing_monthly")
+    private Long leasingMonthly;
+
+    @Column(name = "leasing_first_payment")
+    private Long leasingFirstPayment;
+
+    @Column(name = "leasing_duration_months")
+    private Integer leasingDurationMonths;
+
+    @Column(name = "leasing_mileage_per_year")
+    private Integer leasingMileagePerYear;
+
+    @Column(name = "leasing_option_price")
+    private Long leasingOptionPrice;
+
+    /** Computed in {@link #offerLeasing}, and held to its definition by ck_listing_leasing. */
+    @Column(name = "leasing_total_cost")
+    private Long leasingTotalCost;
+
     /** Declared by the seller. Out of search by default, never a comparable, never given a verdict. */
     @Column(name = "damaged", nullable = false)
     private boolean damaged;
@@ -325,6 +352,69 @@ public class Listing extends BaseEntity {
         }
         moderationStatus = ModerationStatus.NOT_REVIEWED;
         return true;
+    }
+
+    public boolean isLeasing() {
+        return offerType == OfferType.LEASING;
+    }
+
+    public OfferType getOfferType() {
+        return offerType;
+    }
+
+    public LeasingType getLeasingType() {
+        return leasingType;
+    }
+
+    public Long getLeasingMonthly() {
+        return leasingMonthly;
+    }
+
+    public Long getLeasingFirstPayment() {
+        return leasingFirstPayment;
+    }
+
+    public Integer getLeasingDurationMonths() {
+        return leasingDurationMonths;
+    }
+
+    public Integer getLeasingMileagePerYear() {
+        return leasingMileagePerYear;
+    }
+
+    public Long getLeasingOptionPrice() {
+        return leasingOptionPrice;
+    }
+
+    public Long getLeasingTotalCost() {
+        return leasingTotalCost;
+    }
+
+    /**
+     * Makes this a leasing offer. The total is worked out here and nowhere else: the first payment,
+     * then the monthly payment for each of the other months, then for an LOA the option price.
+     */
+    public void offerLeasing(LeasingType type, long monthly, long firstPayment, int durationMonths,
+                             int mileagePerYear, Long optionPrice) {
+        offerType = OfferType.LEASING;
+        leasingType = type;
+        leasingMonthly = monthly;
+        leasingFirstPayment = firstPayment;
+        leasingDurationMonths = durationMonths;
+        leasingMileagePerYear = mileagePerYear;
+        leasingOptionPrice = optionPrice;
+        leasingTotalCost = firstPayment + monthly * (durationMonths - 1) + (optionPrice == null ? 0 : optionPrice);
+    }
+
+    public void offerForSale() {
+        offerType = OfferType.SALE;
+        leasingType = null;
+        leasingMonthly = null;
+        leasingFirstPayment = null;
+        leasingDurationMonths = null;
+        leasingMileagePerYear = null;
+        leasingOptionPrice = null;
+        leasingTotalCost = null;
     }
 
     public boolean isDamaged() {

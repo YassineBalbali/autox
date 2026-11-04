@@ -76,6 +76,7 @@ public class LaCote {
                AND l.power_hp IS NOT NULL
                AND l.vehicle_condition <> 'NEW'
                AND NOT l.damaged
+               AND l.offer_type = 'SALE'
                AND %s
              GROUP BY l.fuel_type, l.power_hp
              ORDER BY listings DESC, l.power_hp, l.fuel_type""".formatted(ListingSearchRepository.visible("l"));

@@ -23,6 +23,10 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 class SearchQueryPlanTest extends AbstractIntegrationTest {
 
+    /** On leasing offers the sort columns are another index and another test: this table has none here. */
+    private static final java.util.List<SearchSort> SALE_SORTS =
+            java.util.Arrays.stream(SearchSort.values()).filter(sort -> !sort.leasingOnly()).toList();
+
     private static final int LISTINGS = 20_000;
 
     @Autowired ListingSearchService searchService;
@@ -35,12 +39,12 @@ class SearchQueryPlanTest extends AbstractIntegrationTest {
         Map<String, String> plans = new LinkedHashMap<>();
         ListingSearchCriteria empty = criteria(null, null, null, null);
 
-        for (SearchSort sort : SearchSort.values()) {
+        for (SearchSort sort : SALE_SORTS) {
             plans.put("sort=" + sort + " (first page)", searchService.explainSearch(empty, sort, null, 24));
         }
 
         // Second page: the keyset predicate is what has to be index-driven, not just the sort.
-        for (SearchSort sort : SearchSort.values()) {
+        for (SearchSort sort : SALE_SORTS) {
             String cursor = firstCursor(sort);
             plans.put("sort=" + sort + " (second page)", searchService.explainSearch(empty, sort, cursor, 24));
         }
@@ -58,7 +62,7 @@ class SearchQueryPlanTest extends AbstractIntegrationTest {
         });
 
         // The four sorts, first and second page, must all avoid a full scan.
-        for (SearchSort sort : SearchSort.values()) {
+        for (SearchSort sort : SALE_SORTS) {
             assertThat(plans.get("sort=" + sort + " (first page)"))
                     .as("first page of %s must not sequentially scan listing", sort)
                     .doesNotContain("Seq Scan on listing");
@@ -92,7 +96,8 @@ class SearchQueryPlanTest extends AbstractIntegrationTest {
         return new ListingSearchCriteria(null, null, make, null, null, null,
                 priceMin, priceMax, null, null, mileageMax,
                 List.of(), List.of(), List.of(), List.of(), List.of(),
-                null, null, null, null, null, null, null, List.of(), null);
+                null, null, null, null, null, null, null, List.of(), null,
+                null, null, null, null, null, null, null, null);
     }
 
     /**

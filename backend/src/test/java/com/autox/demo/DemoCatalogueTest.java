@@ -64,6 +64,39 @@ class DemoCatalogueTest {
     }
 
     @Test
+    @DisplayName("the leasing offers are complete, from dealers, on makes and models the seed creates")
+    void leasedVehicles() {
+        java.util.Set<String> titles = new java.util.HashSet<>();
+        vehicles.forEach(vehicle -> titles.add(vehicle.title()));
+        DemoCatalogue.DAMAGED.forEach(damaged -> titles.add(damaged.vehicle().title()));
+        java.util.Set<String> dealers = new java.util.HashSet<>();
+        DemoCatalogue.SELLERS.stream()
+                .filter(seller -> seller.role() == com.autox.user.UserRole.PROFESSIONNEL)
+                .forEach(seller -> dealers.add(seller.key()));
+
+        assertThat(DemoCatalogue.LEASED).hasSize(12);
+        assertThat(DemoCatalogue.LEASED).anyMatch(leased -> leased.type() == com.autox.listing.LeasingType.LOA);
+        assertThat(DemoCatalogue.LEASED).anyMatch(leased -> leased.type() == com.autox.listing.LeasingType.LLD);
+        assertThat(DemoCatalogue.LEASED).allSatisfy(leased -> {
+            DemoCatalogue.Vehicle vehicle = leased.vehicle();
+            assertThat(titles.add(vehicle.title())).as(vehicle.title()).isTrue();
+            assertThat(dealers).contains(vehicle.sellerKey());
+            assertThat(leased.optionEuros() != null).as(vehicle.title())
+                    .isEqualTo(leased.type() == com.autox.listing.LeasingType.LOA);
+            // An offer that costs less than the car, once the option is paid, would not be believed.
+            if (leased.optionEuros() != null) {
+                assertThat(leased.firstPaymentEuros() + leased.monthlyEuros() * (leased.durationMonths() - 1)
+                        + leased.optionEuros()).as(vehicle.title()).isGreaterThan(vehicle.priceEuros());
+            }
+            assertThat(DemoCatalogue.MAKES)
+                    .filteredOn(make -> make.slug().equals(vehicle.makeSlug()))
+                    .singleElement()
+                    .satisfies(make -> assertThat(make.models()).extracting(DemoCatalogue.Model::slug)
+                            .contains(vehicle.modelSlug()));
+        });
+    }
+
+    @Test
     @DisplayName("the set is identical on every call")
     void deterministic() {
         // Same cars on every machine: a screenshot in a bug report can be reproduced.

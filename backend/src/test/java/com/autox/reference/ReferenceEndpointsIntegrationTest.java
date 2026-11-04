@@ -69,7 +69,8 @@ class ReferenceEndpointsIntegrationTest extends AbstractIntegrationTest {
                 java.util.Arrays.stream(com.autox.catalog.Gearbox.values()).map(Enum::name)
                         .toArray(String[]::new));
         assertThat(names(values.get("SearchSort")))
-                .containsExactly("NEWEST", "PRICE_ASC", "PRICE_DESC", "MILEAGE_ASC");
+                .containsExactly("NEWEST", "PRICE_ASC", "PRICE_DESC", "MILEAGE_ASC",
+                        "MONTHLY_ASC", "MONTHLY_DESC", "DURATION_ASC", "MILEAGE_ALLOWANCE_DESC");
     }
 
     @Test

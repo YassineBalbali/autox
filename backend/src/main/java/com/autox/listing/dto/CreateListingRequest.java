@@ -99,7 +99,10 @@ public record CreateListingRequest(
         Set<@NotBlank @Size(max = 60) String> featureCodes,
 
         /** Left out, the vehicle is undamaged. */
-        @jakarta.validation.Valid DamageDeclaration damage) {
+        @jakarta.validation.Valid DamageDeclaration damage,
+
+        /** Left out, the listing is a sale. A leasing offer is for a dealer's account only. */
+        @jakarta.validation.Valid LeasingDeclaration offer) {
 
     @Schema(hidden = true)
     @AssertTrue(message = "supply exactly one of makeId or makeText")

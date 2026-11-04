@@ -4,6 +4,8 @@ import com.autox.catalog.BodyType;
 import com.autox.catalog.Drivetrain;
 import com.autox.catalog.FuelType;
 import com.autox.catalog.Gearbox;
+import com.autox.listing.LeasingType;
+import com.autox.listing.OfferType;
 import com.autox.listing.VehicleCondition;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -80,7 +82,19 @@ public record ListingSearchCriteria(
         List<PriceLevel> priceLevel,
 
         /** Left out, damaged vehicles are excluded. Appended last, like {@code q}. */
-        DamageFilter damage) {
+        DamageFilter damage,
+
+        /** Left out, sales. The two never mix: a search is for one or the other. */
+        OfferType offer,
+
+        /** The rest are about leasing offers. Amounts in minor units, kilometres a year. */
+        List<LeasingType> leasingType,
+        @Min(0) Long monthlyMin,
+        @Min(0) Long monthlyMax,
+        @Min(0) Integer durationMin,
+        @Min(0) Integer durationMax,
+        @Min(0) Integer mileageAllowanceMin,
+        @Min(0) Integer mileageAllowanceMax) {
 
     public boolean hasBoundingBox() {
         return latMin != null && latMax != null && lonMin != null && lonMax != null;

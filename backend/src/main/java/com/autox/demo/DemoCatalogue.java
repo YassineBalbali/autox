@@ -5,6 +5,7 @@ import com.autox.catalog.FuelType;
 import com.autox.catalog.Gearbox;
 import com.autox.listing.ExteriorColor;
 import com.autox.listing.DamageType;
+import com.autox.listing.LeasingType;
 import com.autox.listing.VehicleCondition;
 import com.autox.user.UserRole;
 import java.util.List;
@@ -537,6 +538,73 @@ final class DemoCatalogue {
                     java.util.Set.of(DamageType.OTHER), false,
                     "Vendue pour pièces : boîte de vitesses hors d’usage et corrosion avancée du soubassement. "
                             + "Ni réparable ni roulante. Sièges et optiques en bon état."));
+
+    /** A demo leasing offer: the car, at its cash price, and its terms in whole euros. */
+    record LeasedVehicle(Vehicle vehicle, LeasingType type, long monthlyEuros, long firstPaymentEuros,
+                         int durationMonths, int mileagePerYear, Long optionEuros) {
+    }
+
+    private static Vehicle leased(String seller, String make, String model, String version, String title,
+                                  long cashPrice, int year, int mileage, FuelType fuel, Gearbox gearbox, BodyType body,
+                                  int power, VehicleCondition condition, ExteriorColor colour, String city,
+                                  String postalCode, int daysAgo) {
+        return new Vehicle(seller, make, model, version, title, cashPrice, year, 6, mileage, fuel, gearbox, body, power,
+                condition, colour, city, postalCode, daysAgo);
+    }
+
+    /**
+     * From the demo's four dealers, on top of {@link #SIZE}, and added to a database that is already
+     * seeded. The titles are how a later start knows which of them it has, so they stay unique.
+     */
+    static final List<LeasedVehicle> LEASED = List.of(
+            new LeasedVehicle(leased("garage-bellevue", "peugeot", "208", "1.2 PureTech 100 Allure",
+                    "Peugeot 208 PureTech 100 Allure en LOA", 21_900, 2026, 10, FuelType.PETROL, Gearbox.MANUAL,
+                    BodyType.HATCHBACK, 100, VehicleCondition.NEW, ExteriorColor.WHITE, "Lyon", "69003", 2),
+                    LeasingType.LOA, 219, 2_000, 37, 10_000, 12_400L),
+            new LeasedVehicle(leased("garage-bellevue", "peugeot", "3008", "1.2 Hybrid 136 Allure",
+                    "Peugeot 3008 Hybrid 136 Allure en LOA", 38_500, 2026, 10, FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC,
+                    BodyType.SUV, 136, VehicleCondition.NEW, ExteriorColor.GREY, "Lyon", "69003", 4),
+                    LeasingType.LOA, 349, 3_500, 49, 15_000, 18_900L),
+            new LeasedVehicle(leased("garage-bellevue", "renault", "clio", "1.0 TCe 90 Evolution",
+                    "Renault Clio TCe 90 Evolution en LLD", 19_800, 2026, 10, FuelType.PETROL, Gearbox.MANUAL,
+                    BodyType.HATCHBACK, 90, VehicleCondition.NEW, ExteriorColor.RED, "Lyon", "69003", 6),
+                    LeasingType.LLD, 189, 1_500, 36, 10_000, null),
+            new LeasedVehicle(leased("auto-atlantique", "renault", "captur", "1.6 E-Tech 145 Techno",
+                    "Renault Captur E-Tech 145 Techno en LOA", 29_900, 2026, 10, FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC,
+                    BodyType.SUV, 145, VehicleCondition.NEW, ExteriorColor.BLUE, "Nantes", "44000", 3),
+                    LeasingType.LOA, 279, 2_500, 37, 12_000, 17_900L),
+            new LeasedVehicle(leased("auto-atlantique", "dacia", "duster", "1.0 TCe 130 Journey",
+                    "Dacia Duster TCe 130 Journey en LLD", 25_500, 2026, 10, FuelType.PETROL, Gearbox.MANUAL,
+                    BodyType.SUV, 130, VehicleCondition.NEW, ExteriorColor.GREY, "Nantes", "44000", 7),
+                    LeasingType.LLD, 259, 2_000, 48, 15_000, null),
+            new LeasedVehicle(leased("auto-atlantique", "tesla", "model-3", "Propulsion",
+                    "Tesla Model 3 Propulsion en LOA", 39_990, 2026, 10, FuelType.ELECTRIC, Gearbox.AUTOMATIC,
+                    BodyType.SEDAN, 283, VehicleCondition.NEW, ExteriorColor.WHITE, "Nantes", "44000", 9),
+                    LeasingType.LOA, 399, 4_000, 37, 15_000, 22_500L),
+            new LeasedVehicle(leased("sud-automobiles", "toyota", "yaris", "1.5 Hybride 116 Dynamic",
+                    "Toyota Yaris Hybride 116 Dynamic en LOA", 24_700, 2026, 10, FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC,
+                    BodyType.HATCHBACK, 116, VehicleCondition.NEW, ExteriorColor.SILVER, "Marseille", "13008", 5),
+                    LeasingType.LOA, 239, 2_000, 49, 10_000, 11_900L),
+            new LeasedVehicle(leased("sud-automobiles", "volkswagen", "tiguan", "1.5 eTSI 150 Life",
+                    "Volkswagen Tiguan eTSI 150 Life en LLD", 41_200, 2026, 10, FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC,
+                    BodyType.SUV, 150, VehicleCondition.NEW, ExteriorColor.BLACK, "Marseille", "13008", 11),
+                    LeasingType.LLD, 429, 3_000, 36, 20_000, null),
+            new LeasedVehicle(leased("sud-automobiles", "bmw", "x1", "sDrive18d 150 M Sport",
+                    "BMW X1 sDrive18d 150 M Sport en LOA", 46_500, 2025, 12_000, FuelType.DIESEL, Gearbox.AUTOMATIC,
+                    BodyType.SUV, 150, VehicleCondition.USED, ExteriorColor.BLUE, "Marseille", "13008", 13),
+                    LeasingType.LOA, 459, 4_500, 37, 15_000, 26_500L),
+            new LeasedVehicle(leased("nord-vo", "citroen", "c3", "1.2 PureTech 83 Plus",
+                    "Citroën C3 PureTech 83 Plus en LLD", 18_600, 2026, 10, FuelType.PETROL, Gearbox.MANUAL,
+                    BodyType.HATCHBACK, 83, VehicleCondition.NEW, ExteriorColor.WHITE, "Lille", "59000", 8),
+                    LeasingType.LLD, 169, 1_000, 48, 10_000, null),
+            new LeasedVehicle(leased("nord-vo", "peugeot", "5008", "1.2 Hybrid 136 GT",
+                    "Peugeot 5008 Hybrid 136 GT en LOA", 44_900, 2026, 10, FuelType.HYBRID_PETROL, Gearbox.AUTOMATIC,
+                    BodyType.SUV, 136, VehicleCondition.NEW, ExteriorColor.GREY, "Lille", "59000", 10),
+                    LeasingType.LOA, 419, 4_000, 49, 15_000, 21_900L),
+            new LeasedVehicle(leased("nord-vo", "renault", "kangoo", "1.5 Blue dCi 95 Grand Confort",
+                    "Renault Kangoo Blue dCi 95 Grand Confort en LLD", 27_300, 2025, 9_500, FuelType.DIESEL, Gearbox.MANUAL,
+                    BodyType.MPV, 95, VehicleCondition.USED, ExteriorColor.WHITE, "Lille", "59000", 14),
+                    LeasingType.LLD, 299, 2_000, 36, 20_000, null));
 
     static final List<Vehicle> VEHICLES = List.of(
             new Vehicle("garage-bellevue", "peugeot", "308", "1.5 BlueHDi 130 Allure Pack",

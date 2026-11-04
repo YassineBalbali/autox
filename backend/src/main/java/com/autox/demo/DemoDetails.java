@@ -123,6 +123,15 @@ final class DemoDetails {
                 "Annonce de démonstration : ce véhicule n’existe pas. Il sert à illustrer le site.");
     }
 
+    /** The same for a leasing offer. */
+    static String leasedDescription(DemoCatalogue.LeasedVehicle leased) {
+        DemoCatalogue.Vehicle vehicle = leased.vehicle();
+        return String.join("\n\n",
+                vehicle.title() + ".",
+                "Disponible auprès de notre concession de " + vehicle.city() + ". Conditions détaillées sur demande.",
+                "Annonce de démonstration : ce véhicule et cette offre n’existent pas. Ils servent à illustrer le site.");
+    }
+
     /** A few sentences in the register of a real listing, and one that says it is not one. */
     static String description(DemoCatalogue.Vehicle vehicle) {
         String state = vehicle.condition() == VehicleCondition.NEW

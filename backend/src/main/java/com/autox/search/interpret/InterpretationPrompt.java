@@ -15,7 +15,8 @@ import java.util.List;
  * OpenAI-compatible chat API with structured output takes these as they are.
  *
  * <p><b>The schema is the filter set the search already has, minus what a link cannot carry.</b>
- * Make, model, year, price, mileage, fuel, gearbox, body, condition, damage, place and "good deals".
+ * Make, model, year, price, mileage, fuel, gearbox, body, condition, damage, place, "good deals" and
+ * leasing with its terms.
  * Not drivetrain and not free text: the results page has no URL parameter for the first, and
  * the second would let the model smuggle anything into a {@code LIKE}. A request for something
  * outside this list has nowhere to go but {@code notUnderstood}, which is the point.
@@ -80,6 +81,14 @@ public final class InterpretationPrompt {
                   accidentée", "endommagée ou pas" -> ALL. Otherwise null, including for "non
                   accidentée" and "sans dégâts": undamaged is what a search shows by default.
                 - "pas cher", "pas chère", "bonne affaire", "bon prix" -> goodDeals true, no price.
+                - offer: LOA, LLD, leasing, "location longue durée", "location avec option d'achat",
+                  "à louer" -> LEASING. These words never go in location. leasingType: LOA and
+                  "option d'achat" LOA; LLD and "longue durée" LLD; otherwise []. With leasing, an
+                  amount is the monthly payment, "par mois" or not: "moins de 300 €" -> monthlyMax
+                  300, "à partir de 200 € par mois" -> monthlyMin 200, and never priceMin or
+                  priceMax. "36 mois", "sur 3 ans" -> durationMin and durationMax 36;
+                  "15 000 km par an" -> mileageAllowanceMin 15000. Apport and option price are not
+                  understood.
                 - location: a city or a 5-digit postal code, copied as written ("Lyon", "33000").
                   Regions and departments are not understood.
                 - notUnderstood: every part of the text that asks for something the fields above
@@ -122,6 +131,13 @@ public final class InterpretationPrompt {
         properties.set("gearbox", enumArray(json, GEARBOXES));
         properties.set("bodyType", enumArray(json, BODIES));
         properties.set("condition", enumArray(json, CONDITIONS));
+        ObjectNode offer = nullable(json, "string");
+        offer.putArray("enum").add("LEASING").addNull();
+        properties.set("offer", offer);
+        properties.set("leasingType", enumArray(json, List.of("LOA", "LLD")));
+        for (String number : List.of("monthlyMin", "monthlyMax", "durationMin", "durationMax", "mileageAllowanceMin")) {
+            properties.set(number, nullable(json, "integer"));
+        }
         ObjectNode damage = nullable(json, "string");
         damage.putArray("enum").add("DAMAGED_ONLY").add("ALL").addNull();
         properties.set("damage", damage);

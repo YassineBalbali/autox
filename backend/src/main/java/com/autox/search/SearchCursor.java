@@ -62,11 +62,15 @@ public record SearchCursor(SearchSort sort, String sortValue, UUID id) {
     }
 
     /** Builds the cursor that resumes after a given row. */
-    public static SearchCursor after(SearchSort sort, Instant publishedAt, long price, int mileage, UUID id) {
+    public static SearchCursor after(SearchSort sort, Instant publishedAt, long price, int mileage,
+                                     com.autox.listing.dto.LeasingView leasing, UUID id) {
         String value = switch (sort) {
             case NEWEST -> publishedAt == null ? "0" : Long.toString(publishedAt.toEpochMilli());
             case PRICE_ASC, PRICE_DESC -> Long.toString(price);
             case MILEAGE_ASC -> Integer.toString(mileage);
+            case MONTHLY_ASC, MONTHLY_DESC -> Long.toString(leasing.monthlyPayment());
+            case DURATION_ASC -> Integer.toString(leasing.durationMonths());
+            case MILEAGE_ALLOWANCE_DESC -> Integer.toString(leasing.mileagePerYear());
         };
         return new SearchCursor(sort, value, id);
     }
@@ -75,8 +79,8 @@ public record SearchCursor(SearchSort sort, String sortValue, UUID id) {
     public Object typedSortValue() {
         return switch (sort) {
             case NEWEST -> java.sql.Timestamp.from(Instant.ofEpochMilli(parseLong()));
-            case PRICE_ASC, PRICE_DESC -> parseLong();
-            case MILEAGE_ASC -> (int) parseLong();
+            case PRICE_ASC, PRICE_DESC, MONTHLY_ASC, MONTHLY_DESC -> parseLong();
+            case MILEAGE_ASC, DURATION_ASC, MILEAGE_ALLOWANCE_DESC -> (int) parseLong();
         };
     }
 

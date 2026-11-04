@@ -183,6 +183,11 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_CURSOR, detail);
     }
 
+    public static ApiException leasingProfessionalOnly() {
+        return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.LEASING_PROFESSIONAL_ONLY,
+                "Leasing offers are for professional accounts only.");
+    }
+
     public static ApiException adminSelfAction() {
         return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.ADMIN_SELF_ACTION,
                 "An administrator cannot perform this action on their own account.");
