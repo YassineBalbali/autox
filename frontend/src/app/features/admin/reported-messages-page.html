@@ -8,20 +8,9 @@
     </p>
   </header>
 
-  <nav class="moderation__views" aria-label="Listes de modération" i18n-aria-label="@@moderationViews">
-    @for (entry of views; track entry.slug; let first = $first) {
-      <a class="moderation__view" routerLink="/admin/moderation" [queryParams]="{ vue: first ? null : entry.slug }">
-        {{ entry.label }}
-      </a>
-    }
-    <a class="moderation__view moderation__view--active" aria-current="page" routerLink="/admin/moderation/messages">
-      <ng-container i18n="@@moderationMessagesTab">Messages signalés</ng-container>
-      @if (state() === 'ready' && total() > 0) {
-        <!-- The space inside the span: Angular drops whitespace that stands alone between elements. -->
-        <span class="moderation__count"> ({{ total() }})</span>
-      }
-    </a>
-  </nav>
+  @if (state() === 'ready' && total() > 0) {
+    <p class="meta" data-count>{{ total() }} <ng-container i18n="@@reportedCount">en attente</ng-container></p>
+  }
 
   @if (notice()) {
     <app-alert kind="success">{{ notice() }}</app-alert>

@@ -74,8 +74,8 @@ collide with another test's count.
 
 ## Moderation
 
-A report joins the moderators' queue at `/admin/moderation/messages`, the fourth tab of the
-moderation screen. Each report shows the reason, the note, and up to five messages either
+A report joins the moderators' queue at `/admin/moderation/messages`, "Signalements" in the
+administration's sidebar. Each report shows the reason, the note, and up to five messages either
 side of the reported one, which is the context needed to judge it. **A moderator sees a
 conversation only through a report on it.** No endpoint lets an administrator read
 conversations nobody has reported.
