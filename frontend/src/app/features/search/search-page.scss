@@ -75,6 +75,10 @@
   gap: var(--s-2) var(--s-4);
 }
 
+.search__alert {
+  flex: 1 0 100%;
+}
+
 .search__title {
   font-size: var(--t-xl);
   font-variant-numeric: tabular-nums;

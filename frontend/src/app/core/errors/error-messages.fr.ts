@@ -47,6 +47,11 @@ export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = {
   [ErrorCode.INVALID_RESET_TOKEN]:
     'Ce lien de réinitialisation n’est plus valable. Demandez-en un nouveau.',
 
+  // --- saved searches ---------------------------------------------------
+  [ErrorCode.SAVED_SEARCH_LIMIT_REACHED]:
+    'Vous avez déjà 10 recherches enregistrées, le maximum. Supprimez-en une dans « Mes recherches » pour en créer une autre.',
+  [ErrorCode.INVALID_UNSUBSCRIBE_TOKEN]: 'Ce lien de désabonnement n’est pas valable.',
+
   // --- verifying an address ---------------------------------------------
   [ErrorCode.INVALID_VERIFICATION_TOKEN]:
     'Ce lien de vérification n’est plus valable. Demandez-en un nouveau.',

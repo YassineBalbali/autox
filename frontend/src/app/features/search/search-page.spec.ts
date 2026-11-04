@@ -8,6 +8,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BASE_PATH, ErrorCode, PublicListingSummary } from '../../core/api';
+import { TOKEN_STORE } from '../../core/auth/token-store';
 import { PHONE_SCREEN, stubDialogs, stubMedia } from '../../core/ui/dom-testing';
 import { NBSP } from '../../shared/format/number';
 import { SearchPage, countLabel, rangeLabel } from './search-page';
@@ -97,6 +98,7 @@ describe('SearchPage', () => {
           { path: 'annonces/:id', component: ListingStub },
         ]),
         { provide: BASE_PATH, useValue: BASE },
+        { provide: TOKEN_STORE, useValue: { read: () => null, write: () => undefined, clear: () => undefined } },
       ],
     });
     backend = TestBed.inject(HttpTestingController);

@@ -13,6 +13,7 @@ import { ListingRow } from '../../shared/listing/listing-row';
 import { Alert } from '../../shared/ui/alert';
 import { Icon } from '../../shared/ui/icon';
 import { ActiveFilters } from './active-filters';
+import { CreateAlert } from './create-alert';
 import { InterpretationNote } from './interpretation-note';
 import { Interpretation, readInterpretation } from './smart-search';
 import { CREDIT_MENTION } from '../../shared/listing/leasing.fr';
@@ -70,6 +71,7 @@ import { ViewToggle } from './view-toggle';
     OfferSwitch,
     SearchBar,
     ActiveFilters,
+    CreateAlert,
     InterpretationNote,
     SearchFilters,
     ViewToggle,

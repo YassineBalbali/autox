@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
-import { AdminService, AdminStats, Split } from '../../core/api';
+import { AdminService, AdminStats, SavedSearchesService, Split } from '../../core/api';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { formatDateTimeFr } from '../../shared/format/date';
 import { NBSP, formatIntegerFr } from '../../shared/format/number';
@@ -38,6 +38,29 @@ export function shareFr(part: number, whole: number): string {
 })
 export class AdminDashboardPage {
   private readonly api = inject(AdminService);
+  private readonly savedSearches = inject(SavedSearchesService);
+
+  protected readonly sendingDigest = signal(false);
+  protected readonly digestResult = signal<string | null>(null);
+
+  protected sendMyDigest(): void {
+    this.sendingDigest.set(true);
+    this.digestResult.set(null);
+    this.savedSearches.sendMyDigest().subscribe({
+      next: (result) => {
+        this.sendingDigest.set(false);
+        this.digestResult.set(
+          result.written
+            ? 'Résumé écrit : il part avec le prochain envoi, dans la minute.'
+            : 'Rien à envoyer : aucune nouvelle annonce dans vos recherches, ou votre adresse n’est pas vérifiée.',
+        );
+      },
+      error: (error: unknown) => {
+        this.sendingDigest.set(false);
+        this.digestResult.set(this.errors.messageFor(error));
+      },
+    });
+  }
   private readonly errors = inject(ErrorMessageService);
   private readonly destroyRef = inject(DestroyRef);
 

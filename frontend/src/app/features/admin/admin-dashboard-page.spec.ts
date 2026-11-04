@@ -45,8 +45,9 @@ const EMPTY: AdminStats = {
   priceVerdicts: { goodDeal: split(0), market: split(0), aboveMarket: split(0), noVerdict: split(0) },
   searchLast7Days: { requests: 0, failed: 0, withNotUnderstood: 0 },
   searchLast30Days: { requests: 0, failed: 0, withNotUnderstood: 0 },
-  emailsLast7Days: { sent: 0, failed: 0 },
-  emailsLast30Days: { sent: 0, failed: 0 },
+  emailsLast7Days: { sent: 0, failed: 0, alertsSent: 0 },
+  emailsLast30Days: { sent: 0, failed: 0, alertsSent: 0 },
+  activeSavedSearches: 0,
 };
 
 const SEEDED: AdminStats = {
@@ -69,8 +70,9 @@ const SEEDED: AdminStats = {
   priceVerdicts: { goodDeal: split(1, 20), market: split(0, 90), aboveMarket: split(0, 22), noVerdict: split(0, 20) },
   searchLast7Days: { requests: 15, failed: 3, withNotUnderstood: 6 },
   searchLast30Days: { requests: 40, failed: 0, withNotUnderstood: 10 },
-  emailsLast7Days: { sent: 12, failed: 1 },
-  emailsLast30Days: { sent: 48, failed: 3 },
+  emailsLast7Days: { sent: 12, failed: 1, alertsSent: 5 },
+  emailsLast30Days: { sent: 48, failed: 3, alertsSent: 20 },
+  activeSavedSearches: 7,
 };
 
 /** The page through a real router and a fake backend. */
@@ -190,6 +192,20 @@ describe('AdminDashboardPage', () => {
       ['En échec (503)', '20 %', '0 %'],
       ['Avec une partie non comprise', '50 %', '25 %'],
     ]);
+  });
+
+  it('counts active saved searches and alert e-mails, and can send the admin their own digest', async () => {
+    await visit(SEEDED);
+
+    expect(root.querySelector('[data-figure="saved-searches"]')?.textContent).toContain('7');
+    const alerts = Array.from(root.querySelectorAll('[data-table="emails"] [data-row="alerts"] td')).map((cell) => cell.textContent?.trim());
+    expect(alerts).toEqual(['5', '20']);
+
+    (root.querySelector('[data-action="send-my-digest"]') as HTMLButtonElement).click();
+    backend.expectOne(`${BASE}/api/v1/admin/alerts/send-mine`).flush({ written: false });
+    await harness.fixture.whenStable();
+
+    expect(root.querySelector('[data-digest-result]')?.textContent).toContain('Rien à envoyer');
   });
 
   it('lists emails sent and failed over 7 and 30 days', async () => {

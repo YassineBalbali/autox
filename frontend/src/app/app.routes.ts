@@ -95,6 +95,15 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/verify-email-page').then((m) => m.VerifyEmailPage),
   },
 
+  {
+    // An alert e-mail's unsubscribe link: no sign-in, the token is the authority. Has to match
+    // SavedSearchLinks on the backend.
+    path: 'alertes/desabonnement',
+    title: 'Alerte e-mail · AutoX',
+    loadComponent: () =>
+      import('./features/saved-searches/unsubscribe-page').then((m) => m.UnsubscribePage),
+  },
+
   // ---- the account section -----------------------------------------------
   //
   // A routed layout with the screens as children. The sidebar is rendered once and stays
@@ -150,6 +159,14 @@ export const routes: Routes = [
     title: 'Déposer une annonce · AutoX',
     loadComponent: () =>
       import('./features/seller/listing-editor-page').then((m) => m.ListingEditorPage),
+  },
+  {
+    // Alert e-mails link here: SavedSearchLinks on the backend.
+    path: 'mes-recherches',
+    canActivate: [authGuard],
+    title: 'Mes recherches · AutoX',
+    loadComponent: () =>
+      import('./features/saved-searches/my-searches-page').then((m) => m.MySearchesPage),
   },
   {
     path: 'mes-annonces',
