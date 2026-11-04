@@ -70,6 +70,7 @@ autox:
   scheduling:
     # Off: a test runs the poller itself, so it knows when mail went out.
     outbox-poll-cron: "-"
+    alert-digest-cron: "-"
 
   public-api:
     rate-limit:

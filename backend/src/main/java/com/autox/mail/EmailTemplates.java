@@ -1,5 +1,7 @@
 package com.autox.mail;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 import org.springframework.web.util.HtmlUtils;
 
@@ -61,6 +63,69 @@ public final class EmailTemplates {
                 page(escape(sentence),
                         button("Lire le message et y répondre", conversationLink),
                         escape(REPLY_ON_AUTOX)));
+    }
+
+    /** One listing in a digest. {@code leased}: it states a monthly payment. */
+    public record DigestItem(String label, String facts, String link, boolean leased) {
+    }
+
+    /**
+     * One saved search in a digest.
+     *
+     * @param total how many are new, of which {@code items} holds the first few
+     */
+    public record DigestSection(String name, int total, List<DigestItem> items, String seeAllLink,
+                                String unsubscribeLink) {
+    }
+
+    /** Monthly payments are advertising for credit, which has to carry this: docs/leasing.md. */
+    static final String CREDIT_MENTION =
+            "Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager.";
+
+    /** Every search with something new, one e-mail. A search's name and a listing's label are typed by users. */
+    public static Rendered savedSearchDigest(List<DigestSection> sections, String mySearchesLink) {
+        int total = sections.stream().mapToInt(DigestSection::total).sum();
+        boolean anyLeased = sections.stream().flatMap(section -> section.items().stream()).anyMatch(DigestItem::leased);
+
+        List<String> text = new ArrayList<>();
+        StringBuilder html = new StringBuilder();
+        for (DigestSection section : sections) {
+            String name = oneLine(section.name());
+            String heading = name + " : " + countOf(section.total());
+            StringBuilder block = new StringBuilder(heading).append('\n');
+            html.append("<h2 style=\"margin:24px 0 8px;font-size:16px\">").append(escape(heading)).append("</h2>\n");
+            html.append("<ul style=\"margin:0 0 12px;padding:0;list-style:none\">\n");
+            for (DigestItem item : section.items()) {
+                String label = withoutAddress(item.label(), "Annonce");
+                block.append("\n- ").append(label).append('\n').append("  ").append(item.facts()).append('\n')
+                        .append("  ").append(item.link()).append('\n');
+                html.append("<li style=\"margin:0 0 10px\"><a href=\"").append(escape(item.link())).append("\">")
+                        .append(escape(label)).append("</a><br><span style=\"font-size:13px;color:#555555\">")
+                        .append(escape(item.facts())).append("</span></li>\n");
+            }
+            block.append("\nVoir toutes les annonces : ").append(section.seeAllLink())
+                    .append("\nNe plus recevoir cette alerte : ").append(section.unsubscribeLink());
+            text.add(block.toString());
+            html.append("</ul>\n<p style=\"margin:0 0 4px\"><a href=\"").append(escape(section.seeAllLink()))
+                    .append("\">Voir toutes les annonces</a></p>\n")
+                    .append("<p style=\"margin:0 0 16px;font-size:13px\"><a href=\"")
+                    .append(escape(section.unsubscribeLink())).append("\">Ne plus recevoir cette alerte</a></p>\n");
+        }
+
+        String manage = "Gérer vos alertes dans Mes recherches";
+        String mention = anyLeased ? CREDIT_MENTION + "\n\n" : "";
+        return new Rendered(
+                countOf(total) + " pour vos recherches AutoX",
+                String.join("\n\n", text) + "\n\n" + mention + manage + " : " + mySearchesLink + "\n\n" + NO_REPLY,
+                page(escape(countOf(total)) + " pour vos recherches.",
+                        html.toString()
+                                + (anyLeased ? "<p style=\"margin:0 0 16px;font-weight:bold\">" + escape(CREDIT_MENTION) + "</p>\n" : "")
+                                + "<p style=\"margin:0 0 16px\"><a href=\"" + escape(mySearchesLink) + "\">" + escape(manage) + "</a></p>",
+                        escape("Cet e-mail résume les nouvelles annonces de vos recherches enregistrées, une fois par jour.")));
+    }
+
+    private static String countOf(int count) {
+        return count + (count > 1 ? " nouvelles annonces" : " nouvelle annonce");
     }
 
     private static Rendered linkEmail(String subject, String intro, String instruction, String action, String link,

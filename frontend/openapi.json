@@ -20,8 +20,8 @@
       "description": "The three-step direct-to-storage upload, plus gallery order. Requires authentication."
     },
     {
-      "name": "La Cote",
-      "description": "Public valuation of a described car against live listings. No authentication."
+      "name": "Saved searches",
+      "description": "Saved searches and their e-mail alerts."
     },
     {
       "name": "Listings (seller)",
@@ -34,6 +34,10 @@
     {
       "name": "Admin",
       "description": "Moderation. Requires the ADMIN role."
+    },
+    {
+      "name": "La Cote",
+      "description": "Public valuation of a described car against live listings. No authentication."
     },
     {
       "name": "Listings (public)",
@@ -151,6 +155,157 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/InterpretResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/saved-searches": {
+      "get": {
+        "tags": [
+          "Saved searches"
+        ],
+        "operationId": "listSavedSearches",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SavedSearchView"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Saved searches"
+        ],
+        "summary": "Saves a search.",
+        "description": "Saves a search. Needs a verified address: 403 <code>EMAIL_NOT_VERIFIED</code>. At most ten per\n account: 409 <code>SAVED_SEARCH_LIMIT_REACHED</code>. <code>criteria</code> is what\n <code>GET /api/v1/listings</code> would be sent, <code>params</code> the results page's query string.",
+        "operationId": "saveSearch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSavedSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearchView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/saved-searches/{id}/visit": {
+      "post": {
+        "tags": [
+          "Saved searches"
+        ],
+        "summary": "The search was opened from \"Mes recherches\": its count of new listings starts again.",
+        "description": "The search was opened from \"Mes recherches\": its count of new listings starts again.",
+        "operationId": "visitSavedSearch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/saved-searches/unsubscribe": {
+      "post": {
+        "tags": [
+          "Saved searches"
+        ],
+        "summary": "Turns off one search's alerts, from the link in an e-mail.",
+        "description": "Turns off one search's alerts, from the link in an e-mail. No credentials: the signed token is\n the authority. A POST, so that a mail scanner fetching the link's page changes nothing.\n 400 <code>INVALID_UNSUBSCRIBE_TOKEN</code> if it was not signed here.",
+        "operationId": "unsubscribeFromAlert",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnsubscribeResult"
                 }
               }
             }
@@ -1668,6 +1823,123 @@
             "bearerAuth": []
           }
         ]
+      }
+    },
+    "/api/v1/admin/alerts/send-mine": {
+      "post": {
+        "tags": [
+          "Saved searches"
+        ],
+        "summary": "Writes the calling administrator's own digest now, whatever the time and whether or not they\n have had one today, for testing.",
+        "description": "Writes the calling administrator's own digest now, whatever the time and whether or not they\n have had one today, for testing. Nobody else gets anything. It is a real digest: what it sends\n is recorded as sent, and it goes out with the next poll.",
+        "operationId": "sendMyDigest",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestTestResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/saved-searches/{id}": {
+      "delete": {
+        "tags": [
+          "Saved searches"
+        ],
+        "operationId": "deleteSavedSearch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Saved searches"
+        ],
+        "summary": "Renames, pauses or resumes.",
+        "description": "Renames, pauses or resumes. Resuming sends nothing published during the pause.",
+        "operationId": "updateSavedSearch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSavedSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearchView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/me": {
@@ -3505,6 +3777,114 @@
           "USED"
         ]
       },
+      "CreateSavedSearchRequest": {
+        "type": "object",
+        "description": "Saves a search.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "what the user calls it",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "criteria": {
+            "$ref": "#/components/schemas/ListingSearchCriteria",
+            "description": "what <code>GET /api/v1/listings</code> is sent for this search"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "the results page's query string for the same search, for the links back to it"
+          }
+        },
+        "required": [
+          "criteria",
+          "name"
+        ]
+      },
+      "SavedSearchView": {
+        "type": "object",
+        "description": "A saved search, as \"Mes recherches\" shows it.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "paused": {
+            "type": "boolean"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "the results page's query string, without any make or model that has gone"
+          },
+          "newCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "listings new since it was last opened, at most 99"
+          },
+          "newCountCapped": {
+            "type": "boolean",
+            "description": "whether there are more than <code>newCount</code>"
+          },
+          "readable": {
+            "type": "boolean",
+            "description": "false if its filters cannot be read: it runs no search and sends nothing"
+          },
+          "missingMake": {
+            "type": "string",
+            "description": "the make that no longer exists, if one does not; the search runs without it"
+          },
+          "missingModel": {
+            "type": "string",
+            "description": "the same for the model"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "name",
+          "newCount",
+          "newCountCapped",
+          "params",
+          "paused",
+          "readable"
+        ]
+      },
+      "UnsubscribeRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "the value from the e-mail's link",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "UnsubscribeResult": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "the search whose alerts are now off, or null if it has been deleted since"
+          }
+        }
+      },
       "MessageReportReason": {
         "type": "string",
         "description": "Why a recipient reported a message. Mirrors <code>ck_message_report_reason</code>. A closed list\n for the reason moderation reasons are one: a code can be counted, and shown in the\n moderator's language.",
@@ -5063,6 +5443,35 @@
           }
         }
       },
+      "DigestTestResult": {
+        "type": "object",
+        "properties": {
+          "written": {
+            "type": "boolean",
+            "description": "whether an e-mail was written: false when nothing is new"
+          }
+        },
+        "required": [
+          "written"
+        ]
+      },
+      "UpdateSavedSearchRequest": {
+        "type": "object",
+        "description": "Only what is present changes.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "a new name",
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": ".*\\S.*"
+          },
+          "paused": {
+            "type": "boolean",
+            "description": "true to pause its alerts, false to resume them"
+          }
+        }
+      },
       "ProProfileUpdate": {
         "type": "object",
         "properties": {
@@ -6601,9 +7010,15 @@
           "emailsLast30Days": {
             "$ref": "#/components/schemas/EmailCounts",
             "description": "the same over 30 × 24 hours"
+          },
+          "activeSavedSearches": {
+            "type": "integer",
+            "format": "int64",
+            "description": "saved searches now, not paused"
           }
         },
         "required": [
+          "activeSavedSearches",
           "daily",
           "demoDataPresent",
           "emailsLast30Days",
@@ -6652,9 +7067,15 @@
             "type": "integer",
             "format": "int64",
             "description": "given up on after the last attempt"
+          },
+          "alertsSent": {
+            "type": "integer",
+            "format": "int64",
+            "description": "of <code>sent</code>, saved searches' daily e-mails"
           }
         },
         "required": [
+          "alertsSent",
           "failed",
           "sent"
         ]
@@ -7003,6 +7424,8 @@
           "LAST_ADMIN",
           "DEMO_ACCOUNT_CANNOT_BE_ADMIN",
           "ACTIVE_LISTING_LIMIT_REACHED",
+          "SAVED_SEARCH_LIMIT_REACHED",
+          "INVALID_UNSUBSCRIBE_TOKEN",
           "LEASING_PROFESSIONAL_ONLY",
           "CONCURRENT_MODIFICATION",
           "UNSUPPORTED_IMAGE_TYPE",

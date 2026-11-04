@@ -200,6 +200,8 @@ autox:
     storage-check-interval: ${AUTOX_SCHEDULE_STORAGE_CHECK:PT12H}
     # Every 30 seconds, but it asks the database only when it has reason to: see OutboxPoller.
     outbox-poll-cron: ${AUTOX_SCHEDULE_OUTBOX_POLL:*/30 * * * * *}
+    # Saved searches' daily e-mails: 7:00, in Paris time, whatever the server's zone.
+    alert-digest-cron: ${AUTOX_SCHEDULE_ALERT_DIGEST:0 0 7 * * *}
 
   # Per account, in fixed windows. A reply costs one message; starting a conversation costs
   # one conversation and one message. Twenty messages in ten minutes is more than anyone types
