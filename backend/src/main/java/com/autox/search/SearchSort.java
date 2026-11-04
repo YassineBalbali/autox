@@ -20,7 +20,16 @@ public enum SearchSort {
 
     PRICE_DESC("l.price_amount", Direction.DESC),
 
-    MILEAGE_ASC("l.mileage_km", Direction.ASC);
+    MILEAGE_ASC("l.mileage_km", Direction.ASC),
+
+    /** The rest are for leasing offers alone: on a sale their columns are null. */
+    MONTHLY_ASC("l.leasing_monthly", Direction.ASC),
+
+    MONTHLY_DESC("l.leasing_monthly", Direction.DESC),
+
+    DURATION_ASC("l.leasing_duration_months", Direction.ASC),
+
+    MILEAGE_ALLOWANCE_DESC("l.leasing_mileage_per_year", Direction.DESC);
 
     private final String column;
     private final Direction direction;
@@ -28,6 +37,10 @@ public enum SearchSort {
     SearchSort(String column, Direction direction) {
         this.column = column;
         this.direction = direction;
+    }
+
+    public boolean leasingOnly() {
+        return column.startsWith("l.leasing_");
     }
 
     public String column() {

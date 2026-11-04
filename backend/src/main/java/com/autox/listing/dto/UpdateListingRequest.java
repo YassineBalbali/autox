@@ -91,7 +91,10 @@ public record UpdateListingRequest(
         Set<@NotBlank @Size(max = 60) String> featureCodes,
 
         /** Replaces what was declared when present. {@code damaged: false} clears it. */
-        @jakarta.validation.Valid DamageDeclaration damage) {
+        @jakarta.validation.Valid DamageDeclaration damage,
+
+        /** Replaces the sale or the terms when present. A leasing offer is for a dealer's account only. */
+        @jakarta.validation.Valid LeasingDeclaration offer) {
 
     @Schema(hidden = true)
     @AssertTrue(message = "supply makeId or makeText, not both")

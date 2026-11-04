@@ -422,6 +422,68 @@ class SearchInterpretIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("leasing: its own search, with amounts in euros a month turned into the API's minor units")
+    void leasing() throws Exception {
+        model.answer(answer(Map.of("offer", "LEASING", "leasingType", List.of("LOA"), "bodyType", List.of("SUV"),
+                "monthlyMax", 300)));
+
+        interpret("SUV en LOA moins de 300 € par mois")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.criteria.offer").value("LEASING"))
+                .andExpect(jsonPath("$.criteria.leasingType[0]").value("LOA"))
+                .andExpect(jsonPath("$.criteria.monthlyMax").value(30000))
+                .andExpect(jsonPath("$.criteria.currency").value("EUR"))
+                .andExpect(jsonPath("$.criteria.priceMax").doesNotExist())
+                .andExpect(jsonPath("$.summary").value("SUV / 4x4 · LOA · ≤ 300 €/mois"));
+    }
+
+    @Test
+    @DisplayName("any term of a lease makes it a leasing search, and a price becomes the monthly payment")
+    void leasingFromItsTerms() throws Exception {
+        model.answer(answer(Map.of("durationMin", 36, "durationMax", 36, "mileageAllowanceMin", 15000)));
+        interpret("voiture sur 36 mois 15 000 km par an")
+                .andExpect(jsonPath("$.criteria.offer").value("LEASING"))
+                .andExpect(jsonPath("$.criteria.durationMin").value(36))
+                .andExpect(jsonPath("$.criteria.durationMax").value(36))
+                .andExpect(jsonPath("$.criteria.mileageAllowanceMin").value(15000));
+
+        model.answer(answer(Map.of("offer", "LEASING", "priceMax", 300)));
+        interpret("voiture en leasing moins de 300 euros")
+                .andExpect(jsonPath("$.criteria.monthlyMax").value(30000))
+                .andExpect(jsonPath("$.criteria.priceMax").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("good deals and damage cannot apply to leasing: both dropped, and the words reported")
+    void leasingExcludesGoodDealsAndDamage() throws Exception {
+        model.answer(answer(Map.of("offer", "LEASING", "goodDeals", true)));
+        interpret("LOA pas chère")
+                .andExpect(jsonPath("$.criteria.offer").value("LEASING"))
+                .andExpect(jsonPath("$.criteria.priceLevel").doesNotExist())
+                .andExpect(jsonPath("$.notUnderstood").value(org.hamcrest.Matchers.contains("pas chère")));
+
+        model.answer(answer(Map.of("offer", "LEASING", "damage", "DAMAGED_ONLY")));
+        interpret("clio accidentée en LLD")
+                .andExpect(jsonPath("$.criteria.offer").value("LEASING"))
+                .andExpect(jsonPath("$.criteria.damage").doesNotExist())
+                .andExpect(jsonPath("$.notUnderstood").value(org.hamcrest.Matchers.contains("accidentée")));
+    }
+
+    @Test
+    @DisplayName("terms out of bounds are reported, not applied, and a sale search stays a sale search")
+    void leasingBounds() throws Exception {
+        model.answer(answer(Map.of("offer", "LEASING", "monthlyMax", 5, "durationMax", 500)));
+        interpret("leasing à 5 euros sur 500 mois")
+                .andExpect(jsonPath("$.criteria.monthlyMax").doesNotExist())
+                .andExpect(jsonPath("$.criteria.durationMax").doesNotExist());
+
+        model.answer(answer(Map.of("priceMax", 15000)));
+        interpret("clio moins de 15000")
+                .andExpect(jsonPath("$.criteria.offer").doesNotExist())
+                .andExpect(jsonPath("$.criteria.priceMax").value(1500000));
+    }
+
+    @Test
     @DisplayName("no answer about damage, or one the filter does not know, leaves the default")
     void damageDefault() throws Exception {
         model.answer(answer(Map.of()));

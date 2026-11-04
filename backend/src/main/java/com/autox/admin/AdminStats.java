@@ -68,7 +68,11 @@ public record AdminStats(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split sold,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split expired,
             @Schema(description = "Published and declared damaged: these are also counted in published.",
-                    requiredMode = Schema.RequiredMode.REQUIRED) Split damaged) {
+                    requiredMode = Schema.RequiredMode.REQUIRED) Split damaged,
+            @Schema(description = "Published sales. With leasing, adds up to published.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) Split sale,
+            @Schema(description = "Published leasing offers.",
+                    requiredMode = Schema.RequiredMode.REQUIRED) Split leasing) {
     }
 
     /** What was created in a period: listings (any state), accounts, messages sent. */

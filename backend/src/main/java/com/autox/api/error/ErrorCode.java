@@ -65,6 +65,9 @@ public enum ErrorCode {
     /** The seller already has as many live listings as their account allows. */
     ACTIVE_LISTING_LIMIT_REACHED,
 
+    /** A leasing offer is for a dealer's account. */
+    LEASING_PROFESSIONAL_ONLY,
+
     /** Someone else changed the record first; the client should reload and retry. */
     CONCURRENT_MODIFICATION,
 

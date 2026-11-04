@@ -89,11 +89,14 @@ class AdminStatsRepository {
                         split("l.moderation_status = 'REJECTED'", "rejected"),
                         split("l.status = 'SOLD'", "sold"),
                         split("l.status = 'EXPIRED'", "expired"),
-                        split(ListingSearchRepository.visible("l") + " AND l.damaged", "damaged"))
+                        split(ListingSearchRepository.visible("l") + " AND l.damaged", "damaged"),
+                        split(ListingSearchRepository.visible("l") + " AND l.offer_type = 'SALE'", "sale"),
+                        split(ListingSearchRepository.visible("l") + " AND l.offer_type = 'LEASING'", "leasing"))
                 + " FROM " + LISTINGS;
         return jdbc.queryForObject(sql, (row, index) -> new ListingsByStatus(
                 split(row, "published"), split(row, "pending"), split(row, "rejected"),
-                split(row, "sold"), split(row, "expired"), split(row, "damaged")));
+                split(row, "sold"), split(row, "expired"), split(row, "damaged"),
+                split(row, "sale"), split(row, "leasing")));
     }
 
     /** Activity in the last {@code days} × 24 hours. */

@@ -229,6 +229,7 @@ public class ListingService {
             replaceFeatures(listing, request.featureCodes());
         }
         applyDamage(listing, request.damage());
+        applyOffer(listing, request.offer());
 
         listings.save(listing);
         log.info("Listing {} created as DRAFT by {}", listing.getId(), callerId);
@@ -365,6 +366,7 @@ public class ListingService {
             replaceFeatures(listing, request.featureCodes());
         }
         applyDamage(listing, request.damage());
+        applyOffer(listing, request.offer());
 
         recordPriceChange(listing, priceBefore, currencyBefore);
 
@@ -385,6 +387,7 @@ public class ListingService {
         Listing listing = loadAccessible(callerId, admin, listingId);
         requireTransition(listing, ListingStatus.ACTIVE);
         requirePhoto(listing);
+        requireLeasingAllowed(listing);
         requireQuotaAvailable(listing);
 
         Instant now = Instant.now();
@@ -454,6 +457,7 @@ public class ListingService {
                     + listing.getStatus() + ".");
         }
 
+        requireLeasingAllowed(listing);
         if (listing.getStatus() == ListingStatus.EXPIRED) {
             requireTransition(listing, ListingStatus.ACTIVE);
             requireQuotaAvailable(listing);
@@ -547,6 +551,31 @@ public class ListingService {
         }
     }
 
+    private static void applyOffer(Listing listing, com.autox.listing.dto.LeasingDeclaration offer) {
+        if (offer != null) {
+            if (offer.offerType() == OfferType.LEASING) {
+                listing.offerLeasing(offer.type(), offer.monthlyPayment(), offer.firstPayment(),
+                        offer.durationMonths(), offer.mileagePerYear(), offer.optionPrice());
+            } else {
+                listing.offerForSale();
+            }
+        }
+        requireLeasingAllowed(listing);
+        if (listing.isLeasing() && listing.isDamaged()) {
+            throw ApiException.validationFailed("A damaged vehicle cannot be a leasing offer.");
+        }
+    }
+
+    /**
+     * On the seller's role, not the caller's, so an administrator editing a listing is held to it
+     * too. Checked again at each going online, for an account that has stopped being a dealer.
+     */
+    private static void requireLeasingAllowed(Listing listing) {
+        if (listing.isLeasing() && listing.getSeller().getRole() != UserRole.PROFESSIONNEL) {
+            throw ApiException.leasingProfessionalOnly();
+        }
+    }
+
     private static List<Object> contentOf(Listing listing) {
         List<Object> content = new java.util.ArrayList<>();
         content.add(listing.getTitle());
@@ -588,6 +617,13 @@ public class ListingService {
         content.add(listing.getCo2EmissionsGKm());
         content.add(listing.getEmissionClass());
         content.add(listing.getVin());
+        content.add(listing.getOfferType());
+        content.add(listing.getLeasingType());
+        content.add(listing.getLeasingMonthly());
+        content.add(listing.getLeasingFirstPayment());
+        content.add(listing.getLeasingDurationMonths());
+        content.add(listing.getLeasingMileagePerYear());
+        content.add(listing.getLeasingOptionPrice());
         content.add(listing.isDamaged());
         content.add(listing.getDamageTypes());
         content.add(listing.getDamageRunning());

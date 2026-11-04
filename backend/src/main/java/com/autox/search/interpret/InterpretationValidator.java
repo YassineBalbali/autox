@@ -3,6 +3,8 @@ package com.autox.search.interpret;
 import com.autox.catalog.BodyType;
 import com.autox.catalog.FuelType;
 import com.autox.catalog.Gearbox;
+import com.autox.listing.LeasingType;
+import com.autox.listing.OfferType;
 import com.autox.listing.VehicleCondition;
 import com.autox.search.DamageFilter;
 import com.autox.search.ListingSearchCriteria;
@@ -75,6 +77,14 @@ class InterpretationValidator {
     private static final java.util.regex.Pattern GOOD_DEAL_WORDS = java.util.regex.Pattern.compile(
             "pas\\s+ch[eè]re?s?|bonnes?\\s+affaires?|bons?\\s+prix|bon\\s+march[eé]|petits?\\s+prix",
             java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE);
+
+    private static final java.util.regex.Pattern DAMAGE_WORDS = java.util.regex.Pattern.compile(
+            "accident[ée]+s?|endommag[ée]+s?|sinistr[ée]+s?|gr[êe]l[ée]+s?|inond[ée]+s?|[ée]paves?|pour\\s+pi[èe]ces|non\\s+roulante?s?",
+            java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE);
+    private static final long MIN_MONTHLY_EUROS = 10;
+    private static final long MAX_MONTHLY_EUROS = 10_000;
+    private static final long MIN_LEASE_MONTHS = 6;
+    private static final long MAX_LEASE_MONTHS = 120;
 
     private final CatalogueMatcher catalogue;
 
@@ -165,9 +175,36 @@ class InterpretationValidator {
             }
         }
 
-        // A verdict is never given to a damaged vehicle, so the two together can only find nothing.
-        // The model cannot be relied on to know: the rule is here, and what asked for it is reported.
-        if (goodDeals && !DamageFilter.allowsGoodDeals(damage)) {
+        // --- leasing: a search of its own -------------------------------------------------
+        List<LeasingType> leasingTypes = enums(answer, "leasingType", LeasingType.class, notUnderstood);
+        Integer monthlyMin = bounded(answer, "monthlyMin", MIN_MONTHLY_EUROS, MAX_MONTHLY_EUROS, "mensualité ", " €", notUnderstood);
+        Integer monthlyMax = bounded(answer, "monthlyMax", MIN_MONTHLY_EUROS, MAX_MONTHLY_EUROS, "mensualité ", " €", notUnderstood);
+        Integer durationMin = bounded(answer, "durationMin", MIN_LEASE_MONTHS, MAX_LEASE_MONTHS, "durée ", " mois", notUnderstood);
+        Integer durationMax = bounded(answer, "durationMax", MIN_LEASE_MONTHS, MAX_LEASE_MONTHS, "durée ", " mois", notUnderstood);
+        Integer allowanceMin = bounded(answer, "mileageAllowanceMin", 1000, 200_000, "kilométrage annuel ", " km", notUnderstood);
+        boolean leasing = "LEASING".equals(answer.path("offer").asText(""))
+                || !leasingTypes.isEmpty() || monthlyMin != null || monthlyMax != null
+                || durationMin != null || durationMax != null || allowanceMin != null;
+        if (leasing) {
+            // A price means nothing here: what a leasing search is priced by is the monthly payment.
+            if (monthlyMax == null && priceMax != null && priceMax <= MAX_MONTHLY_EUROS) {
+                monthlyMax = priceMax;
+            }
+            if (monthlyMin == null && priceMin != null && priceMin <= MAX_MONTHLY_EUROS) {
+                monthlyMin = priceMin;
+            }
+            priceMin = priceMax = null;
+            if (damage != null) {
+                // Nobody leases a damaged car, so that search could only be empty.
+                notUnderstood.add(wordsAskingForDamage(query));
+                damage = null;
+            }
+        }
+
+        // A verdict is never given to a damaged vehicle or a leasing offer, so either with "bonnes
+        // affaires" can only find nothing. The model cannot be relied on to know: the rule is here,
+        // and what asked for it is reported.
+        if (goodDeals && (leasing || !DamageFilter.allowsGoodDeals(damage))) {
             goodDeals = false;
             notUnderstood.add(wordsAskingForAGoodDeal(query));
         }
@@ -181,7 +218,7 @@ class InterpretationValidator {
                 yearFrom, yearTo,
                 priceMin == null ? null : priceMin * scale,
                 priceMax == null ? null : priceMax * scale,
-                hasPrice ? "EUR" : null,
+                hasPrice || monthlyMin != null || monthlyMax != null ? "EUR" : null,
                 mileageMin, mileageMax,
                 nullIfEmpty(fuels), nullIfEmpty(gearboxes), nullIfEmpty(bodies),
                 null,
@@ -190,9 +227,18 @@ class InterpretationValidator {
                 null, null, null, null,
                 null,
                 goodDeals ? List.of(PriceLevel.GOOD_DEAL) : null,
-                damage);
+                damage,
+                leasing ? OfferType.LEASING : null,
+                nullIfEmpty(leasingTypes),
+                monthlyMin == null ? null : monthlyMin * scale,
+                monthlyMax == null ? null : monthlyMax * scale,
+                durationMin,
+                durationMax,
+                allowanceMin,
+                null);
 
         String summary = summary(make, model, bodies, fuels, gearboxes, conditions, damage,
+                leasingSummary(leasing, leasingTypes, monthlyMin, monthlyMax, durationMin, durationMax, allowanceMin),
                 priceMin, priceMax, yearFrom, yearTo, mileageMin, mileageMax, location, goodDeals);
         return new InterpretResponse(criteria, summary,
                 notUnderstood.stream().limit(MAX_NOT_UNDERSTOOD).toList());
@@ -269,6 +315,33 @@ class InterpretationValidator {
         return decomposed.toLowerCase(Locale.ROOT).replace('’', '\'').replaceAll("\\s+", " ").strip();
     }
 
+    private static List<String> leasingSummary(boolean leasing, List<LeasingType> types, Integer monthlyMin,
+                                               Integer monthlyMax, Integer durationMin, Integer durationMax,
+                                               Integer allowanceMin) {
+        if (!leasing) {
+            return List.of();
+        }
+        List<String> parts = new ArrayList<>();
+        parts.add(types.isEmpty()
+                ? "Location (LOA ou LLD)"
+                : String.join(" ou ", types.stream().map(Enum::name).toList()));
+        range(parts, monthlyMin, monthlyMax, " €/mois");
+        if (durationMin != null && durationMin.equals(durationMax)) {
+            parts.add(durationMin + " mois");
+        } else {
+            range(parts, durationMin, durationMax, " mois");
+        }
+        if (allowanceMin != null) {
+            range(parts, allowanceMin, null, " km/an");
+        }
+        return parts;
+    }
+
+    private static String wordsAskingForDamage(String query) {
+        java.util.regex.Matcher words = DAMAGE_WORDS.matcher(query);
+        return words.find() ? words.group() : "véhicule endommagé";
+    }
+
     /** As the visitor wrote them, for the "not understood" line. */
     private static String wordsAskingForAGoodDeal(String query) {
         java.util.regex.Matcher words = GOOD_DEAL_WORDS.matcher(query);
@@ -279,7 +352,8 @@ class InterpretationValidator {
 
     private static String summary(CatalogueMatcher.Make make, CatalogueMatcher.Model model,
                                   List<BodyType> bodies, List<FuelType> fuels, List<Gearbox> gearboxes,
-                                  List<VehicleCondition> conditions, DamageFilter damage, Integer priceMin, Integer priceMax,
+                                  List<VehicleCondition> conditions, DamageFilter damage,
+                                  List<String> leasingParts, Integer priceMin, Integer priceMax,
                                   Integer yearFrom, Integer yearTo, Integer mileageMin, Integer mileageMax,
                                   String location, boolean goodDeals) {
         List<String> parts = new ArrayList<>();
@@ -295,6 +369,7 @@ class InterpretationValidator {
         } else if (damage == DamageFilter.ALL) {
             parts.add("Endommagés inclus");
         }
+        parts.addAll(leasingParts);
         range(parts, priceMin, priceMax, " €");
         if (yearFrom != null && yearFrom.equals(yearTo)) {
             parts.add(String.valueOf(yearFrom));

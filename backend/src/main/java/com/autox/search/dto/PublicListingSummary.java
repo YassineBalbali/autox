@@ -51,7 +51,10 @@ public record PublicListingSummary(
         Instant publishedAt,
 
         /** Null on an undamaged vehicle. */
-        com.autox.listing.dto.DamageView damage) {
+        com.autox.listing.dto.DamageView damage,
+
+        /** Null on a sale. */
+        com.autox.listing.dto.LeasingView leasing) {
 
     /** What a buyer sees about who is selling: a name and whether it is a trade seller. */
     public record SellerCard(UUID id, String displayName, String role) {

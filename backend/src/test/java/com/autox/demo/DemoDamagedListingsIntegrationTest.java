@@ -24,7 +24,8 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(properties = {
         "autox.demo.action=none",
         "autox.demo.listings=" + DemoDamagedListingsIntegrationTest.SEEDED,
-        "autox.demo.damaged-listings=" + DemoDamagedListingsIntegrationTest.DAMAGED})
+        "autox.demo.damaged-listings=" + DemoDamagedListingsIntegrationTest.DAMAGED,
+        "autox.demo.leasing-listings=0"})
 class DemoDamagedListingsIntegrationTest extends AbstractIntegrationTest {
 
     static final int SEEDED = 2;
