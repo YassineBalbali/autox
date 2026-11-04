@@ -349,7 +349,7 @@ of the interface.
 | Path | Who | What |
 |---|---|---|
 | `/` | anyone | Home: search card with a live count, recent searches, make, budget and category shortcuts. An old search link (`/?marque=…`) is forwarded to `/recherche` |
-| `/recherche` | anyone | Search results: filters, sort and view in the query string; a heart on each result marks it in this browser only |
+| `/recherche` | anyone | Search results: filters, sort and view in the query string, sales or leasing offers (`?offre=location`); a heart on each result marks it in this browser only |
 | `/annonces/:id` | anyone | One listing |
 | `/la-cote` | anyone | La Cote: what a described car is worth against live listings, the description in the query string |
 | `/connexion`, `/inscription` | anyone | Sign in, register (private seller or dealer) |
@@ -434,6 +434,20 @@ undamaged unless declared otherwise.
   Cote, and gets no verdict of its own: its price says nothing about the market for intact ones.
 - **Changing the declaration, in any direction, sends the listing back to moderation,** like any
   other change of content.
+
+### Leasing offers
+
+A listing is a sale or a leasing offer (LOA or LLD), and only a professional account can publish an
+offer, enforced on the server. [docs/leasing.md](docs/leasing.md) has the rules and, because LOA is
+consumer credit in France, exactly what the listing page says about it. It is not legal advice.
+
+- **A declared offer:** `offer` on `POST` and `PATCH /listings` carries the type, monthly payment,
+  first payment, duration, mileage allowance and, for an LOA, the option price. The server computes
+  and stores the total.
+- **Sales and offers never mix:** `GET /listings` returns sales unless `offer=LEASING`, which also
+  opens the filters and sorts on the terms.
+- **Never compared:** an offer is not a comparable for the price indicator or La Cote, and gets no
+  verdict.
 
 ### Accounts
 
@@ -716,6 +730,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
 | `docs/price-indicator.md` | "Bonne affaire" and the rest: the comparables rule, why, and how it is computed; La Cote, the same rule for a car that is not listed, and its limits |
 | `docs/messaging.md` | Messages between buyers and sellers: who may write, what each side sees, unread, rate limits, reports |
+| `docs/leasing.md` | LOA and LLD offers: the rules, what the page says and on what basis, what it does not cover, and that none of it is legal advice |
 | `docs/similar-listings.md` | "Annonces similaires": which listings, in what order, and when none are shown |
 | `docs/ai-search.md` | Natural-language search: the prompt, the server-side validation, the evaluation set and its results, the limits |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
