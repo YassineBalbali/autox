@@ -21,6 +21,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
       type="button"
       [class.chip--active]="active()"
       [attr.aria-pressed]="active()"
+      [disabled]="disabled()"
       (click)="toggled.emit(!active())"
     >
       <ng-content />
@@ -50,8 +51,14 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
       font-weight: var(--fw-semibold);
       white-space: nowrap;
 
-      &:hover {
+      &:hover:not(:disabled) {
         border-color: var(--c-ink-faint);
+      }
+
+      &:disabled {
+        background: var(--c-surface-sunk);
+        color: var(--c-ink-faint);
+        cursor: not-allowed;
       }
 
       // A finger's target: the full control height, not six pixels under it.
@@ -82,6 +89,8 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 })
 export class FilterChip {
   readonly active = input(false);
+  /** Greyed and not pressable, for a filter that cannot apply. Whoever disables it says why. */
+  readonly disabled = input(false);
   readonly count = input<number | null>(null);
 
   /** Emits the state the chip is asking to move to. */

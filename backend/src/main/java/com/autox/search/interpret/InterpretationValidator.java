@@ -71,6 +71,11 @@ class InterpretationValidator {
     private static final Map<VehicleCondition, String> CONDITION_LABELS = Map.of(
             VehicleCondition.NEW, "Neuf", VehicleCondition.USED, "Occasion");
 
+    /** The words the prompt turns into {@code goodDeals}, and their everyday neighbours. */
+    private static final java.util.regex.Pattern GOOD_DEAL_WORDS = java.util.regex.Pattern.compile(
+            "pas\\s+ch[eè]re?s?|bonnes?\\s+affaires?|bons?\\s+prix|bon\\s+march[eé]|petits?\\s+prix",
+            java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE);
+
     private final CatalogueMatcher catalogue;
 
     InterpretationValidator(CatalogueMatcher catalogue) {
@@ -158,6 +163,13 @@ class InterpretationValidator {
                     notUnderstood.add(part);
                 }
             }
+        }
+
+        // A verdict is never given to a damaged vehicle, so the two together can only find nothing.
+        // The model cannot be relied on to know: the rule is here, and what asked for it is reported.
+        if (goodDeals && !DamageFilter.allowsGoodDeals(damage)) {
+            goodDeals = false;
+            notUnderstood.add(wordsAskingForAGoodDeal(query));
         }
 
         long scale = Math.round(Math.pow(10, minorUnit));
@@ -255,6 +267,12 @@ class InterpretationValidator {
     static String fold(String text) {
         String decomposed = Normalizer.normalize(text, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
         return decomposed.toLowerCase(Locale.ROOT).replace('’', '\'').replaceAll("\\s+", " ").strip();
+    }
+
+    /** As the visitor wrote them, for the "not understood" line. */
+    private static String wordsAskingForAGoodDeal(String query) {
+        java.util.regex.Matcher words = GOOD_DEAL_WORDS.matcher(query);
+        return words.find() ? words.group().replaceAll("\\s+", " ") : "bonnes affaires";
     }
 
     // --- the summary ----------------------------------------------------------------

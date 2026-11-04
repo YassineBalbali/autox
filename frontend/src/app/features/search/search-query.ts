@@ -106,6 +106,16 @@ const SORT_SLUGS: Record<SearchSort, string> = {
   [SearchSort.MILEAGE_ASC]: 'km-croissant',
 };
 
+/**
+ * Whether "bonnes affaires" can find anything in this search. A damaged vehicle never gets a price
+ * verdict, so among damaged vehicles alone it never can. A rule of the search, so a link or a
+ * change of another filter cannot bring the two together and show an empty page for no visible
+ * reason. The server's interpreter holds the same rule.
+ */
+export function allowsGoodDeals(query: Pick<SearchQuery, 'damage'>): boolean {
+  return query.damage !== DamageFilter.DAMAGED_ONLY;
+}
+
 /** "État du véhicule" to its slug in the URL. The default has none: it is simply absent. */
 const DAMAGE_SLUGS: Partial<Record<DamageFilter, string>> = {
   [DamageFilter.DAMAGED_ONLY]: 'endommages',
@@ -131,6 +141,7 @@ const MAX_QUERY = 120;
  * A bad parameter costs that one filter; it never costs the page.
  */
 export function parseQuery(params: ParamMap): SearchQuery {
+  const damage = damageFromParams(params);
   const [yearMin, yearMax] = ordered(
     integer(params.get(PARAM.yearMin), YEAR_RANGE[0], YEAR_RANGE[1]),
     integer(params.get(PARAM.yearMax), YEAR_RANGE[0], YEAR_RANGE[1]),
@@ -162,10 +173,10 @@ export function parseQuery(params: ParamMap): SearchQuery {
     gearbox: enumList(params.get(PARAM.gearbox), Gearbox),
     body: enumList(params.get(PARAM.body), BodyType),
     condition: enumList(params.get(PARAM.condition), VehicleCondition),
-    damage: damageFromParams(params),
+    damage,
     location: text(params.get(PARAM.location)),
     // "1" and nothing else: a flag in a link is on or absent.
-    goodDeals: params.get(PARAM.goodDeals) === '1',
+    goodDeals: params.get(PARAM.goodDeals) === '1' && allowsGoodDeals({ damage }),
     sort: sortFromSlug(params.get(PARAM.sort)),
   };
 }
@@ -201,7 +212,7 @@ export function toQueryParams(query: SearchQuery): Params {
   put(PARAM.condition, enumSlugs(query.condition));
   put(PARAM.damage, DAMAGE_SLUGS[query.damage] ?? null);
   put(PARAM.location, query.location);
-  put(PARAM.goodDeals, query.goodDeals ? '1' : null);
+  put(PARAM.goodDeals, query.goodDeals && allowsGoodDeals(query) ? '1' : null);
   put(PARAM.sort, query.sort === DEFAULT_SORT ? null : SORT_SLUGS[query.sort]);
 
   return params;

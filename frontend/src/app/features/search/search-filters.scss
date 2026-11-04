@@ -65,6 +65,11 @@
   gap: var(--s-2);
 }
 
+.filters__note {
+  margin: var(--s-1) 0 0;
+  font-size: var(--t-xs);
+}
+
 .filters__chips {
   display: flex;
   flex-wrap: wrap;

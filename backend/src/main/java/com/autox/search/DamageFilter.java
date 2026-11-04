@@ -10,5 +10,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public enum DamageFilter {
     UNDAMAGED,
     DAMAGED_ONLY,
-    ALL
+    ALL;
+
+    /**
+     * Whether "bonnes affaires" can find anything alongside this. A damaged vehicle never gets a
+     * price verdict, so with damaged vehicles alone it never can.
+     */
+    public static boolean allowsGoodDeals(DamageFilter filter) {
+        return filter != DAMAGED_ONLY;
+    }
 }

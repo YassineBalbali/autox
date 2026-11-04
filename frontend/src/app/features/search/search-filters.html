@@ -58,10 +58,20 @@
     <fieldset class="filters__group">
       <legend i18n="@@filterMarket">Prix du marché</legend>
       <div class="filters__chips">
-        <app-filter-chip [active]="query().goodDeals" (toggled)="changed.emit({ goodDeals: $event })">
+        <app-filter-chip
+          [active]="query().goodDeals"
+          [disabled]="!goodDealsAllowed()"
+          data-filter="good-deals"
+          (toggled)="changed.emit({ goodDeals: $event })"
+        >
           <ng-container i18n="@@filterGoodDeals">Bonnes affaires uniquement</ng-container>
         </app-filter-chip>
       </div>
+      @if (!goodDealsAllowed()) {
+        <p class="meta filters__note" data-note="good-deals" i18n="@@filterGoodDealsDamaged">
+          Les véhicules endommagés ne sont pas comparés au prix du marché.
+        </p>
+      }
     </fieldset>
 
     <!-- One of three, always one: the first is what a search with no choice shows. -->

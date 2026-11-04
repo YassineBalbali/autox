@@ -29,7 +29,7 @@ import {
   GEARBOX_LABELS,
   labelOf,
 } from '../../shared/listing/labels.fr';
-import { SearchQuery, activeFilterCount } from './search-query';
+import { SearchQuery, activeFilterCount, allowsGoodDeals } from './search-query';
 import { VehicleFilter } from './vehicle-filter';
 
 /** One multi-choice filter: its key in the query, its heading, its options. */
@@ -148,6 +148,8 @@ export class SearchFilters {
     this.reference.enums().pipe(catchError(() => of({} as Record<string, string[]>))),
     { initialValue: {} as Record<string, string[]> },
   );
+
+  protected readonly goodDealsAllowed = computed(() => allowsGoodDeals(this.query()));
 
   protected readonly damageOptions = [DamageFilter.UNDAMAGED, DamageFilter.DAMAGED_ONLY, DamageFilter.ALL].map(
     (value) => ({ value, label: DAMAGE_FILTER_LABELS[value] }),
