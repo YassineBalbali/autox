@@ -6,6 +6,7 @@ import com.autox.auth.dto.LoginRequest;
 import com.autox.auth.dto.RegisterRequest;
 import com.autox.auth.throttle.LoginThrottleService;
 import com.autox.auth.throttle.RegistrationThrottle;
+import com.autox.auth.verification.EmailVerificationService;
 import com.autox.reference.Country;
 import com.autox.reference.CountryRepository;
 import com.autox.user.AppUser;
@@ -51,6 +52,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokens;
     private final LoginThrottleService loginThrottle;
     private final RegistrationThrottle registrationThrottle;
+    private final EmailVerificationService emailVerification;
 
     public AuthService(AppUserRepository users,
                        ProProfileRepository proProfiles,
@@ -59,7 +61,8 @@ public class AuthService {
                        AccessTokenService accessTokens,
                        RefreshTokenService refreshTokens,
                        LoginThrottleService loginThrottle,
-                       RegistrationThrottle registrationThrottle) {
+                       RegistrationThrottle registrationThrottle,
+                       EmailVerificationService emailVerification) {
         this.users = users;
         this.proProfiles = proProfiles;
         this.countries = countries;
@@ -68,6 +71,7 @@ public class AuthService {
         this.refreshTokens = refreshTokens;
         this.loginThrottle = loginThrottle;
         this.registrationThrottle = registrationThrottle;
+        this.emailVerification = emailVerification;
         this.dummyHash = passwordEncoder.encode("unused-placeholder-for-constant-time-login");
     }
 
@@ -97,6 +101,7 @@ public class AuthService {
         user.setFirstName(trimToNull(request.firstName()));
         user.setLastName(trimToNull(request.lastName()));
         user.setPhoneE164(trimToNull(request.phone()));
+        user.requireEmailVerification();
 
         try {
             users.saveAndFlush(user);
@@ -110,6 +115,8 @@ public class AuthService {
             proProfiles.save(ProProfile.forUser(user,
                     request.companyName().trim(), request.registrationNumber().trim()));
         }
+
+        emailVerification.issue(user);
 
         log.info("Registered user {} with role {}", user.getId(), user.getRole());
         return issueTokens(user, context);
@@ -175,8 +182,8 @@ public class AuthService {
 
     /**
      * An unverified email is allowed to sign in and manage its profile; the
-     * verification requirement attaches to publishing a listing instead. Suspended
-     * and closed accounts are refused outright.
+     * verification requirement attaches to publishing a listing and to sending a message
+     * instead. Suspended and closed accounts are refused outright.
      */
     private void requireLoginAllowed(AppUser user) {
         if (user.getDeletedAt() != null || user.getStatus() == UserStatus.DELETED) {

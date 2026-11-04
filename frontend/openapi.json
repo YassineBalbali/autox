@@ -266,6 +266,36 @@
         ]
       }
     },
+    "/api/v1/me/email/verification": {
+      "post": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Sends a new verification link, which replaces any earlier one.",
+        "description": "Sends a new verification link, which replaces any earlier one. Nothing happens if the\n address is already verified. Repeated requests answer 429 <code>RATE_LIMITED</code>.",
+        "operationId": "resendEmailVerification",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/listings": {
       "get": {
         "tags": [
@@ -1112,6 +1142,41 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/email/verify": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Verifies an address, using the token from the emailed link",
+        "description": "Verifies an address, using the token from the emailed link. No credentials needed: the link\n may well be opened on a device that is not signed in.\n\n <p>The link works once and for 24 hours. Every way it can fail answers 400\n <code>INVALID_VERIFICATION_TOKEN</code>.",
+        "operationId": "verifyEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "default": {
             "description": "Error. RFC 9457 problem+json; branch on `code`.",
@@ -3566,6 +3631,9 @@
           "emailVerified": {
             "type": "boolean"
           },
+          "emailVerificationPending": {
+            "type": "boolean"
+          },
           "countryCode": {
             "type": "string"
           },
@@ -4558,6 +4626,21 @@
           "password"
         ]
       },
+      "VerifyEmailRequest": {
+        "type": "object",
+        "description": "Spends a verification link.",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "the value from the emailed link's <code>token</code> parameter",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
       "SuspendUserRequest": {
         "type": "object",
         "properties": {
@@ -5140,6 +5223,9 @@
             "type": "string"
           },
           "emailVerified": {
+            "type": "boolean"
+          },
+          "emailVerificationPending": {
             "type": "boolean"
           },
           "createdAt": {
@@ -6507,11 +6593,21 @@
           "searchLast30Days": {
             "$ref": "#/components/schemas/SearchUsage",
             "description": "the same over 30 days"
+          },
+          "emailsLast7Days": {
+            "$ref": "#/components/schemas/EmailCounts",
+            "description": "transactional email written in the last 7 × 24 hours, by outcome"
+          },
+          "emailsLast30Days": {
+            "$ref": "#/components/schemas/EmailCounts",
+            "description": "the same over 30 × 24 hours"
           }
         },
         "required": [
           "daily",
           "demoDataPresent",
+          "emailsLast30Days",
+          "emailsLast7Days",
           "generatedAt",
           "last30Days",
           "last7Days",
@@ -6541,6 +6637,26 @@
           "day",
           "newListings",
           "registrations"
+        ]
+      },
+      "EmailCounts": {
+        "type": "object",
+        "description": "Transactional email in a period, by outcome.",
+        "properties": {
+          "sent": {
+            "type": "integer",
+            "format": "int64",
+            "description": "handed to the provider, which is not the same as delivered"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int64",
+            "description": "given up on after the last attempt"
+          }
+        },
+        "required": [
+          "failed",
+          "sent"
         ]
       },
       "ListingsByStatus": {
@@ -6874,6 +6990,8 @@
           "INVALID_REFRESH_TOKEN",
           "CURRENT_PASSWORD_INCORRECT",
           "INVALID_RESET_TOKEN",
+          "INVALID_VERIFICATION_TOKEN",
+          "EMAIL_NOT_VERIFIED",
           "TOO_MANY_ATTEMPTS",
           "RATE_LIMITED",
           "FORBIDDEN",

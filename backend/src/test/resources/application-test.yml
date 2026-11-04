@@ -65,6 +65,11 @@ autox:
     # variables, which outrank this file.
     # A recognisable value, asserted on in the reset-email test.
     password-reset-url: https://autox.test/reset-password
+    site-url: https://autox.test
+
+  scheduling:
+    # Off: a test runs the poller itself, so it knows when mail went out.
+    outbox-poll-cron: "-"
 
   public-api:
     rate-limit:

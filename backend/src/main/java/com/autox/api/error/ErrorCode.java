@@ -38,6 +38,12 @@ public enum ErrorCode {
     /** Reset token unknown, expired, already used, or replaced by a newer request. */
     INVALID_RESET_TOKEN,
 
+    /** Verification link unknown, expired, already used, or replaced by a newer one. */
+    INVALID_VERIFICATION_TOKEN,
+
+    /** This account cannot publish a listing or send a message until its address is verified. */
+    EMAIL_NOT_VERIFIED,
+
     /** Login throttled. Carries {@code retryAfterSeconds} and a {@code Retry-After} header. */
     TOO_MANY_ATTEMPTS,
 

@@ -83,7 +83,34 @@ public class RequiredConfigurationEnvironmentPostProcessor
         }
 
         inspectAi(environment, findings);
+        inspectMail(environment, findings);
         return findings;
+    }
+
+    /**
+     * The same reasoning as {@link #inspectAi}. Any other value here would match neither sender's
+     * condition, and the application would fail to start for want of an {@code EmailSender} bean.
+     * Case does not matter to those conditions, but a stray space does, so it is not normalised.
+     */
+    private static void inspectMail(Environment environment, List<Finding> findings) {
+        String provider = resolve(environment, RequiredSetting.MAIL_PROVIDER);
+        if (provider == null) {
+            return;
+        }
+        if (!provider.equalsIgnoreCase("log") && !provider.equalsIgnoreCase("brevo")) {
+            findings.add(new Finding(RequiredSetting.MAIL_PROVIDER, Finding.Problem.MALFORMED, provider));
+            return;
+        }
+        if (provider.equalsIgnoreCase("brevo")) {
+            for (RequiredSetting setting : RequiredSetting.BREVO) {
+                String value = resolve(environment, setting);
+                if (value == null) {
+                    findings.add(new Finding(setting, Finding.Problem.MISSING, null));
+                } else if (value.isBlank()) {
+                    findings.add(new Finding(setting, Finding.Problem.BLANK, value));
+                }
+            }
+        }
     }
 
     /**

@@ -140,13 +140,23 @@ autox:
       max-requests-per-address-per-window: 20
       window: PT1H
 
+    # A link works for a day. Three requests for a new one an hour, per account: each is an
+    # email on the provider's daily allowance.
+    email-verification:
+      ttl: PT24H
+      resends-per-window: 3
+      resend-window: PT1H
+
   mail:
     # `log` writes the message to the application log instead of sending it. That makes the
-    # reset flow walkable in development and is a credential leak in production: a real
-    # provider adds a value here and an EmailSender bean conditional on it.
+    # reset and verification flows walkable in development and is a credential leak in
+    # production: there, `brevo`, which makes the four settings below it required at startup.
     provider: ${AUTOX_MAIL_PROVIDER:log}
-    from-address: ${AUTOX_MAIL_FROM:no-reply@autox.local}
-    from-name: ${AUTOX_MAIL_FROM_NAME:AutoX}
+    api-key: ${AUTOX_MAIL_API_KEY:}
+    from-address: ${AUTOX_MAIL_FROM:}
+    from-name: ${AUTOX_MAIL_FROM_NAME:}
+    # The web app's origin, for the links in the verification and new-message emails.
+    site-url: ${AUTOX_SITE_URL:}
     # The frontend page that takes the token, which the email links to with ?token=…
     # The API cannot guess it: the web app is deployed separately. The path is French
     # because every URL the user sees is — it must match the Angular route exactly, since a
@@ -188,6 +198,8 @@ autox:
     # A HEAD on the bucket. Reports a storage outage that starts after startup, and keeps a
     # free Supabase project from pausing for inactivity (see StorageReadinessCheck).
     storage-check-interval: ${AUTOX_SCHEDULE_STORAGE_CHECK:PT12H}
+    # Every 30 seconds, but it asks the database only when it has reason to: see OutboxPoller.
+    outbox-poll-cron: ${AUTOX_SCHEDULE_OUTBOX_POLL:*/30 * * * * *}
 
   # Per account, in fixed windows. A reply costs one message; starting a conversation costs
   # one conversation and one message. Twenty messages in ten minutes is more than anyone types

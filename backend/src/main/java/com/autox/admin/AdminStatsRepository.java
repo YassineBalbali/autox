@@ -182,6 +182,16 @@ class AdminStatsRepository {
     }
 
     /** The last {@code days} Paris days, today included. */
+    AdminStats.EmailCounts emailCounts(int days) {
+        return jdbc.queryForObject("""
+                SELECT count(*) FILTER (WHERE status = 'SENT') AS sent,
+                       count(*) FILTER (WHERE status = 'FAILED') AS failed
+                  FROM outbox_email
+                 WHERE created_at > now() - make_interval(days => %d)
+                """.formatted(days),
+                (rs, row) -> new AdminStats.EmailCounts(rs.getLong("sent"), rs.getLong("failed")));
+    }
+
     SearchUsage searchUsage(int days) {
         Map<String, Object> totals = jdbc.queryForMap("""
                 SELECT coalesce(sum(requests), 0) AS requests,

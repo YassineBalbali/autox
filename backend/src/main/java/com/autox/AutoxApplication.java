@@ -21,6 +21,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         LoginThrottleProperties.class,
         RegistrationThrottleProperties.class,
         PasswordResetProperties.class,
+        com.autox.auth.verification.EmailVerificationProperties.class,
         MailProperties.class,
         ListingProperties.class,
         StorageProperties.class,

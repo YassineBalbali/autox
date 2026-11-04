@@ -77,6 +77,10 @@ public class AppUser extends BaseEntity {
     @Column(name = "email_verified_at")
     private Instant emailVerifiedAt;
 
+    /** Set on sign-up. An account from before verification existed, or a demo one, never has it. */
+    @Column(name = "email_verification_required", nullable = false)
+    private boolean emailVerificationRequired;
+
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
@@ -114,6 +118,15 @@ public class AppUser extends BaseEntity {
 
     public boolean isEmailVerified() {
         return emailVerifiedAt != null;
+    }
+
+    /** Held back: this account cannot publish a listing or send a message until it verifies. */
+    public boolean isEmailVerificationPending() {
+        return emailVerificationRequired && emailVerifiedAt == null;
+    }
+
+    public void requireEmailVerification() {
+        this.emailVerificationRequired = true;
     }
 
     public String getEmail() {

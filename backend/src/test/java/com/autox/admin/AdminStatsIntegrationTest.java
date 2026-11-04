@@ -322,7 +322,38 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
         assertUsage(stats.path("searchLast30Days"), 1115, 21, 33);
     }
 
+    // ---- transactional email ---------------------------------------------------------------
+
+    @Test
+    @DisplayName("emails sent and failed, over 7 and 30 days; one still being retried is neither")
+    void emails() throws Exception {
+        outboxEmail("SENT", "now()");
+        outboxEmail("SENT", "now() - interval '8 days'");
+        outboxEmail("SENT", "now() - interval '31 days'");
+        outboxEmail("FAILED", "now() - interval '1 day'");
+        outboxEmail("FAILED", "now() - interval '20 days'");
+        outboxEmail("FAILED", "now() - interval '40 days'");
+        jdbcTemplate.update("""
+                INSERT INTO outbox_email (id, recipient, subject, body_text, body_html, email_type)
+                VALUES (?, 'r@autox.test', 'Objet', 'T', 'H', 'NEW_MESSAGE')
+                """, UUID.randomUUID());
+
+        JsonNode stats = stats();
+
+        assertThat(stats.at("/emailsLast7Days/sent").asLong()).isEqualTo(1);
+        assertThat(stats.at("/emailsLast7Days/failed").asLong()).isEqualTo(1);
+        assertThat(stats.at("/emailsLast30Days/sent").asLong()).isEqualTo(2);
+        assertThat(stats.at("/emailsLast30Days/failed").asLong()).isEqualTo(2);
+    }
+
     // ---- helpers -------------------------------------------------------------------------
+
+    private void outboxEmail(String status, String createdAt) {
+        jdbcTemplate.update("""
+                INSERT INTO outbox_email (id, recipient, subject, email_type, status, sent_at, created_at)
+                VALUES (?, 'r@autox.test', 'Objet', 'NEW_MESSAGE', ?, %s, %s)
+                """.formatted("SENT".equals(status) ? "now()" : "NULL", createdAt), UUID.randomUUID(), status);
+    }
 
     private JsonNode stats() throws Exception {
         return json(mockMvc.perform(get(STATS).header(HttpHeaders.AUTHORIZATION, bearer(admin)))

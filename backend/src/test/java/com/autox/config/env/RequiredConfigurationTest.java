@@ -42,6 +42,63 @@ class RequiredConfigurationTest {
         return environment;
     }
 
+    private static Map<String, Object> brevoConfiguration() {
+        Map<String, Object> properties = validConfiguration();
+        properties.put("autox.mail.provider", "brevo");
+        properties.put("autox.mail.api-key", "a-key");
+        properties.put("autox.mail.from-address", "sender@example.com");
+        properties.put("autox.mail.from-name", "AutoX");
+        properties.put("autox.mail.site-url", "https://example.com");
+        return properties;
+    }
+
+    @Test
+    @DisplayName("the mail settings are not needed with the logging sender, or with none named")
+    void mailSettingsNotNeededByDefault() {
+        Map<String, Object> properties = validConfiguration();
+        assertThat(RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties))).isEmpty();
+
+        properties.put("autox.mail.provider", "log");
+        properties.put("autox.mail.api-key", "");
+        assertThat(RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("brevo with everything set passes")
+    void brevoConfigured() {
+        assertThat(RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(brevoConfiguration())))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("brevo requires the key, the sender and the site, each named, whether missing or blank")
+    void brevoRequiresItsSettings() {
+        Map<String, Object> missing = brevoConfiguration();
+        missing.remove("autox.mail.api-key");
+        missing.put("autox.mail.from-address", "");
+        missing.put("autox.mail.from-name", " ");
+        missing.put("autox.mail.site-url", "");
+
+        List<Finding> findings = RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(missing));
+
+        assertThat(findings).extracting(finding -> finding.setting().variable()).containsExactlyInAnyOrder(
+                "AUTOX_MAIL_API_KEY", "AUTOX_MAIL_FROM", "AUTOX_MAIL_FROM_NAME", "AUTOX_SITE_URL");
+    }
+
+    @Test
+    @DisplayName("a mail provider the application does not know is reported, not left to fail as a missing bean")
+    void unknownMailProvider() {
+        Map<String, Object> properties = validConfiguration();
+        properties.put("autox.mail.provider", "brevo ");
+
+        List<Finding> findings = RequiredConfigurationEnvironmentPostProcessor.inspect(environmentWith(properties));
+
+        assertThat(findings).singleElement().satisfies(finding -> {
+            assertThat(finding.setting().variable()).isEqualTo("AUTOX_MAIL_PROVIDER");
+            assertThat(finding.problem()).isEqualTo(Finding.Problem.MALFORMED);
+        });
+    }
+
     @Test
     @DisplayName("a fully configured environment produces no findings")
     void fullyConfiguredPasses() {

@@ -85,6 +85,15 @@ public class MessagingRepository {
         return Boolean.TRUE.equals(open);
     }
 
+    /** The address to notify this person at, unless their account is closed or suspended. */
+    public java.util.Optional<String> notifiableEmail(UUID userId) {
+        return jdbc.query(
+                "SELECT u.email FROM app_user u WHERE u.id = :id AND u.deleted_at IS NULL AND "
+                        + ACCOUNT_OPEN.formatted("u"),
+                new MapSqlParameterSource("id", userId),
+                (rs, row) -> rs.getString(1)).stream().findFirst();
+    }
+
     // ---- writing ----------------------------------------------------------------------
 
     /**

@@ -1,26 +1,31 @@
 package com.autox.auth.password;
 
 import com.autox.common.Sha256;
+import com.autox.mail.EmailOutbox;
+import com.autox.mail.EmailTemplates;
+import com.autox.mail.EmailType;
+import com.autox.mail.MailProperties;
 import com.autox.user.AppUser;
 import com.autox.user.AppUserRepository;
 import com.autox.user.UserStatus;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Creates the reset token row, in its own bean and therefore its own transaction.
+ * Creates the reset token row and its email, in its own bean and therefore its own transaction.
  *
- * <p>Separate from {@link PasswordResetService} on purpose. The service has to commit the
- * token and <em>then</em> send the email, and a {@code @Transactional} method called from a
- * sibling method of the same class is not proxied — it would silently run with no
- * transaction at all. This codebase has been bitten by self-invocation enough times to make
- * the boundary a class boundary.
+ * <p>Separate from {@link PasswordResetService} on purpose. The service counts the request in
+ * the throttle's transaction first, and a {@code @Transactional} method called from a sibling
+ * method of the same class is not proxied — it would silently run with no transaction at all.
+ * This codebase has been bitten by self-invocation enough times to make the boundary a class
+ * boundary.
  */
 @Service
 public class PasswordResetTokenIssuer {
@@ -31,24 +36,30 @@ public class PasswordResetTokenIssuer {
     private final AppUserRepository users;
     private final PasswordResetTokenRepository tokens;
     private final PasswordResetProperties properties;
+    private final EmailOutbox outbox;
+    private final MailProperties mail;
     private final SecureRandom random = new SecureRandom();
 
     public PasswordResetTokenIssuer(AppUserRepository users,
                                     PasswordResetTokenRepository tokens,
-                                    PasswordResetProperties properties) {
+                                    PasswordResetProperties properties,
+                                    EmailOutbox outbox,
+                                    MailProperties mail) {
         this.users = users;
         this.tokens = tokens;
         this.properties = properties;
+        this.outbox = outbox;
+        this.mail = mail;
     }
 
     /**
-     * @return the token and what is needed to email it, or empty if no account should get one
+     * @return whether a link was issued: false if no account should get one
      */
     @Transactional
-    public Optional<Issued> issue(String submittedEmail, String ipAddress) {
+    public boolean issue(String submittedEmail, String ipAddress) {
         AppUser user = users.findActiveByEmail(submittedEmail.trim()).orElse(null);
         if (user == null || !isResettable(user)) {
-            return Optional.empty();
+            return false;
         }
 
         Instant now = Instant.now();
@@ -61,7 +72,10 @@ public class PasswordResetTokenIssuer {
 
         log.info("Issued a password reset token for user {}, valid for {}s",
                 user.getId(), properties.ttl().toSeconds());
-        return Optional.of(new Issued(user.getEmail(), user.getLocale(), value));
+        String link = mail.passwordResetUrl() + "?token=" + URLEncoder.encode(value, StandardCharsets.UTF_8);
+        outbox.enqueue(new EmailOutbox.Draft(user.getEmail(), EmailType.PASSWORD_RESET,
+                EmailTemplates.passwordReset(link, properties.ttl().toMinutes())));
+        return true;
     }
 
     /**
@@ -81,9 +95,5 @@ public class PasswordResetTokenIssuer {
         byte[] bytes = new byte[TOKEN_BYTES];
         random.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    /** What the caller needs to send the email: not the entity, which is detached by then. */
-    public record Issued(String email, String locale, String token) {
     }
 }

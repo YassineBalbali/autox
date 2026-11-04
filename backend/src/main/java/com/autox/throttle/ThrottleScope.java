@@ -48,5 +48,8 @@ public enum ThrottleScope {
      * Natural-language search requests from one client address. Its own scope, and far below
      * {@link #PUBLIC_READ}: each one spends a shared language-model quota, not just a query.
      */
-    SEARCH_INTERPRET
+    SEARCH_INTERPRET,
+
+    /** Verification links asked for again by one account. Keyed by user id. */
+    EMAIL_VERIFICATION
 }

@@ -8,8 +8,10 @@ import org.springframework.stereotype.Component;
 /**
  * Writes email to the log instead of sending it.
  *
- * <p>This is how the reset flow is usable in development: the token is in the body, and
- * the body is in the console, so the whole journey can be walked without a mail provider.
+ * <p>This is how the reset and verification flows are usable in development: the token is in the
+ * body, and the body is in the console, so the whole journey can be walked without a mail
+ * provider. It is the one place in the application that logs a body, because that is what it is
+ * for.
  *
  * <p>It is also a loaded gun, and says so. The body of a password reset email <em>is</em> a
  * credential: anyone who can read the log can take over any account. So it warns once at
@@ -29,8 +31,8 @@ public class LoggingEmailSender implements EmailSender {
 
     public LoggingEmailSender() {
         log.warn("No email provider is configured (autox.mail.provider=log): transactional email is "
-                + "written to this log instead of being sent, so password reset links are readable "
-                + "here. Do not run this configuration in production.");
+                + "written to this log instead of being sent, so password reset and verification links "
+                + "are readable here. Do not run this configuration in production.");
     }
 
     @Override
@@ -39,12 +41,11 @@ public class LoggingEmailSender implements EmailSender {
 
                         ---- email (not sent: no provider configured) ----
                         to:      {}
-                        locale:  {}
                         subject: {}
                         id:      {}
 
                         {}
                         --------------------------------------------------""",
-                message.to(), message.locale(), message.subject(), message.messageId(), message.body());
+                message.to(), message.subject(), message.messageId(), message.textBody());
     }
 }

@@ -3,15 +3,9 @@ package com.autox.auth.password;
 import com.autox.api.error.ApiException;
 import com.autox.auth.RefreshTokenService;
 import com.autox.common.Sha256;
-import com.autox.mail.EmailMessage;
-import com.autox.mail.EmailSender;
-import com.autox.mail.MailProperties;
 import com.autox.user.AppUser;
 import com.autox.user.TokenRevocationReason;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * response that differed for a registered address would hand out a list of the site's
  * users. {@link #requestReset} therefore answers identically in every case — unknown
  * address, suspended account, mail provider down — and the only thing that varies is
- * whether an email is actually sent.
+ * whether an email is written to the outbox.
  *
  * <p>That is also why the throttle counts <em>before</em> the account lookup: a cap that
  * only applied to real accounts would leak existence through the 429.
@@ -39,36 +33,27 @@ public class PasswordResetService {
     private final PasswordResetTokenIssuer issuer;
     private final PasswordResetTokenRepository tokens;
     private final PasswordResetThrottle throttle;
-    private final PasswordResetProperties properties;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokens;
-    private final EmailSender email;
-    private final MailProperties mail;
 
     public PasswordResetService(PasswordResetTokenIssuer issuer,
                                 PasswordResetTokenRepository tokens,
                                 PasswordResetThrottle throttle,
-                                PasswordResetProperties properties,
                                 PasswordEncoder passwordEncoder,
-                                RefreshTokenService refreshTokens,
-                                EmailSender email,
-                                MailProperties mail) {
+                                RefreshTokenService refreshTokens) {
         this.issuer = issuer;
         this.tokens = tokens;
         this.throttle = throttle;
-        this.properties = properties;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokens = refreshTokens;
-        this.email = email;
-        this.mail = mail;
     }
 
     /**
      * Issues a reset link, if there is an account that can use one.
      *
-     * <p>Deliberately not transactional here. The token is committed by the issuer and the
-     * email goes out afterwards, so a slow mail provider never holds a database connection
-     * open and a token is never emailed that a later rollback would have invalidated.
+     * <p>The issuer writes the token and its email in one transaction, and the poller sends it
+     * afterwards, so a slow mail provider never holds up the caller, and the time this takes
+     * says nothing about whether the address has an account.
      *
      * @throws ApiException 429 if this account or this caller has asked too often
      */
@@ -78,14 +63,10 @@ public class PasswordResetService {
             throw ApiException.rateLimited(decision.retryAfterSeconds());
         }
 
-        Optional<PasswordResetTokenIssuer.Issued> issued = issuer.issue(submittedEmail, ipAddress);
-        if (issued.isEmpty()) {
+        if (!issuer.issue(submittedEmail, ipAddress)) {
             // Nothing to do, and nothing to say: the caller gets the same answer either way.
             log.info("Password reset requested for an address with no eligible account");
-            return;
         }
-
-        email.send(resetEmail(issued.get()));
     }
 
     /**
@@ -119,29 +100,5 @@ public class PasswordResetService {
     @Transactional
     public int purgeExpiredTokens(Instant before) {
         return tokens.deleteExpiredBefore(before);
-    }
-
-    private EmailMessage resetEmail(PasswordResetTokenIssuer.Issued issued) {
-        String link = mail.passwordResetUrl() + "?token="
-                + URLEncoder.encode(issued.token(), StandardCharsets.UTF_8);
-
-        // English, and not localised: there is no message-bundle infrastructure, and a
-        // half-built one would be worse than an obvious gap. The recipient's locale travels
-        // with the message, so adding templates later changes the sender, not this.
-        String body = """
-                Someone asked to reset the password for your AutoX account.
-
-                To choose a new one, open this link within %d minutes:
-
-                %s
-
-                The link works once. If you did not ask for this you can ignore this email —
-                your password has not been changed."""
-                .formatted(properties.ttl().toMinutes(), link);
-
-        // The hash of the token doubles as the idempotency key: unique per request, and
-        // already not a credential, so it is safe to hand to a provider and to log.
-        return new EmailMessage(issued.email(), "Reset your AutoX password", body,
-                issued.locale(), Sha256.hex(issued.token()));
     }
 }

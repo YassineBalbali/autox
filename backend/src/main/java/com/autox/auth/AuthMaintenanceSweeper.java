@@ -2,6 +2,8 @@ package com.autox.auth;
 
 import com.autox.auth.password.PasswordResetService;
 import com.autox.auth.throttle.LoginThrottleService;
+import com.autox.auth.verification.EmailVerificationService;
+import com.autox.mail.EmailOutbox;
 import com.autox.scheduling.ScheduledTaskCoordinator;
 import java.time.Duration;
 import java.time.Instant;
@@ -34,18 +36,27 @@ public class AuthMaintenanceSweeper {
      */
     private static final Duration AUDIT_RETENTION = Duration.ofDays(30);
 
+    /** Sent and failed emails: past the dashboard's thirty days, an address has no reason to stay. */
+    private static final Duration OUTBOX_RETENTION = Duration.ofDays(90);
+
     private final LoginThrottleService throttle;
     private final RefreshTokenService refreshTokens;
     private final PasswordResetService passwordReset;
+    private final EmailVerificationService emailVerification;
+    private final EmailOutbox outbox;
     private final ScheduledTaskCoordinator coordinator;
 
     public AuthMaintenanceSweeper(LoginThrottleService throttle,
                                   RefreshTokenService refreshTokens,
                                   PasswordResetService passwordReset,
+                                  EmailVerificationService emailVerification,
+                                  EmailOutbox outbox,
                                   ScheduledTaskCoordinator coordinator) {
         this.throttle = throttle;
         this.refreshTokens = refreshTokens;
         this.passwordReset = passwordReset;
+        this.emailVerification = emailVerification;
+        this.outbox = outbox;
         this.coordinator = coordinator;
     }
 
@@ -72,6 +83,16 @@ public class AuthMaintenanceSweeper {
             int resets = passwordReset.purgeExpiredTokens(before);
             if (resets > 0) {
                 log.debug("Purged {} long-expired password reset token(s)", resets);
+            }
+
+            int verifications = emailVerification.purgeExpiredTokens(before);
+            if (verifications > 0) {
+                log.debug("Purged {} long-expired verification token(s)", verifications);
+            }
+
+            int emails = outbox.purgeFinishedBefore(Instant.now().minus(OUTBOX_RETENTION));
+            if (emails > 0) {
+                log.debug("Purged {} old outbox email(s)", emails);
             }
         });
     }
