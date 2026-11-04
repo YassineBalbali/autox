@@ -104,6 +104,24 @@ describe('parseQuery', () => {
     });
   });
 
+  describe('good deals among damaged vehicles alone, which can never find anything', () => {
+    it('does not read them from a link', () => {
+      expect(parse({ etat_vehicule: 'endommages', bonnes_affaires: '1' }).goodDeals).toBe(false);
+      expect(parse({ etat: 'DAMAGED', bonnes_affaires: '1' }).goodDeals).toBe(false);
+    });
+
+    it('keeps them where they can find something', () => {
+      expect(parse({ bonnes_affaires: '1' }).goodDeals).toBe(true);
+      expect(parse({ etat_vehicule: 'tous', bonnes_affaires: '1' }).goodDeals).toBe(true);
+    });
+
+    it('drops them from the link when damaged-only is chosen with them on', () => {
+      const params = toQueryParams({ ...EMPTY_QUERY, goodDeals: true, damage: DamageFilter.DAMAGED_ONLY });
+
+      expect(params).toEqual({ etat_vehicule: 'endommages' });
+    });
+  });
+
   it('reads the good-deals flag as on only when it is 1', () => {
     // A flag in a link is on or absent; "true", "oui" or "0" are not guesses worth making.
     expect(parse({ bonnes_affaires: '1' }).goodDeals).toBe(true);

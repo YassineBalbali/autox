@@ -388,6 +388,40 @@ class SearchInterpretIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("damaged vehicles and good deals together are never applied: damage stays, the words are reported")
+    void goodDealsCannotApplyToDamagedVehicles() throws Exception {
+        // "golf accidentée pas chère" found nothing, live: a damaged vehicle never gets a verdict.
+        for (Map.Entry<String, String> asked : Map.of(
+                "golf accidentée pas chère", "pas chère",
+                "clio non roulante Bonne Affaire", "Bonne Affaire",
+                "épave à bon  prix", "bon prix",
+                "voiture accidentée intéressante", "bonnes affaires").entrySet()) {
+            model.answer(answer(Map.of("damage", "DAMAGED_ONLY", "goodDeals", true)));
+
+            interpret(asked.getKey())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.criteria.damage").value("DAMAGED_ONLY"))
+                    .andExpect(jsonPath("$.criteria.priceLevel").doesNotExist())
+                    .andExpect(jsonPath("$.notUnderstood").value(org.hamcrest.Matchers.contains(asked.getValue())))
+                    .andExpect(jsonPath("$.summary").value("Véhicules endommagés"));
+        }
+    }
+
+    @Test
+    @DisplayName("good deals stay on where they can find something: alone, and with damaged vehicles included")
+    void goodDealsStayWhereTheyMeanSomething() throws Exception {
+        model.answer(answer(Map.of("goodDeals", true)));
+        interpret("citadine pas chère")
+                .andExpect(jsonPath("$.criteria.priceLevel[0]").value("GOOD_DEAL"))
+                .andExpect(jsonPath("$.notUnderstood").isEmpty());
+
+        model.answer(answer(Map.of("damage", "ALL", "goodDeals", true)));
+        interpret("clio pas chère même accidentée")
+                .andExpect(jsonPath("$.criteria.damage").value("ALL"))
+                .andExpect(jsonPath("$.criteria.priceLevel[0]").value("GOOD_DEAL"));
+    }
+
+    @Test
     @DisplayName("no answer about damage, or one the filter does not know, leaves the default")
     void damageDefault() throws Exception {
         model.answer(answer(Map.of()));

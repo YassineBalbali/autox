@@ -4,7 +4,7 @@ import { Component, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { BASE_PATH, FuelType, Gearbox, ResultCount } from '../../core/api';
+import { DamageFilter, BASE_PATH, FuelType, Gearbox, ResultCount } from '../../core/api';
 import { PHONE_SCREEN, stubDialogs, stubMedia } from '../../core/ui/dom-testing';
 import { SearchFilters, showLabel } from './search-filters';
 import { EMPTY_QUERY, SearchQuery } from './search-query';
@@ -122,6 +122,25 @@ describe('SearchFilters', () => {
   });
 
   describe('it shows the query it is given', () => {
+    it('disables good deals among damaged vehicles alone, and says why', async () => {
+      const root = await render({ ...EMPTY_QUERY, damage: DamageFilter.DAMAGED_ONLY });
+      const chip = root.querySelector('[data-filter="good-deals"] button') as HTMLButtonElement;
+
+      expect(chip.disabled).toBe(true);
+      expect(root.querySelector('[data-note="good-deals"]')?.textContent).toContain(
+        'ne sont pas comparés au prix du marché',
+      );
+      chip.click();
+      expect(host.patches).toEqual([]);
+    });
+
+    it.each([DamageFilter.UNDAMAGED, DamageFilter.ALL])('leaves good deals available with %s', async (damage) => {
+      const root = await render({ ...EMPTY_QUERY, damage });
+
+      expect((root.querySelector('[data-filter="good-deals"] button') as HTMLButtonElement).disabled).toBe(false);
+      expect(root.querySelector('[data-note="good-deals"]')).toBeNull();
+    });
+
     it('reflects every kind of filter it has', async () => {
       const root = await render({
         ...EMPTY_QUERY,
