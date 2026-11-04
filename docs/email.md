@@ -81,7 +81,8 @@ restores ACTIVE rather than the `PENDING_VERIFICATION` it was suspended from.
 ## New-message notifications
 
 To the recipient, never the sender. From AutoX, with no Reply-To, so a reply cannot reach the other
-user. The email says who wrote (display name), about which listing, and links to the conversation.
+user. The email says who wrote (display name), about which listing, and links to the conversation,
+which is where it says to reply.
 It holds neither the message's text nor an address. A display name or a title that contains an
 address is replaced by "Un utilisateur" or "une annonce". Both are typed by other users, so they are
 escaped in the HTML and lose their line breaks in the subject.
@@ -95,8 +96,19 @@ message in the window sends nothing, then or afterwards; the unread count on the
 A demo seller gets nothing, because their address is invented and a bounce costs the sender's
 reputation. Neither does a suspended or closed account.
 
+## Delivery in practice
+
+One real verification email has been sent through Brevo, on 4 November 2026, from the local stack
+to a Gmail address, with `AUTOX_MAIL_FROM` set to a verified Gmail sender.
+
+- It arrived in the inbox, not in spam. That is one message to one Gmail mailbox, not a measure of
+  deliverability elsewhere.
+- **Brevo rewrote the sender** to `<sender>@<id>.brevosend.com`. So the address recipients see is
+  not the one in `AUTOX_MAIL_FROM`.
+
 ## Changing this
 
-The wording is in `EmailTemplates`. The link paths are in `EmailVerificationService` and
+The wording is in `EmailTemplates`. Every email ends with "Cet e-mail est envoyé automatiquement,
+merci de ne pas y répondre." The link paths are in `EmailVerificationService` and
 `NewMessageNotifier`, and they have to match the Angular routes: a mismatch produces a link that
 loads the application and renders nothing.
