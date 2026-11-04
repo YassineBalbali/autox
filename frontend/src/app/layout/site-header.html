@@ -91,6 +91,15 @@
           <a
             class="account-menu__item"
             role="menuitem"
+            routerLink="/mes-recherches"
+            (click)="closeMenu()"
+            i18n="@@headerMySearches"
+          >
+            Mes recherches
+          </a>
+          <a
+            class="account-menu__item"
+            role="menuitem"
             routerLink="/mon-compte"
             (click)="closeMenu()"
             i18n="@@headerAccount"

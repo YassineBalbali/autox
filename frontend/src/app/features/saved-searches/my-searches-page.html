@@ -1,0 +1,111 @@
+<div class="stack">
+  <header>
+    <h1 class="page-title" i18n="@@mySearchesTitle">Mes recherches</h1>
+    @if (state() === 'ready' && searches().length > 0) {
+      <p class="meta" data-searches-count>{{ searches().length }} / {{ max }} <ng-container i18n="@@mySearchesCount">recherches enregistrées</ng-container></p>
+    }
+  </header>
+
+  @switch (state()) {
+    @case ('loading') {
+      <div class="panel"><p class="meta" aria-busy="true" i18n="@@mySearchesLoading">Chargement de vos recherches…</p></div>
+    }
+
+    @case ('error') {
+      <div class="panel stack">
+        <app-alert kind="error">{{ failure() }}</app-alert>
+        <div><button class="btn btn--quiet" type="button" (click)="load()" i18n="@@retry">Réessayer</button></div>
+      </div>
+    }
+
+    @case ('ready') {
+      @if (failure()) {
+        <app-alert kind="error" data-failure>{{ failure() }}</app-alert>
+      }
+
+      @if (searches().length === 0) {
+        <div class="panel stack" data-empty>
+          <p i18n="@@mySearchesEmpty">Aucune recherche enregistrée.</p>
+          <p class="meta" i18n="@@mySearchesEmptyHow">
+            Lancez une recherche, puis « Créer une alerte » : les nouvelles annonces vous seront envoyées chaque matin.
+          </p>
+          <div><a class="btn btn--primary" routerLink="/recherche" i18n="@@mySearchesGoSearch">Rechercher</a></div>
+        </div>
+      }
+
+      @for (search of searches(); track search.id) {
+        <section class="panel stack saved" [attr.data-search]="search.id">
+          @if (renaming() === search.id) {
+            <form class="saved__rename" (submit)="rename($event, search)">
+              <label class="visually-hidden" [attr.for]="'nom-' + search.id" i18n="@@alertName">Nom de l’alerte</label>
+              <input
+                class="input"
+                type="text"
+                maxlength="80"
+                [id]="'nom-' + search.id"
+                [value]="draftName()"
+                (input)="editName($event)"
+              />
+              <button class="btn btn--primary" type="submit" data-action="save-name" i18n="@@save">Enregistrer</button>
+              <button class="btn btn--quiet" type="button" (click)="cancelRename()" i18n="@@cancel">Annuler</button>
+            </form>
+          } @else {
+            <div class="saved__head">
+              <h2 class="saved__name">{{ search.name }}</h2>
+              @if (search.paused) {
+                <span class="tag" data-paused i18n="@@mySearchesPaused">En pause</span>
+              }
+            </div>
+          }
+
+          @if (search.readable) {
+            <p class="saved__new" data-new [class.saved__new--some]="search.newCount > 0">{{ newLabel(search) }}</p>
+          }
+
+          @if (!search.readable) {
+            <app-alert kind="error" data-unreadable i18n="@@mySearchesUnreadable">
+              Cette recherche ne peut plus être lue, et elle n’envoie plus d’alerte. Supprimez-la et créez-en une nouvelle.
+            </app-alert>
+          }
+          @if (search.missingMake !== undefined && search.missingMake !== null) {
+            <app-alert kind="info" data-missing-make>
+              <ng-container i18n="@@mySearchesMissingMake">La marque</ng-container>
+              {{ search.missingMake }}
+              <ng-container i18n="@@mySearchesMissingMakeAfter">n’existe plus sur AutoX : cette recherche continue sans elle.</ng-container>
+            </app-alert>
+          }
+          @if (search.missingModel !== undefined && search.missingModel !== null) {
+            <app-alert kind="info" data-missing-model>
+              <ng-container i18n="@@mySearchesMissingModel">Le modèle</ng-container>
+              {{ search.missingModel }}
+              <ng-container i18n="@@mySearchesMissingModelAfter">n’existe plus sur AutoX : cette recherche continue sans lui.</ng-container>
+            </app-alert>
+          }
+
+          @if (confirmingDelete() === search.id) {
+            <div class="saved__actions" data-confirm-delete>
+              <span i18n="@@mySearchesConfirmDelete">Supprimer cette recherche et son alerte ?</span>
+              <button class="btn btn--danger" type="button" data-action="confirm-delete" (click)="remove(search)" i18n="@@delete">Supprimer</button>
+              <button class="btn btn--quiet" type="button" (click)="cancelDelete()" i18n="@@cancel">Annuler</button>
+            </div>
+          } @else {
+            <div class="saved__actions">
+              <button class="btn btn--primary" type="button" data-action="open" [disabled]="!search.readable" (click)="open(search)" i18n="@@mySearchesOpen">
+                Voir la recherche
+              </button>
+              <button class="btn btn--quiet" type="button" data-action="rename" (click)="startRename(search)" i18n="@@mySearchesRename">Renommer</button>
+              <button class="btn btn--quiet" type="button" data-action="pause" (click)="togglePause(search)">
+                @if (search.paused) {
+                  <ng-container i18n="@@mySearchesResume">Reprendre l’alerte</ng-container>
+                } @else {
+                  <ng-container i18n="@@mySearchesPause">Mettre en pause</ng-container>
+                }
+              </button>
+              <button class="btn btn--quiet" type="button" data-action="delete" (click)="askDelete(search)" i18n="@@delete">Supprimer</button>
+            </div>
+          }
+        </section>
+      }
+    }
+  }
+</div>

@@ -278,10 +278,35 @@
                   <td class="dash__num">{{ number(s.emailsLast7Days.failed) }}</td>
                   <td class="dash__num">{{ number(s.emailsLast30Days.failed) }}</td>
                 </tr>
+                <tr data-row="alerts">
+                  <th scope="row" i18n="@@dashboardEmailsAlerts">Dont alertes de recherche</th>
+                  <td class="dash__num">{{ number(s.emailsLast7Days.alertsSent) }}</td>
+                  <td class="dash__num">{{ number(s.emailsLast30Days.alertsSent) }}</td>
+                </tr>
               </tbody>
             </table>
             <p class="meta dash__note" i18n="@@dashboardEmailsNote">
               Envoyés : remis au prestataire, ce qui ne dit pas s’ils sont arrivés. Échoués : abandonnés après cinq tentatives.
+            </p>
+          </section>
+
+          <!-- Saved searches, and the way to test their e-mail without waiting for the morning. -->
+          <section class="panel dash__panel" aria-labelledby="dash-alerts">
+            <h2 id="dash-alerts" class="dash__heading" i18n="@@dashboardAlerts">Alertes</h2>
+            <p class="dash__figure" data-figure="saved-searches">
+              <strong>{{ number(s.activeSavedSearches) }}</strong>
+              <ng-container i18n="@@dashboardAlertsActive"> recherches enregistrées actives</ng-container>
+            </p>
+            <div>
+              <button class="btn btn--quiet" type="button" data-action="send-my-digest" [disabled]="sendingDigest()" (click)="sendMyDigest()" i18n="@@dashboardSendDigest">
+                M’envoyer mon résumé maintenant
+              </button>
+            </div>
+            @if (digestResult()) {
+              <p class="meta" data-digest-result aria-live="polite">{{ digestResult() }}</p>
+            }
+            <p class="meta dash__note" i18n="@@dashboardSendDigestNote">
+              Pour tester : envoie uniquement le résumé de votre compte, avec ce qui est nouveau dans vos propres recherches. Il part dans la minute.
             </p>
           </section>
         </div>
