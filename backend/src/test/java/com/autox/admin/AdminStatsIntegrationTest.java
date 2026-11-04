@@ -63,8 +63,8 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get(STATS).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
                 .andExpect(status().isOk())
-                // Nothing between here and the administrator may keep a copy.
-                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "max-age=60, private"));
+                // Nothing may keep a copy, the browser included: it would outlive the caller's rights.
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"));
     }
 
     // ---- empty --------------------------------------------------------------------------

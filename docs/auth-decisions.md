@@ -100,11 +100,18 @@ of disruption). Refresh tokens are unaffected — they are random, not signed.
 
 ## 5. The role travels inside the access token
 
-`hasRole('ADMIN')` reads the `role` claim, so no database hit per request. The
-consequence: a role change or a suspension takes up to 15 minutes to be felt on
-access-token-authenticated calls. Refresh is checked against the database every
-time, so a suspension bites within one token cycle at the latest. Sending a message and the
-administrators' user endpoints read the account's row as well, so a stale token gets nothing there.
+`hasRole` reads the `role` claim, so an ordinary request costs no database read. The
+consequence: for an ordinary account, a role change or a suspension takes up to 15 minutes to be
+felt on access-token-authenticated calls. Refresh is checked against the database every time, so a
+suspension bites within one token cycle at the latest, and sending a message reads the account's
+row as well.
+
+**Administrator rights are the exception: they end at once.** A token that says ADMIN, and only
+such a token, is checked against the account's row on every request, in
+`CurrentAdminAuthenticationConverter`. If the row no longer backs it, the claim is removed before
+anything else sees the token, so path rules, `@PreAuthorize` and `CurrentUser.isAdmin` all agree.
+The cost is one primary-key read per administrator request. Dashboard figures are `no-store` for
+the same reason: a copy in a browser would be shown without the server being asked.
 
 If you ever need instant revocation, that is a token blocklist in Redis — real
 infrastructure, and a tax on every request. I would not.

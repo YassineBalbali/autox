@@ -1,7 +1,6 @@
 package com.autox.admin;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.time.Duration;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,8 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminStatsController {
 
-    /** Private: these figures are for administrators, and no shared cache may hold them. */
-    private static final CacheControl CACHE = CacheControl.maxAge(Duration.ofMinutes(1)).cachePrivate();
+    /**
+     * Not kept anywhere, a browser included: a kept copy would be shown to someone whose rights ended
+     * after it was fetched, without the server being asked. The service holds the figures for a
+     * minute, and that is the cache that spares the database.
+     */
+    private static final CacheControl CACHE = CacheControl.noStore();
 
     private final AdminStatsService stats;
 

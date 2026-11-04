@@ -27,12 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * What administrators can see and do about accounts.
  *
- * <h2>The token is not enough here</h2>
- *
- * <p>The role travels in the access token, so someone demoted or suspended a minute ago still
- * holds a token that says ADMIN for up to its lifetime. Everywhere else that gap is accepted.
- * Here it would let a suspended administrator reactivate themselves, or read every address and
- * phone number on the site, so each call also checks the caller's row.
+ * <p>Who may call this is decided in {@code CurrentAdminAuthenticationConverter}, on every request.
  *
  * <h2>There is always an administrator left</h2>
  *
@@ -67,14 +62,12 @@ public class AdminUserService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AdminUserRow> list(UUID actorId, AdminUserRepository.Filter filter, PageRequest page) {
-        requireCurrentAdmin(actorId);
+    public Page<AdminUserRow> list(AdminUserRepository.Filter filter, PageRequest page) {
         return reads.list(filter, page);
     }
 
     @Transactional(readOnly = true)
-    public AdminUserDetail detail(UUID actorId, UUID userId) {
-        requireCurrentAdmin(actorId);
+    public AdminUserDetail detail(UUID userId) {
         return detailOf(requireAccount(userId));
     }
 
@@ -154,8 +147,10 @@ public class AdminUserService {
     }
 
     /**
-     * The rules, on the row as locked. In this order so that the last-administrator rule holds
-     * whoever is asking, including a caller whose own rights ended a moment ago.
+     * The rules, on the rows as locked. The caller's rights were checked as the request came in,
+     * but a colleague can take them away between then and getting the lock, which is exactly how two
+     * administrators demoting each other arrive here: so they are read again under it. In this
+     * order so that the last-administrator rule holds whoever is asking.
      *
      * @param removesAdministrator whether the action can take the target out of the
      *                             administrators able to sign in
