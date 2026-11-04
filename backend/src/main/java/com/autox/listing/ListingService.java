@@ -1,6 +1,7 @@
 package com.autox.listing;
 
 import com.autox.api.error.ApiException;
+import com.autox.auth.verification.EmailVerificationService;
 import com.autox.catalog.VehicleFeature;
 import com.autox.catalog.VehicleFeatureRepository;
 import com.autox.catalog.VehicleMake;
@@ -71,6 +72,7 @@ public class ListingService {
     private final com.autox.storage.ObjectStorage storage;
     private final ListingQuotaPolicy quotaPolicy;
     private final ModerationActionRepository moderationActions;
+    private final EmailVerificationService emailVerification;
 
     public ListingService(ListingRepository listings,
                           ListingPriceHistoryRepository priceHistory,
@@ -87,7 +89,8 @@ public class ListingService {
                           ListingImageRepository images,
                           com.autox.storage.ObjectStorage storage,
                           ListingQuotaPolicy quotaPolicy,
-                          ModerationActionRepository moderationActions) {
+                          ModerationActionRepository moderationActions,
+                          EmailVerificationService emailVerification) {
         this.listings = listings;
         this.priceHistory = priceHistory;
         this.users = users;
@@ -104,6 +107,7 @@ public class ListingService {
         this.storage = storage;
         this.quotaPolicy = quotaPolicy;
         this.moderationActions = moderationActions;
+        this.emailVerification = emailVerification;
     }
 
     /**
@@ -386,6 +390,7 @@ public class ListingService {
     public ListingResponse publish(UUID callerId, boolean admin, UUID listingId) {
         Listing listing = loadAccessible(callerId, admin, listingId);
         requireTransition(listing, ListingStatus.ACTIVE);
+        requireVerifiedAddress(callerId, admin);
         requirePhoto(listing);
         requireLeasingAllowed(listing);
         requireQuotaAvailable(listing);
@@ -457,6 +462,7 @@ public class ListingService {
                     + listing.getStatus() + ".");
         }
 
+        requireVerifiedAddress(callerId, admin);
         requireLeasingAllowed(listing);
         if (listing.getStatus() == ListingStatus.EXPIRED) {
             requireTransition(listing, ListingStatus.ACTIVE);
@@ -570,6 +576,13 @@ public class ListingService {
      * On the seller's role, not the caller's, so an administrator editing a listing is held to it
      * too. Checked again at each going online, for an account that has stopped being a dealer.
      */
+    /** A draft can be saved unverified, so nothing is lost; going online is what needs the address. */
+    private void requireVerifiedAddress(UUID callerId, boolean admin) {
+        if (!admin) {
+            emailVerification.requireVerified(callerId);
+        }
+    }
+
     private static void requireLeasingAllowed(Listing listing) {
         if (listing.isLeasing() && listing.getSeller().getRole() != UserRole.PROFESSIONNEL) {
             throw ApiException.leasingProfessionalOnly();

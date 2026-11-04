@@ -121,8 +121,21 @@ public abstract class AbstractIntegrationTest {
         return objectMapper.readTree(result.getResponse().getContentAsString());
     }
 
-    /** Registers an account and returns the auth response body. */
+    /**
+     * Registers an account and returns the auth response body. Afterwards it is held back by
+     * nothing, like an account from before verification existed, since nearly every test is about
+     * something else. {@link #registerUnverified} is the account a real sign-up makes. The token
+     * in the response was issued before this, and says the same either way.
+     */
     protected JsonNode register(String email, UserRole role) throws Exception {
+        JsonNode response = registerUnverified(email, role);
+        jdbcTemplate.update("UPDATE app_user SET email_verification_required = false WHERE email = ?", email);
+        jdbcTemplate.update("DELETE FROM outbox_email WHERE recipient = ?", email);
+        return response;
+    }
+
+    /** Registers an account exactly as a sign-up does: held back until it verifies its address. */
+    protected JsonNode registerUnverified(String email, UserRole role) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registrationPayload(email, role))))

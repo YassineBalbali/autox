@@ -27,6 +27,8 @@ import java.util.List;
  *                        the badge on the site
  * @param searchLast7Days natural-language search, the last 7 Paris days including today
  * @param searchLast30Days the same over 30 days
+ * @param emailsLast7Days  transactional email written in the last 7 × 24 hours, by outcome
+ * @param emailsLast30Days the same over 30 × 24 hours
  */
 @Schema(description = "Figures for the admin dashboard, real activity and demo seed apart.")
 public record AdminStats(
@@ -39,7 +41,9 @@ public record AdminStats(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<MakeCount> topMakes,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PriceVerdicts priceVerdicts,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SearchUsage searchLast7Days,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SearchUsage searchLast30Days) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SearchUsage searchLast30Days,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmailCounts emailsLast7Days,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmailCounts emailsLast30Days) {
 
     /** A count, apart: what real users did, and what the demo seed created. */
     @Schema(description = "A count split into real activity and demo seed.")
@@ -118,5 +122,17 @@ public record AdminStats(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long requests,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long failed,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long withNotUnderstood) {
+    }
+
+    /**
+     * Transactional email in a period. An email still being retried is neither.
+     *
+     * @param sent   handed to the provider, which is not the same as delivered
+     * @param failed given up on after the last attempt
+     */
+    @Schema(description = "Transactional email in a period, by outcome.")
+    public record EmailCounts(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long sent,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long failed) {
     }
 }

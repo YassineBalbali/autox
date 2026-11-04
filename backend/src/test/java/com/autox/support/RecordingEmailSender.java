@@ -20,10 +20,24 @@ public class RecordingEmailSender implements EmailSender {
     private static final Pattern TOKEN_IN_LINK = Pattern.compile("[?&]token=([^\\s&]+)");
 
     private final List<EmailMessage> sent = new CopyOnWriteArrayList<>();
+    private volatile RuntimeException failure;
 
     @Override
     public void send(EmailMessage message) {
+        if (failure != null) {
+            throw failure;
+        }
         sent.add(message);
+    }
+
+    /** From now on, every send throws this. */
+    public void failWith(RuntimeException failure) {
+        this.failure = failure;
+    }
+
+    /** Back to delivering. */
+    public void deliver() {
+        this.failure = null;
     }
 
     public List<EmailMessage> sent() {
@@ -43,9 +57,9 @@ public class RecordingEmailSender implements EmailSender {
 
     /** The reset token out of the most recent message's link, as a user clicking it would send. */
     public String lastResetToken() {
-        Matcher matcher = TOKEN_IN_LINK.matcher(last().body());
+        Matcher matcher = TOKEN_IN_LINK.matcher(last().textBody());
         if (!matcher.find()) {
-            throw new AssertionError("No reset token in the email body:\n" + last().body());
+            throw new AssertionError("No reset token in the email body:\n" + last().textBody());
         }
         return java.net.URLDecoder.decode(matcher.group(1), java.nio.charset.StandardCharsets.UTF_8);
     }

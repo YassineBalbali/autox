@@ -4,10 +4,12 @@ import com.autox.auth.RefreshTokenService;
 import com.autox.auth.dto.AuthResponse;
 import com.autox.auth.dto.ChangePasswordRequest;
 import com.autox.auth.password.PasswordChangeService;
+import com.autox.auth.verification.EmailVerificationService;
 import com.autox.user.dto.UpdateProfileRequest;
 import com.autox.user.dto.UserProfileResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,10 +32,13 @@ public class UserController {
 
     private final UserService userService;
     private final PasswordChangeService passwordChange;
+    private final EmailVerificationService emailVerification;
 
-    public UserController(UserService userService, PasswordChangeService passwordChange) {
+    public UserController(UserService userService, PasswordChangeService passwordChange,
+                          EmailVerificationService emailVerification) {
         this.userService = userService;
         this.passwordChange = passwordChange;
+        this.emailVerification = emailVerification;
     }
 
     /**
@@ -56,6 +61,16 @@ public class UserController {
     public UserProfileResponse updateOwnProfile(@AuthenticationPrincipal Jwt token,
                                                 @Valid @RequestBody UpdateProfileRequest request) {
         return userService.updateProfile(CurrentUser.id(token), request);
+    }
+
+    /**
+     * Sends a new verification link, which replaces any earlier one. Nothing happens if the
+     * address is already verified. Repeated requests answer 429 {@code RATE_LIMITED}.
+     */
+    @PostMapping("/email/verification")
+    public ResponseEntity<Void> resendEmailVerification(@AuthenticationPrincipal Jwt token) {
+        emailVerification.resend(CurrentUser.id(token));
+        return ResponseEntity.accepted().build();
     }
 
     /**

@@ -6,7 +6,9 @@ import com.autox.auth.dto.LoginRequest;
 import com.autox.auth.dto.RefreshRequest;
 import com.autox.auth.dto.RegisterRequest;
 import com.autox.auth.dto.ResetPasswordRequest;
+import com.autox.auth.dto.VerifyEmailRequest;
 import com.autox.auth.password.PasswordResetService;
+import com.autox.auth.verification.EmailVerificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -27,10 +29,13 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordReset;
+    private final EmailVerificationService emailVerification;
 
-    public AuthController(AuthService authService, PasswordResetService passwordReset) {
+    public AuthController(AuthService authService, PasswordResetService passwordReset,
+                          EmailVerificationService emailVerification) {
         this.authService = authService;
         this.passwordReset = passwordReset;
+        this.emailVerification = emailVerification;
     }
 
     /**
@@ -99,6 +104,19 @@ public class AuthController {
     @PostMapping("/password/reset")
     public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         passwordReset.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Verifies an address, using the token from the emailed link. No credentials needed: the link
+     * may well be opened on a device that is not signed in.
+     *
+     * <p>The link works once and for 24 hours. Every way it can fail answers 400
+     * {@code INVALID_VERIFICATION_TOKEN}.
+     */
+    @PostMapping("/email/verify")
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        emailVerification.verify(request.token());
         return ResponseEntity.noContent().build();
     }
 

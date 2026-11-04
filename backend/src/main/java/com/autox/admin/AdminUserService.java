@@ -110,6 +110,10 @@ public class AdminUserService {
                 .map(suspension -> UserStatus.valueOf(suspension.getPreviousValue()))
                 // Suspended by hand in the database: no record to go by.
                 .orElse(target.isEmailVerified() ? UserStatus.ACTIVE : UserStatus.PENDING_VERIFICATION);
+        // The address was verified during the suspension.
+        if (restored == UserStatus.PENDING_VERIFICATION && target.isEmailVerified()) {
+            restored = UserStatus.ACTIVE;
+        }
         target.setStatus(restored);
         record(actor, target, AdminUserAction.Type.REACTIVATE, blankToNull(note),
                 UserStatus.SUSPENDED.name(), restored.name());

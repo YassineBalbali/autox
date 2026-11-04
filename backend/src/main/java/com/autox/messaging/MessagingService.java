@@ -2,6 +2,7 @@ package com.autox.messaging;
 
 import com.autox.api.PageResponse;
 import com.autox.api.error.ApiException;
+import com.autox.auth.verification.EmailVerificationService;
 import com.autox.messaging.dto.ConversationDetail;
 import com.autox.messaging.dto.ConversationSummary;
 import com.autox.messaging.dto.ReportMessageRequest;
@@ -33,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
  *       in any response: buyer and seller reach each other only through here.</li>
  *   <li>A sent message is never changed or deleted (the database refuses it too). The
  *       recipient can report it; a moderator can hide it, and then neither side sees its text.</li>
+ *   <li>An account held back until its address is verified can read but not write.</li>
  * </ul>
  *
  * <p>A conversation that is not the caller's answers 404, not 403: whether a conversation
@@ -55,13 +57,18 @@ public class MessagingService {
     private final MessageThrottle throttle;
     private final ListingSearchRepository listings;
     private final ObjectStorage storage;
+    private final EmailVerificationService emailVerification;
+    private final NewMessageNotifier notifier;
 
     public MessagingService(MessagingRepository repository, MessageThrottle throttle,
-                            ListingSearchRepository listings, ObjectStorage storage) {
+                            ListingSearchRepository listings, ObjectStorage storage,
+                            EmailVerificationService emailVerification, NewMessageNotifier notifier) {
         this.repository = repository;
         this.throttle = throttle;
         this.listings = listings;
         this.storage = storage;
+        this.emailVerification = emailVerification;
+        this.notifier = notifier;
     }
 
     // ---- writing ----------------------------------------------------------------------
@@ -88,12 +95,14 @@ public class MessagingService {
             throw ApiException.notFound("Listing " + listingId);
         }
         requireOpenAccount(buyerId);
+        emailVerification.requireVerified(buyerId);
         String text = clean(body);
         allow(buyerId, true);
 
         Instant now = Instant.now();
         UUID conversationId = repository.createConversation(listingId, buyerId, listing.sellerId(), now);
         repository.addMessage(conversationId, buyerId, text, now);
+        notifier.messageSent(conversationId, buyerId);
         return conversation(buyerId, conversationId);
     }
 
@@ -103,6 +112,7 @@ public class MessagingService {
         MessagingRepository.Header header = participantHeader(senderId, conversationId);
         // First: a suspended sender's conversations are closed too, and that is not what to tell them.
         requireOpenAccount(senderId);
+        emailVerification.requireVerified(senderId);
         if (!header.canReply()) {
             throw ApiException.conflict("This conversation is closed: the listing was taken down, "
                     + "or one of the accounts is no longer open.");
@@ -111,6 +121,7 @@ public class MessagingService {
         allow(senderId, false);
 
         repository.addMessage(conversationId, senderId, text, Instant.now());
+        notifier.messageSent(conversationId, senderId);
         return conversation(senderId, conversationId);
     }
 

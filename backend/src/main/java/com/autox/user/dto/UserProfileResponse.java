@@ -25,6 +25,7 @@ public record UserProfileResponse(
         String locale,
         String preferredCurrencyCode,
         boolean emailVerified,
+        boolean emailVerificationPending,
         Instant createdAt,
         Instant lastLoginAt,
         ProProfileView professional) {
@@ -44,6 +45,7 @@ public record UserProfileResponse(
                 user.getLocale(),
                 user.getPreferredCurrency() == null ? null : user.getPreferredCurrency().getCode(),
                 user.isEmailVerified(),
+                user.isEmailVerificationPending(),
                 user.getCreatedAt(),
                 user.getLastLoginAt(),
                 professional == null ? null : ProProfileView.from(professional));

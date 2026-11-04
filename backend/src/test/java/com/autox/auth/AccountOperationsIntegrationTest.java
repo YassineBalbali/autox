@@ -50,6 +50,7 @@ class AccountOperationsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Autowired RecordingEmailSender emails;
+    @Autowired com.autox.mail.OutboxPoller outboxPoller;
     @Autowired com.autox.auth.password.PasswordResetTokenRepository resetTokens;
 
     @BeforeEach
@@ -171,7 +172,9 @@ class AccountOperationsIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(emails.sent()).hasSize(1);
         assertThat(emails.last().to()).isEqualTo(email);
-        assertThat(emails.last().body()).contains("https://autox.test/reset-password?token=");
+        assertThat(emails.last().textBody()).contains("https://autox.test/reset-password?token=");
+        assertThat(emails.last().htmlBody()).contains("https://autox.test/reset-password?token=");
+        assertThat(emails.last().subject()).isEqualTo("Réinitialisez votre mot de passe AutoX");
         String token = emails.lastResetToken();
 
         // The row must not contain the token itself: a dump of this table cannot be a set
@@ -422,10 +425,13 @@ class AccountOperationsIntegrationTest extends AbstractIntegrationTest {
         return objectMapper.readTree(body);
     }
 
+    /** Asks for a link, then runs the poller, so the email is in the mailbox as it would be 30 s later. */
     private org.springframework.test.web.servlet.ResultActions requestReset(String email) throws Exception {
-        return mockMvc.perform(post("/api/v1/auth/password/forgot")
+        org.springframework.test.web.servlet.ResultActions response = mockMvc.perform(post("/api/v1/auth/password/forgot")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("email", email))));
+        outboxPoller.pollNow();
+        return response;
     }
 
     private org.springframework.test.web.servlet.ResultActions resetPassword(String token, String password)

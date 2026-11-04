@@ -53,7 +53,9 @@ public class AdminStatsService {
                 repository.topMakes(ledger),
                 repository.priceVerdicts(ledger),
                 repository.searchUsage(7),
-                repository.searchUsage(30));
+                repository.searchUsage(30),
+                repository.emailCounts(7),
+                repository.emailCounts(30));
         computedAt = now;
         return cached;
     }

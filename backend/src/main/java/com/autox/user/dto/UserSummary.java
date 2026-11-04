@@ -13,6 +13,7 @@ public record UserSummary(
         UserStatus status,
         String displayName,
         boolean emailVerified,
+        boolean emailVerificationPending,
         String countryCode,
         String locale) {
 
@@ -24,6 +25,7 @@ public record UserSummary(
                 user.getStatus(),
                 user.getDisplayName(),
                 user.isEmailVerified(),
+                user.isEmailVerificationPending(),
                 user.getCountry().getCode(),
                 user.getLocale());
     }

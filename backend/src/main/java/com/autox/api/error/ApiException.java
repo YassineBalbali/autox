@@ -115,6 +115,17 @@ public class ApiException extends RuntimeException {
                 "This password reset link is no longer valid. Request a new one.");
     }
 
+    /** One answer for every way a link can fail, as for {@link #invalidResetToken()}. */
+    public static ApiException invalidVerificationToken() {
+        return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_VERIFICATION_TOKEN,
+                "This verification link is no longer valid. Request a new one.");
+    }
+
+    public static ApiException emailNotVerified() {
+        return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.EMAIL_NOT_VERIFIED,
+                "Verify your email address first.");
+    }
+
     public static ApiException invalidToken(String detail) {
         return new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_TOKEN, detail);
     }

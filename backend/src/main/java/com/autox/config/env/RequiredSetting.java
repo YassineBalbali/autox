@@ -54,6 +54,31 @@ record RequiredSetting(String property, String variable, String requirement, Str
             "AUTOX_AI_API_KEY",
             "the Groq API key (console.groq.com → API Keys), required because AUTOX_AI_PROVIDER is groq");
 
+    /** Which mail provider; checked for a known value, not for presence. */
+    static final RequiredSetting MAIL_PROVIDER = new RequiredSetting(
+            "autox.mail.provider",
+            "AUTOX_MAIL_PROVIDER",
+            "log (the default: mail is written to the log) or brevo");
+
+    /** Required only when {@link #MAIL_PROVIDER} is {@code brevo}, like the next three. */
+    static final List<RequiredSetting> BREVO = List.of(
+            new RequiredSetting(
+                    "autox.mail.api-key",
+                    "AUTOX_MAIL_API_KEY",
+                    "the Brevo API key (Brevo → SMTP & API → API keys), required because AUTOX_MAIL_PROVIDER is brevo"),
+            new RequiredSetting(
+                    "autox.mail.from-address",
+                    "AUTOX_MAIL_FROM",
+                    "a sender address verified in Brevo, required because AUTOX_MAIL_PROVIDER is brevo"),
+            new RequiredSetting(
+                    "autox.mail.from-name",
+                    "AUTOX_MAIL_FROM_NAME",
+                    "the name mail is sent under, required because AUTOX_MAIL_PROVIDER is brevo"),
+            new RequiredSetting(
+                    "autox.mail.site-url",
+                    "AUTOX_SITE_URL",
+                    "the web app's origin, which emails link to, required because AUTOX_MAIL_PROVIDER is brevo"));
+
     static List<RequiredSetting> all() {
         return List.of(
                 new RequiredSetting(

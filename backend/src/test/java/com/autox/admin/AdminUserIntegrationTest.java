@@ -511,6 +511,19 @@ class AdminUserIntegrationTest extends AbstractIntegrationTest {
             // And the account can sign in again.
             signIn(unverified);
         }
+
+        @Test
+        @DisplayName("an address verified during the suspension makes the account active when it is lifted")
+        void verifiedDuringTheSuspension() throws Exception {
+            JsonNode session = signIn(admin());
+            AppUser target = person();
+            suspend(session, target).andExpect(status().isOk());
+            jdbcTemplate.update("UPDATE app_user SET email_verified_at = now() WHERE id = ?", target.getId());
+
+            reactivate(session, target).andExpect(status().isOk());
+
+            assertThat(statusOf(target)).isEqualTo("ACTIVE");
+        }
     }
 
     // ---- roles ---------------------------------------------------------------------------
