@@ -13,6 +13,11 @@ public final class EmailTemplates {
 
     private static final Pattern EMAIL_ADDRESS = Pattern.compile("[^\\s@]+@[^\\s@]+");
 
+    /** The last line of every email. */
+    static final String NO_REPLY = "Cet e-mail est envoyé automatiquement, merci de ne pas y répondre.";
+
+    static final String REPLY_ON_AUTOX = "Pour répondre, rendez-vous dans la conversation sur AutoX.";
+
     private EmailTemplates() {
     }
 
@@ -52,17 +57,17 @@ public final class EmailTemplates {
         return new Rendered(
                 oneLine("Nouveau message de " + sender + " sur AutoX"),
                 sentence + "\n\nLire le message et y répondre :\n\n" + conversationLink + "\n\n"
-                        + "Répondez depuis AutoX : personne ne lit les réponses à cet e-mail.",
+                        + REPLY_ON_AUTOX + "\n\n" + NO_REPLY,
                 page(escape(sentence),
                         button("Lire le message et y répondre", conversationLink),
-                        "Répondez depuis AutoX : personne ne lit les réponses à cet e-mail."));
+                        escape(REPLY_ON_AUTOX)));
     }
 
     private static Rendered linkEmail(String subject, String intro, String instruction, String action, String link,
                                       String closing) {
         return new Rendered(
                 subject,
-                intro + "\n\n" + instruction + "\n\n" + link + "\n\n" + closing,
+                intro + "\n\n" + instruction + "\n\n" + link + "\n\n" + closing + "\n\n" + NO_REPLY,
                 page(escape(intro) + "</p><p style=\"margin:0 0 16px\">" + escape(instruction),
                         button(action, link) + "<p style=\"margin:0 0 16px;font-size:13px;word-break:break-all\">"
                                 + escape(link) + "</p>",
@@ -77,8 +82,9 @@ public final class EmailTemplates {
                 <p style="margin:0 0 16px;font-size:18px;font-weight:bold">AutoX</p>
                 <p style="margin:0 0 16px">%s</p>
                 %s
+                <p style="margin:0 0 16px;font-size:13px;color:#555555">%s</p>
                 <p style="margin:0;font-size:13px;color:#555555">%s</p>
-                </div></body></html>""".formatted(intro, action, closing);
+                </div></body></html>""".formatted(intro, action, closing, escape(NO_REPLY));
     }
 
     private static String button(String label, String link) {
