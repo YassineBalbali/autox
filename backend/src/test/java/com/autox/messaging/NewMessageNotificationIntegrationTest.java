@@ -73,8 +73,35 @@ class NewMessageNotificationIntegrationTest extends AbstractIntegrationTest {
             for (String body : List.of(email.textBody(), email.htmlBody())) {
                 assertThat(body).contains("Camille").contains("https://autox.test/messages/" + conversation);
             }
-            assertThat(email.textBody()).contains(ListingTestFixtures.freeTextListingPayload().get("title").toString());
+            assertThat(email.textBody()).contains("BMW 3 Series 320d xDrive M Sport");
         });
+    }
+
+    @Test
+    @DisplayName("the listing is named as on the result cards, whatever its title starts with")
+    void namedAsOnTheResultCards() throws Exception {
+        jdbcTemplate.update("""
+                UPDATE listing SET title = 'Audi Audi A3 Sportback, très propre', make_text = 'Audi',
+                                   model_text = 'A3', version_text = '35 TDI' WHERE id = ?::uuid
+                """, listing);
+        contact(buyer);
+
+        EmailMessage email = sendAll().getFirst();
+
+        for (String body : List.of(email.textBody(), email.htmlBody())) {
+            assertThat(body).contains("à propos de : Audi A3 35 TDI.").doesNotContain("Audi Audi").doesNotContain("très propre");
+        }
+    }
+
+    @Test
+    @DisplayName("a model typed with its make in it does not name the make twice")
+    void modelTypedWithItsMake() throws Exception {
+        jdbcTemplate.update("""
+                UPDATE listing SET make_text = 'Audi', model_text = 'Audi A3', version_text = NULL WHERE id = ?::uuid
+                """, listing);
+        contact(buyer);
+
+        assertThat(sendAll().getFirst().textBody()).contains("à propos de : Audi A3.").doesNotContain("Audi Audi");
     }
 
     @Test
@@ -94,7 +121,7 @@ class NewMessageNotificationIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("a display name or a title that holds an address does not put it in the email")
     void nameThatIsAnAddress() throws Exception {
         jdbcTemplate.update("UPDATE app_user SET display_name = ? WHERE email = ?", buyerEmail, buyerEmail);
-        jdbcTemplate.update("UPDATE listing SET title = 'Écrivez-moi : vendeur@exemple.fr' WHERE id = ?::uuid", listing);
+        jdbcTemplate.update("UPDATE listing SET version_text = 'Écrivez-moi : vendeur@exemple.fr' WHERE id = ?::uuid", listing);
         contact(buyer);
 
         EmailMessage email = sendAll().getFirst();
@@ -110,7 +137,7 @@ class NewMessageNotificationIntegrationTest extends AbstractIntegrationTest {
     void typedTextIsEscaped() throws Exception {
         jdbcTemplate.update("UPDATE app_user SET display_name = ? WHERE email = ?",
                 "<a href=\"https://piege.example\">Camille</a>\nBcc: x", buyerEmail);
-        jdbcTemplate.update("UPDATE listing SET title = '<img src=x onerror=alert(1)>' WHERE id = ?::uuid", listing);
+        jdbcTemplate.update("UPDATE listing SET model_text = '<img src=x onerror=alert(1)>' WHERE id = ?::uuid", listing);
         contact(buyer);
 
         EmailMessage email = sendAll().getFirst();
