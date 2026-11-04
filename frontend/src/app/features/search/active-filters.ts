@@ -5,6 +5,7 @@ import { switchMap } from 'rxjs';
 
 import { formatIntegerFr } from '../../shared/format/number';
 import { BODY_LABELS, CONDITION_LABELS, FUEL_LABELS, GEARBOX_LABELS, labelOf } from '../../shared/listing/labels.fr';
+import { LEASING_TYPE_LABELS } from '../../shared/listing/leasing.fr';
 import { SearchQuery } from './search-query';
 import { SearchResolver } from './search-resolver';
 
@@ -102,6 +103,26 @@ export function describeFilters(query: SearchQuery, names: VehicleNames = {}): A
       label: query.damage === DamageFilter.ALL ? 'Endommagés inclus' : 'Endommagés uniquement',
       remove: { damage: DamageFilter.UNDAMAGED },
     });
+  }
+
+  for (const value of query.leasingType) {
+    filters.push({
+      key: `leasingType:${value}`,
+      label: LEASING_TYPE_LABELS[value],
+      remove: { leasingType: query.leasingType.filter((entry) => entry !== value) },
+    });
+  }
+  const monthly = range(query.monthlyMin, query.monthlyMax, formatIntegerFr, ' €/mois');
+  if (monthly) {
+    filters.push({ key: 'monthly', label: monthly, remove: { monthlyMin: null, monthlyMax: null } });
+  }
+  const duration = range(query.durationMin, query.durationMax, String, ' mois');
+  if (duration) {
+    filters.push({ key: 'duration', label: duration, remove: { durationMin: null, durationMax: null } });
+  }
+  const allowance = range(query.allowanceMin, null, formatIntegerFr, ' km/an');
+  if (allowance) {
+    filters.push({ key: 'allowance', label: allowance, remove: { allowanceMin: null } });
   }
 
   if (query.location) {

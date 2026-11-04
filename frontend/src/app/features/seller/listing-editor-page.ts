@@ -5,7 +5,7 @@ import { Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, catchError, map, of, startWith, switchMap } from 'rxjs';
 
-import {
+import { LeasingType, OfferType, UserRole,
   BodyType,
   ErrorCode,
   FuelType,
@@ -42,6 +42,7 @@ import {
 import { PhotoGallery } from '../../shared/listing/photo-gallery';
 import { Price } from '../../shared/listing/price';
 import { DamageNotice } from '../../shared/listing/damage-notice';
+import { LeasingOffer } from '../../shared/listing/leasing-offer';
 import { DamageType } from '../../core/api';
 import { DAMAGE_TYPE_LABELS } from '../../shared/listing/labels.fr';
 import { SpecLine } from '../../shared/listing/spec-line';
@@ -59,6 +60,7 @@ import {
   suggestedTitle,
   vehiclePrefill,
   damageValidators,
+  leasingValidators,
   NOT_RUNNING,
   powerValidators,
   RUNNING,
@@ -114,6 +116,7 @@ export const MY_LISTINGS = '/mes-annonces';
     ReactiveFormsModule,
     RouterLink,
     DamageNotice,
+    LeasingOffer,
     TextField,
     SelectField,
     Alert,
@@ -319,6 +322,20 @@ export class ListingEditorPage {
     { initialValue: { countryCode: 'FR', currencyCode: 'EUR', minorUnit: DEFAULT_MINOR_UNIT } as Market },
   );
 
+  /** Leasing offers are for dealers: the API refuses anyone else, and this spares them the choice. */
+  protected readonly isDealer = computed(() => this.auth.role() === UserRole.PROFESSIONNEL);
+  protected readonly offerType = toSignal(this.offer.controls.offerType.valueChanges, {
+    initialValue: this.offer.controls.offerType.value,
+  });
+  protected readonly leasingKind = toSignal(this.offer.controls.leasingType.valueChanges, {
+    initialValue: this.offer.controls.leasingType.value,
+  });
+  protected readonly leasing = computed(() => this.offerType() === OfferType.LEASING);
+  protected readonly loa = computed(() => this.leasingKind() === LeasingType.LOA);
+  protected readonly saleOffer = OfferType.SALE;
+  protected readonly leasingOffer = OfferType.LEASING;
+  protected readonly loaType = LeasingType.LOA;
+  protected readonly lldType = LeasingType.LLD;
   protected readonly priceLabel = computed(() => `Prix (${this.market().currencyCode === 'EUR' ? '€' : this.market().currencyCode})`);
 
   // --- preview -------------------------------------------------------------
@@ -361,6 +378,15 @@ export class ListingEditorPage {
       this.syncVehicleRules();
     });
     this.vehicle.controls.damaged.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.syncVehicleRules());
+    // Nobody leases a damaged car: declaring one makes this a sale, as the server would insist.
+    this.vehicle.controls.damaged.valueChanges.pipe(takeUntilDestroyed()).subscribe((damaged) => {
+      if (damaged) {
+        this.offer.controls.offerType.setValue(OfferType.SALE);
+      }
+    });
+    this.syncOfferRules();
+    this.offer.controls.offerType.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.syncOfferRules());
+    this.offer.controls.leasingType.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.syncOfferRules());
     this.vehicle.controls.model.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.syncVehicleRules());
 
     // The catalogue arriving can change which fields are required.
@@ -620,6 +646,20 @@ export class ListingEditorPage {
    * from the list or typed. A field that is hidden must not be required, or the form can
    * never be valid for a reason the seller cannot see.
    */
+  private syncOfferRules(): void {
+    const { offerType, leasingType, monthly, firstPayment, duration, mileagePerYear, optionPrice } = this.offer.controls;
+    const rules = leasingValidators(offerType.value, leasingType.value);
+    leasingType.setValidators(rules.leasingType);
+    monthly.setValidators(rules.monthly);
+    firstPayment.setValidators(rules.firstPayment);
+    duration.setValidators(rules.duration);
+    mileagePerYear.setValidators(rules.mileagePerYear);
+    optionPrice.setValidators(rules.optionPrice);
+    for (const control of [leasingType, monthly, firstPayment, duration, mileagePerYear, optionPrice]) {
+      control.updateValueAndValidity({ emitEvent: false });
+    }
+  }
+
   private syncVehicleRules(): void {
     const { makeText, model, modelText, power, damaged, damageTypes, damageRunning, damageDescription } =
       this.vehicle.controls;

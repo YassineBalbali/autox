@@ -3,7 +3,7 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, debounceTime, map, merge, of, skip, startWith, switchMap, take } from 'rxjs';
 
-import { Make, Model, ResultCount } from '../../core/api';
+import { Make, Model, OfferType, ResultCount } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
 import { formatIntegerFr } from '../../shared/format/number';
 import { Icon } from '../../shared/ui/icon';
@@ -18,9 +18,14 @@ interface Draft {
   readonly model: string;
   readonly priceMax: string;
   readonly postalCode: string;
+  readonly monthlyMax: string;
+  readonly offer: OfferType;
 }
 
-const EMPTY_DRAFT: Draft = { make: '', model: '', priceMax: '', postalCode: '' };
+const EMPTY_DRAFT: Draft = { make: '', model: '', priceMax: '', postalCode: '', monthlyMax: '', offer: OfferType.SALE };
+
+/** The monthly budgets to choose from when the visitor is looking to lease. */
+const MONTHLY_MAX_OPTIONS = [200, 300, 400, 500, 700] as const;
 
 /**
  * The home page's search card: make, model, budget and postal code, and a button that
@@ -45,6 +50,10 @@ export class HomeFinder {
 
   protected readonly searchPath = SEARCH_PATH;
   protected readonly priceOptions = PRICE_MAX_OPTIONS;
+  protected readonly monthlyOptions = MONTHLY_MAX_OPTIONS;
+  protected readonly saleOffer = OfferType.SALE;
+  protected readonly leasingOffer = OfferType.LEASING;
+  protected readonly leasing = computed(() => this.draft().offer === OfferType.LEASING);
 
   protected readonly draft = signal<Draft>(EMPTY_DRAFT);
 
@@ -84,7 +93,9 @@ export class HomeFinder {
       ...EMPTY_QUERY,
       make,
       model: make ? draft.model || null : null,
-      priceMax: draft.priceMax ? Number(draft.priceMax) : null,
+      offer: draft.offer,
+      priceMax: draft.offer === OfferType.SALE && draft.priceMax ? Number(draft.priceMax) : null,
+      monthlyMax: draft.offer === OfferType.LEASING && draft.monthlyMax ? Number(draft.monthlyMax) : null,
       location: draft.postalCode || null,
     };
   });
@@ -113,6 +124,10 @@ export class HomeFinder {
     }
     return `Rechercher (${count.capped ? '+' : ''}${formatIntegerFr(count.count)})`;
   });
+
+  protected setOffer(offer: OfferType): void {
+    this.draft.update((draft) => ({ ...draft, offer, priceMax: '', monthlyMax: '' }));
+  }
 
   protected formatPrice(euros: number): string {
     return `${formatIntegerFr(euros)} €`;

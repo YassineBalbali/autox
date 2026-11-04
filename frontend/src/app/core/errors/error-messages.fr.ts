@@ -69,6 +69,7 @@ export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = {
   // --- listings ---------------------------------------------------------
   [ErrorCode.ACTIVE_LISTING_LIMIT_REACHED]:
     'Vous avez atteint le nombre maximum d’annonces en ligne. Mettez-en une en pause ou supprimez-la.',
+  [ErrorCode.LEASING_PROFESSIONAL_ONLY]: 'Les offres de location sont réservées aux comptes professionnels.',
   [ErrorCode.CONCURRENT_MODIFICATION]:
     'Cette annonce a été modifiée entre-temps. Rechargez la page et réessayez.',
 

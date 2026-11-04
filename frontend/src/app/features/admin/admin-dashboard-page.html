@@ -67,6 +67,16 @@
               <strong class="dash__figure">{{ number(s.listings.damaged.real) }}</strong>
               <span class="dash__demo">{{ demoNote(s.listings.damaged) }}</span>
             </li>
+            <li class="panel dash__tile" data-figure="sale">
+              <span class="dash__label" i18n="@@dashboardSale">Ventes en ligne</span>
+              <strong class="dash__figure">{{ number(s.listings.sale.real) }}</strong>
+              <span class="dash__demo">{{ demoNote(s.listings.sale) }}</span>
+            </li>
+            <li class="panel dash__tile" data-figure="leasing">
+              <span class="dash__label" i18n="@@dashboardLeasing">Locations en ligne</span>
+              <strong class="dash__figure">{{ number(s.listings.leasing.real) }}</strong>
+              <span class="dash__demo">{{ demoNote(s.listings.leasing) }}</span>
+            </li>
           </ul>
           <p class="meta dash__note" i18n="@@dashboardPendingNote">
             Une annonce en attente de modération est déjà en ligne : elle compte aussi parmi les publiées,

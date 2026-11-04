@@ -1,6 +1,6 @@
 import { AbstractControl, ValidationErrors, FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
 
-import { DamageDeclaration, DamageType,
+import { LeasingDeclaration, LeasingType, OfferType, DamageDeclaration, DamageType,
   BodyType,
   CreateListingRequest,
   FuelType,
@@ -104,6 +104,20 @@ export function powerValidators(required: boolean): ValidatorFn[] {
   return required ? [requiredText(), range] : [range];
 }
 
+/** What a leasing offer has to state, in whole euros. Nothing, for a sale. */
+export function leasingValidators(offerType: OfferType, leasingType: string) {
+  const leasing = offerType === OfferType.LEASING;
+  const required = (min: number, max: number): ValidatorFn[] => (leasing ? [requiredText(), wholeNumber(min, max)] : []);
+  return {
+    leasingType: leasing ? [requiredText()] : [],
+    monthly: required(1, 1_000_000),
+    firstPayment: required(0, 10_000_000),
+    duration: required(6, 120),
+    mileagePerYear: required(1000, 200_000),
+    optionPrice: leasing && leasingType === LeasingType.LOA ? [requiredText(), wholeNumber(0, 10_000_000)] : [],
+  };
+}
+
 /** The same power in kW, as the registration certificate gives it: 1 ch is 0.7355 kW. */
 export function kilowatts(horsepower: number): number {
   return Math.round(horsepower * 0.73549875);
@@ -115,6 +129,14 @@ export function offerForm() {
     title: text([requiredText(), Validators.maxLength(LIMITS.title)]),
     price: text([requiredText(), wholeNumber(0, LIMITS.maxPrice)]),
     negotiable: new FormControl(false, { nonNullable: true }),
+    /** A sale, or a dealer's leasing offer, whose terms are required by `leasingValidators`. */
+    offerType: new FormControl<OfferType>(OfferType.SALE, { nonNullable: true }),
+    leasingType: text(),
+    monthly: text(),
+    firstPayment: text(),
+    duration: text(),
+    mileagePerYear: text(),
+    optionPrice: text(),
     description: text([Validators.maxLength(LIMITS.description)]),
     postalCode: text([requiredText(), Validators.maxLength(LIMITS.postalCode)]),
     city: text([requiredText(), Validators.maxLength(LIMITS.city)]),
@@ -285,10 +307,30 @@ function offerPayload(value: OfferValue, market: Market) {
     description: value.description.trim(),
     priceAmount: parseWholeNumber(value.price)! * 10 ** market.minorUnit,
     currencyCode: market.currencyCode,
-    priceNegotiable: value.negotiable,
+    // The terms of a leasing offer are what is on offer; there is no price to haggle over.
+    priceNegotiable: value.offerType === OfferType.SALE && value.negotiable,
     postalCode: value.postalCode.trim(),
     city: value.city.trim(),
     countryCode: market.countryCode,
+    offer: offerDeclaration(value, market),
+  };
+}
+
+/** Always sent, so that going back to a sale on an edit clears the terms. There is no total: the server works it out. */
+function offerDeclaration(value: OfferValue, market: Market): LeasingDeclaration {
+  if (value.offerType !== OfferType.LEASING) {
+    return { offerType: OfferType.SALE };
+  }
+  const minor = 10 ** market.minorUnit;
+  const loa = value.leasingType === LeasingType.LOA;
+  return {
+    offerType: OfferType.LEASING,
+    type: value.leasingType as LeasingType,
+    monthlyPayment: parseWholeNumber(value.monthly)! * minor,
+    firstPayment: parseWholeNumber(value.firstPayment)! * minor,
+    durationMonths: parseWholeNumber(value.duration)!,
+    mileagePerYear: parseWholeNumber(value.mileagePerYear)!,
+    ...(loa ? { optionPrice: parseWholeNumber(value.optionPrice)! * minor } : {}),
   };
 }
 
@@ -356,12 +398,23 @@ export function vehicleValueOf(listing: ListingResponse): VehicleValue {
   };
 }
 
+function wholeUnits(amount: number | undefined, minorUnit: number): string {
+  return typeof amount === 'number' ? String(Math.round(amount / 10 ** minorUnit)) : '';
+}
+
 /** Fills step 2 from an existing listing. */
 export function offerValueOf(listing: ListingResponse, minorUnit: number): OfferValue {
   return {
     title: listing.title ?? '',
     price: typeof listing.priceAmount === 'number' ? String(Math.round(listing.priceAmount / 10 ** minorUnit)) : '',
     negotiable: listing.priceNegotiable ?? false,
+    offerType: listing.leasing ? OfferType.LEASING : OfferType.SALE,
+    leasingType: listing.leasing?.type ?? '',
+    monthly: wholeUnits(listing.leasing?.monthlyPayment, minorUnit),
+    firstPayment: wholeUnits(listing.leasing?.firstPayment, minorUnit),
+    duration: listing.leasing?.durationMonths ? String(listing.leasing.durationMonths) : '',
+    mileagePerYear: listing.leasing?.mileagePerYear ? String(listing.leasing.mileagePerYear) : '',
+    optionPrice: wholeUnits(listing.leasing?.optionPrice, minorUnit),
     description: listing.description ?? '',
     postalCode: listing.location?.postalCode ?? '',
     city: listing.location?.city ?? '',

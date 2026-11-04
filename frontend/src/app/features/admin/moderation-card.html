@@ -34,8 +34,16 @@
       @if (listing().damage) {
         <app-damage-notice [damage]="listing().damage" />
       }
+      @if (listing().leasing; as leasing) {
+        <app-leasing-offer
+          [leasing]="leasing"
+          [priceAmount]="listing().priceAmount"
+          [currency]="listing().currencyCode ?? 'EUR'"
+          [minorUnit]="minorUnit()"
+        />
+      }
       <div class="card__price">
-        @if (listing().priceAmount !== undefined) {
+        @if (!listing().leasing && listing().priceAmount !== undefined) {
           <app-price
             size="detail"
             [amountMinor]="listing().priceAmount!"

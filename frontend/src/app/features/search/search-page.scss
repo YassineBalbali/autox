@@ -8,6 +8,13 @@
   gap: var(--s-3);
 }
 
+.search__mention {
+  margin: 0;
+  font-size: var(--t-sm);
+  font-weight: var(--fw-bold);
+  color: var(--c-ink);
+}
+
 // ---- the sticky bar, below the large breakpoint ------------------------------------
 
 // The filter button and the sort, side by side, held at the top of the screen. Full-bleed,

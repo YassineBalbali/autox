@@ -30,6 +30,40 @@
       </div>
     </fieldset>
 
+    @if (leasing()) {
+      <fieldset class="filters__group" data-filter="monthly">
+        <legend i18n="@@filterMonthly">Mensualité (€/mois)</legend>
+        <div class="filters__range">
+          <input class="input" type="text" inputmode="numeric" placeholder="Min" aria-label="Mensualité minimum"
+            i18n-placeholder="@@rangeMin" i18n-aria-label="@@filterMonthlyMin"
+            [value]="query().monthlyMin ?? ''" (change)="setNumber('monthlyMin', $event)" />
+          <input class="input" type="text" inputmode="numeric" placeholder="Max" aria-label="Mensualité maximum"
+            i18n-placeholder="@@rangeMax" i18n-aria-label="@@filterMonthlyMax"
+            [value]="query().monthlyMax ?? ''" (change)="setNumber('monthlyMax', $event)" />
+        </div>
+      </fieldset>
+
+      <fieldset class="filters__group" data-filter="duration">
+        <legend i18n="@@filterDuration">Durée (mois)</legend>
+        <div class="filters__range">
+          <input class="input" type="text" inputmode="numeric" placeholder="Min" aria-label="Durée minimum"
+            i18n-placeholder="@@rangeMin" i18n-aria-label="@@filterDurationMin"
+            [value]="query().durationMin ?? ''" (change)="setNumber('durationMin', $event)" />
+          <input class="input" type="text" inputmode="numeric" placeholder="Max" aria-label="Durée maximum"
+            i18n-placeholder="@@rangeMax" i18n-aria-label="@@filterDurationMax"
+            [value]="query().durationMax ?? ''" (change)="setNumber('durationMax', $event)" />
+        </div>
+      </fieldset>
+
+      <fieldset class="filters__group" data-filter="allowance">
+        <legend i18n="@@filterAllowance">Kilométrage annuel minimum</legend>
+        <div class="filters__range">
+          <input class="input" type="text" inputmode="numeric" placeholder="Ex. 15000" aria-label="Kilométrage annuel minimum"
+            i18n-placeholder="@@filterAllowancePlaceholder" i18n-aria-label="@@filterAllowance"
+            [value]="query().allowanceMin ?? ''" (change)="setNumber('allowanceMin', $event)" />
+        </div>
+      </fieldset>
+    } @else {
     <fieldset class="filters__group">
       <legend i18n="@@filterPrice">Prix (€)</legend>
       <div class="filters__range">
@@ -41,6 +75,7 @@
           [value]="query().priceMax ?? ''" (change)="setNumber('priceMax', $event)" />
       </div>
     </fieldset>
+    }
 
     <fieldset class="filters__group">
       <legend i18n="@@filterMileage">Kilométrage (km)</legend>
@@ -54,7 +89,9 @@
       </div>
     </fieldset>
 
-    <!-- The price indicator: listings priced well below comparable ones. -->
+    <!-- The price indicator: listings priced well below comparable ones. A leasing offer has none,
+         so in that search neither this nor the state of the vehicle is offered at all. -->
+    @if (!leasing()) {
     <fieldset class="filters__group">
       <legend i18n="@@filterMarket">Prix du marché</legend>
       <div class="filters__chips">
@@ -85,6 +122,7 @@
         }
       </div>
     </fieldset>
+    }
 
     <!-- ====================================================== multi-choice -->
     @for (group of groups(); track group.key) {

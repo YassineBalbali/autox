@@ -3242,6 +3242,14 @@
           "summary"
         ]
       },
+      "LeasingType": {
+        "type": "string",
+        "description": "The two kinds of leasing. Mirrors ck_listing_leasing.",
+        "enum": [
+          "LOA",
+          "LLD"
+        ]
+      },
       "ListingSearchCriteria": {
         "type": "object",
         "description": "Everything a buyer can filter on. Every field is optional; an empty criteria object means\n \"all visible listings\".\n\n <p>Make and model can each be given two ways, and both are needed:\n <ul>\n   <li><code>makeId</code> matches the catalogue exactly — precise, and what the frontend's\n       dropdown will send once the catalogue exists.</li>\n   <li><code>make</code> matches the displayed name, catalogue row <em>or</em> free text. Until the\n       catalogue is seeded, every listing identifies its vehicle by text, so an id-only\n       filter would match nothing at all.</li>\n </ul>",
@@ -3365,8 +3373,55 @@
           },
           "damage": {
             "$ref": "#/components/schemas/DamageFilter"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/OfferType"
+          },
+          "leasingType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeasingType"
+            }
+          },
+          "monthlyMin": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "monthlyMax": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "durationMax": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "mileageAllowanceMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "mileageAllowanceMax": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
           }
         }
+      },
+      "OfferType": {
+        "type": "string",
+        "description": "What a listing offers. Mirrors ck_listing_offer_type.",
+        "enum": [
+          "SALE",
+          "LEASING"
+        ]
       },
       "PriceLevel": {
         "type": "string",
@@ -3718,6 +3773,9 @@
           },
           "damage": {
             "$ref": "#/components/schemas/DamageDeclaration"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/LeasingDeclaration"
           }
         },
         "required": [
@@ -3817,6 +3875,54 @@
           "OTHER"
         ]
       },
+      "LeasingDeclaration": {
+        "type": "object",
+        "description": "Whether a listing is a sale or a leasing offer, and its terms. There is no total here: the server\n computes it, so it cannot be typed.",
+        "properties": {
+          "offerType": {
+            "$ref": "#/components/schemas/OfferType"
+          },
+          "type": {
+            "$ref": "#/components/schemas/LeasingType"
+          },
+          "monthlyPayment": {
+            "type": "integer",
+            "format": "int64",
+            "description": "TTC, in minor units",
+            "maximum": 100000000,
+            "minimum": 1
+          },
+          "firstPayment": {
+            "type": "integer",
+            "format": "int64",
+            "description": "apport or premier loyer, in minor units; may be zero",
+            "maximum": 1000000000,
+            "minimum": 0
+          },
+          "durationMonths": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 120,
+            "minimum": 6
+          },
+          "mileagePerYear": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 200000,
+            "minimum": 1000
+          },
+          "optionPrice": {
+            "type": "integer",
+            "format": "int64",
+            "description": "LOA only, in minor units",
+            "maximum": 1000000000,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "offerType"
+        ]
+      },
       "DamageView": {
         "type": "object",
         "description": "A listing's declared damage, wherever the listing is shown; null on an undamaged one.",
@@ -3833,6 +3939,39 @@
           },
           "description": {
             "type": "string"
+          }
+        }
+      },
+      "LeasingView": {
+        "type": "object",
+        "description": "A leasing offer's terms, wherever the listing is shown; null on a sale. Amounts in minor units.",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/LeasingType"
+          },
+          "monthlyPayment": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "firstPayment": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "durationMonths": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mileagePerYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "optionPrice": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalCost": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -3938,6 +4077,9 @@
           },
           "damage": {
             "$ref": "#/components/schemas/DamageView"
+          },
+          "leasing": {
+            "$ref": "#/components/schemas/LeasingView"
           },
           "images": {
             "type": "array",
@@ -5211,6 +5353,9 @@
           },
           "damage": {
             "$ref": "#/components/schemas/DamageDeclaration"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/LeasingDeclaration"
           }
         }
       },
@@ -5611,7 +5756,11 @@
           "NEWEST",
           "PRICE_ASC",
           "PRICE_DESC",
-          "MILEAGE_ASC"
+          "MILEAGE_ASC",
+          "MONTHLY_ASC",
+          "MONTHLY_DESC",
+          "DURATION_ASC",
+          "MILEAGE_ALLOWANCE_DESC"
         ]
       },
       "CursorPagePublicListingSummary": {
@@ -5767,6 +5916,9 @@
           },
           "damage": {
             "$ref": "#/components/schemas/DamageView"
+          },
+          "leasing": {
+            "$ref": "#/components/schemas/LeasingView"
           }
         }
       },
@@ -5865,6 +6017,9 @@
           },
           "damage": {
             "$ref": "#/components/schemas/DamageView"
+          },
+          "leasing": {
+            "$ref": "#/components/schemas/LeasingView"
           },
           "featureCodes": {
             "type": "array",
@@ -6415,14 +6570,24 @@
           "damaged": {
             "$ref": "#/components/schemas/Split",
             "description": "Published and declared damaged: these are also counted in published."
+          },
+          "sale": {
+            "$ref": "#/components/schemas/Split",
+            "description": "Published sales. With leasing, adds up to published."
+          },
+          "leasing": {
+            "$ref": "#/components/schemas/Split",
+            "description": "Published leasing offers."
           }
         },
         "required": [
           "damaged",
           "expired",
+          "leasing",
           "pendingModeration",
           "published",
           "rejected",
+          "sale",
           "sold"
         ]
       },
@@ -6720,6 +6885,7 @@
           "LAST_ADMIN",
           "DEMO_ACCOUNT_CANNOT_BE_ADMIN",
           "ACTIVE_LISTING_LIMIT_REACHED",
+          "LEASING_PROFESSIONAL_ONLY",
           "CONCURRENT_MODIFICATION",
           "UNSUPPORTED_IMAGE_TYPE",
           "IMAGE_TOO_LARGE",

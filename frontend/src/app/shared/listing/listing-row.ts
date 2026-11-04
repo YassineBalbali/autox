@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { PublicListingSummary } from '../../core/api';
 import { formatDateFr } from '../format/date';
 import { DamageNotice } from './damage-notice';
+import { LeasingPrice } from './leasing-price';
 import { Icon } from '../ui/icon';
 import { ListingThumb } from './listing-thumb';
 import { Price } from './price';
@@ -41,7 +42,7 @@ import { headlineOf, listingLink, placeOf } from './summary';
  */
 @Component({
   selector: 'app-listing-row',
-  imports: [DamageNotice, Price, PriceBadge, SpecFacts, SpecLine, SellerBadge, ListingThumb, Icon, RouterLink],
+  imports: [DamageNotice, LeasingPrice, Price, PriceBadge, SpecFacts, SpecLine, SellerBadge, ListingThumb, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-row.html',
   styleUrl: './listing-row.scss',

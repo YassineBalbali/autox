@@ -1,6 +1,9 @@
 <form class="finder" (submit)="submit($event)" aria-label="Rechercher une voiture" i18n-aria-label="@@homeFinderLabel">
-  <nav class="finder__tabs" aria-label="Acheter ou vendre" i18n-aria-label="@@homeFinderTabs">
-    <a class="finder__tab finder__tab--active" routerLink="/" aria-current="page" i18n="@@homeTabBuy">Acheter</a>
+  <nav class="finder__tabs" aria-label="Acheter, louer ou vendre" i18n-aria-label="@@homeFinderTabs">
+    <button class="finder__tab" type="button" data-offer="SALE" [class.finder__tab--active]="!leasing()"
+      [attr.aria-pressed]="!leasing()" (click)="setOffer(saleOffer)" i18n="@@homeTabBuy">Acheter</button>
+    <button class="finder__tab" type="button" data-offer="LEASING" [class.finder__tab--active]="leasing()"
+      [attr.aria-pressed]="leasing()" (click)="setOffer(leasingOffer)" i18n="@@homeTabLease">Louer</button>
     <a class="finder__tab" routerLink="/vendre" i18n="@@homeTabSell">Vendre</a>
   </nav>
 
@@ -32,18 +35,33 @@
       <app-icon class="finder__adornment" name="chevron-down" [size]="16" />
     </label>
 
-    <label class="finder__field">
-      <span class="visually-hidden" i18n="@@homePriceMax">Prix maximum</span>
-      <select class="finder__control" [value]="draft().priceMax" (change)="setField('priceMax', $event)">
-        <option value="" i18n="@@homeAnyPrice">Prix max</option>
-        @for (price of priceOptions; track price) {
-          <option [value]="price" [selected]="'' + price === draft().priceMax">
-            {{ formatPrice(price) }}
-          </option>
-        }
-      </select>
-      <app-icon class="finder__adornment" name="chevron-down" [size]="16" />
-    </label>
+    @if (leasing()) {
+      <label class="finder__field">
+        <span class="visually-hidden" i18n="@@homeMonthlyMax">Mensualité maximum</span>
+        <select class="finder__control" data-field="monthly" [value]="draft().monthlyMax" (change)="setField('monthlyMax', $event)">
+          <option value="" i18n="@@homeAnyMonthly">Mensualité max</option>
+          @for (monthly of monthlyOptions; track monthly) {
+            <option [value]="monthly" [selected]="'' + monthly === draft().monthlyMax">
+              {{ formatPrice(monthly) }}/mois
+            </option>
+          }
+        </select>
+        <app-icon class="finder__adornment" name="chevron-down" [size]="16" />
+      </label>
+    } @else {
+      <label class="finder__field">
+        <span class="visually-hidden" i18n="@@homePriceMax">Prix maximum</span>
+        <select class="finder__control" [value]="draft().priceMax" (change)="setField('priceMax', $event)">
+          <option value="" i18n="@@homeAnyPrice">Prix max</option>
+          @for (price of priceOptions; track price) {
+            <option [value]="price" [selected]="'' + price === draft().priceMax">
+              {{ formatPrice(price) }}
+            </option>
+          }
+        </select>
+        <app-icon class="finder__adornment" name="chevron-down" [size]="16" />
+      </label>
+    }
 
     <label class="finder__field">
       <span class="visually-hidden" i18n="@@homePostalCode">Code postal ou département</span>

@@ -35,6 +35,8 @@ const EMPTY: AdminStats = {
     sold: split(0),
     expired: split(0),
     damaged: split(0),
+    sale: split(0),
+    leasing: split(0),
   },
   last7Days: { newListings: split(0), registrations: split(0), messages: split(0) },
   last30Days: { newListings: split(0), registrations: split(0), messages: split(0) },
@@ -55,6 +57,8 @@ const SEEDED: AdminStats = {
     sold: split(3, 4),
     expired: split(5),
     damaged: split(6, 8),
+    sale: split(1, 140),
+    leasing: split(0, 12),
   },
   last7Days: { newListings: split(1, 152), registrations: split(6, 12), messages: split(7) },
   last30Days: { newListings: split(8, 152), registrations: split(9, 12), messages: split(10) },
@@ -79,6 +83,15 @@ describe('AdminDashboardPage', () => {
     Array.from(root.querySelectorAll(`[data-table="${table}"] tbody tr`)).map((row) =>
       Array.from(row.children).map((cell) => words(cell)),
     );
+
+  it('counts sales and leasing offers separately', async () => {
+    await visit(SEEDED);
+
+    expect(figure('sale')).toBe('1');
+    expect(demo('sale')).toContain('140');
+    expect(figure('leasing')).toBe('0');
+    expect(demo('leasing')).toContain('12');
+  });
 
   async function open(): Promise<void> {
     TestBed.resetTestingModule();

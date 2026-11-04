@@ -1,12 +1,14 @@
 import { convertToParamMap } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
-import { DamageFilter, BodyType, FuelType, Gearbox, SearchSort, VehicleCondition } from '../../core/api';
+import { DamageFilter, BodyType, FuelType, Gearbox, LeasingType, OfferType, SearchSort, VehicleCondition } from '../../core/api';
 import {
   EMPTY_QUERY,
   SearchQuery,
   activeFilterCount,
+  allowsGoodDeals,
   parseQuery,
+  switchOffer,
   toCriteria,
   toQueryParams,
   withoutFilters,
@@ -22,6 +24,133 @@ const parse = (params: Record<string, string>) => parseQuery(convertToParamMap(p
  * whatever somebody typed, pasted or had mangled by a mail client, and every value in it
  * reaches the API unless it is stopped here.
  */
+describe('Acheter / Louer', () => {
+  const leasing: SearchQuery = { ...EMPTY_QUERY, offer: OfferType.LEASING };
+
+  it('is a sale unless a link says otherwise, and then says nothing to the API or in the address', () => {
+    expect(parse({}).offer).toBe(OfferType.SALE);
+    expect(parse({ offre: 'nimportequoi' }).offer).toBe(OfferType.SALE);
+    expect(toCriteria(EMPTY_QUERY, {}, 'EUR', 2).offer).toBeUndefined();
+    expect(toQueryParams(EMPTY_QUERY)).toEqual({});
+  });
+
+  it('asks the API for leasing offers when the address does', () => {
+    expect(parse({ offre: 'location' }).offer).toBe(OfferType.LEASING);
+    expect(toCriteria(parse({ offre: 'location' }), {}, 'EUR', 2).offer).toBe(OfferType.LEASING);
+  });
+
+  it('keeps a leasing link\'s terms, in the currency\'s minor units for the API', () => {
+    const query = parse({
+      offre: 'location',
+      type_location: 'loa',
+      mensualite_min: '150',
+      mensualite_max: '300',
+      duree_min: '24',
+      duree_max: '48',
+      km_an_min: '15000',
+    });
+
+    expect(query).toMatchObject({
+      leasingType: [LeasingType.LOA],
+      monthlyMin: 150,
+      monthlyMax: 300,
+      durationMin: 24,
+      durationMax: 48,
+      allowanceMin: 15000,
+    });
+    expect(toCriteria(query, {}, 'EUR', 2)).toMatchObject({
+      leasingType: [LeasingType.LOA],
+      monthlyMin: 15000,
+      monthlyMax: 30000,
+      currency: 'EUR',
+      durationMin: 24,
+      durationMax: 48,
+      mileageAllowanceMin: 15000,
+    });
+  });
+
+  it('survives a round trip', () => {
+    const query: SearchQuery = {
+      ...leasing,
+      make: 'peugeot',
+      leasingType: [LeasingType.LLD],
+      monthlyMax: 300,
+      durationMin: 24,
+      allowanceMin: 10000,
+      sort: SearchSort.MONTHLY_ASC,
+    };
+
+    expect(parse(toQueryParams(query) as Record<string, string>)).toEqual(query);
+  });
+
+  describe('never mixes the two', () => {
+    it('ignores a leasing term in a sale search', () => {
+      const query = parse({ type_location: 'loa', mensualite_max: '300', duree_min: '24', km_an_min: '15000' });
+
+      expect(query).toEqual(EMPTY_QUERY);
+      expect(activeFilterCount(query)).toBe(0);
+    });
+
+    it('ignores what only a sale has in a leasing search', () => {
+      const damaged = toQueryParams({ ...EMPTY_QUERY, damage: DamageFilter.DAMAGED_ONLY }) as Record<string, string>;
+      const query = parse({ ...damaged, offre: 'location', prix_max: '20000', bonnes_affaires: '1' });
+
+      expect(query.priceMax).toBeNull();
+      expect(query.goodDeals).toBe(false);
+      expect(query.damage).toBe(DamageFilter.UNDAMAGED);
+      const criteria = toCriteria({ ...query, priceMax: 20000, goodDeals: true, damage: DamageFilter.ALL }, {}, 'EUR', 2);
+      expect(criteria.priceMax).toBeUndefined();
+      expect(criteria.damage).toBeUndefined();
+      expect(criteria.currency).toBeUndefined();
+    });
+
+    it('sorts by a term only where the term exists', () => {
+      expect(parse({ offre: 'location', tri: 'mensualite-croissante' }).sort).toBe(SearchSort.MONTHLY_ASC);
+      expect(parse({ tri: 'mensualite-croissante' }).sort).toBe(EMPTY_QUERY.sort);
+      expect(parse({ offre: 'location', tri: 'prix-croissant' }).sort).toBe(EMPTY_QUERY.sort);
+      expect(parse({ offre: 'location', tri: 'km-croissant' }).sort).toBe(EMPTY_QUERY.sort);
+    });
+
+    it('allows no "bonnes affaires" on a leasing offer', () => {
+      expect(allowsGoodDeals(EMPTY_QUERY)).toBe(true);
+      expect(allowsGoodDeals(leasing)).toBe(false);
+    });
+  });
+
+  describe('switching', () => {
+    it('keeps the car being looked for and drops what the other search cannot show', () => {
+      const sale: SearchQuery = {
+        ...EMPTY_QUERY,
+        make: 'peugeot',
+        location: 'Lyon',
+        priceMax: 20000,
+        goodDeals: true,
+        damage: DamageFilter.ALL,
+        sort: SearchSort.PRICE_ASC,
+      };
+
+      expect(switchOffer(sale, OfferType.LEASING)).toEqual({
+        ...EMPTY_QUERY,
+        make: 'peugeot',
+        location: 'Lyon',
+        offer: OfferType.LEASING,
+      });
+    });
+
+    it('comes back without the terms', () => {
+      const lease: SearchQuery = { ...leasing, make: 'peugeot', monthlyMax: 300, sort: SearchSort.MONTHLY_ASC };
+
+      expect(switchOffer(lease, OfferType.SALE)).toEqual({ ...EMPTY_QUERY, make: 'peugeot' });
+    });
+  });
+
+  it('stays on the same search when the filters are cleared, and is not itself a filter', () => {
+    expect(withoutFilters({ ...leasing, monthlyMax: 300 }).offer).toBe(OfferType.LEASING);
+    expect(activeFilterCount(leasing)).toBe(0);
+    expect(activeFilterCount({ ...leasing, monthlyMax: 300, durationMin: 24 })).toBe(2);
+  });
+});
+
 describe('parseQuery', () => {
   it('reads an empty URL as a search with no filters, newest first', () => {
     expect(parse({})).toEqual(EMPTY_QUERY);
@@ -64,6 +193,13 @@ describe('parseQuery', () => {
       damage: DamageFilter.UNDAMAGED,
       location: 'Lyon',
       goodDeals: true,
+      offer: OfferType.SALE,
+      leasingType: [],
+      monthlyMin: null,
+      monthlyMax: null,
+      durationMin: null,
+      durationMax: null,
+      allowanceMin: null,
       sort: SearchSort.PRICE_ASC,
     });
   });
@@ -248,6 +384,13 @@ describe('toQueryParams', () => {
       damage: DamageFilter.ALL,
       location: 'Villeurbanne',
       goodDeals: true,
+      offer: OfferType.SALE,
+      leasingType: [],
+      monthlyMin: null,
+      monthlyMax: null,
+      durationMin: null,
+      durationMax: null,
+      allowanceMin: null,
       sort: SearchSort.PRICE_DESC,
     };
 

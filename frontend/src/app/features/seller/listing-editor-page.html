@@ -305,8 +305,25 @@
                 [control]="offer.controls.title"
               />
 
+              <!-- For a dealer, and not for a damaged car: nobody leases one. -->
+              @if (isDealer() && !damaged()) {
+                <fieldset class="damage-fields__group" data-section="offer-type">
+                  <legend class="field__label" i18n="@@fieldOfferType">Type d’annonce</legend>
+                  <div class="damage-fields__options">
+                    <label class="check">
+                      <input type="radio" formControlName="offerType" [value]="saleOffer" data-offer-type="SALE" />
+                      <span i18n="@@offerSale">Vente</span>
+                    </label>
+                    <label class="check">
+                      <input type="radio" formControlName="offerType" [value]="leasingOffer" data-offer-type="LEASING" />
+                      <span i18n="@@offerLeasing">Location (LOA ou LLD)</span>
+                    </label>
+                  </div>
+                </fieldset>
+              }
+
               <app-text-field
-                [label]="priceLabel()"
+                [label]="leasing() ? 'Prix au comptant du véhicule (€)' : priceLabel()"
                 hint="En unités entières, sans centimes."
                 i18n-hint="@@fieldPriceHint"
                 inputMode="numeric"
@@ -314,13 +331,54 @@
                 [control]="offer.controls.price"
               />
 
-              <div class="field">
-                <span class="field__label" aria-hidden="true"></span>
-                <label class="check">
-                  <input type="checkbox" formControlName="negotiable" />
-                  <span i18n="@@fieldNegotiable">Prix négociable</span>
-                </label>
-              </div>
+              @if (leasing()) {
+                <div class="damage-fields stack" data-section="leasing">
+                  <fieldset class="damage-fields__group">
+                    <legend class="field__label" i18n="@@fieldLeasingType">Type de location</legend>
+                    <div class="damage-fields__options">
+                      <label class="check">
+                        <input type="radio" formControlName="leasingType" [value]="loaType" data-leasing-type="LOA" />
+                        <span i18n="@@leasingLoa">LOA (option d’achat)</span>
+                      </label>
+                      <label class="check">
+                        <input type="radio" formControlName="leasingType" [value]="lldType" data-leasing-type="LLD" />
+                        <span i18n="@@leasingLld">LLD (longue durée)</span>
+                      </label>
+                    </div>
+                    @if (offer.controls.leasingType.touched && offer.controls.leasingType.invalid) {
+                      <p class="field__error" data-error="leasing-type" i18n="@@fieldLeasingTypeRequired">
+                        Choisissez LOA ou LLD.
+                      </p>
+                    }
+                  </fieldset>
+                  <app-text-field label="Loyer mensuel TTC (€)" i18n-label="@@fieldMonthly" inputMode="numeric" [maxLength]="7" [control]="offer.controls.monthly" />
+                  <app-text-field
+                    label="Premier loyer ou apport (€)"
+                    i18n-label="@@fieldFirstPayment"
+                    hint="0 s’il n’y en a pas."
+                    i18n-hint="@@fieldFirstPaymentHint"
+                    inputMode="numeric"
+                    [maxLength]="8"
+                    [control]="offer.controls.firstPayment"
+                  />
+                  <app-text-field label="Durée (mois)" i18n-label="@@fieldDuration" inputMode="numeric" [maxLength]="3" [control]="offer.controls.duration" />
+                  <app-text-field label="Kilométrage annuel (km)" i18n-label="@@fieldMileagePerYear" inputMode="numeric" [maxLength]="6" [control]="offer.controls.mileagePerYear" />
+                  @if (loa()) {
+                    <app-text-field label="Option d’achat (€)" i18n-label="@@fieldOption" inputMode="numeric" [maxLength]="8" [control]="offer.controls.optionPrice" />
+                  }
+                  <p class="meta" i18n="@@fieldLeasingTotalNote">Le coût total est calculé à partir de ces montants.</p>
+                </div>
+              }
+
+              @if (!leasing()) {
+                <div class="field">
+                  <span class="field__label" aria-hidden="true"></span>
+                  <label class="check">
+                    <input type="checkbox" formControlName="negotiable" />
+                    <span i18n="@@fieldNegotiable">Prix négociable</span>
+                  </label>
+                </div>
+              }
 
               <app-text-field
                 label="Description"
@@ -420,7 +478,14 @@
                   @if (item.damage) {
                     <app-damage-notice [damage]="item.damage" />
                   }
-                  @if (item.priceAmount !== undefined) {
+                  @if (item.leasing; as leasingTerms) {
+                    <app-leasing-offer
+                      [leasing]="leasingTerms"
+                      [priceAmount]="item.priceAmount"
+                      [currency]="item.currencyCode ?? 'EUR'"
+                      [minorUnit]="minorUnit()"
+                    />
+                  } @else if (item.priceAmount !== undefined) {
                     <div class="preview__price">
                       <app-price
                         size="detail"

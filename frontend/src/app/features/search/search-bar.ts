@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, ou
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, map, of, startWith, switchMap } from 'rxjs';
 
-import { CatalogueSuggestion, Make, Model } from '../../core/api';
+import { OfferType, CatalogueSuggestion, Make, Model } from '../../core/api';
 import { ReferenceStore } from '../../core/reference/reference.store';
 import { Icon } from '../../shared/ui/icon';
 import { SearchQuery } from './search-query';
@@ -51,6 +51,8 @@ export class SearchBar {
   private readonly reference = inject(ReferenceStore);
 
   readonly query = input.required<SearchQuery>();
+
+  protected readonly leasing = OfferType.LEASING;
 
   /** The fields of the query to replace. Emitted on submit only. */
   readonly submitted = output<Partial<SearchQuery>>();

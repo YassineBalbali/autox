@@ -39,7 +39,7 @@
   list-style: none;
 
   @media (min-width: t.$bp-lg) {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -59,11 +59,6 @@
 .dash__label {
   font-size: var(--t-sm);
   color: var(--c-ink-soft);
-
-  // Six across, the longest label takes two lines: the figures stay level whichever does.
-  @media (min-width: t.$bp-lg) {
-    min-height: 2lh;
-  }
 }
 
 .dash__figure {

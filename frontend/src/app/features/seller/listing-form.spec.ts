@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { DamageType, FuelType, Gearbox, ListingResponse, Make, Model, VehicleCondition } from '../../core/api';
-import { RUNNING, NOT_RUNNING, damageValidators,
+import { LeasingType, OfferType, DamageType, FuelType, Gearbox, ListingResponse, Make, Model, VehicleCondition } from '../../core/api';
+import {
+  leasingValidators, RUNNING, NOT_RUNNING, damageValidators,
   LIMITS,
   Market,
   OTHER,
@@ -64,6 +65,13 @@ describe('listing form', () => {
     title: 'Peugeot 308 BlueHDi 130',
     price: '15 990',
     negotiable: false,
+    offerType: OfferType.SALE,
+    leasingType: '',
+    monthly: '',
+    firstPayment: '',
+    duration: '',
+    mileagePerYear: '',
+    optionPrice: '',
     description: 'Première main.',
     postalCode: '69003',
     city: 'Lyon',
@@ -246,6 +254,91 @@ describe('listing form', () => {
         postalCode: '69003',
         city: 'Lyon',
         countryCode: 'FR',
+        offer: { offerType: OfferType.SALE },
+      });
+    });
+
+    describe('a leasing offer', () => {
+      const lease = (over: Partial<OfferValue> = {}) =>
+        offer({
+          offerType: OfferType.LEASING,
+          leasingType: LeasingType.LOA,
+          monthly: '219',
+          firstPayment: '2 500',
+          duration: '37',
+          mileagePerYear: '10 000',
+          optionPrice: '9 800',
+          ...over,
+        });
+
+      it('sends the terms in minor units, and no total: the server works that out', () => {
+        const { offer: declared } = toCreateRequest(vehicle(), lease(), FRANCE, MAKES, MODELS);
+
+        expect(declared).toEqual({
+          offerType: OfferType.LEASING,
+          type: LeasingType.LOA,
+          monthlyPayment: 21_900,
+          firstPayment: 250_000,
+          durationMonths: 37,
+          mileagePerYear: 10_000,
+          optionPrice: 980_000,
+        });
+      });
+
+      it('sends no option price for an LLD, even one typed before changing type', () => {
+        const { offer: declared } = toCreateRequest(vehicle(), lease({ leasingType: LeasingType.LLD }), FRANCE, MAKES, MODELS);
+
+        expect(declared?.type).toBe(LeasingType.LLD);
+        expect(declared?.optionPrice).toBeUndefined();
+      });
+
+      it('has no negotiable price', () => {
+        expect(toCreateRequest(vehicle(), lease({ negotiable: true }), FRANCE, MAKES, MODELS).priceNegotiable).toBe(false);
+      });
+
+      it('requires its terms, and the option price only for an LOA', () => {
+        const form = offerForm();
+        const rules = leasingValidators(OfferType.LEASING, LeasingType.LOA);
+        form.controls.monthly.setValidators(rules.monthly);
+        form.controls.optionPrice.setValidators(rules.optionPrice);
+        form.controls.duration.setValidators(rules.duration);
+        form.controls.duration.setValue('3');
+
+        form.controls.monthly.updateValueAndValidity();
+        form.controls.optionPrice.updateValueAndValidity();
+        expect(form.controls.monthly.invalid).toBe(true);
+        expect(form.controls.optionPrice.invalid).toBe(true);
+        expect(form.controls.duration.invalid).toBe(true);
+        expect(leasingValidators(OfferType.LEASING, LeasingType.LLD).optionPrice).toEqual([]);
+        expect(leasingValidators(OfferType.SALE, '').monthly).toEqual([]);
+      });
+
+      it('fills the form back from a saved offer', () => {
+        const value = offerValueOf(
+          {
+            priceAmount: 2_500_000,
+            leasing: {
+              type: LeasingType.LOA,
+              monthlyPayment: 21_900,
+              firstPayment: 0,
+              durationMonths: 37,
+              mileagePerYear: 10_000,
+              optionPrice: 980_000,
+              totalCost: 1_768_400,
+            },
+          },
+          2,
+        );
+
+        expect(value).toMatchObject({
+          offerType: OfferType.LEASING,
+          leasingType: LeasingType.LOA,
+          monthly: '219',
+          firstPayment: '0',
+          duration: '37',
+          mileagePerYear: '10000',
+          optionPrice: '9800',
+        });
       });
     });
 
@@ -368,6 +461,13 @@ describe('listing form', () => {
         title: 'Peugeot 308',
         price: '15990',
         negotiable: true,
+        offerType: OfferType.SALE,
+        leasingType: '',
+        monthly: '',
+        firstPayment: '',
+        duration: '',
+        mileagePerYear: '',
+        optionPrice: '',
         description: 'Texte',
         postalCode: '69003',
         city: 'Lyon',
