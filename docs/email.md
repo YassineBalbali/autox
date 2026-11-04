@@ -1,8 +1,8 @@
 # Transactional email
 
-Three emails, all French, plain text plus simple HTML, sent through Brevo's transactional API in
-production and written to the log locally: password reset, address verification, and new-message
-notifications.
+All French, plain text plus simple HTML, sent through Brevo's transactional API in production and
+written to the log locally: password reset, address verification, new-message notifications, and
+saved searches' daily e-mail (`docs/saved-searches.md`).
 
 ## The outbox
 
@@ -82,7 +82,8 @@ restores ACTIVE rather than the `PENDING_VERIFICATION` it was suspended from.
 
 To the recipient, never the sender. From AutoX, with no Reply-To, so a reply cannot reach the other
 user. The email says who wrote (display name), about which listing, and links to the conversation,
-which is where it says to reply.
+which is where it says to reply. The listing is named as on the result cards, by `ListingLabel`:
+make, model and version, or the seller's title when there is no make.
 It holds neither the message's text nor an address. A display name or a title that contains an
 address is replaced by "Un utilisateur" or "une annonce". Both are typed by other users, so they are
 escaped in the HTML and lose their line breaks in the subject.

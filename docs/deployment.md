@@ -602,6 +602,7 @@ has 730. **Neon must therefore sleep for most of the month**, and three things w
 | The connection pool pinging its open connections every two minutes | `AUTOX_DB_POOL_MIN_IDLE=0`, `AUTOX_DB_IDLE_TIMEOUT_MS=60000`: the pool empties after a minute idle |
 | The background sweeps, every 10 and 15 minutes | Every 6 hours (`AUTOX_SCHEDULE_*`) |
 | The email poller, every 30 seconds | It asks the database only when mail is known to be waiting or due, or every 6 hours (`docs/email.md`) |
+| Saved searches' alerts | One run a day, at 7:00 Paris time, and nothing in between (`docs/saved-searches.md`) |
 | Health checks that query the database | Render and the uptime monitor both use `/actuator/health/liveness`, which does not |
 
 The storage check does not touch Neon: it talks to Supabase only.

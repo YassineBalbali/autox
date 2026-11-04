@@ -66,7 +66,8 @@ On the listing page, under the heading **Exemple représentatif**:
 | The withdrawal period | "Vous disposez d'un délai de rétractation de 14 jours à compter de l'acceptation du contrat." | L. 312-19, DGCCRF fact sheet |
 
 The mention is also shown once above the results of a leasing search, because those results state
-monthly payments.
+monthly payments, and in a saved search's daily e-mail when it lists a leasing offer, for the same
+reason. That e-mail has the same gap as results: it gives the monthly payment, not the full example.
 
 No TAEG or taux débiteur is shown. Article L. 312-6 excludes them for a location avec option
 d'achat, and the fields do not exist.
