@@ -107,6 +107,25 @@ to a Gmail address, with `AUTOX_MAIL_FROM` set to a verified Gmail sender.
 - **Brevo rewrote the sender** to `<sender>@<id>.brevosend.com`. So the address recipients see is
   not the one in `AUTOX_MAIL_FROM`.
 
+### Click tracking
+
+Brevo rewrites every link in a transactional e-mail to go through its own tracking address, the
+links holding a verification or reset token included. **It cannot be turned off per message.** Brevo's
+send API has no field for it, and its custom headers only take non-standard ones. The setting is per
+account:
+
+- **Brevo → Transactional → Settings → Tracking**: on the plans below Enterprise, this offers only
+  **Anonymous e-mail tracking**. That stops clicks being tied to a recipient, but it does not stop the
+  rewriting.
+- **Turning tracking off altogether:** according to Brevo's product team on its community forum
+  (May 2024), this is available on request and on Enterprise plans only. Ask Brevo support, from the
+  account.
+
+Read in November 2026, from Brevo's API reference and its community forum, not from its help pages;
+check it in the account. What this means here: a token passes through Brevo's redirect, and a mail
+scanner or a link preview that follows the redirect does not spend it, because the pages spend a
+token on a POST, not on opening the link.
+
 ## Changing this
 
 The wording is in `EmailTemplates`. Every email ends with "Cet e-mail est envoyé automatiquement,
