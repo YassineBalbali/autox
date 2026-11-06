@@ -280,7 +280,7 @@
             </div>
             @if (moreListings()) {
               <p class="meta account__more">
-                {{ listings().length }} <ng-container i18n="@@userMoreListings">annonces les plus récentes sur</ng-container> {{ number(moreListings()) }}.
+                {{ listings().length }} {{ listings().length > 1 ? 'annonces les plus récentes' : 'annonce la plus récente' }} sur {{ number(moreListings()) }}.
               </p>
             }
           }

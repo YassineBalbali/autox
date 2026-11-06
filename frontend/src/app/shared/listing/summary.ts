@@ -1,4 +1,5 @@
 import { ImageVariantView, PublicListingSummary } from '../../core/api';
+import { vehicleName } from './vehicle-name';
 
 /**
  * What the results views read off a listing summary, in one place, so the row and the
@@ -18,12 +19,13 @@ export interface Headline {
 /**
  * "Renault Captur" over "E-Tech Plug-in 160 Intens".
  *
- * <p>Make and model when the listing has a make, with the version as the subtitle.
+ * <p>Make and model when the listing has a make, with the version as the subtitle. A model typed
+ * with its make in it, "Audi A3" under "Audi", gives "Audi A3", not "Audi Audi A3".
  * Without a make — an older listing, or one typed by hand — the seller's title stands in,
  * so a result is never headed by nothing.
  */
 export function headlineOf(listing: PublicListingSummary): Headline {
-  const vehicle = [listing.make, listing.model].filter((part) => !!part?.trim()).join(' ');
+  const vehicle = vehicleName(listing.make, listing.model);
   if (!listing.make?.trim() || !vehicle) {
     return { title: listing.title ?? '', subtitle: null };
   }
