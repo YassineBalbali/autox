@@ -1,188 +1,325 @@
 @use '../../../styles/tokens' as t;
 
+// The dashboard's own colours, on top of the site's tokens: the series, and the states of a
+// listing. The public site does not use them.
 :host {
   display: block;
+
+  --dash-real: var(--c-accent);
+  --dash-demo: #b9c2cf;
+  --dash-online: var(--c-accent);
+  --dash-sold: #177245;
+  --dash-expired: #9aa5b5;
+  --dash-rejected: var(--c-danger);
 }
 
-// The moderation page's label, for the same part of the site.
+.dash {
+  display: grid;
+  gap: var(--s-4);
+}
+
+// ---- the top: title, period, demo, export ------------------------------------------------
+
+.dash__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-3) var(--s-4);
+}
+
 .dash__section {
+  margin: 0;
   color: var(--c-navy);
-  font-size: var(--t-sm);
+  font-size: var(--t-xs);
   font-weight: var(--fw-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.dash__counted {
+  margin: var(--s-1) 0 0;
+}
+
+.dash__demo-state {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--c-surface-sunk);
+  color: var(--c-ink-soft);
+  font-weight: var(--fw-semibold);
+}
+
+.dash__demo-state--on {
+  background: var(--c-warn-soft);
+  color: var(--c-warn);
+}
+
+.dash__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+}
+
+.dash__periods {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+}
+
+.dash__period {
+  min-height: 32px;
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--c-ink-soft);
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--c-ink);
+  }
+}
+
+.dash__period--on {
+  background: var(--c-navy);
+  color: var(--c-accent-ink);
+
+  &:hover {
+    color: var(--c-accent-ink);
+  }
 }
 
 .dash__state {
   padding-block: var(--s-5);
 }
 
-.dash__heading {
-  margin: 0 0 var(--s-2);
-  font-size: var(--t-md);
-  font-weight: var(--fw-bold);
-}
+// ---- what needs attention ----------------------------------------------------------------
 
-.dash__note {
-  margin: var(--s-2) 0 0;
-  font-size: var(--t-xs);
-}
-
-// ---- the five states --------------------------------------------------------
-
-.dash__tiles {
+.dash__attention {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
 
   @media (min-width: t.$bp-lg) {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-.dash__tile {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-0);
-  padding: var(--s-3);
-}
+// ---- the period's figures -----------------------------------------------------------------
 
-// The one figure here someone has to act on.
-.dash__tile--queue {
-  // A shadow, not a border: the figure stays level with its neighbours'.
-  box-shadow: inset 0 3px 0 var(--c-accent);
-}
-
-.dash__label {
-  font-size: var(--t-sm);
-  color: var(--c-ink-soft);
-}
-
-.dash__figure {
-  font-size: var(--t-xl);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-  font-variant-numeric: tabular-nums;
-}
-
-.dash__demo {
-  min-height: 1em;
-  font-size: var(--t-xs);
-  font-weight: var(--fw-regular);
-  color: var(--c-ink-faint);
-  font-variant-numeric: tabular-nums;
-}
-
-.dash__demo--inline {
-  display: block;
-}
-
-.dash__link {
-  margin-top: var(--s-1);
-  font-size: var(--t-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--c-accent);
-
-  &:hover {
-    color: var(--c-accent-strong);
-  }
-
-  @include t.touch {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-  }
-}
-
-// ---- panels -----------------------------------------------------------------
-
-.dash__columns {
+.dash__kpis {
   display: grid;
-  gap: var(--s-4);
-
-  @media (min-width: t.$bp-lg) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.dash__columns--activity {
-  @media (min-width: t.$bp-lg) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  }
-}
-
-.dash__panel {
-  min-width: 0;
-  padding: var(--s-3) var(--s-4);
-}
-
-.dash__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   gap: var(--s-3);
 }
 
-.dash__toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-  font-size: var(--t-sm);
-  color: var(--c-ink-soft);
-  cursor: pointer;
+// ---- the panels ---------------------------------------------------------------------------
 
-  @include t.touch {
-    min-height: 44px;
-  }
-}
-
-.dash__charts {
+.dash__grid {
   display: grid;
-  gap: var(--s-4);
+  gap: var(--s-3);
 
   @media (min-width: t.$bp-md) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+
+    .dash__panel--activity {
+      grid-column: span 4;
+    }
+
+    .dash__panel--queue {
+      grid-column: span 2;
+    }
+
+    .dash__panel--status,
+    .dash__panel--makes,
+    .dash__panel--verdicts {
+      grid-column: span 2;
+    }
+
+    .dash__panel--search,
+    .dash__panel--emails {
+      grid-column: span 3;
+    }
+  }
+
+  @media (min-width: t.$bp-md) and (max-width: calc(t.$bp-lg - 1px)) {
+    .dash__panel--activity {
+      grid-column: 1 / -1;
+    }
+  }
 }
 
-// ---- tables -----------------------------------------------------------------
+.dash__panel {
+  display: grid;
+  align-content: start;
+  gap: var(--s-3);
+  border-radius: var(--r-lg);
+  min-width: 0;
+}
 
-.dash__table {
-  width: 100%;
-  border-collapse: collapse;
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.dash__heading {
+  margin: 0;
+  font-size: var(--t-md);
+  font-weight: var(--fw-bold);
+}
+
+.dash__subheading {
+  margin: var(--s-1) 0 0;
   font-size: var(--t-sm);
+  font-weight: var(--fw-bold);
+  color: var(--c-ink-soft);
+}
 
-  th,
-  td {
-    padding: var(--s-1) 0;
-    border-bottom: 1px solid var(--c-line);
-    text-align: left;
-    vertical-align: baseline;
-  }
+.dash__now {
+  font-size: var(--t-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-ink-faint);
+}
 
-  thead th {
-    font-size: var(--t-xs);
-    font-weight: var(--fw-semibold);
-    color: var(--c-ink-faint);
-  }
+.dash__note {
+  margin: 0;
+  font-size: var(--t-xs);
+}
 
-  tbody th {
-    font-weight: var(--fw-regular);
+.dash__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+.dash__tab {
+  min-height: 30px;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  background: var(--c-surface);
+  color: var(--c-ink-soft);
+  font: inherit;
+  font-size: var(--t-xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--c-line-strong);
     color: var(--c-ink);
   }
+}
 
-  tbody tr:last-child th,
-  tbody tr:last-child td {
-    border-bottom: 0;
+.dash__tab--on {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+  color: var(--c-accent-strong);
+}
+
+.dash__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-4);
+  margin: 0;
+  font-size: var(--t-xs);
+  color: var(--c-ink-soft);
+
+  > span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+  }
+
+  .meta {
+    margin-left: auto;
   }
 }
 
-.dash__table .dash__num {
-  padding-left: var(--s-3);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.dash__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.dash__swatch--real {
+  background: var(--dash-real);
+}
+
+.dash__swatch--demo {
+  background: var(--dash-demo);
+}
+
+// ---- figures in a panel -------------------------------------------------------------------
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+
+  dt {
+    font-size: var(--t-xs);
+    color: var(--c-ink-soft);
+  }
+
+  dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-1) var(--s-2);
+    margin: 2px 0 0;
+
+    strong {
+      font-size: var(--t-lg);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.stats__bad strong {
+  color: var(--c-danger);
+}
+
+.facts {
+  display: grid;
+  gap: var(--s-1);
+  margin: 0;
+  padding: var(--s-2) 0 0;
+  border-top: 1px solid var(--c-line);
+  list-style: none;
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+  }
+}
+
+.dash__digest {
+  display: grid;
+  gap: var(--s-1);
+  justify-items: start;
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--c-line);
+
+  .meta {
+    margin: 0;
+  }
 }

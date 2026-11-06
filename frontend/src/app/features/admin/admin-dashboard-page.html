@@ -1,313 +1,265 @@
-<div class="stack dash">
-  <header>
-    <p class="dash__section" i18n="@@adminSection">Administration</p>
-    <h1 class="page-title" i18n="@@dashboardTitle">Tableau de bord</h1>
-    @if (stats()) {
-      <p class="meta">
-        @if (showDemo()) {
-          <ng-container i18n="@@dashboardSplit">Chiffre principal : l’activité réelle. Les données de démonstration sont comptées à part.</ng-container>&ngsp;
+<div class="dash">
+  <header class="dash__top">
+    <div>
+      <p class="dash__section">Administration</p>
+      <h1 class="page-title">Tableau de bord</h1>
+      @if (stats()) {
+        <p class="meta dash__counted">
+          Comptés le {{ generatedAt() }}
+          @if (demoPresent()) {
+            ·
+            @if (demo()) {
+              <span class="dash__demo-state dash__demo-state--on" data-demo-state="on">Démo incluse</span>
+            } @else {
+              <span class="dash__demo-state" data-demo-state="off">Activité réelle seulement</span>
+            }
+          }
+        </p>
+      }
+    </div>
+
+    <div class="dash__tools">
+      <div class="dash__periods" role="radiogroup" aria-label="Période">
+        @for (each of periods; track each.key) {
+          <button
+            type="button"
+            role="radio"
+            class="dash__period"
+            [class.dash__period--on]="each.key === period().key"
+            [attr.aria-checked]="each.key === period().key"
+            [attr.data-period]="each.slug"
+            (click)="setPeriod(each)"
+          >
+            {{ each.label }}
+          </button>
         }
-        <ng-container i18n="@@dashboardCounted">Comptés le</ng-container> {{ generatedAt() }}.
-      </p>
-    }
+      </div>
+
+      <app-demo-switch [on]="demo()" [disabled]="!demoPresent()" (toggled)="toggleDemo()" />
+
+      <button type="button" class="btn btn--quiet btn--sm" data-action="export" [disabled]="!stats()" (click)="exportCsv()">
+        <app-icon name="download" [size]="16" /> Exporter (CSV)
+      </button>
+    </div>
   </header>
 
   @switch (state()) {
     @case ('loading') {
       <div class="panel dash__state" aria-busy="true">
-        <p class="meta" i18n="@@dashboardLoading">Chargement des chiffres…</p>
+        <p class="meta">Chargement des chiffres…</p>
       </div>
     }
 
     @case ('error') {
-      <div class="panel stack">
+      <div class="panel dash__state stack">
         <app-alert kind="error">{{ failure() }}</app-alert>
-        <div class="form-actions">
-          <button class="btn btn--quiet" type="button" (click)="load()" i18n="@@retry">Réessayer</button>
+        <div>
+          <button class="btn btn--quiet" type="button" (click)="load()">Réessayer</button>
         </div>
       </div>
     }
 
     @case ('ready') {
       @if (stats(); as s) {
-        <!-- Annonces, now. -->
-        <section aria-labelledby="dash-listings">
-          <h2 id="dash-listings" class="dash__heading" i18n="@@dashboardListings">Annonces</h2>
-          <ul class="dash__tiles">
-            <li class="panel dash__tile" data-figure="published">
-              <span class="dash__label" i18n="@@dashboardPublished">Publiées</span>
-              <strong class="dash__figure">{{ number(s.listings.published.real) }}</strong>
-              <span class="dash__demo">{{ demoNote(s.listings.published) }}</span>
-            </li>
-            <li class="panel dash__tile dash__tile--queue" data-figure="pending">
-              <span class="dash__label" i18n="@@dashboardPending">En attente de modération</span>
-              <strong class="dash__figure">{{ number(s.listings.pendingModeration.real) }}</strong>
-              <span class="dash__demo">{{ demoNote(s.listings.pendingModeration) }}</span>
-              <a class="dash__link" routerLink="/admin/moderation" data-link="queue">
-                <ng-container i18n="@@dashboardQueue">Voir la file</ng-container> ({{ number(queueSize()) }})
-              </a>
-            </li>
-            <li class="panel dash__tile" data-figure="rejected">
-              <span class="dash__label" i18n="@@dashboardRejected">Refusées</span>
-              <strong class="dash__figure">{{ number(s.listings.rejected.real) }}</strong>
-              <span class="dash__demo">{{ demoNote(s.listings.rejected) }}</span>
-            </li>
-            <li class="panel dash__tile" data-figure="sold">
-              <span class="dash__label" i18n="@@dashboardSold">Vendues</span>
-              <strong class="dash__figure">{{ number(s.listings.sold.real) }}</strong>
-              <span class="dash__demo">{{ demoNote(s.listings.sold) }}</span>
-            </li>
-            <li class="panel dash__tile" data-figure="expired">
-              <span class="dash__label" i18n="@@dashboardExpired">Expirées</span>
-              <strong class="dash__figure">{{ number(s.listings.expired.real) }}</strong>
-              <span class="dash__demo">{{ demoNote(s.listings.expired) }}</span>
-            </li>
-            <li class="panel dash__tile" data-figure="damaged">
-              <span class="dash__label" i18n="@@dashboardDamaged">Endommagées</span>
-              <strong class="dash__figure">{{ number(s.listings.damaged.real) }}</strong>
-              <span class="dash__demo">{{ demoNote(s.listings.damaged) }}</span>
-            </li>
-            <li class="panel dash__tile" data-figure="sale">
-              <span class="dash__label" i18n="@@dashboardSale">Ventes en ligne</span>
-              <strong class="dash__figure">{{ number(s.listings.sale.real) }}</strong>
-              <span class="dash__demo">{{ demoNote(s.listings.sale) }}</span>
-            </li>
-            <li class="panel dash__tile" data-figure="leasing">
-              <span class="dash__label" i18n="@@dashboardLeasing">Locations en ligne</span>
-              <strong class="dash__figure">{{ number(s.listings.leasing.real) }}</strong>
-              <span class="dash__demo">{{ demoNote(s.listings.leasing) }}</span>
-            </li>
-          </ul>
-          <p class="meta dash__note" i18n="@@dashboardPendingNote">
-            Une annonce en attente de modération est déjà en ligne : elle compte aussi parmi les publiées,
-            comme une annonce endommagée en ligne.
-          </p>
+        <!-- What needs a moderator: first, and in colour when it does. -->
+        <section class="dash__attention" aria-label="À traiter">
+          <app-attention-card
+            data-attention="moderation"
+            [tone]="pending() > 0 ? 'warn' : 'ok'"
+            icon="shield-check"
+            title="Modération"
+            [since]="pendingSince() ? 'La plus ancienne attend ' + pendingSince() : null"
+            action="Ouvrir la file"
+            link="/admin/moderation"
+          >
+            @if (pending() > 0) {
+              <strong>{{ number(pending()) }}</strong> {{ pending() > 1 ? 'annonces à modérer' : 'annonce à modérer' }}
+            } @else {
+              Rien à modérer
+            }
+          </app-attention-card>
+
+          <app-attention-card
+            data-attention="reports"
+            [tone]="s.attention.openReports > 0 ? 'danger' : 'ok'"
+            icon="triangle-alert"
+            title="Signalements"
+            [since]="s.attention.openReports > 0 && reportsSince() ? 'Le plus ancien attend ' + reportsSince() : null"
+            action="Voir les signalements"
+            link="/admin/moderation/messages"
+          >
+            @if (s.attention.openReports > 0) {
+              <strong>{{ number(s.attention.openReports) }}</strong> {{ s.attention.openReports > 1 ? 'messages signalés' : 'message signalé' }}
+            } @else {
+              Aucun signalement ouvert
+            }
+          </app-attention-card>
         </section>
 
-        <div class="dash__columns dash__columns--activity">
-          <!-- Activity. -->
-          <section class="panel dash__panel" aria-labelledby="dash-activity">
-            <h2 id="dash-activity" class="dash__heading" i18n="@@dashboardActivity">Activité</h2>
-            <table class="dash__table" data-table="activity">
-              <thead>
-                <tr>
-                  <th scope="col"><span class="visually-hidden" i18n="@@dashboardWhat">Quoi</span></th>
-                  <th scope="col" class="dash__num" i18n="@@dashboard7">7 jours</th>
-                  <th scope="col" class="dash__num" i18n="@@dashboard30">30 jours</th>
-                </tr>
-              </thead>
-              <tbody>
-                <ng-template #cell let-split>
-                  <strong>{{ number(split.real) }}</strong>
-                  @if (demoNote(split); as note) {
-                    &ngsp;<span class="dash__demo dash__demo--inline">{{ note }}</span>
-                  }
-                </ng-template>
-                <tr>
-                  <th scope="row" i18n="@@dashboardNewListings">Nouvelles annonces</th>
-                  <td class="dash__num"><ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ $implicit: s.last7Days.newListings }" /></td>
-                  <td class="dash__num"><ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ $implicit: s.last30Days.newListings }" /></td>
-                </tr>
-                <tr>
-                  <th scope="row" i18n="@@dashboardRegistrations">Inscriptions</th>
-                  <td class="dash__num"><ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ $implicit: s.last7Days.registrations }" /></td>
-                  <td class="dash__num"><ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ $implicit: s.last30Days.registrations }" /></td>
-                </tr>
-                <tr>
-                  <th scope="row" i18n="@@dashboardMessages">Messages envoyés</th>
-                  <td class="dash__num"><ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ $implicit: s.last7Days.messages }" /></td>
-                  <td class="dash__num"><ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ $implicit: s.last30Days.messages }" /></td>
-                </tr>
-              </tbody>
-            </table>
+        <!-- The period's figures, each against the period before. -->
+        <section class="dash__kpis" aria-label="Chiffres de la période">
+          @for (kpi of kpis(); track kpi.key) {
+            <app-kpi-card
+              [attr.data-kpi]="kpi.key"
+              [label]="kpi.label"
+              [icon]="kpi.icon"
+              [value]="kpi.value"
+              [trend]="kpi.trend"
+              [versus]="period().versus"
+              [spark]="kpi.spark"
+            />
+          }
+        </section>
+
+        <div class="dash__grid">
+          <!-- Activity over time. -->
+          <section class="panel dash__panel dash__panel--activity" aria-labelledby="dash-activity">
+            <header class="panel-head">
+              <h2 id="dash-activity" class="dash__heading">Activité</h2>
+              <div class="dash__tabs" role="tablist" aria-label="Indicateur">
+                @for (each of series; track each.key) {
+                  <button
+                    type="button"
+                    role="tab"
+                    class="dash__tab"
+                    [class.dash__tab--on]="chartSeries() === each.key"
+                    [attr.aria-selected]="chartSeries() === each.key"
+                    [attr.data-series]="each.key"
+                    (click)="chartSeries.set(each.key)"
+                  >
+                    {{ each.label }}
+                  </button>
+                }
+              </div>
+            </header>
+            @if (chartHasData()) {
+              <app-column-chart [columns]="columns()" [showDemo]="demo()" [label]="chartLabel()" />
+              <p class="dash__legend">
+                <span><span class="dash__swatch dash__swatch--real"></span> Activité réelle</span>
+                @if (demo()) {
+                  <span><span class="dash__swatch dash__swatch--demo"></span> Démo</span>
+                }
+                <span class="meta">{{ s.period.bucket === 'HOUR' ? 'Par heure, heure de Paris' : 'Par jour, heure de Paris' }}</span>
+              </p>
+            } @else {
+              <app-empty-state data-empty="activity" icon="chart-column">Rien sur la période : aucune donnée à tracer pour cet indicateur.</app-empty-state>
+            }
           </section>
 
-          <!-- The month, day by day. -->
-          <section class="panel dash__panel" aria-labelledby="dash-daily">
-            <div class="dash__head">
-              <h2 id="dash-daily" class="dash__heading" i18n="@@dashboardDaily">Sur 30 jours</h2>
-              @if (showDemo()) {
-                <label class="dash__toggle">
-                  <input type="checkbox" [checked]="includeDemo()" (change)="toggleDemo($event)" />
-                  <span i18n="@@dashboardIncludeDemo">Inclure la démo</span>
-                </label>
+          <!-- The oldest of the queue, decided from here. -->
+          <section class="panel dash__panel dash__panel--queue" aria-labelledby="dash-queue">
+            <header class="panel-head">
+              <h2 id="dash-queue" class="dash__heading">Les plus anciennes en attente</h2>
+              <a class="dash__link" routerLink="/admin/moderation">Toute la file</a>
+            </header>
+            <app-pending-queue [listings]="oldestPending()" (moderated)="moderated($event)" />
+          </section>
+
+          <!-- The catalogue, now. -->
+          <section class="panel dash__panel dash__panel--status" aria-labelledby="dash-status">
+            <header class="panel-head">
+              <h2 id="dash-status" class="dash__heading">Annonces</h2>
+              <span class="dash__now">Maintenant</span>
+            </header>
+            @if (catalogueEmpty()) {
+              <app-empty-state data-empty="listings" icon="car-front">Aucune annonce pour l’instant.</app-empty-state>
+            } @else {
+              <app-donut-chart [segments]="statusSegments()" caption="annonces" label="Annonces par état" />
+              @if (catalogueFacts(); as facts) {
+                <ul class="facts" role="list">
+                  <li data-fact="pending"><app-icon name="clock" [size]="14" /> {{ count(facts.pending, 'en attente de modération', 'en attente de modération') }}</li>
+                  <li data-fact="damaged"><app-icon name="triangle-alert" [size]="14" /> {{ count(facts.damaged, 'endommagée', 'endommagées') }}</li>
+                  <li data-fact="offers"><app-icon name="store" [size]="14" /> {{ count(facts.sale, 'vente', 'ventes') }} · {{ count(facts.leasing, 'location', 'locations') }}</li>
+                </ul>
+              }
+            }
+          </section>
+
+          <section class="panel dash__panel dash__panel--makes" aria-labelledby="dash-makes">
+            <header class="panel-head">
+              <h2 id="dash-makes" class="dash__heading">Marques les plus publiées</h2>
+              <span class="dash__now">En ligne</span>
+            </header>
+            @if (makes().length === 0) {
+              <app-empty-state data-empty="makes" icon="car-front">Aucune annonce en ligne.</app-empty-state>
+            } @else {
+              <app-bar-list [items]="makes()" />
+            }
+          </section>
+
+          <section class="panel dash__panel dash__panel--verdicts" aria-labelledby="dash-verdicts">
+            <header class="panel-head">
+              <h2 id="dash-verdicts" class="dash__heading">Face au prix du marché</h2>
+              <span class="dash__now">En ligne</span>
+            </header>
+            @if (verdictsEmpty()) {
+              <app-empty-state data-empty="verdicts" icon="gauge">Aucune annonce en ligne à comparer au marché.</app-empty-state>
+            } @else {
+              <app-verdict-bar [parts]="verdicts()" />
+              <p class="dash__note meta">Par la même règle que le badge des annonces. « Sans indicateur » : trop peu d’annonces comparables, ou une location.</p>
+            }
+          </section>
+
+          <!-- Search. -->
+          <section class="panel dash__panel dash__panel--search" aria-labelledby="dash-search">
+            <header class="panel-head">
+              <h2 id="dash-search" class="dash__heading">Recherche</h2>
+            </header>
+            <dl class="stats">
+              <div data-stat="searches">
+                <dt>Recherches</dt>
+                <dd><strong>{{ number(s.search.searches.current) }}</strong> <app-trend-badge [trend]="trendOf(s.search.searches)" [versus]="period().versus" /></dd>
+              </div>
+              <div data-stat="interpret">
+                <dt>Recherche intelligente</dt>
+                <dd><strong>{{ number(s.search.interpretRequests.current) }}</strong> <app-trend-badge [trend]="trendOf(s.search.interpretRequests)" [versus]="period().versus" /></dd>
+              </div>
+              <div data-stat="interpret-failed">
+                <dt>Dont en échec</dt>
+                <dd><strong>{{ failureRate() }}</strong> <app-trend-badge [trend]="trendOf(s.search.interpretFailed)" [goodWhenUp]="false" [versus]="period().versus" /></dd>
+              </div>
+              <div data-stat="alerts">
+                <dt>Alertes</dt>
+                <dd><strong>{{ count(s.search.activeAlerts, 'active', 'actives') }}</strong></dd>
+              </div>
+            </dl>
+            <h3 class="dash__subheading">Filtres les plus utilisés</h3>
+            @if (filters().length === 0) {
+              <app-empty-state data-empty="filters" icon="list-filter" [small]="true">Aucune recherche filtrée sur la période.</app-empty-state>
+            } @else {
+              <app-bar-list [items]="filters()" />
+              <p class="dash__note meta">Part des recherches de la période qui utilisent chaque filtre. Seuls les noms des filtres sont comptés, jamais ce qui a été cherché.</p>
+            }
+          </section>
+
+          <!-- Transactional e-mail. -->
+          <section class="panel dash__panel dash__panel--emails" aria-labelledby="dash-emails">
+            <header class="panel-head">
+              <h2 id="dash-emails" class="dash__heading">E-mails</h2>
+            </header>
+            <dl class="stats">
+              <div data-stat="sent">
+                <dt>Envoyés</dt>
+                <dd><strong>{{ number(s.emails.sent.current) }}</strong> <app-trend-badge [trend]="trendOf(s.emails.sent)" [versus]="period().versus" /></dd>
+              </div>
+              <div data-stat="failed">
+                <dt>Échoués</dt>
+                <dd [class.stats__bad]="s.emails.failed.current > 0"><strong>{{ number(s.emails.failed.current) }}</strong> <app-trend-badge [trend]="trendOf(s.emails.failed)" [goodWhenUp]="false" [versus]="period().versus" /></dd>
+              </div>
+              <div data-stat="alerts-sent">
+                <dt>Dont alertes</dt>
+                <dd><strong>{{ number(s.emails.alertsSent.current) }}</strong> <app-trend-badge [trend]="trendOf(s.emails.alertsSent)" [versus]="period().versus" /></dd>
+              </div>
+            </dl>
+            <p class="dash__note meta">Envoyés : remis à Brevo, ce qui ne dit pas qu’ils sont arrivés. Échoués : abandonnés après cinq tentatives.</p>
+            <div class="dash__digest">
+              <button class="btn btn--quiet btn--sm" type="button" data-action="send-my-digest" [disabled]="sendingDigest()" (click)="sendMyDigest()">
+                <app-icon name="send" [size]="14" /> M’envoyer mon résumé d’alertes
+              </button>
+              @if (digestResult()) {
+                <p class="meta" data-digest-result aria-live="polite">{{ digestResult() }}</p>
               }
             </div>
-            <div class="dash__charts">
-              <app-daily-chart title="Nouvelles annonces par jour" i18n-title="@@dashboardChartListings" [days]="listingsPerDay()" [includeDemo]="includeDemo()" />
-              <app-daily-chart title="Inscriptions par jour" i18n-title="@@dashboardChartRegistrations" [days]="registrationsPerDay()" [includeDemo]="includeDemo()" />
-            </div>
-          </section>
-        </div>
-
-        <div class="dash__columns">
-          <!-- Top makes. -->
-          <section class="panel dash__panel" aria-labelledby="dash-makes">
-            <h2 id="dash-makes" class="dash__heading" i18n="@@dashboardMakes">Marques les plus publiées</h2>
-            @if (s.topMakes.length === 0) {
-              <p class="meta" data-empty="makes" i18n="@@dashboardNoMakes">Aucune annonce publiée.</p>
-            } @else {
-              <table class="dash__table" data-table="makes">
-                <thead>
-                  <tr>
-                    <th scope="col" i18n="@@dashboardMake">Marque</th>
-                    <th scope="col" class="dash__num" i18n="@@chartReal">Réel</th>
-                    @if (showDemo()) {
-                      <th scope="col" class="dash__num" i18n="@@chartDemo">Démo</th>
-                    }
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of s.topMakes; track row.make) {
-                    <tr>
-                      <th scope="row">{{ row.make }}</th>
-                      <td class="dash__num"><strong>{{ number(row.published.real) }}</strong></td>
-                      @if (showDemo()) {
-                        <td class="dash__num dash__demo">{{ number(row.published.demo) }}</td>
-                      }
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            }
-          </section>
-
-          <!-- Price verdicts. -->
-          <section class="panel dash__panel" aria-labelledby="dash-verdicts">
-            <h2 id="dash-verdicts" class="dash__heading" i18n="@@dashboardVerdicts">Indicateur de prix</h2>
-            <table class="dash__table" data-table="verdicts">
-              <thead>
-                <tr>
-                  <th scope="col" i18n="@@dashboardVerdict">Annonces publiées</th>
-                  <th scope="col" class="dash__num" i18n="@@chartReal">Réel</th>
-                  @if (showDemo()) {
-                    <th scope="col" class="dash__num" i18n="@@chartDemo">Démo</th>
-                  }
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row" i18n="@@dashboardGoodDeal">Bonne affaire</th>
-                  <td class="dash__num"><strong>{{ number(s.priceVerdicts.goodDeal.real) }}</strong></td>
-                  @if (showDemo()) {
-                    <td class="dash__num dash__demo">{{ number(s.priceVerdicts.goodDeal.demo) }}</td>
-                  }
-                </tr>
-                <tr>
-                  <th scope="row" i18n="@@dashboardMarket">Prix du marché</th>
-                  <td class="dash__num"><strong>{{ number(s.priceVerdicts.market.real) }}</strong></td>
-                  @if (showDemo()) {
-                    <td class="dash__num dash__demo">{{ number(s.priceVerdicts.market.demo) }}</td>
-                  }
-                </tr>
-                <tr>
-                  <th scope="row" i18n="@@dashboardAbove">Au-dessus du marché</th>
-                  <td class="dash__num"><strong>{{ number(s.priceVerdicts.aboveMarket.real) }}</strong></td>
-                  @if (showDemo()) {
-                    <td class="dash__num dash__demo">{{ number(s.priceVerdicts.aboveMarket.demo) }}</td>
-                  }
-                </tr>
-                <tr>
-                  <th scope="row" i18n="@@dashboardNoVerdict">Sans verdict</th>
-                  <td class="dash__num"><strong>{{ number(s.priceVerdicts.noVerdict.real) }}</strong></td>
-                  @if (showDemo()) {
-                    <td class="dash__num dash__demo">{{ number(s.priceVerdicts.noVerdict.demo) }}</td>
-                  }
-                </tr>
-              </tbody>
-            </table>
-          </section>
-
-          <!-- Natural-language search. -->
-          <section class="panel dash__panel" aria-labelledby="dash-search">
-            <h2 id="dash-search" class="dash__heading" i18n="@@dashboardSearch">Recherche intelligente</h2>
-            @if (s.searchLast30Days.requests === 0) {
-              <p class="meta" data-empty="search" i18n="@@dashboardNoSearch">Aucune requête sur 30 jours.</p>
-            } @else {
-              <table class="dash__table" data-table="search">
-                <thead>
-                  <tr>
-                    <th scope="col"><span class="visually-hidden" i18n="@@dashboardWhat">Quoi</span></th>
-                    <th scope="col" class="dash__num" i18n="@@dashboard7">7 jours</th>
-                    <th scope="col" class="dash__num" i18n="@@dashboard30">30 jours</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <th scope="row" i18n="@@dashboardRequests">Requêtes</th>
-                    <td class="dash__num"><strong>{{ number(s.searchLast7Days.requests) }}</strong></td>
-                    <td class="dash__num"><strong>{{ number(s.searchLast30Days.requests) }}</strong></td>
-                  </tr>
-                  <tr>
-                    <th scope="row" i18n="@@dashboardFailed">En échec (503)</th>
-                    <td class="dash__num">{{ share(s.searchLast7Days.failed, s.searchLast7Days.requests) }}</td>
-                    <td class="dash__num">{{ share(s.searchLast30Days.failed, s.searchLast30Days.requests) }}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row" i18n="@@dashboardPartly">Avec une partie non comprise</th>
-                    <td class="dash__num">{{ share(s.searchLast7Days.withNotUnderstood, s.searchLast7Days.requests - s.searchLast7Days.failed) }}</td>
-                    <td class="dash__num">{{ share(s.searchLast30Days.withNotUnderstood, s.searchLast30Days.requests - s.searchLast30Days.failed) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p class="meta dash__note" i18n="@@dashboardSearchNote">
-                Non comprises : parmi les requêtes abouties. Le texte des recherches n’est jamais conservé.
-              </p>
-            }
-          </section>
-
-          <!-- Transactional email. -->
-          <section class="panel dash__panel" aria-labelledby="dash-emails">
-            <h2 id="dash-emails" class="dash__heading" i18n="@@dashboardEmails">E-mails</h2>
-            <table class="dash__table" data-table="emails">
-              <thead>
-                <tr>
-                  <th scope="col"><span class="visually-hidden" i18n="@@dashboardWhat">Quoi</span></th>
-                  <th scope="col" class="dash__num" i18n="@@dashboard7">7 jours</th>
-                  <th scope="col" class="dash__num" i18n="@@dashboard30">30 jours</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr data-row="sent">
-                  <th scope="row" i18n="@@dashboardEmailsSent">Envoyés</th>
-                  <td class="dash__num"><strong>{{ number(s.emailsLast7Days.sent) }}</strong></td>
-                  <td class="dash__num"><strong>{{ number(s.emailsLast30Days.sent) }}</strong></td>
-                </tr>
-                <tr data-row="failed">
-                  <th scope="row" i18n="@@dashboardEmailsFailed">Échoués</th>
-                  <td class="dash__num">{{ number(s.emailsLast7Days.failed) }}</td>
-                  <td class="dash__num">{{ number(s.emailsLast30Days.failed) }}</td>
-                </tr>
-                <tr data-row="alerts">
-                  <th scope="row" i18n="@@dashboardEmailsAlerts">Dont alertes de recherche</th>
-                  <td class="dash__num">{{ number(s.emailsLast7Days.alertsSent) }}</td>
-                  <td class="dash__num">{{ number(s.emailsLast30Days.alertsSent) }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <p class="meta dash__note" i18n="@@dashboardEmailsNote">
-              Envoyés : remis au prestataire, ce qui ne dit pas s’ils sont arrivés. Échoués : abandonnés après cinq tentatives.
-            </p>
-          </section>
-
-          <!-- Saved searches, and the way to test their e-mail without waiting for the morning. -->
-          <section class="panel dash__panel" aria-labelledby="dash-alerts">
-            <h2 id="dash-alerts" class="dash__heading" i18n="@@dashboardAlerts">Alertes</h2>
-            <p class="dash__figure" data-figure="saved-searches">
-              <strong>{{ number(s.activeSavedSearches) }}</strong>
-              <ng-container i18n="@@dashboardAlertsActive"> recherches enregistrées actives</ng-container>
-            </p>
-            <div>
-              <button class="btn btn--quiet" type="button" data-action="send-my-digest" [disabled]="sendingDigest()" (click)="sendMyDigest()" i18n="@@dashboardSendDigest">
-                M’envoyer mon résumé maintenant
-              </button>
-            </div>
-            @if (digestResult()) {
-              <p class="meta" data-digest-result aria-live="polite">{{ digestResult() }}</p>
-            }
-            <p class="meta dash__note" i18n="@@dashboardSendDigestNote">
-              Pour tester : envoie uniquement le résumé de votre compte, avec ce qui est nouveau dans vos propres recherches. Il part dans la minute.
-            </p>
           </section>
         </div>
       }

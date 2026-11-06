@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -33,11 +34,11 @@ public class AdminStatsController {
     }
 
     /**
-     * Figures for the dashboard, each split into real activity and demo seed. At most about a
-     * minute old: see {@code generatedAt}.
+     * Figures for the dashboard over {@code period}, each compared with the period before it and split
+     * into real activity and demo seed. At most about a minute old: see {@code generatedAt}.
      */
     @GetMapping
-    public ResponseEntity<AdminStats> stats() {
-        return ResponseEntity.ok().cacheControl(CACHE).body(stats.stats());
+    public ResponseEntity<AdminStats> stats(@RequestParam(defaultValue = "WEEK") DashboardPeriod period) {
+        return ResponseEntity.ok().cacheControl(CACHE).body(stats.stats(period));
     }
 }

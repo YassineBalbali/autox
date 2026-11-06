@@ -3,18 +3,17 @@ package com.autox.admin;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.time.ZonedDateTime;
+import java.util.EnumMap;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The dashboard's figures, computed at most once in {@code autox.admin.stats-ttl} (a minute).
- *
- * <p>Kept here rather than in an HTTP cache alone: the figures are the same for every
- * administrator, and two of them with the page open should not each cost the database a full
- * set of aggregates. {@code synchronized}, so requests arriving while it is being computed wait
- * for that answer rather than start their own. On several instances each would hold its own
- * copy, which for a minute-old dashboard does not matter.
+ * The admin dashboard's figures, computed for one period at a time and kept for {@code ttl},
+ * period by period: a dashboard left open, or several administrators, cost one set of queries a
+ * minute, not one per refresh.
  */
 @Service
 public class AdminStatsService {
@@ -23,10 +22,12 @@ public class AdminStatsService {
     private final Duration ttl;
     private final Clock clock;
 
-    private AdminStats cached;
-    private Instant computedAt;
+    private record Cached(AdminStats stats, Instant computedAt) {
+    }
 
-    @Autowired
+    private final Map<DashboardPeriod, Cached> cache = new EnumMap<>(DashboardPeriod.class);
+
+    @org.springframework.beans.factory.annotation.Autowired
     AdminStatsService(AdminStatsRepository repository, @Value("${autox.admin.stats-ttl:PT1M}") Duration ttl) {
         this(repository, ttl, Clock.systemUTC());
     }
@@ -37,27 +38,29 @@ public class AdminStatsService {
         this.clock = clock;
     }
 
-    public synchronized AdminStats stats() {
+    @Transactional(readOnly = true)
+    public synchronized AdminStats stats(DashboardPeriod period) {
         Instant now = clock.instant();
-        if (cached != null && now.isBefore(computedAt.plus(ttl))) {
-            return cached;
+        Cached cached = cache.get(period);
+        if (cached != null && now.isBefore(cached.computedAt().plus(ttl))) {
+            return cached.stats();
         }
+        DashboardPeriod.Window window = period.window(ZonedDateTime.ofInstant(now, DashboardPeriod.PARIS));
         boolean ledger = repository.demoLedgerExists();
-        cached = new AdminStats(
+        AdminStats stats = new AdminStats(
                 now,
                 ledger,
+                new AdminStats.PeriodWindow(period, window.from().toInstant(), window.to().toInstant(),
+                        window.previousFrom().toInstant(), window.previousTo().toInstant(), period.bucket()),
+                repository.attention(ledger),
+                repository.activity(ledger, window),
+                repository.series(ledger, window),
                 repository.listingsByStatus(ledger),
-                repository.activity(ledger, 7),
-                repository.activity(ledger, 30),
-                repository.daily(ledger),
                 repository.topMakes(ledger),
                 repository.priceVerdicts(ledger),
-                repository.searchUsage(7),
-                repository.searchUsage(30),
-                repository.emailCounts(7),
-                repository.emailCounts(30),
-                repository.activeSavedSearches());
-        computedAt = now;
-        return cached;
+                repository.search(window),
+                repository.emails(window));
+        cache.put(period, new Cached(stats, now));
+        return stats;
     }
 }

@@ -3089,9 +3089,26 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Figures for the dashboard, each split into real activity and demo seed.",
-        "description": "Figures for the dashboard, each split into real activity and demo seed. At most about a\n minute old: see <code>generatedAt</code>.",
+        "summary": "Figures for the dashboard over <code>period</code>, each compared with the period before it and split\n into real activity and demo seed.",
+        "description": "Figures for the dashboard over <code>period</code>, each compared with the period before it and split\n into real activity and demo seed. At most about a minute old: see <code>generatedAt</code>.",
         "operationId": "stats",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "WEEK",
+              "enum": [
+                "TODAY",
+                "WEEK",
+                "MONTH",
+                "QUARTER"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -6934,27 +6951,31 @@
       },
       "Activity": {
         "type": "object",
-        "description": "Listings created, accounts registered and messages sent in a period.",
+        "description": "What was created in the period, compared with the previous one.",
         "properties": {
           "newListings": {
-            "$ref": "#/components/schemas/Split"
+            "$ref": "#/components/schemas/Comparison"
           },
           "registrations": {
-            "$ref": "#/components/schemas/Split"
+            "$ref": "#/components/schemas/Comparison"
           },
           "messages": {
-            "$ref": "#/components/schemas/Split"
+            "$ref": "#/components/schemas/Comparison"
+          },
+          "savedSearches": {
+            "$ref": "#/components/schemas/Comparison"
           }
         },
         "required": [
           "messages",
           "newListings",
-          "registrations"
+          "registrations",
+          "savedSearches"
         ]
       },
       "AdminStats": {
         "type": "object",
-        "description": "Figures for the admin dashboard, real activity and demo seed apart.",
+        "description": "Figures for the admin dashboard over a period, real activity and demo seed apart.",
         "properties": {
           "generatedAt": {
             "type": "string",
@@ -6963,114 +6984,155 @@
           },
           "demoDataPresent": {
             "type": "boolean",
-            "description": "whether the demo ledger exists, i.e. whether the demo columns can be\n                        anything but zero"
+            "description": "whether the demo ledger exists, i.e. whether the demo halves can be anything but zero"
+          },
+          "period": {
+            "$ref": "#/components/schemas/PeriodWindow",
+            "description": "the period and the one it is compared with"
+          },
+          "attention": {
+            "$ref": "#/components/schemas/Attention",
+            "description": "what is waiting for an administrator, now"
+          },
+          "activity": {
+            "$ref": "#/components/schemas/Activity",
+            "description": "what was created in the period, and in the one before"
+          },
+          "series": {
+            "type": "array",
+            "description": "the same, bucket by bucket: each hour of today, or each day",
+            "items": {
+              "$ref": "#/components/schemas/Point"
+            }
           },
           "listings": {
             "$ref": "#/components/schemas/ListingsByStatus",
             "description": "listings now, by state"
           },
-          "last7Days": {
-            "$ref": "#/components/schemas/Activity",
-            "description": "activity in the last 7 × 24 hours"
-          },
-          "last30Days": {
-            "$ref": "#/components/schemas/Activity",
-            "description": "activity in the last 30 × 24 hours"
-          },
-          "daily": {
-            "type": "array",
-            "description": "new listings and registrations per Paris day, the 30 days up to\n                        today, oldest first, days without any included",
-            "items": {
-              "$ref": "#/components/schemas/DailyActivity"
-            }
-          },
           "topMakes": {
             "type": "array",
-            "description": "the makes with the most published listings, at most ten, by real\n                        listings first",
+            "description": "the makes with the most published listings, at most ten, real ones first",
             "items": {
               "$ref": "#/components/schemas/MakeCount"
             }
           },
           "priceVerdicts": {
             "$ref": "#/components/schemas/PriceVerdicts",
-            "description": "published listings by price indicator, computed by the same rule as\n                        the badge on the site"
+            "description": "published listings by price indicator, by the badge's own rule"
           },
-          "searchLast7Days": {
+          "search": {
             "$ref": "#/components/schemas/SearchUsage",
-            "description": "natural-language search, the last 7 Paris days including today"
+            "description": "how search is used in the period"
           },
-          "searchLast30Days": {
-            "$ref": "#/components/schemas/SearchUsage",
-            "description": "the same over 30 days"
-          },
-          "emailsLast7Days": {
-            "$ref": "#/components/schemas/EmailCounts",
-            "description": "transactional email written in the last 7 × 24 hours, by outcome"
-          },
-          "emailsLast30Days": {
-            "$ref": "#/components/schemas/EmailCounts",
-            "description": "the same over 30 × 24 hours"
-          },
-          "activeSavedSearches": {
-            "type": "integer",
-            "format": "int64",
-            "description": "saved searches now, not paused"
+          "emails": {
+            "$ref": "#/components/schemas/Emails",
+            "description": "transactional e-mail in the period"
           }
         },
         "required": [
-          "activeSavedSearches",
-          "daily",
+          "activity",
+          "attention",
           "demoDataPresent",
-          "emailsLast30Days",
-          "emailsLast7Days",
+          "emails",
           "generatedAt",
-          "last30Days",
-          "last7Days",
           "listings",
+          "period",
           "priceVerdicts",
-          "searchLast30Days",
-          "searchLast7Days",
+          "search",
+          "series",
           "topMakes"
         ]
       },
-      "DailyActivity": {
+      "Attention": {
         "type": "object",
-        "description": "New listings and registrations on one Paris day.",
+        "description": "What is waiting for a moderator, now.",
         "properties": {
-          "day": {
-            "type": "string",
-            "format": "date"
+          "pendingModeration": {
+            "$ref": "#/components/schemas/Split",
+            "description": "listings in the moderation queue"
           },
-          "newListings": {
+          "oldestPendingReal": {
+            "type": "string",
+            "format": "date-time",
+            "description": "when the oldest real one in it was created, if any"
+          },
+          "oldestPendingDemo": {
+            "type": "string",
+            "format": "date-time",
+            "description": "the same for the seed's"
+          },
+          "openReports": {
+            "type": "integer",
+            "format": "int64",
+            "description": "reported messages no moderator has dealt with"
+          },
+          "oldestOpenReport": {
+            "type": "string",
+            "format": "date-time",
+            "description": "when the oldest of those was reported, if any"
+          },
+          "oldestPending": {
+            "type": "array",
+            "description": "the queue's first listings: the five oldest, and the five oldest real\n                           ones, which the page chooses between with the demo switch",
+            "items": {
+              "$ref": "#/components/schemas/PendingListing"
+            }
+          }
+        },
+        "required": [
+          "oldestPending",
+          "openReports",
+          "pendingModeration"
+        ]
+      },
+      "Comparison": {
+        "type": "object",
+        "description": "A split count in the period and in the previous one.",
+        "properties": {
+          "current": {
             "$ref": "#/components/schemas/Split"
           },
-          "registrations": {
+          "previous": {
             "$ref": "#/components/schemas/Split"
           }
         },
         "required": [
-          "day",
-          "newListings",
-          "registrations"
+          "current",
+          "previous"
         ]
       },
-      "EmailCounts": {
+      "Count": {
         "type": "object",
-        "description": "Transactional email in a period, by outcome.",
+        "description": "A count in the period and in the previous one.",
+        "properties": {
+          "current": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previous": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "current",
+          "previous"
+        ]
+      },
+      "Emails": {
+        "type": "object",
+        "description": "Transactional e-mail in the period.",
         "properties": {
           "sent": {
-            "type": "integer",
-            "format": "int64",
+            "$ref": "#/components/schemas/Count",
             "description": "handed to the provider, which is not the same as delivered"
           },
           "failed": {
-            "type": "integer",
-            "format": "int64",
-            "description": "given up on after the last attempt"
+            "$ref": "#/components/schemas/Count",
+            "description": "given up on after the last attempt, by when it was written"
           },
           "alertsSent": {
-            "type": "integer",
-            "format": "int64",
+            "$ref": "#/components/schemas/Count",
             "description": "of <code>sent</code>, saved searches' daily e-mails"
           }
         },
@@ -7078,6 +7140,28 @@
           "alertsSent",
           "failed",
           "sent"
+        ]
+      },
+      "FilterUse": {
+        "type": "object",
+        "description": "How many searches used a filter.",
+        "properties": {
+          "filter": {
+            "type": "string"
+          },
+          "current": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previous": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "current",
+          "filter",
+          "previous"
         ]
       },
       "ListingsByStatus": {
@@ -7090,19 +7174,16 @@
           },
           "pendingModeration": {
             "$ref": "#/components/schemas/Split",
-            "description": "online and not yet reviewed: the moderation queue, a part of\n                          <code>published</code>"
+            "description": "online and not yet reviewed, a part of <code>published</code>"
           },
           "rejected": {
-            "$ref": "#/components/schemas/Split",
-            "description": "refused by a moderator"
+            "$ref": "#/components/schemas/Split"
           },
           "sold": {
-            "$ref": "#/components/schemas/Split",
-            "description": "marked sold"
+            "$ref": "#/components/schemas/Split"
           },
           "expired": {
-            "$ref": "#/components/schemas/Split",
-            "description": "expired, not renewed"
+            "$ref": "#/components/schemas/Split"
           },
           "damaged": {
             "$ref": "#/components/schemas/Split",
@@ -7144,6 +7225,144 @@
           "published"
         ]
       },
+      "PendingListing": {
+        "type": "object",
+        "description": "A listing in the moderation queue.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "description": "Make, model and version, as on a result card"
+          },
+          "title": {
+            "type": "string"
+          },
+          "sellerName": {
+            "type": "string"
+          },
+          "sellerRole": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "leasing": {
+            "type": "boolean"
+          },
+          "damaged": {
+            "type": "boolean"
+          },
+          "demo": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "createdAt",
+          "currencyCode",
+          "damaged",
+          "demo",
+          "id",
+          "label",
+          "leasing",
+          "priceAmount",
+          "sellerName",
+          "sellerRole",
+          "title"
+        ]
+      },
+      "PeriodWindow": {
+        "type": "object",
+        "description": "The period shown and the one it is compared with.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "TODAY",
+              "WEEK",
+              "MONTH",
+              "QUARTER"
+            ]
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "previousFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "previousTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bucket": {
+            "type": "string",
+            "description": "what one point of {@link AdminStats#series AdminStats#series} covers",
+            "enum": [
+              "HOUR",
+              "DAY"
+            ]
+          }
+        },
+        "required": [
+          "bucket",
+          "from",
+          "key",
+          "previousFrom",
+          "previousTo",
+          "to"
+        ]
+      },
+      "Point": {
+        "type": "object",
+        "description": "Activity in one hour or one day of the period.",
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Paris local time"
+          },
+          "newListings": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "registrations": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "messages": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "savedSearches": {
+            "$ref": "#/components/schemas/Split"
+          },
+          "emailsSent": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "emailsSent",
+          "messages",
+          "newListings",
+          "registrations",
+          "savedSearches",
+          "start"
+        ]
+      },
       "PriceVerdicts": {
         "type": "object",
         "description": "Published listings by price indicator.",
@@ -7170,28 +7389,43 @@
       },
       "SearchUsage": {
         "type": "object",
-        "description": "Natural-language search usage in a period: counts only.",
+        "description": "How search is used in the period: counts only.",
         "properties": {
-          "requests": {
-            "type": "integer",
-            "format": "int64",
-            "description": "requests that reached the language model"
+          "interpretRequests": {
+            "$ref": "#/components/schemas/Count",
+            "description": "natural-language requests that reached the language model. Stored per\n                          Paris day, so \"today\" is compared with the whole of yesterday"
           },
-          "failed": {
-            "type": "integer",
-            "format": "int64",
-            "description": "of those, answered 503 (timeout, quota, provider error)"
+          "interpretFailed": {
+            "$ref": "#/components/schemas/Count",
+            "description": "of those, answered 503"
           },
-          "withNotUnderstood": {
+          "interpretNotUnderstood": {
+            "$ref": "#/components/schemas/Count"
+          },
+          "searches": {
+            "$ref": "#/components/schemas/Count",
+            "description": "searches on the results page, first pages only"
+          },
+          "topFilters": {
+            "type": "array",
+            "description": "the filters those searches used most, by name",
+            "items": {
+              "$ref": "#/components/schemas/FilterUse"
+            }
+          },
+          "activeAlerts": {
             "type": "integer",
             "format": "int64",
-            "description": "of the answered ones, those with at least one part not understood"
+            "description": "saved searches now, not paused"
           }
         },
         "required": [
-          "failed",
-          "requests",
-          "withNotUnderstood"
+          "activeAlerts",
+          "interpretFailed",
+          "interpretNotUnderstood",
+          "interpretRequests",
+          "searches",
+          "topFilters"
         ]
       },
       "Split": {

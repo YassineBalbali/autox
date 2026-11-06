@@ -1,105 +1,103 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { AdminStats, BASE_PATH } from '../../core/api';
-import { NBSP } from '../../shared/format/number';
+import { AdminStats, BASE_PATH, PendingListing } from '../../core/api';
 import { AdminDashboardPage, shareFr } from './admin-dashboard-page';
-import { DayCount, dayBars } from './daily-chart';
+import { STATS } from './dashboard/dashboard.fixture';
 
 const BASE = 'http://api.test';
-const STATS = `${BASE}/api/v1/admin/stats`;
+const STATS_URL = `${BASE}/api/v1/admin/stats`;
 
-const split = (real: number, demo = 0) => ({ real, demo });
+const pendingListing = (id: string, demo: boolean, createdAt = '2026-11-01T10:00:00Z'): PendingListing => ({
+  id,
+  label: `Peugeot 308 ${id}`,
+  title: `Titre ${id}`,
+  sellerName: 'Garage Martin',
+  sellerRole: 'PROFESSIONNEL',
+  createdAt,
+  priceAmount: 1_899_000,
+  currencyCode: 'EUR',
+  leasing: false,
+  damaged: false,
+  demo,
+});
 
-const days = (fill: (index: number) => { listings: number; demoListings?: number }) =>
-  Array.from({ length: 30 }, (_, index) => {
-    const { listings, demoListings = 0 } = fill(index);
-    return {
-      day: `2026-10-${String(index + 1).padStart(2, '0')}`,
-      newListings: split(listings, demoListings),
-      registrations: split(0),
-    };
-  });
+const WITH_QUEUE: AdminStats = {
+  ...STATS,
+  attention: {
+    ...STATS.attention,
+    pendingModeration: { real: 2, demo: 3 },
+    oldestPending: [
+      pendingListing('d1', true, '2026-10-20T10:00:00Z'),
+      pendingListing('d2', true, '2026-10-21T10:00:00Z'),
+      pendingListing('r1', false, '2026-11-01T10:00:00Z'),
+      pendingListing('r2', false, '2026-11-02T10:00:00Z'),
+    ],
+  },
+};
 
 const EMPTY: AdminStats = {
-  generatedAt: '2026-11-02T10:00:00Z',
+  ...STATS,
   demoDataPresent: false,
-  listings: {
-    published: split(0),
-    pendingModeration: split(0),
-    rejected: split(0),
-    sold: split(0),
-    expired: split(0),
-    damaged: split(0),
-    sale: split(0),
-    leasing: split(0),
+  attention: {
+    pendingModeration: { real: 0, demo: 0 },
+    openReports: 0,
+    oldestPending: [],
   },
-  last7Days: { newListings: split(0), registrations: split(0), messages: split(0) },
-  last30Days: { newListings: split(0), registrations: split(0), messages: split(0) },
-  daily: days(() => ({ listings: 0 })),
+  activity: {
+    newListings: { current: { real: 0, demo: 0 }, previous: { real: 0, demo: 0 } },
+    registrations: { current: { real: 0, demo: 0 }, previous: { real: 0, demo: 0 } },
+    messages: { current: { real: 0, demo: 0 }, previous: { real: 0, demo: 0 } },
+    savedSearches: { current: { real: 0, demo: 0 }, previous: { real: 0, demo: 0 } },
+  },
+  series: STATS.series.map((point) => ({
+    ...point,
+    newListings: { real: 0, demo: 0 },
+    registrations: { real: 0, demo: 0 },
+    messages: { real: 0, demo: 0 },
+    savedSearches: { real: 0, demo: 0 },
+    emailsSent: 0,
+  })),
+  listings: {
+    published: { real: 0, demo: 0 },
+    pendingModeration: { real: 0, demo: 0 },
+    rejected: { real: 0, demo: 0 },
+    sold: { real: 0, demo: 0 },
+    expired: { real: 0, demo: 0 },
+    damaged: { real: 0, demo: 0 },
+    sale: { real: 0, demo: 0 },
+    leasing: { real: 0, demo: 0 },
+  },
   topMakes: [],
-  priceVerdicts: { goodDeal: split(0), market: split(0), aboveMarket: split(0), noVerdict: split(0) },
-  searchLast7Days: { requests: 0, failed: 0, withNotUnderstood: 0 },
-  searchLast30Days: { requests: 0, failed: 0, withNotUnderstood: 0 },
-  emailsLast7Days: { sent: 0, failed: 0, alertsSent: 0 },
-  emailsLast30Days: { sent: 0, failed: 0, alertsSent: 0 },
-  activeSavedSearches: 0,
-};
-
-const SEEDED: AdminStats = {
-  ...EMPTY,
-  demoDataPresent: true,
-  listings: {
-    published: split(1, 152),
-    pendingModeration: split(1, 40),
-    rejected: split(2),
-    sold: split(3, 4),
-    expired: split(5),
-    damaged: split(6, 8),
-    sale: split(1, 140),
-    leasing: split(0, 12),
+  priceVerdicts: {
+    goodDeal: { real: 0, demo: 0 },
+    market: { real: 0, demo: 0 },
+    aboveMarket: { real: 0, demo: 0 },
+    noVerdict: { real: 0, demo: 0 },
   },
-  last7Days: { newListings: split(1, 152), registrations: split(6, 12), messages: split(7) },
-  last30Days: { newListings: split(8, 152), registrations: split(9, 12), messages: split(10) },
-  daily: days((index) => (index === 29 ? { listings: 1, demoListings: 152 } : { listings: 0 })),
-  topMakes: [{ make: 'Renault', published: split(1, 30) }, { make: 'Audi', published: split(0, 12) }],
-  priceVerdicts: { goodDeal: split(1, 20), market: split(0, 90), aboveMarket: split(0, 22), noVerdict: split(0, 20) },
-  searchLast7Days: { requests: 15, failed: 3, withNotUnderstood: 6 },
-  searchLast30Days: { requests: 40, failed: 0, withNotUnderstood: 10 },
-  emailsLast7Days: { sent: 12, failed: 1, alertsSent: 5 },
-  emailsLast30Days: { sent: 48, failed: 3, alertsSent: 20 },
-  activeSavedSearches: 7,
+  search: {
+    interpretRequests: { current: 0, previous: 0 },
+    interpretFailed: { current: 0, previous: 0 },
+    interpretNotUnderstood: { current: 0, previous: 0 },
+    searches: { current: 0, previous: 0 },
+    topFilters: [],
+    activeAlerts: 0,
+  },
+  emails: { sent: { current: 0, previous: 0 }, failed: { current: 0, previous: 0 }, alertsSent: { current: 0, previous: 0 } },
 };
 
-/** The page through a real router and a fake backend. */
 describe('AdminDashboardPage', () => {
   let harness: RouterTestingHarness;
   let backend: HttpTestingController;
   let root: HTMLElement;
 
-  const words = (element: Element | null | undefined) => element?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-  const tile = (name: string) => root.querySelector(`[data-figure="${name}"]`);
-  const figure = (name: string) => words(tile(name)?.querySelector('.dash__figure'));
-  const demo = (name: string) => words(tile(name)?.querySelector('.dash__demo'));
-  const rows = (table: string) =>
-    Array.from(root.querySelectorAll(`[data-table="${table}"] tbody tr`)).map((row) =>
-      Array.from(row.children).map((cell) => words(cell)),
-    );
+  afterEach(() => vi.restoreAllMocks());
 
-  it('counts sales and leasing offers separately', async () => {
-    await visit(SEEDED);
-
-    expect(figure('sale')).toBe('1');
-    expect(demo('sale')).toContain('140');
-    expect(figure('leasing')).toBe('0');
-    expect(demo('leasing')).toContain('12');
-  });
-
-  async function open(): Promise<void> {
+  async function open(url = '/admin'): Promise<void> {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -108,185 +106,267 @@ describe('AdminDashboardPage', () => {
         provideRouter([
           { path: 'admin', component: AdminDashboardPage },
           { path: 'admin/moderation', component: AdminDashboardPage },
+          { path: 'admin/moderation/messages', component: AdminDashboardPage },
         ]),
         { provide: BASE_PATH, useValue: BASE },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
-    harness = await RouterTestingHarness.create('/admin');
+    harness = await RouterTestingHarness.create(url);
     root = harness.routeNativeElement as HTMLElement;
   }
 
-  async function visit(stats: AdminStats): Promise<void> {
-    await open();
-    backend.expectOne(STATS).flush(stats);
-    await harness.fixture.whenStable();
+  const statsRequest = (): TestRequest => backend.expectOne((request) => request.url === STATS_URL);
+  const settle = () => harness.fixture.whenStable();
+
+  async function visit(stats: AdminStats, url = '/admin'): Promise<TestRequest> {
+    await open(url);
+    const request = statsRequest();
+    request.flush(stats);
+    await settle();
+    return request;
   }
+
+  const text = (selector: string) => (root.querySelector(selector)?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const kpi = (key: string) => text(`[data-kpi="${key}"] .kpi__value`);
+
+  describe('the period', () => {
+    it('is a week by default, and asks for it', async () => {
+      const request = await visit(STATS);
+
+      expect(request.request.params.get('period')).toBe('WEEK');
+      expect(root.querySelector('[data-period="7j"]')?.getAttribute('aria-checked')).toBe('true');
+    });
+
+    it('comes from the address, and a choice asks again and puts it there', async () => {
+      const request = await visit(STATS, '/admin?periode=30j');
+      expect(request.request.params.get('period')).toBe('MONTH');
+
+      (root.querySelector('[data-period="jour"]') as HTMLButtonElement).click();
+      await settle();
+
+      expect(statsRequest().request.params.get('period')).toBe('TODAY');
+    });
+
+    it('says what each trend is against', async () => {
+      await visit(STATS, '/admin?periode=trimestre');
+
+      expect(text('[data-kpi="newListings"] .kpi__versus')).toBe('vs le trimestre précédent');
+    });
+  });
+
+  describe('the demo switch', () => {
+    it('is on by default and labelled so: the seed is in every figure', async () => {
+      await visit(STATS);
+
+      expect(root.querySelector('[data-action="toggle-demo"]')?.getAttribute('aria-checked')).toBe('true');
+      expect(text('[data-demo-state]')).toBe('Démo incluse');
+      expect(kpi('newListings')).toBe('26');
+      expect(text('[data-attention="moderation"] .attention__figure')).toContain('42');
+    });
+
+    it('off, the figures are real activity alone, and asking the server nothing new', async () => {
+      await visit(STATS, '/admin?demo=0');
+
+      expect(root.querySelector('[data-action="toggle-demo"]')?.getAttribute('aria-checked')).toBe('false');
+      expect(text('[data-demo-state]')).toBe('Activité réelle seulement');
+      expect(kpi('newListings')).toBe('6');
+      expect(text('[data-attention="moderation"] .attention__figure')).toContain('2');
+      backend.expectNone((request) => request.url === STATS_URL);
+    });
+
+    it('switches without a new request', async () => {
+      await visit(STATS);
+
+      (root.querySelector('[data-action="toggle-demo"]') as HTMLButtonElement).click();
+      await settle();
+
+      expect(kpi('newListings')).toBe('6');
+      backend.expectNone((request) => request.url === STATS_URL);
+    });
+
+    it('is disabled where there is no demo seed', async () => {
+      await visit({ ...STATS, demoDataPresent: false });
+
+      expect((root.querySelector('[data-action="toggle-demo"]') as HTMLButtonElement).disabled).toBe(true);
+      expect(kpi('newListings')).toBe('6');
+      expect(root.querySelector('[data-demo-state]')).toBeNull();
+    });
+  });
+
+  describe('what needs attention', () => {
+    it('stands out in colour when there is something, with a way to act on it', async () => {
+      await visit(STATS);
+
+      const moderation = root.querySelector('[data-attention="moderation"]') as HTMLElement;
+      expect(moderation.classList).toContain('attention--warn');
+      expect(moderation.querySelector('a')?.getAttribute('href')).toBe('/admin/moderation');
+      const reports = root.querySelector('[data-attention="reports"]') as HTMLElement;
+      expect(reports.classList).toContain('attention--danger');
+      expect(text('[data-attention="reports"] .attention__figure')).toBe('1 message signalé');
+      expect(reports.querySelector('a')?.getAttribute('href')).toBe('/admin/moderation/messages');
+    });
+
+    it('says plainly when there is nothing', async () => {
+      await visit(EMPTY);
+
+      expect(root.querySelector('[data-attention="moderation"]')?.classList).toContain('attention--ok');
+      expect(text('[data-attention="moderation"] .attention__figure')).toBe('Rien à modérer');
+      expect(text('[data-attention="reports"] .attention__figure')).toBe('Aucun signalement ouvert');
+    });
+  });
+
+  describe('moderating from the dashboard', () => {
+    it('lists the oldest five, demo ones only with the switch on', async () => {
+      await visit(WITH_QUEUE);
+      expect(Array.from(root.querySelectorAll('[data-pending]')).map((row) => row.getAttribute('data-pending'))).toEqual([
+        'd1', 'd2', 'r1', 'r2',
+      ]);
+      expect(root.querySelectorAll('[data-demo-tag]')).toHaveLength(2);
+
+      await visit(WITH_QUEUE, '/admin?demo=0');
+      expect(Array.from(root.querySelectorAll('[data-pending]')).map((row) => row.getAttribute('data-pending'))).toEqual([
+        'r1', 'r2',
+      ]);
+    });
+
+    it('accepts one: the API is asked, the row goes and the count follows', async () => {
+      await visit(WITH_QUEUE, '/admin?demo=0');
+
+      (root.querySelector('[data-pending="r1"] [data-action="approve"]') as HTMLButtonElement).click();
+      const request = backend.expectOne(`${BASE}/api/v1/admin/listings/r1/approve`);
+      expect(request.request.method).toBe('POST');
+      request.flush({});
+      await settle();
+
+      expect(root.querySelector('[data-pending="r1"]')).toBeNull();
+      expect(text('[data-attention="moderation"] .attention__figure')).toBe('1 annonce à modérer');
+    });
+
+    it('refuses one with a reason, and asks for a note when the reason needs one', async () => {
+      await visit(WITH_QUEUE, '/admin?demo=0');
+
+      (root.querySelector('[data-pending="r2"] [data-action="reject"]') as HTMLButtonElement).click();
+      await settle();
+      const confirm = () => root.querySelector('[data-pending="r2"] [data-action="confirm-reject"]') as HTMLButtonElement;
+      expect(confirm().disabled).toBe(true);
+
+      const select = root.querySelector('[data-pending="r2"] [data-reason]') as HTMLSelectElement;
+      select.value = 'OTHER';
+      select.dispatchEvent(new Event('change'));
+      await settle();
+      expect(confirm().disabled).toBe(true);
+      const note = root.querySelector('[data-pending="r2"] [data-note]') as HTMLInputElement;
+      note.value = 'Annonce copiée d’un autre site';
+      note.dispatchEvent(new Event('input'));
+      await settle();
+      expect(confirm().disabled).toBe(false);
+
+      confirm().click();
+      const request = backend.expectOne(`${BASE}/api/v1/admin/listings/r2/reject`);
+      expect(request.request.body).toEqual({ reasonCode: 'OTHER', note: 'Annonce copiée d’un autre site' });
+      request.flush({});
+      await settle();
+
+      expect(root.querySelector('[data-pending="r2"]')).toBeNull();
+    });
+
+    it('says why when the API refuses, and keeps the row', async () => {
+      await visit(WITH_QUEUE, '/admin?demo=0');
+
+      (root.querySelector('[data-pending="r1"] [data-action="approve"]') as HTMLButtonElement).click();
+      backend.expectOne(`${BASE}/api/v1/admin/listings/r1/approve`).flush(
+        { code: 'CONFLICT', detail: 'x' },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await settle();
+
+      expect(root.querySelector('[data-pending="r1"]')).not.toBeNull();
+      expect(root.querySelector('[data-pending="r1"] [role="alert"]')).not.toBeNull();
+    });
+
+    it('has a designed empty state', async () => {
+      await visit(EMPTY);
+
+      expect(text('[data-empty="queue"]')).toContain('La file est vide');
+    });
+  });
+
+  describe('the charts', () => {
+    it('draw the chosen indicator over the period, demo stacked when it is on', async () => {
+      await visit(STATS);
+
+      expect(root.querySelectorAll('app-column-chart .chart__real')).toHaveLength(2);
+      expect(root.querySelectorAll('app-column-chart .chart__demo')).toHaveLength(1);
+
+      (root.querySelector('[data-series="emailsSent"]') as HTMLButtonElement).click();
+      await settle();
+      expect(root.querySelectorAll('app-column-chart .chart__real')).toHaveLength(1);
+      expect(root.querySelectorAll('app-column-chart .chart__demo')).toHaveLength(0);
+    });
+
+    it('show a designed empty state, not an empty chart, where there is no data', async () => {
+      await visit(EMPTY);
+
+      for (const widget of ['activity', 'listings', 'makes', 'verdicts', 'filters']) {
+        expect(root.querySelector(`[data-empty="${widget}"]`), widget).not.toBeNull();
+      }
+      expect(root.querySelector('app-column-chart')).toBeNull();
+      expect(root.querySelector('app-donut-chart')).toBeNull();
+    });
+  });
+
+  describe('counts in words', () => {
+    it('agree with the number', async () => {
+      await visit(STATS);
+      expect(text('[data-stat="alerts"] strong')).toBe('1 active');
+      expect(text('[data-fact="damaged"]')).toBe('9 endommagées');
+
+      await visit({ ...STATS, search: { ...STATS.search, activeAlerts: 3 } }, '/admin?demo=0');
+      expect(text('[data-stat="alerts"] strong')).toBe('3 actives');
+      expect(text('[data-fact="damaged"]')).toBe('1 endommagée');
+    });
+  });
+
+  describe('the export', () => {
+    it('downloads what is on the screen as a CSV named after the period', async () => {
+      await visit(STATS, '/admin?demo=0');
+      const blobs: Blob[] = [];
+      vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+        blobs.push(blob as Blob);
+        return 'blob:test';
+      });
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      const clicked: HTMLAnchorElement[] = [];
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        clicked.push(this);
+      });
+
+      (root.querySelector('[data-action="export"]') as HTMLButtonElement).click();
+
+      expect(clicked).toHaveLength(1);
+      expect(clicked[0].download).toBe('autox-tableau-de-bord-7j-2026-11-05.csv');
+      const csv = await blobs[0].text();
+      expect(csv).toContain('Activité;Nouvelles annonces;6;3;');
+      expect(csv).toContain('Données de démonstration;exclues');
+    });
+  });
 
   it('shows it is loading, then, on failure, says so and can try again', async () => {
     await open();
-    expect(words(root.querySelector('.dash__state'))).toBe('Chargement des chiffres…');
+    expect(text('.dash__state')).toContain('Chargement');
 
-    backend.expectOne(STATS).flush({ code: 'INTERNAL_ERROR' }, { status: 500, statusText: 'Server Error' });
-    await harness.fixture.whenStable();
-    expect(root.querySelector('app-alert')).not.toBeNull();
+    statsRequest().flush({ code: 'INTERNAL_ERROR' }, { status: 500, statusText: 'Server Error' });
+    await settle();
+    (root.querySelector('.dash__state button') as HTMLButtonElement).click();
+    statsRequest().flush(STATS);
+    await settle();
 
-    (root.querySelector('.btn') as HTMLButtonElement).click();
-    backend.expectOne(STATS).flush(EMPTY);
-    await harness.fixture.whenStable();
-    expect(figure('published')).toBe('0');
+    expect(kpi('newListings')).toBe('26');
   });
 
-  it('makes real activity the main figure, with the demo beside it', async () => {
-    await visit(SEEDED);
-
-    expect(figure('published')).toBe('1');
-    expect(demo('published')).toBe('+ 152 démo');
-    expect(figure('rejected')).toBe('2');
-    expect(demo('rejected')).toBe('');
-    expect(figure('sold')).toBe('3');
-    expect(demo('sold')).toBe('+ 4 démo');
-    expect(figure('expired')).toBe('5');
-    expect(figure('damaged')).toBe('6');
-    expect(demo('damaged')).toBe('+ 8 démo');
-    expect(words(root.querySelector('header'))).toContain('Chiffre principal : l’activité réelle.');
-  });
-
-  it('links the pending count to the queue, which holds real and demo alike', async () => {
-    await visit(SEEDED);
-
-    expect(figure('pending')).toBe('1');
-    const link = root.querySelector('[data-link="queue"]') as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toBe('/admin/moderation');
-    expect(words(link)).toBe('Voir la file (41)');
-  });
-
-  it('lists activity over 7 and 30 days', async () => {
-    await visit(SEEDED);
-
-    expect(rows('activity')).toEqual([
-      ['Nouvelles annonces', '1 + 152 démo', '8 + 152 démo'],
-      ['Inscriptions', '6 + 12 démo', '9 + 12 démo'],
-      ['Messages envoyés', '7', '10'],
-    ]);
-  });
-
-  it('lists makes and price verdicts, real and demo in their own columns', async () => {
-    await visit(SEEDED);
-
-    expect(rows('makes')).toEqual([['Renault', '1', '30'], ['Audi', '0', '12']]);
-    expect(rows('verdicts')).toEqual([
-      ['Bonne affaire', '1', '20'],
-      ['Prix du marché', '0', '90'],
-      ['Au-dessus du marché', '0', '22'],
-      ['Sans verdict', '0', '20'],
-    ]);
-  });
-
-  it('gives search failures as a share of requests, and not-understood as a share of those answered', async () => {
-    await visit(SEEDED);
-
-    expect(rows('search')).toEqual([
-      ['Requêtes', '15', '40'],
-      // words() folds the non-breaking space; shareFr's own test below keeps it.
-      ['En échec (503)', '20 %', '0 %'],
-      ['Avec une partie non comprise', '50 %', '25 %'],
-    ]);
-  });
-
-  it('counts active saved searches and alert e-mails, and can send the admin their own digest', async () => {
-    await visit(SEEDED);
-
-    expect(root.querySelector('[data-figure="saved-searches"]')?.textContent).toContain('7');
-    const alerts = Array.from(root.querySelectorAll('[data-table="emails"] [data-row="alerts"] td')).map((cell) => cell.textContent?.trim());
-    expect(alerts).toEqual(['5', '20']);
-
-    (root.querySelector('[data-action="send-my-digest"]') as HTMLButtonElement).click();
-    backend.expectOne(`${BASE}/api/v1/admin/alerts/send-mine`).flush({ written: false });
-    await harness.fixture.whenStable();
-
-    expect(root.querySelector('[data-digest-result]')?.textContent).toContain('Rien à envoyer');
-  });
-
-  it('lists emails sent and failed over 7 and 30 days', async () => {
-    await visit(SEEDED);
-
-    const cells = (row: string) =>
-      Array.from(root.querySelectorAll(`[data-table="emails"] [data-row="${row}"] td`)).map((cell) => cell.textContent?.trim());
-    expect(cells('sent')).toEqual(['12', '48']);
-    expect(cells('failed')).toEqual(['1', '3']);
-  });
-
-  it('plots real activity by default, and adds the demo on request', async () => {
-    await visit(SEEDED);
-    const chart = root.querySelector('app-daily-chart') as HTMLElement;
-    const maxLabel = () => words(chart.querySelector('.chart__max'));
-
-    expect(chart.querySelector('.chart__real')).not.toBeNull();
-    expect(chart.querySelector('.chart__demo')).toBeNull();
-    expect(maxLabel()).toBe('1');
-
-    const toggle = root.querySelector('.dash__toggle input') as HTMLInputElement;
-    toggle.checked = true;
-    toggle.dispatchEvent(new Event('change'));
-    await harness.fixture.whenStable();
-
-    expect(chart.querySelector('.chart__demo')).not.toBeNull();
-    expect(maxLabel()).toBe('153');
-  });
-
-  it('has an empty state for each part, and no demo wording without demo data', async () => {
-    await visit(EMPTY);
-
-    expect(figure('published')).toBe('0');
-    expect(words(root.querySelector('[data-empty="makes"]'))).toBe('Aucune annonce publiée.');
-    expect(words(root.querySelector('[data-empty="search"]'))).toBe('Aucune requête sur 30 jours.');
-    expect(root.querySelector('[data-table="search"]')).toBeNull();
-    expect(words(root.querySelector('.chart__empty'))).toBe('Rien sur ces 30 jours.');
-    expect(root.querySelector('.dash__toggle')).toBeNull();
-    expect(root.textContent).not.toContain('démo');
-    expect(root.querySelectorAll('[data-table="verdicts"] thead th')).toHaveLength(2);
-  });
-});
-
-describe('shareFr', () => {
   it('is a French percentage, and a dash when there is nothing to divide by', () => {
-    expect(shareFr(1, 3)).toBe(`33,3${NBSP}%`);
-    expect(shareFr(0, 5)).toBe(`0${NBSP}%`);
+    expect(shareFr(1, 3)).toBe('33,3 %');
     expect(shareFr(0, 0)).toBe('–');
-  });
-});
-
-describe('dayBars', () => {
-  const series: DayCount[] = [
-    { day: '2026-10-01', real: 0, demo: 0 },
-    { day: '2026-10-02', real: 1, demo: 152 },
-    { day: '2026-10-03', real: 4, demo: 0 },
-  ];
-
-  it('scales to the real figures when the demo is left out', () => {
-    const { bars, max } = dayBars(series, false);
-
-    expect(max).toBe(4);
-    expect(bars[2].realHeight).toBe(80);
-    expect(bars[1].realHeight).toBe(20);
-    expect(bars[0].realHeight).toBe(0);
-    expect(bars[1].demoHeight).toBe(0);
-  });
-
-  it('stacks the demo on the real and scales to the total when asked', () => {
-    const { bars, max } = dayBars(series, true);
-
-    expect(max).toBe(153);
-    // A single real listing beside 152 demo ones still shows.
-    expect(bars[1].realHeight).toBe(2);
-    expect(bars[1].demoY + bars[1].demoHeight).toBe(bars[1].realY);
-  });
-
-  it('draws nothing for a month of nothing', () => {
-    const { bars, max } = dayBars([{ day: '2026-10-01', real: 0, demo: 0 }], true);
-
-    expect(max).toBe(0);
-    expect(bars[0].realHeight).toBe(0);
   });
 });

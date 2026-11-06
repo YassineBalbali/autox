@@ -1,20 +1,35 @@
 package com.autox.admin;
 
 import com.autox.admin.AdminStats.Activity;
-import com.autox.admin.AdminStats.DailyActivity;
+import com.autox.admin.AdminStats.Attention;
+import com.autox.admin.AdminStats.Comparison;
+import com.autox.admin.AdminStats.Count;
+import com.autox.admin.AdminStats.Emails;
+import com.autox.admin.AdminStats.FilterUse;
 import com.autox.admin.AdminStats.ListingsByStatus;
 import com.autox.admin.AdminStats.MakeCount;
+import com.autox.admin.AdminStats.PendingListing;
+import com.autox.admin.AdminStats.Point;
 import com.autox.admin.AdminStats.PriceVerdicts;
 import com.autox.admin.AdminStats.SearchUsage;
 import com.autox.admin.AdminStats.Split;
+import com.autox.search.ListingLabel;
 import com.autox.search.ListingSearchRepository;
 import com.autox.search.MarketPrice;
+import com.autox.search.SearchFilterUsage;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -29,21 +44,23 @@ import org.springframework.stereotype.Repository;
  * <p>A message is demo when its sender is a demo account. The seed writes no messages, but a
  * visitor can sign in to a demo account and send one, and that is not a real user's activity.
  *
- * <p>Daily figures use Paris days, the site's. The 7- and 30-day figures are rolling, counted back
- * from now, except natural-language search, which is only stored per day.
+ * <p>A period and the one it is compared with are {@link DashboardPeriod.Window}s, Paris time. Each
+ * count reads both windows in one pass, and only rows from the start of the earlier one.
  */
 @Repository
 class AdminStatsRepository {
 
     static final int TOP_MAKES = 10;
-    private static final int DAYS = 30;
-
-    private static final String TODAY = "(now() AT TIME ZONE 'Europe/Paris')::date";
+    static final int TOP_FILTERS = 8;
+    /** The queue's first listings on the dashboard. */
+    static final int OLDEST_PENDING = 5;
 
     private final JdbcTemplate jdbc;
+    private final NamedParameterJdbcTemplate named;
 
-    AdminStatsRepository(JdbcTemplate jdbc) {
+    AdminStatsRepository(JdbcTemplate jdbc, NamedParameterJdbcTemplate named) {
         this.jdbc = jdbc;
+        this.named = named;
     }
 
     boolean demoLedgerExists() {
@@ -99,59 +116,6 @@ class AdminStatsRepository {
                 split(row, "sale"), split(row, "leasing")));
     }
 
-    /** Activity in the last {@code days} × 24 hours. */
-    Activity activity(boolean ledger, int days) {
-        String since = "created_at >= now() - make_interval(days => " + days + ")";
-        Split listings = jdbc.queryForObject("WITH " + demoSets(ledger) + " SELECT "
-                + split(since, "n") + " FROM " + LISTINGS, (row, index) -> split(row, "n"));
-        Split users = jdbc.queryForObject("WITH " + demoSets(ledger) + " SELECT "
-                + split(since, "n") + """
-                 FROM (SELECT u.created_at, EXISTS (SELECT 1 FROM demo_user d WHERE d.id = u.id) AS demo
-                         FROM app_user u) t
-                """, (row, index) -> split(row, "n"));
-        Split messages = jdbc.queryForObject("WITH " + demoSets(ledger) + " SELECT "
-                + split(since, "n") + """
-                 FROM (SELECT m.created_at, EXISTS (SELECT 1 FROM demo_user d WHERE d.id = m.sender_id) AS demo
-                         FROM message m) t
-                """, (row, index) -> split(row, "n"));
-        return new Activity(listings, users, messages);
-    }
-
-    /** Every one of the last 30 Paris days, today included, oldest first, empty days too. */
-    List<DailyActivity> daily(boolean ledger) {
-        String sql = "WITH " + demoSets(ledger) + """
-                , days AS (
-                    SELECT generate_series(%1$s - %2$d, %1$s, interval '1 day')::date AS day
-                ), new_listings AS (
-                    SELECT (x.created_at AT TIME ZONE 'Europe/Paris')::date AS day,
-                           count(*) FILTER (WHERE d.id IS NULL) AS real,
-                           count(*) FILTER (WHERE d.id IS NOT NULL) AS demo
-                      FROM listing x LEFT JOIN demo_listing d ON d.id = x.id
-                     WHERE x.deleted_at IS NULL
-                       AND x.created_at >= ((%1$s - %2$d)::timestamp AT TIME ZONE 'Europe/Paris')
-                     GROUP BY 1
-                ), new_users AS (
-                    SELECT (u.created_at AT TIME ZONE 'Europe/Paris')::date AS day,
-                           count(*) FILTER (WHERE d.id IS NULL) AS real,
-                           count(*) FILTER (WHERE d.id IS NOT NULL) AS demo
-                      FROM app_user u LEFT JOIN demo_user d ON d.id = u.id
-                     WHERE u.created_at >= ((%1$s - %2$d)::timestamp AT TIME ZONE 'Europe/Paris')
-                     GROUP BY 1
-                )
-                SELECT days.day,
-                       coalesce(nl.real, 0) AS listings_real, coalesce(nl.demo, 0) AS listings_demo,
-                       coalesce(nu.real, 0) AS users_real, coalesce(nu.demo, 0) AS users_demo
-                  FROM days
-                  LEFT JOIN new_listings nl ON nl.day = days.day
-                  LEFT JOIN new_users nu ON nu.day = days.day
-                 ORDER BY days.day
-                """.formatted(TODAY, DAYS - 1);
-        return jdbc.query(sql, (row, index) -> new DailyActivity(
-                row.getObject("day", LocalDate.class),
-                split(row, "listings"),
-                split(row, "users")));
-    }
-
     List<MakeCount> topMakes(boolean ledger) {
         String sql = "WITH " + demoSets(ledger) + " SELECT coalesce(mk.name, l.make_text) AS make, "
                 + split("true", "n")
@@ -181,16 +145,198 @@ class AdminStatsRepository {
                 split(row, "good"), split(row, "market"), split(row, "above"), split(row, "none")));
     }
 
-    /** The last {@code days} Paris days, today included. */
-    AdminStats.EmailCounts emailCounts(int days) {
-        return jdbc.queryForObject("""
-                SELECT count(*) FILTER (WHERE status = 'SENT') AS sent,
-                       count(*) FILTER (WHERE status = 'FAILED') AS failed,
-                       count(*) FILTER (WHERE status = 'SENT' AND email_type = 'SAVED_SEARCH_DIGEST') AS alerts
+
+
+    // ---- what is waiting ----------------------------------------------------------------
+
+    /** The moderation queue's own predicate: ListingRepository.findAwaitingReview, and its order. */
+    private static final String QUEUE = "l.status = 'ACTIVE' AND l.moderation_status = 'NOT_REVIEWED'";
+
+    Attention attention(boolean ledger) {
+        Map<String, Object> queue = jdbc.queryForMap("WITH " + demoSets(ledger) + " SELECT "
+                + split(QUEUE, "pending")
+                + ", min(l.created_at) FILTER (WHERE (" + QUEUE + ") AND NOT demo) AS oldest_real"
+                + ", min(l.created_at) FILTER (WHERE (" + QUEUE + ") AND demo) AS oldest_demo"
+                + " FROM " + LISTINGS);
+        Map<String, Object> reports = jdbc.queryForMap(
+                "SELECT count(*) AS open, min(created_at) AS oldest FROM message_report WHERE resolution IS NULL");
+        return new Attention(
+                new Split(number(queue, "pending_real"), number(queue, "pending_demo")),
+                instant(queue.get("oldest_real")),
+                instant(queue.get("oldest_demo")),
+                number(reports, "open"),
+                instant(reports.get("oldest")),
+                oldestPending(ledger));
+    }
+
+    /** The five oldest in the queue, and the five oldest real ones: the page shows one or the other. */
+    private List<PendingListing> oldestPending(boolean ledger) {
+        String queue = """
+                SELECT l.id, l.title, l.created_at, l.price_amount, l.price_currency_code, l.offer_type, l.damaged,
+                       coalesce(mk.name, l.make_text) AS make, coalesce(mo.name, l.model_text) AS model,
+                       l.version_text, u.display_name, u.role, l.demo
+                  FROM %s
+                  JOIN app_user u ON u.id = l.seller_id
+                  LEFT JOIN vehicle_make mk ON mk.id = l.make_id
+                  LEFT JOIN vehicle_model mo ON mo.id = l.model_id
+                 WHERE %s
+                """.formatted(LISTINGS, QUEUE);
+        String sql = "WITH " + demoSets(ledger) + ", queue AS (" + queue + ")"
+                + " (SELECT * FROM queue ORDER BY created_at, id LIMIT " + OLDEST_PENDING + ")"
+                + " UNION (SELECT * FROM queue WHERE NOT demo ORDER BY created_at, id LIMIT " + OLDEST_PENDING + ")"
+                + " ORDER BY created_at, id";
+        return jdbc.query(sql, (row, index) -> new PendingListing(
+                row.getObject("id", UUID.class),
+                ListingLabel.of(row.getString("make"), row.getString("model"), row.getString("version_text"),
+                        row.getString("title")),
+                row.getString("title"),
+                row.getString("display_name"),
+                row.getString("role"),
+                row.getTimestamp("created_at").toInstant(),
+                row.getLong("price_amount"),
+                row.getString("price_currency_code"),
+                "LEASING".equals(row.getString("offer_type")),
+                row.getBoolean("damaged"),
+                row.getBoolean("demo")));
+    }
+
+    // ---- what was created ---------------------------------------------------------------
+
+    /** What a period is counted from, aliased {@code t(at, demo)}: rows from the earlier window on. */
+    private static final String LISTING_ROWS = """
+            SELECT x.created_at AS at, EXISTS (SELECT 1 FROM demo_listing d WHERE d.id = x.id) AS demo
+              FROM listing x WHERE x.deleted_at IS NULL AND x.created_at >= :previousFrom
+            """;
+    private static final String USER_ROWS = """
+            SELECT u.created_at AS at, EXISTS (SELECT 1 FROM demo_user d WHERE d.id = u.id) AS demo
+              FROM app_user u WHERE u.created_at >= :previousFrom
+            """;
+    private static final String MESSAGE_ROWS = """
+            SELECT m.created_at AS at, EXISTS (SELECT 1 FROM demo_user d WHERE d.id = m.sender_id) AS demo
+              FROM message m WHERE m.created_at >= :previousFrom
+            """;
+    private static final String SAVED_SEARCH_ROWS = """
+            SELECT s.created_at AS at, EXISTS (SELECT 1 FROM demo_user d WHERE d.id = s.user_id) AS demo
+              FROM saved_search s WHERE s.created_at >= :previousFrom
+            """;
+    private static final String SENT_EMAIL_ROWS = """
+            SELECT o.sent_at AS at, false AS demo
+              FROM outbox_email o WHERE o.status = 'SENT' AND o.sent_at >= :previousFrom
+            """;
+
+    Activity activity(boolean ledger, DashboardPeriod.Window window) {
+        return new Activity(
+                compare(ledger, window, LISTING_ROWS),
+                compare(ledger, window, USER_ROWS),
+                compare(ledger, window, MESSAGE_ROWS),
+                compare(ledger, window, SAVED_SEARCH_ROWS));
+    }
+
+    private Comparison compare(boolean ledger, DashboardPeriod.Window window, String rows) {
+        String sql = "WITH " + demoSets(ledger) + " SELECT "
+                + split("at >= :from AND at < :to", "current") + ", "
+                + split("at >= :previousFrom AND at < :previousTo", "previous")
+                + " FROM (" + rows + ") t";
+        return named.queryForObject(sql, parameters(window),
+                (row, index) -> new Comparison(split(row, "current"), split(row, "previous")));
+    }
+
+    /** Every bucket of the period, empty ones too, oldest first. */
+    List<Point> series(boolean ledger, DashboardPeriod.Window window) {
+        Map<LocalDateTime, Split> listings = perBucket(ledger, window, LISTING_ROWS);
+        Map<LocalDateTime, Split> users = perBucket(ledger, window, USER_ROWS);
+        Map<LocalDateTime, Split> messages = perBucket(ledger, window, MESSAGE_ROWS);
+        Map<LocalDateTime, Split> searches = perBucket(ledger, window, SAVED_SEARCH_ROWS);
+        Map<LocalDateTime, Split> emails = perBucket(ledger, window, SENT_EMAIL_ROWS);
+        List<Point> points = new ArrayList<>();
+        for (LocalDateTime start : window.buckets()) {
+            points.add(new Point(start,
+                    listings.getOrDefault(start, Split.ZERO),
+                    users.getOrDefault(start, Split.ZERO),
+                    messages.getOrDefault(start, Split.ZERO),
+                    searches.getOrDefault(start, Split.ZERO),
+                    emails.getOrDefault(start, Split.ZERO).real()));
+        }
+        return points;
+    }
+
+    private Map<LocalDateTime, Split> perBucket(boolean ledger, DashboardPeriod.Window window, String rows) {
+        String unit = window.period().bucket() == DashboardPeriod.Bucket.HOUR ? "hour" : "day";
+        String sql = "WITH " + demoSets(ledger) + " SELECT date_trunc('" + unit + "', at AT TIME ZONE 'Europe/Paris') AS bucket, "
+                + split("true", "n")
+                + " FROM (" + rows + ") t WHERE at >= :from AND at < :to GROUP BY 1";
+        Map<LocalDateTime, Split> counts = new HashMap<>();
+        named.query(sql, parameters(window), (ResultSet row) -> {
+            counts.put(row.getTimestamp("bucket").toLocalDateTime(), split(row, "n"));
+        });
+        return counts;
+    }
+
+    // ---- search and e-mail --------------------------------------------------------------
+
+    SearchUsage search(DashboardPeriod.Window window) {
+        // Stored per Paris day: the days the period touches, today included.
+        MapSqlParameterSource days = parameters(window)
+                .addValue("fromDay", window.from().toLocalDate())
+                .addValue("toDay", window.to().toLocalDate())
+                .addValue("previousFromDay", window.previousFrom().toLocalDate())
+                .addValue("previousToDay", window.previousTo().toLocalDate());
+        Map<String, Object> interpret = named.queryForMap("""
+                SELECT coalesce(sum(requests) FILTER (WHERE day BETWEEN :fromDay AND :toDay), 0) AS requests,
+                       coalesce(sum(requests) FILTER (WHERE day BETWEEN :previousFromDay AND :previousToDay), 0) AS requests_before,
+                       coalesce(sum(failed) FILTER (WHERE day BETWEEN :fromDay AND :toDay), 0) AS failed,
+                       coalesce(sum(failed) FILTER (WHERE day BETWEEN :previousFromDay AND :previousToDay), 0) AS failed_before,
+                       coalesce(sum(with_not_understood) FILTER (WHERE day BETWEEN :fromDay AND :toDay), 0) AS partly,
+                       coalesce(sum(with_not_understood) FILTER (WHERE day BETWEEN :previousFromDay AND :previousToDay), 0) AS partly_before
+                  FROM search_interpret_usage
+                 WHERE day >= :previousFromDay
+                """, days);
+
+        List<FilterUse> filters = new ArrayList<>();
+        Count[] searches = {new Count(0, 0)};
+        named.query("""
+                SELECT filter,
+                       coalesce(sum(searches) FILTER (WHERE hour >= :from AND hour < :to), 0) AS current,
+                       coalesce(sum(searches) FILTER (WHERE hour >= :previousFrom AND hour < :previousTo), 0) AS previous
+                  FROM search_filter_usage
+                 WHERE hour >= :previousFrom
+                 GROUP BY filter
+                """, parameters(window), (ResultSet row) -> {
+            FilterUse use = new FilterUse(row.getString("filter"), row.getLong("current"), row.getLong("previous"));
+            if (SearchFilterUsage.ALL.equals(use.filter())) {
+                searches[0] = new Count(use.current(), use.previous());
+            } else if (use.current() > 0) {
+                filters.add(use);
+            }
+        });
+        filters.sort(java.util.Comparator.comparingLong(FilterUse::current).reversed()
+                .thenComparing(FilterUse::filter));
+
+        return new SearchUsage(
+                new Count(number(interpret, "requests"), number(interpret, "requests_before")),
+                new Count(number(interpret, "failed"), number(interpret, "failed_before")),
+                new Count(number(interpret, "partly"), number(interpret, "partly_before")),
+                searches[0],
+                filters.size() > TOP_FILTERS ? List.copyOf(filters.subList(0, TOP_FILTERS)) : List.copyOf(filters),
+                activeSavedSearches());
+    }
+
+    Emails emails(DashboardPeriod.Window window) {
+        return named.queryForObject("""
+                SELECT count(*) FILTER (WHERE status = 'SENT' AND sent_at >= :from AND sent_at < :to) AS sent,
+                       count(*) FILTER (WHERE status = 'SENT' AND sent_at >= :previousFrom AND sent_at < :previousTo) AS sent_before,
+                       count(*) FILTER (WHERE status = 'FAILED' AND created_at >= :from AND created_at < :to) AS failed,
+                       count(*) FILTER (WHERE status = 'FAILED' AND created_at >= :previousFrom AND created_at < :previousTo) AS failed_before,
+                       count(*) FILTER (WHERE status = 'SENT' AND email_type = 'SAVED_SEARCH_DIGEST'
+                                          AND sent_at >= :from AND sent_at < :to) AS alerts,
+                       count(*) FILTER (WHERE status = 'SENT' AND email_type = 'SAVED_SEARCH_DIGEST'
+                                          AND sent_at >= :previousFrom AND sent_at < :previousTo) AS alerts_before
                   FROM outbox_email
-                 WHERE created_at > now() - make_interval(days => %d)
-                """.formatted(days),
-                (rs, row) -> new AdminStats.EmailCounts(rs.getLong("sent"), rs.getLong("failed"), rs.getLong("alerts")));
+                 WHERE created_at >= :previousFrom OR sent_at >= :previousFrom
+                """, parameters(window), (row, index) -> new Emails(
+                new Count(row.getLong("sent"), row.getLong("sent_before")),
+                new Count(row.getLong("failed"), row.getLong("failed_before")),
+                new Count(row.getLong("alerts"), row.getLong("alerts_before"))));
     }
 
     long activeSavedSearches() {
@@ -198,17 +344,28 @@ class AdminStatsRepository {
         return count == null ? 0 : count;
     }
 
-    SearchUsage searchUsage(int days) {
-        Map<String, Object> totals = jdbc.queryForMap("""
-                SELECT coalesce(sum(requests), 0) AS requests,
-                       coalesce(sum(failed), 0) AS failed,
-                       coalesce(sum(with_not_understood), 0) AS with_not_understood
-                  FROM search_interpret_usage
-                 WHERE day > %s - %d
-                """.formatted(TODAY, days));
-        return new SearchUsage(
-                ((Number) totals.get("requests")).longValue(),
-                ((Number) totals.get("failed")).longValue(),
-                ((Number) totals.get("with_not_understood")).longValue());
+    // ---- helpers ------------------------------------------------------------------------
+
+    private static MapSqlParameterSource parameters(DashboardPeriod.Window window) {
+        return new MapSqlParameterSource()
+                .addValue("from", Timestamp.from(window.from().toInstant()))
+                .addValue("to", Timestamp.from(window.to().toInstant()))
+                .addValue("previousFrom", Timestamp.from(window.previousFrom().toInstant()))
+                .addValue("previousTo", Timestamp.from(window.previousTo().toInstant()));
+    }
+
+    private static long number(Map<String, Object> row, String column) {
+        Object value = row.get(column);
+        return value == null ? 0 : ((Number) value).longValue();
+    }
+
+    private static Instant instant(Object value) {
+        if (value instanceof Timestamp timestamp) {
+            return timestamp.toInstant();
+        }
+        if (value instanceof java.time.OffsetDateTime offset) {
+            return offset.toInstant();
+        }
+        return null;
     }
 }

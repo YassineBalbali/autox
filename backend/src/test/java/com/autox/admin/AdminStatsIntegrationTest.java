@@ -10,6 +10,7 @@ import com.autox.user.UserRole;
 import com.autox.user.UserStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +71,7 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
     // ---- empty --------------------------------------------------------------------------
 
     @Test
-    @DisplayName("an empty site is zeros, thirty empty days and no makes, not an error")
+    @DisplayName("an empty site is zeros, an empty day for each of the week's days, nothing waiting, not an error")
     void empty() throws Exception {
         JsonNode stats = stats();
 
@@ -78,12 +79,32 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
         for (String state : List.of("published", "pendingModeration", "rejected", "sold", "expired", "damaged", "sale", "leasing")) {
             assertSplit(stats.path("listings").path(state), 0, 0);
         }
-        assertSplit(stats.path("last30Days").path("newListings"), 0, 0);
-        assertSplit(stats.path("last30Days").path("messages"), 0, 0);
-        assertThat(stats.path("daily")).hasSize(30);
+        assertComparison(stats.at("/activity/newListings"), 0, 0, 0, 0);
+        assertComparison(stats.at("/activity/messages"), 0, 0, 0, 0);
+        assertThat(stats.path("series")).hasSize(7);
         assertThat(stats.path("topMakes")).isEmpty();
         assertSplit(stats.path("priceVerdicts").path("noVerdict"), 0, 0);
-        assertThat(stats.path("searchLast30Days").path("requests").asInt()).isZero();
+        assertThat(stats.at("/search/interpretRequests/current").asInt()).isZero();
+        assertThat(stats.at("/search/topFilters")).isEmpty();
+        assertThat(stats.at("/attention/openReports").asInt()).isZero();
+        assertThat(stats.at("/attention/oldestPending")).isEmpty();
+        // Absent, as an empty value is in every response.
+        assertThat(stats.at("/attention/oldestPendingReal").isMissingNode()).isTrue();
+    }
+
+    @Test
+    @DisplayName("the period is chosen, and an unknown one is refused")
+    void periods() throws Exception {
+        assertThat(stats().at("/period/key").asText()).isEqualTo("WEEK");
+        for (String period : List.of("TODAY", "WEEK", "MONTH", "QUARTER")) {
+            JsonNode stats = stats(period);
+            assertThat(stats.at("/period/key").asText()).isEqualTo(period);
+            assertThat(stats.at("/period/bucket").asText()).isEqualTo("TODAY".equals(period) ? "HOUR" : "DAY");
+        }
+        assertThat(stats("MONTH").path("series")).hasSize(30);
+        assertThat(stats("QUARTER").path("series")).hasSize(90);
+        mockMvc.perform(get(STATS).param("period", "YEAR").header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isBadRequest());
     }
 
     // ---- listings by state --------------------------------------------------------------
@@ -119,11 +140,14 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
     // ---- activity ------------------------------------------------------------------------
 
     @Test
-    @DisplayName("new listings, registrations and messages fall in the right window")
-    void activityWindows() throws Exception {
+    @DisplayName("each count falls in the period or in the one before it, and nowhere else")
+    void periodAndPrevious() throws Exception {
         UUID recent = listingCreated("now() - interval '3 days'");
+        listingCreated("now() - interval '8 days'");
         listingCreated("now() - interval '20 days'");
         listingCreated("now() - interval '40 days'");
+        // Before both a week and the week before it.
+        listingCreated("now() - interval '15 days'");
 
         userCreated("now() - interval '2 days'");
         userCreated("now() - interval '10 days'");
@@ -136,45 +160,132 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
         message(conversation, buyer, "now() - interval '29 days'");
         message(conversation, seller, "now() - interval '35 days'");
 
-        JsonNode stats = stats();
-
         // Registered just now, in this test's setup: the seller, the administrator, the buyer.
         long justNow = 3;
-        assertSplit(stats.path("last7Days").path("newListings"), 1, 0);
-        assertSplit(stats.path("last30Days").path("newListings"), 2, 0);
-        assertSplit(stats.path("last7Days").path("registrations"), justNow + 1, 0);
-        assertSplit(stats.path("last30Days").path("registrations"), justNow + 2, 0);
-        assertSplit(stats.path("last7Days").path("messages"), 1, 0);
-        assertSplit(stats.path("last30Days").path("messages"), 3, 0);
+        JsonNode week = stats("WEEK").path("activity");
+        assertComparison(week.path("newListings"), 1, 0, 1, 0);
+        assertComparison(week.path("registrations"), justNow + 1, 0, 1, 0);
+        assertComparison(week.path("messages"), 1, 0, 1, 0);
+
+        JsonNode month = stats("MONTH").path("activity");
+        assertComparison(month.path("newListings"), 4, 0, 1, 0);
+        assertComparison(month.path("registrations"), justNow + 2, 0, 1, 0);
+        assertComparison(month.path("messages"), 3, 0, 1, 0);
     }
 
-    // ---- daily ---------------------------------------------------------------------------
+    @Test
+    @DisplayName("today is compared with yesterday until the same time, not with all of yesterday")
+    void todayAgainstYesterdaySoFar() throws Exception {
+        listingCreated("now()");
+        listingCreated("now() - interval '1 day' - interval '1 minute'");
+        // Yesterday, but later in the day than now: not in the comparison.
+        listingCreated("now() - interval '1 day' + interval '1 minute'");
+
+        JsonNode stats = stats("TODAY");
+
+        assertComparison(stats.at("/activity/newListings"), 1, 0, 1, 0);
+        JsonNode series = stats.path("series");
+        assertThat(series.get(0).path("start").asText()).endsWith("T00:00:00");
+        LocalDateTime thisHour = LocalDateTime.now(ZoneId.of("Europe/Paris")).truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+        assertThat(series.get(series.size() - 1).path("start").asText()).isEqualTo(thisHour.toString().length() == 16
+                ? thisHour + ":00" : thisHour.toString());
+        assertSplit(series.get(series.size() - 1).path("newListings"), 1, 0);
+    }
+
+    // ---- series --------------------------------------------------------------------------
 
     @Test
-    @DisplayName("thirty days, oldest first, ending today, each listing and account on its own day")
-    void dailySeries() throws Exception {
+    @DisplayName("each day of the period, oldest first, ending today, each thing on its own day")
+    void series() throws Exception {
         listingCreated("now()");
         listingCreated("now()");
-        listingCreated("now() - interval '5 days'");
-        listingCreated("now() - interval '29 days'");
-        // Outside the series.
-        listingCreated("now() - interval '30 days'");
-        userCreated("now() - interval '5 days'");
+        // At noon on a Paris day: a span of days counted back from now can cross a change of clocks.
+        listingCreated(parisNoon(5));
+        listingCreated(parisNoon(29));
+        // Outside the thirty days.
+        listingCreated(parisNoon(30));
+        userCreated(parisNoon(5));
+        jdbcTemplate.update("""
+                INSERT INTO saved_search (id, user_id, name, criteria_version, criteria, link_params, last_digest_at, last_visited_at)
+                VALUES (?, ?, 'Alerte', 1, '{}', '{}', now(), now())""", UUID.randomUUID(), seller);
+        outboxEmail("SENT", "now()");
 
-        JsonNode daily = stats().path("daily");
+        JsonNode series = stats("MONTH").path("series");
 
         LocalDate today = LocalDate.now(ZoneId.of("Europe/Paris"));
-        assertThat(daily).hasSize(30);
-        assertThat(daily.get(0).path("day").asText()).isEqualTo(today.minusDays(29).toString());
-        assertThat(daily.get(29).path("day").asText()).isEqualTo(today.toString());
+        assertThat(series).hasSize(30);
+        assertThat(series.get(0).path("start").asText()).isEqualTo(today.minusDays(29) + "T00:00:00");
+        assertThat(series.get(29).path("start").asText()).isEqualTo(today + "T00:00:00");
 
-        assertSplit(daily.get(29).path("newListings"), 2, 0);
-        assertSplit(daily.get(24).path("newListings"), 1, 0);
-        assertSplit(daily.get(0).path("newListings"), 1, 0);
-        assertSplit(daily.get(1).path("newListings"), 0, 0);
-        assertSplit(daily.get(24).path("registrations"), 1, 0);
+        assertSplit(series.get(29).path("newListings"), 2, 0);
+        assertSplit(series.get(24).path("newListings"), 1, 0);
+        assertSplit(series.get(0).path("newListings"), 1, 0);
+        assertSplit(series.get(1).path("newListings"), 0, 0);
+        assertSplit(series.get(24).path("registrations"), 1, 0);
         // The seller and the administrator of this test's setup.
-        assertSplit(daily.get(29).path("registrations"), 2, 0);
+        assertSplit(series.get(29).path("registrations"), 2, 0);
+        assertSplit(series.get(29).path("savedSearches"), 1, 0);
+        assertThat(series.get(29).path("emailsSent").asLong()).isOne();
+    }
+
+    // ---- what is waiting -----------------------------------------------------------------
+
+    @Test
+    @DisplayName("the queue, its oldest listings in its own order, and open reports, whatever the period")
+    void attention() throws Exception {
+        UUID oldest = listing("ACTIVE", "NOT_REVIEWED", ONLINE);
+        jdbcTemplate.update("UPDATE listing SET created_at = now() - interval '3 days' WHERE id = ?", oldest);
+        UUID newer = listing("ACTIVE", "NOT_REVIEWED", ONLINE);
+        // Reviewed already, and not online: neither is waiting.
+        listing("ACTIVE", "APPROVED", ONLINE);
+        listing("DRAFT", "NOT_REVIEWED", "NULL");
+        UUID buyer = createUser(uniqueEmail("buyer"), UserRole.PARTICULIER, UserStatus.ACTIVE).getId();
+        UUID conversation = conversation(newer, buyer);
+        UUID reported = UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO message (id, conversation_id, sender_id, body, created_at) VALUES (?, ?, ?, 'Arnaque', now())",
+                reported, conversation, buyer);
+        jdbcTemplate.update("""
+                INSERT INTO message_report (id, message_id, reporter_id, reason, created_at)
+                VALUES (?, ?, ?, 'SCAM', now() - interval '2 hours')""", UUID.randomUUID(), reported, seller);
+
+        for (String period : List.of("TODAY", "QUARTER")) {
+            JsonNode attention = stats(period).path("attention");
+
+            assertSplit(attention.path("pendingModeration"), 2, 0);
+            assertThat(attention.path("openReports").asLong()).isOne();
+            assertThat(attention.path("oldestOpenReport").asText()).isNotEmpty();
+            assertThat(attention.path("oldestPending")).hasSize(2);
+            assertThat(attention.path("oldestPending").get(0).path("id").asText()).isEqualTo(oldest.toString());
+            assertThat(attention.path("oldestPending").get(0).path("label").asText()).isEqualTo("Lada Niva");
+            assertThat(attention.path("oldestPending").get(0).path("demo").asBoolean()).isFalse();
+            assertThat(attention.path("oldestPendingReal").asText())
+                    .startsWith(LocalDate.now(ZoneId.of("UTC")).minusDays(3).toString().substring(0, 7));
+        }
+    }
+
+    @Test
+    @DisplayName("the queue's five oldest, and the five oldest real ones, so the demo switch has both")
+    void oldestPendingWithDemo() throws Exception {
+        createLedger();
+        List<UUID> demo = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            UUID id = listing("ACTIVE", "NOT_REVIEWED", ONLINE);
+            jdbcTemplate.update("UPDATE listing SET created_at = now() - make_interval(days => ?) WHERE id = ?", 20 - i, id);
+            ledger("LISTING", id);
+            demo.add(id);
+        }
+        UUID real = listing("ACTIVE", "NOT_REVIEWED", ONLINE);
+
+        JsonNode oldest = stats().at("/attention/oldestPending");
+
+        assertThat(oldest).hasSize(6);
+        for (int i = 0; i < 5; i++) {
+            assertThat(oldest.get(i).path("id").asText()).isEqualTo(demo.get(i).toString());
+            assertThat(oldest.get(i).path("demo").asBoolean()).isTrue();
+        }
+        assertThat(oldest.get(5).path("id").asText()).isEqualTo(real.toString());
+        assertThat(oldest.get(5).path("demo").asBoolean()).isFalse();
+        assertSplit(stats().at("/attention/pendingModeration"), 1, 6);
     }
 
     // ---- top makes -----------------------------------------------------------------------
@@ -272,12 +383,12 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
         assertSplit(stats.path("listings").path("published"), 1, 2);
         assertSplit(stats.path("listings").path("pendingModeration"), 1, 2);
         assertSplit(stats.path("listings").path("sold"), 0, 1);
-        assertSplit(stats.path("last7Days").path("newListings"), 1, 3);
+        assertSplit(stats.at("/activity/newListings/current"), 1, 3);
         // The seller and the administrator are real; the demo seller is not.
-        assertSplit(stats.path("last7Days").path("registrations"), 2, 1);
-        assertSplit(stats.path("last7Days").path("messages"), 2, 1);
+        assertSplit(stats.at("/activity/registrations/current"), 2, 1);
+        assertSplit(stats.at("/activity/messages/current"), 2, 1);
 
-        JsonNode today = stats.path("daily").get(29);
+        JsonNode today = stats.path("series").get(6);
         assertSplit(today.path("newListings"), 1, 3);
         assertSplit(today.path("registrations"), 2, 1);
 
@@ -305,54 +416,102 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
     // ---- natural-language search ---------------------------------------------------------
 
     @Test
-    @DisplayName("search usage sums the last 7 and 30 Paris days, today included")
-    void searchUsage() throws Exception {
+    @DisplayName("natural-language search sums the period's Paris days, today included, and the days before")
+    void interpretUsage() throws Exception {
         LocalDate today = LocalDate.now(ZoneId.of("Europe/Paris"));
         usage(today, 10, 1, 2);
         usage(today.minusDays(6), 5, 0, 1);
-        // Just outside the seven.
+        // The week before.
         usage(today.minusDays(7), 100, 20, 30);
-        usage(today.minusDays(29), 1000, 0, 0);
-        // Just outside the thirty.
-        usage(today.minusDays(30), 9999, 9, 9);
+        usage(today.minusDays(13), 1, 1, 0);
+        // Before that.
+        usage(today.minusDays(14), 9999, 9, 9);
 
-        JsonNode stats = stats();
+        JsonNode search = stats("WEEK").path("search");
 
-        assertUsage(stats.path("searchLast7Days"), 15, 1, 3);
-        assertUsage(stats.path("searchLast30Days"), 1115, 21, 33);
+        assertCount(search.path("interpretRequests"), 15, 101);
+        assertCount(search.path("interpretFailed"), 1, 21);
+        assertCount(search.path("interpretNotUnderstood"), 3, 30);
+        // Stored by day: today is set against the whole of yesterday.
+        assertCount(stats("TODAY").at("/search/interpretRequests"), 10, 0);
+    }
+
+    @Test
+    @DisplayName("the filters searches use, by name, most used first, with how many searches there were")
+    void filters() throws Exception {
+        mockMvc.perform(get("/api/v1/listings").param("fuelType", "DIESEL").param("priceMax", "1500000")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/listings").param("fuelType", "PETROL")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/listings").param("q", "golf gti")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/listings")).andExpect(status().isOk());
+        // The same search read further is not another search.
+        listing("ACTIVE", "APPROVED", ONLINE);
+        listing("ACTIVE", "APPROVED", ONLINE);
+        String next = json(mockMvc.perform(get("/api/v1/listings").param("size", "1").param("fuelType", "PETROL"))
+                .andReturn()).path("nextCursor").asText();
+        mockMvc.perform(get("/api/v1/listings").param("size", "1").param("fuelType", "PETROL").param("cursor", next))
+                .andExpect(status().isOk());
+        jdbcTemplate.update("""
+                INSERT INTO search_filter_usage (hour, filter, searches)
+                VALUES (date_trunc('hour', now() - interval '8 days'), 'make', 4),
+                       (date_trunc('hour', now() - interval '8 days'), '_all', 6)""");
+
+        JsonNode search = stats("WEEK").path("search");
+
+        assertCount(search.path("searches"), 5, 6);
+        JsonNode top = search.path("topFilters");
+        assertThat(top.get(0).path("filter").asText()).isEqualTo("fuelType");
+        assertThat(top.get(0).path("current").asLong()).isEqualTo(3);
+        assertThat(top).extracting(node -> node.path("filter").asText()).containsExactlyInAnyOrder("fuelType", "price", "text");
+        // Names only: nothing anyone searched for is stored.
+        assertThat(jdbcTemplate.queryForList("SELECT DISTINCT filter FROM search_filter_usage", String.class))
+                .containsExactlyInAnyOrder("_all", "fuelType", "price", "text", "make");
+    }
+
+    @Test
+    @DisplayName("active alerts are counted now, whatever the period")
+    void alerts() throws Exception {
+        jdbcTemplate.update("""
+                INSERT INTO saved_search (id, user_id, name, criteria_version, criteria, link_params, last_digest_at, last_visited_at, paused_at)
+                VALUES (?, ?, 'Active', 1, '{}', '{}', now(), now(), NULL), (?, ?, 'En pause', 1, '{}', '{}', now(), now(), now())""",
+                UUID.randomUUID(), seller, UUID.randomUUID(), seller);
+
+        assertThat(stats("TODAY").at("/search/activeAlerts").asLong()).isOne();
     }
 
     // ---- transactional email ---------------------------------------------------------------
 
     @Test
-    @DisplayName("emails sent and failed, over 7 and 30 days; one still being retried is neither")
+    @DisplayName("emails sent and failed in the period and the one before; one still being retried is neither")
     void emails() throws Exception {
         outboxEmail("SENT", "now()");
-        outboxEmail("SENT", "now() - interval '8 days'");
-        outboxEmail("SENT", "now() - interval '31 days'");
+        outboxEmail("SENT", "now() - interval '8 days'", "now() - interval '8 days'");
+        outboxEmail("SENT", "now() - interval '31 days'", "now() - interval '31 days'");
         outboxEmail("FAILED", "now() - interval '1 day'");
-        outboxEmail("FAILED", "now() - interval '20 days'");
+        outboxEmail("FAILED", "now() - interval '9 days'");
         outboxEmail("FAILED", "now() - interval '40 days'");
         jdbcTemplate.update("""
                 INSERT INTO outbox_email (id, recipient, subject, body_text, body_html, email_type)
                 VALUES (?, 'r@autox.test', 'Objet', 'T', 'H', 'NEW_MESSAGE')
                 """, UUID.randomUUID());
 
-        JsonNode stats = stats();
+        JsonNode emails = stats("WEEK").path("emails");
 
-        assertThat(stats.at("/emailsLast7Days/sent").asLong()).isEqualTo(1);
-        assertThat(stats.at("/emailsLast7Days/failed").asLong()).isEqualTo(1);
-        assertThat(stats.at("/emailsLast30Days/sent").asLong()).isEqualTo(2);
-        assertThat(stats.at("/emailsLast30Days/failed").asLong()).isEqualTo(2);
+        assertCount(emails.path("sent"), 1, 1);
+        assertCount(emails.path("failed"), 1, 1);
+        assertCount(emails.path("alertsSent"), 0, 0);
     }
 
     // ---- helpers -------------------------------------------------------------------------
 
     private void outboxEmail(String status, String createdAt) {
+        outboxEmail(status, createdAt, "now()");
+    }
+
+    private void outboxEmail(String status, String createdAt, String sentAt) {
         jdbcTemplate.update("""
                 INSERT INTO outbox_email (id, recipient, subject, email_type, status, sent_at, created_at)
                 VALUES (?, 'r@autox.test', 'Objet', 'NEW_MESSAGE', ?, %s, %s)
-                """.formatted("SENT".equals(status) ? "now()" : "NULL", createdAt), UUID.randomUUID(), status);
+                """.formatted("SENT".equals(status) ? sentAt : "NULL", createdAt), UUID.randomUUID(), status);
     }
 
     private JsonNode stats() throws Exception {
@@ -361,15 +520,39 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
                 .andReturn());
     }
 
+    private JsonNode stats(String period) throws Exception {
+        return json(mockMvc.perform(get(STATS).param("period", period).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isOk())
+                .andReturn());
+    }
+
+    /** Noon, Paris time, so many Paris days ago. */
+    private static String parisNoon(int daysAgo) {
+        return "(((now() AT TIME ZONE 'Europe/Paris')::date - %d) + time '12:00') AT TIME ZONE 'Europe/Paris'".formatted(daysAgo);
+    }
+
+    private void createLedger() {
+        jdbcTemplate.execute("""
+                CREATE TABLE demo_seed_ledger (
+                    entity_type VARCHAR(20) NOT NULL,
+                    entity_id   UUID        NOT NULL,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    PRIMARY KEY (entity_type, entity_id))""");
+    }
+
+    private static void assertComparison(JsonNode comparison, long real, long demo, long previousReal, long previousDemo) {
+        assertSplit(comparison.path("current"), real, demo);
+        assertSplit(comparison.path("previous"), previousReal, previousDemo);
+    }
+
+    private static void assertCount(JsonNode count, long current, long previous) {
+        assertThat(count.path("current").asLong()).as("current in " + count).isEqualTo(current);
+        assertThat(count.path("previous").asLong()).as("previous in " + count).isEqualTo(previous);
+    }
+
     private static void assertSplit(JsonNode split, long real, long demo) {
         assertThat(split.path("real").asLong()).as("real in " + split).isEqualTo(real);
         assertThat(split.path("demo").asLong()).as("demo in " + split).isEqualTo(demo);
-    }
-
-    private static void assertUsage(JsonNode usage, long requests, long failed, long withNotUnderstood) {
-        assertThat(usage.path("requests").asLong()).isEqualTo(requests);
-        assertThat(usage.path("failed").asLong()).isEqualTo(failed);
-        assertThat(usage.path("withNotUnderstood").asLong()).isEqualTo(withNotUnderstood);
     }
 
     private JsonNode login(UserRole role) throws Exception {
