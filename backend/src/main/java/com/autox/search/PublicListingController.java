@@ -31,9 +31,11 @@ public class PublicListingController {
     private static final int MAX_PAGE_SIZE = 60;
 
     private final ListingSearchService searchService;
+    private final SearchFilterUsage filterUsage;
 
-    public PublicListingController(ListingSearchService searchService) {
+    public PublicListingController(ListingSearchService searchService, SearchFilterUsage filterUsage) {
         this.searchService = searchService;
+        this.filterUsage = filterUsage;
     }
 
     /**
@@ -51,7 +53,12 @@ public class PublicListingController {
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "24") @Min(1) @Max(MAX_PAGE_SIZE) int size) {
 
-        return searchService.search(criteria, sort, cursor, size);
+        CursorPage<PublicListingSummary> page = searchService.search(criteria, sort, cursor, size);
+        // A first page is a search; the next ones are the same search, read further.
+        if (cursor == null || cursor.isBlank()) {
+            filterUsage.record(criteria);
+        }
+        return page;
     }
 
     /**

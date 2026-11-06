@@ -44,6 +44,7 @@ public class AuthMaintenanceSweeper {
     private final PasswordResetService passwordReset;
     private final EmailVerificationService emailVerification;
     private final EmailOutbox outbox;
+    private final com.autox.search.SearchFilterUsage filterUsage;
     private final ScheduledTaskCoordinator coordinator;
 
     public AuthMaintenanceSweeper(LoginThrottleService throttle,
@@ -51,12 +52,14 @@ public class AuthMaintenanceSweeper {
                                   PasswordResetService passwordReset,
                                   EmailVerificationService emailVerification,
                                   EmailOutbox outbox,
+                                  com.autox.search.SearchFilterUsage filterUsage,
                                   ScheduledTaskCoordinator coordinator) {
         this.throttle = throttle;
         this.refreshTokens = refreshTokens;
         this.passwordReset = passwordReset;
         this.emailVerification = emailVerification;
         this.outbox = outbox;
+        this.filterUsage = filterUsage;
         this.coordinator = coordinator;
     }
 
@@ -93,6 +96,12 @@ public class AuthMaintenanceSweeper {
             int emails = outbox.purgeFinishedBefore(Instant.now().minus(OUTBOX_RETENTION));
             if (emails > 0) {
                 log.debug("Purged {} old outbox email(s)", emails);
+            }
+
+            // The dashboard's longest period is a quarter, compared with the one before it.
+            int filterHours = filterUsage.purgeBefore(Instant.now().minus(Duration.ofDays(200)));
+            if (filterHours > 0) {
+                log.debug("Purged {} old search filter count(s)", filterHours);
             }
         });
     }
