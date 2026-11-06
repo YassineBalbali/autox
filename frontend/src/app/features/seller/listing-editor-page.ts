@@ -73,6 +73,7 @@ import {
 } from './listing-form';
 import { transitionsOf } from './listing-status';
 import { PhotoUploader } from './photo-uploader';
+import { countFr } from '../../shared/format/plural';
 
 /** The four steps, by the name each has in the URL. */
 export const STEPS = ['vehicule', 'offre', 'photos', 'apercu'] as const;
@@ -133,6 +134,8 @@ export const MY_LISTINGS = '/mes-annonces';
   styleUrl: './listing-editor-page.scss',
 })
 export class ListingEditorPage {
+
+  protected readonly count = countFr;
   private readonly api = inject(ListingsSellerService);
   private readonly reference = inject(ReferenceStore);
   private readonly errors = inject(ErrorMessageService);

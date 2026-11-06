@@ -4,6 +4,7 @@ import { Params, RouterLink } from '@angular/router';
 import { Valuation } from '../../core/api';
 import { Price, formatPrice } from '../../shared/listing/price';
 import { basisMileage, basisYears, comparables, scopeCaveat, windowSentence } from './la-cote';
+import { countFr } from '../../shared/format/plural';
 
 /** Where La Cote's links go, worked out by the page. */
 export interface CoteLinks {
@@ -30,6 +31,8 @@ export interface CoteLinks {
   styleUrl: './cote-result.scss',
 })
 export class CoteResult {
+
+  protected readonly countWords = countFr;
   readonly valuation = input.required<Valuation>();
   readonly modelName = input.required<string>();
   readonly minorUnit = input(2);

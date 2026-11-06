@@ -547,7 +547,7 @@
                 }
                 @if (capReached()) {
                   <app-alert kind="error" data-rule="cap">
-                    Vous avez déjà {{ quota()?.active }} annonces en ligne, le maximum pour un compte
+                    Vous avez déjà {{ count(quota()?.active ?? 0, 'annonce', 'annonces') }} en ligne, le maximum pour un compte
                     particulier ({{ quota()?.limit }}). Mettez-en une en pause ou marquez-la comme vendue
                     pour publier celle-ci. Votre brouillon est conservé.
                   </app-alert>

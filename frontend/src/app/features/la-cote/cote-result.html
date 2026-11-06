@@ -73,7 +73,7 @@
           <li>
             <a class="btn btn--quiet" [routerLink]="[]" [queryParams]="option.params">
               {{ option.label }}
-              <span class="result__count" i18n="@@coteWidenCount">{{ option.count }} annonces</span>
+              <span class="result__count">{{ countWords(option.count, 'annonce', 'annonces') }}</span>
             </a>
           </li>
         }

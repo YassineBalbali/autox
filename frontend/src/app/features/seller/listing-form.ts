@@ -12,6 +12,7 @@ import { LeasingDeclaration, LeasingType, OfferType, DamageDeclaration, DamageTy
   VehicleCondition,
 } from '../../core/api';
 import { parseWholeNumber, requiredText, wholeNumber } from '../../shared/forms/validation';
+import { vehicleName } from '../../shared/listing/vehicle-name';
 
 /**
  * The listing form: its controls, their rules, and the translation to and from the API.
@@ -252,7 +253,7 @@ export function suggestedTitle(value: VehicleValue, makes: readonly Make[], mode
   const identity = vehicleIdentity(value, makes, models);
   const make = 'makeId' in identity ? makes.find((m) => m.id === identity.makeId)?.name : identity.makeText;
   const model = 'modelId' in identity ? models.find((m) => m.id === identity.modelId)?.name : identity.modelText;
-  return [make, model, value.version.trim()].filter(Boolean).join(' ').slice(0, LIMITS.title);
+  return [vehicleName(make, model), value.version.trim()].filter(Boolean).join(' ').slice(0, LIMITS.title);
 }
 
 /** What the listing is sold in and from: the seller's market. */
