@@ -2,50 +2,44 @@ package com.autox.admin;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
- * The admin dashboard's figures, every count split into real activity and demo seed.
+ * The admin dashboard's figures, for one period, each compared with the period before it, and each
+ * split into real activity and demo seed.
  *
- * <p>The split exists because on the public demo nearly every listing is seeded: a total says
- * how big the seed is, not whether anyone uses the site. What the demo seed created is known
- * exactly, from its ledger ({@code demo_seed_ledger}, written by the demo profile); everything
- * else is real. Without the ledger, there is no demo data and every count is real.
+ * <p>The split exists because on the public demo nearly every listing is seeded: a total says how
+ * big the seed is, not whether anyone uses the site. What the demo seed created is known exactly,
+ * from its ledger ({@code demo_seed_ledger}); everything else is real. The page decides whether to
+ * add the demo in: both halves are always here.
  *
  * @param generatedAt     when these figures were computed; they are cached for about a minute
- * @param demoDataPresent whether the demo ledger exists, i.e. whether the demo columns can be
- *                        anything but zero
+ * @param demoDataPresent whether the demo ledger exists, i.e. whether the demo halves can be anything but zero
+ * @param period          the period and the one it is compared with
+ * @param attention       what is waiting for an administrator, now
+ * @param activity        what was created in the period, and in the one before
+ * @param series          the same, bucket by bucket: each hour of today, or each day
  * @param listings        listings now, by state
- * @param last7Days       activity in the last 7 × 24 hours
- * @param last30Days      activity in the last 30 × 24 hours
- * @param daily           new listings and registrations per Paris day, the 30 days up to
- *                        today, oldest first, days without any included
- * @param topMakes        the makes with the most published listings, at most ten, by real
- *                        listings first
- * @param priceVerdicts   published listings by price indicator, computed by the same rule as
- *                        the badge on the site
- * @param searchLast7Days natural-language search, the last 7 Paris days including today
- * @param searchLast30Days the same over 30 days
- * @param emailsLast7Days  transactional email written in the last 7 × 24 hours, by outcome
- * @param emailsLast30Days the same over 30 × 24 hours
- * @param activeSavedSearches saved searches now, not paused
+ * @param topMakes        the makes with the most published listings, at most ten, real ones first
+ * @param priceVerdicts   published listings by price indicator, by the badge's own rule
+ * @param search          how search is used in the period
+ * @param emails          transactional e-mail in the period
  */
-@Schema(description = "Figures for the admin dashboard, real activity and demo seed apart.")
+@Schema(description = "Figures for the admin dashboard over a period, real activity and demo seed apart.")
 public record AdminStats(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant generatedAt,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean demoDataPresent,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PeriodWindow period,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Attention attention,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Activity activity,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<Point> series,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ListingsByStatus listings,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Activity last7Days,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Activity last30Days,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<DailyActivity> daily,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<MakeCount> topMakes,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PriceVerdicts priceVerdicts,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SearchUsage searchLast7Days,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SearchUsage searchLast30Days,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmailCounts emailsLast7Days,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmailCounts emailsLast30Days,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long activeSavedSearches) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SearchUsage search,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Emails emails) {
 
     /** A count, apart: what real users did, and what the demo seed created. */
     @Schema(description = "A count split into real activity and demo seed.")
@@ -56,15 +50,108 @@ public record AdminStats(
         static final Split ZERO = new Split(0, 0);
     }
 
+    /** A split count in the period, and in the one before it. */
+    @Schema(description = "A split count in the period and in the previous one.")
+    public record Comparison(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split current,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split previous) {
+    }
+
+    /** A count that has no demo half, in the period and in the one before it. */
+    @Schema(description = "A count in the period and in the previous one.")
+    public record Count(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long current,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long previous) {
+    }
+
+    /**
+     * The period, in instants, with the one it is compared with. See {@link DashboardPeriod}.
+     *
+     * @param bucket what one point of {@link AdminStats#series} covers
+     */
+    @Schema(description = "The period shown and the one it is compared with.")
+    public record PeriodWindow(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) DashboardPeriod key,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant from,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant to,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant previousFrom,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant previousTo,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) DashboardPeriod.Bucket bucket) {
+    }
+
+    /**
+     * What is waiting, now, whatever the period.
+     *
+     * @param pendingModeration  listings in the moderation queue
+     * @param oldestPendingReal  when the oldest real one in it was created, if any
+     * @param oldestPendingDemo  the same for the seed's
+     * @param openReports        reported messages no moderator has dealt with
+     * @param oldestOpenReport   when the oldest of those was reported, if any
+     * @param oldestPending      the queue's first listings: the five oldest, and the five oldest real
+     *                           ones, which the page chooses between with the demo switch
+     */
+    @Schema(description = "What is waiting for a moderator, now.")
+    public record Attention(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split pendingModeration,
+            Instant oldestPendingReal,
+            Instant oldestPendingDemo,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long openReports,
+            Instant oldestOpenReport,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<PendingListing> oldestPending) {
+    }
+
+    /** One listing waiting for review, as the dashboard lists it. */
+    @Schema(description = "A listing in the moderation queue.")
+    public record PendingListing(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID id,
+            @Schema(description = "Make, model and version, as on a result card", requiredMode = Schema.RequiredMode.REQUIRED) String label,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String title,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String sellerName,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String sellerRole,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long priceAmount,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String currencyCode,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean leasing,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean damaged,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean demo) {
+    }
+
+    /** What was created in the period: listings in any state, accounts, messages, saved searches. */
+    @Schema(description = "What was created in the period, compared with the previous one.")
+    public record Activity(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Comparison newListings,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Comparison registrations,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Comparison messages,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Comparison savedSearches) {
+    }
+
+    /**
+     * One bucket of the period: an hour, or a day.
+     *
+     * @param start Paris local time
+     */
+    @Schema(description = "Activity in one hour or one day of the period.")
+    public record Point(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime start,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split newListings,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split registrations,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split messages,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split savedSearches,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long emailsSent) {
+    }
+
+    /** A make, as the catalogue names it, or as the seller typed it when it is not in the catalogue. */
+    @Schema(description = "A make and how many listings of it are published.")
+    public record MakeCount(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String make,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split published) {
+    }
+
     /**
      * Listings now, by state. Deleted listings are not counted.
      *
      * @param published         online: what a visitor can find
-     * @param pendingModeration online and not yet reviewed: the moderation queue, a part of
-     *                          {@code published}
-     * @param rejected          refused by a moderator
-     * @param sold              marked sold
-     * @param expired           expired, not renewed
+     * @param pendingModeration online and not yet reviewed, a part of {@code published}
      */
     @Schema(description = "Listings by state, now.")
     public record ListingsByStatus(
@@ -81,28 +168,6 @@ public record AdminStats(
                     requiredMode = Schema.RequiredMode.REQUIRED) Split leasing) {
     }
 
-    /** What was created in a period: listings (any state), accounts, messages sent. */
-    @Schema(description = "Listings created, accounts registered and messages sent in a period.")
-    public record Activity(
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split newListings,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split registrations,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split messages) {
-    }
-
-    @Schema(description = "New listings and registrations on one Paris day.")
-    public record DailyActivity(
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate day,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split newListings,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split registrations) {
-    }
-
-    /** A make, as the catalogue names it, or as the seller typed it when it is not in the catalogue. */
-    @Schema(description = "A make and how many listings of it are published.")
-    public record MakeCount(
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String make,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Split published) {
-    }
-
     /** Published listings by price indicator; {@code noVerdict} when there are too few comparables. */
     @Schema(description = "Published listings by price indicator.")
     public record PriceVerdicts(
@@ -113,30 +178,44 @@ public record AdminStats(
     }
 
     /**
-     * Natural-language search in a period. Counts only; query text is never stored.
+     * How search is used. Counts only: never what anyone searched for.
      *
-     * @param requests          requests that reached the language model
-     * @param failed            of those, answered 503 (timeout, quota, provider error)
-     * @param withNotUnderstood of the answered ones, those with at least one part not understood
+     * @param interpretRequests natural-language requests that reached the language model. Stored per
+     *                          Paris day, so "today" is compared with the whole of yesterday
+     * @param interpretFailed   of those, answered 503
+     * @param searches          searches on the results page, first pages only
+     * @param topFilters        the filters those searches used most, by name
+     * @param activeAlerts      saved searches now, not paused
      */
-    @Schema(description = "Natural-language search usage in a period: counts only.")
+    @Schema(description = "How search is used in the period: counts only.")
     public record SearchUsage(
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long requests,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long failed,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long withNotUnderstood) {
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Count interpretRequests,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Count interpretFailed,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Count interpretNotUnderstood,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Count searches,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<FilterUse> topFilters,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long activeAlerts) {
+    }
+
+    /** How many searches used one filter, by its name. */
+    @Schema(description = "How many searches used a filter.")
+    public record FilterUse(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String filter,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long current,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long previous) {
     }
 
     /**
-     * Transactional email in a period. An email still being retried is neither.
+     * Transactional e-mail. One still being retried is neither sent nor failed.
      *
-     * @param sent   handed to the provider, which is not the same as delivered
-     * @param failed given up on after the last attempt
+     * @param sent       handed to the provider, which is not the same as delivered
+     * @param failed     given up on after the last attempt, by when it was written
      * @param alertsSent of {@code sent}, saved searches' daily e-mails
      */
-    @Schema(description = "Transactional email in a period, by outcome.")
-    public record EmailCounts(
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long sent,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long failed,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long alertsSent) {
+    @Schema(description = "Transactional e-mail in the period.")
+    public record Emails(
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Count sent,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Count failed,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Count alertsSent) {
     }
 }

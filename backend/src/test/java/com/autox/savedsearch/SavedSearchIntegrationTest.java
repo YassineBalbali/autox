@@ -768,7 +768,7 @@ class SavedSearchIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        @DisplayName("the dashboard counts active searches, and alert e-mails sent over 7 and 30 days")
+        @DisplayName("the dashboard counts active searches, and alert e-mails sent in the period")
         void dashboard() throws Exception {
             JsonNode admin = verifiedAdmin();
             save(searcher, "Active", Map.of());
@@ -782,10 +782,13 @@ class SavedSearchIntegrationTest extends AbstractIntegrationTest {
             JsonNode stats = json(mockMvc.perform(get("/api/v1/admin/stats").header(HttpHeaders.AUTHORIZATION, bearer(admin)))
                     .andExpect(status().isOk()).andReturn());
 
-            assertThat(stats.get("activeSavedSearches").asLong()).isOne();
-            assertThat(stats.at("/emailsLast7Days/alertsSent").asLong()).isEqualTo(1);
-            assertThat(stats.at("/emailsLast30Days/alertsSent").asLong()).isEqualTo(2);
-            assertThat(stats.at("/emailsLast7Days/sent").asLong()).isEqualTo(2);
+            assertThat(stats.at("/search/activeAlerts").asLong()).isOne();
+            assertThat(stats.at("/emails/alertsSent/current").asLong()).isEqualTo(1);
+            assertThat(stats.at("/emails/sent/current").asLong()).isEqualTo(2);
+            JsonNode month = json(mockMvc.perform(get("/api/v1/admin/stats").param("period", "MONTH")
+                            .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                    .andExpect(status().isOk()).andReturn());
+            assertThat(month.at("/emails/alertsSent/current").asLong()).isEqualTo(2);
         }
 
         private ResultActions send(JsonNode who) throws Exception {
@@ -796,7 +799,7 @@ class SavedSearchIntegrationTest extends AbstractIntegrationTest {
             jdbcTemplate.update("""
                     INSERT INTO outbox_email (id, recipient, subject, email_type, status, sent_at, created_at)
                     VALUES (?, 'r@autox.test', 'Objet', ?, ?, %s, %s)
-                    """.formatted("SENT".equals(state) ? "now()" : "NULL", createdAt), UUID.randomUUID(), type, state);
+                    """.formatted("SENT".equals(state) ? createdAt : "NULL", createdAt), UUID.randomUUID(), type, state);
         }
     }
 
