@@ -3,7 +3,8 @@
 // component's markup.
 .skip-link {
   position: absolute;
-  left: var(--s-2);
+  // Clear of a notch, on a phone held sideways.
+  left: max(var(--s-2), env(safe-area-inset-left, 0px));
   // Just off the top of the viewport, not display:none — a hidden element cannot be
   // focused, which would make the link useless to the only people who need it.
   top: -4rem;
@@ -19,7 +20,7 @@
   transition: top 120ms ease-out;
 
   &:focus-visible {
-    top: var(--s-2);
+    top: calc(var(--s-2) + env(safe-area-inset-top, 0px));
   }
 }
 
