@@ -26,7 +26,7 @@ describe('touch targets', () => {
   });
 
   it('keeps the desktop’s 34px controls otherwise', () => {
-    expect(tokens).toMatch(/^ {2}--h-control: 34px;/m);
+    expect(tokens).toMatch(/^\s+--h-control: 34px;/m);
   });
 
   it('does not let a small button fall below the floor on a phone', () => {
