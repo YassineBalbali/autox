@@ -1,87 +1,62 @@
 @use '../../../styles/tokens' as t;
 
+// The tab bar's height without the safe area, which the page leaves clear below its content.
+$tabs-h: 3.75rem;
+
+// Fills the shell's main, which drops its container and its footer for the back office
+// (app.ts), so the sidebar reaches the foot of a short page too.
 :host {
-  display: block;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
 }
 
 .admin {
-  display: grid;
-  gap: var(--s-4);
+  flex: 1 0 auto;
 
   @media (min-width: t.$bp-lg) {
-    grid-template-columns: 13rem minmax(0, 1fr);
-    align-items: start;
-    gap: var(--s-5);
+    display: grid;
+    grid-template-columns: 14rem minmax(0, 1fr);
   }
 }
 
+// ---- the sidebar, from 1024px ------------------------------------------------------------
+
 // The one dark surface on the site: this is where the site is run, not where it is used.
+// Down the whole left edge, from under the header. It holds to the top of the window while
+// the page scrolls, and is never taller than the window.
 .admin__sidebar {
-  border-radius: var(--r-md);
+  display: none;
   background: var(--c-navy);
   color: var(--c-accent-ink);
 
   @media (min-width: t.$bp-lg) {
+    display: block;
     position: sticky;
-    top: var(--s-3);
-    padding: var(--s-3) 0;
+    top: 0;
+    align-self: stretch;
+    max-height: 100dvh;
+    overflow-y: auto;
+    padding: var(--s-4) 0;
   }
 }
 
 .admin__title {
-  display: none;
   margin: 0 0 var(--s-2);
-  padding-inline: var(--s-3);
+  padding-inline: var(--s-4);
   font-size: var(--t-2xs);
   font-weight: var(--fw-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--c-accent-ink) 72%, transparent);
-
-  @media (min-width: t.$bp-lg) {
-    display: block;
-  }
-}
-
-.admin__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 44px;
-  padding: 0 var(--s-3);
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-weight: var(--fw-semibold);
-  cursor: pointer;
-
-  @media (min-width: t.$bp-lg) {
-    display: none;
-  }
-}
-
-.admin__menu {
-  display: none;
-  padding-bottom: var(--s-1);
-
-  @media (min-width: t.$bp-lg) {
-    display: block;
-    padding-bottom: 0;
-  }
-}
-
-.admin__menu--open {
-  display: block;
 }
 
 .admin__link {
   display: flex;
   align-items: center;
   gap: var(--s-2);
-  min-height: 44px;
-  padding: var(--s-1) var(--s-3);
+  min-height: 40px;
+  padding: var(--s-1) var(--s-4) var(--s-1) calc(var(--s-4) - 3px);
   border-left: 3px solid transparent;
   color: var(--c-accent-ink);
   font-size: var(--t-sm);
@@ -96,10 +71,6 @@
   &:focus-visible {
     outline-color: var(--c-accent-ink);
     outline-offset: -2px;
-  }
-
-  @media (min-width: t.$bp-lg) {
-    min-height: 36px;
   }
 }
 
@@ -123,6 +94,94 @@
   font-weight: var(--fw-regular);
 }
 
+// ---- the page --------------------------------------------------------------------------
+
+// Clear of the tab bar below 1024px: the bar, the phone's safe area, and the usual space.
 .admin__content {
   min-width: 0;
+  padding: var(--s-5) var(--gutter) calc(#{$tabs-h} + env(safe-area-inset-bottom) + var(--s-5));
+
+  @media (min-width: t.$bp-lg) {
+    padding: var(--s-6) var(--s-6) var(--s-6);
+  }
+}
+
+// ---- the tab bar, below 1024px ---------------------------------------------------------
+
+.admin__tabs {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-1);
+  padding: 6px var(--s-2) calc(6px + env(safe-area-inset-bottom));
+  border-top: var(--border);
+  background: var(--c-surface);
+  box-shadow: 0 -2px 12px rgb(11 31 58 / 6%);
+
+  @media (min-width: t.$bp-lg) {
+    display: none;
+  }
+}
+
+.admin__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: calc(#{$tabs-h} - 12px);
+  padding: 4px 2px;
+  border-radius: var(--r-lg);
+  color: var(--c-ink-soft);
+  font-size: var(--t-2xs);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  text-align: center;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--c-ink);
+  }
+}
+
+.admin__tab--active {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+
+  &:hover {
+    color: var(--c-accent);
+  }
+}
+
+.admin__tab-icon {
+  position: relative;
+  display: inline-flex;
+}
+
+.admin__tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Ringed in the bar's colour so it reads as sitting on the icon rather than over it.
+.admin__badge {
+  position: absolute;
+  top: -5px;
+  left: calc(100% - 9px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 2px solid var(--c-surface);
+  border-radius: 999px;
+  background: var(--c-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  line-height: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }

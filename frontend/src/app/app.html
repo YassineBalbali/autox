@@ -4,8 +4,10 @@
 
 <app-site-header />
 
-<main id="contenu" class="page" tabindex="-1">
+<main id="contenu" class="page" [class.back-office]="backOffice()" tabindex="-1">
   <router-outlet />
 </main>
 
-<app-site-footer />
+@if (!backOffice()) {
+  <app-site-footer />
+}

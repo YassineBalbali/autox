@@ -41,3 +41,12 @@ main {
     outline: none;
   }
 }
+
+// The back office: the whole width, edge to edge under the header, for its sidebar. Its
+// frame (app-admin-layout) adds its own spacing and fills the height.
+main.back-office {
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  padding: 0;
+}
