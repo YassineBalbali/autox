@@ -80,7 +80,10 @@ $emit: false !default;
     --s-6: 2rem; // 32px
     --s-7: 3rem; // 48px
 
-    --gutter: var(--s-4);
+    // The page's side margin: never less than the safe area on that side, so a phone held
+    // sideways keeps text and controls clear of its notch. Zero everywhere else.
+    --gutter-min: var(--s-4);
+    --gutter: max(var(--gutter-min), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
 
     // ---- type --------------------------------------------------------------
     //
@@ -169,7 +172,7 @@ $emit: false !default;
 
   @media (min-width: 768px) {
     :root {
-      --gutter: var(--s-5);
+      --gutter-min: var(--s-5);
     }
   }
 }

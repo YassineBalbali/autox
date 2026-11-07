@@ -147,7 +147,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--s-6) var(--s-7);
+  padding: calc(var(--s-6) + env(safe-area-inset-top, 0px)) calc(var(--s-7) + env(safe-area-inset-right, 0px))
+    calc(var(--s-6) + env(safe-area-inset-bottom, 0px)) calc(var(--s-7) + env(safe-area-inset-left, 0px));
   // The navy, nearly opaque: the page is still faintly there, which is what tells the
   // reader this is a layer over it and not somewhere else.
   background: rgb(11 31 58 / 94%);
@@ -161,10 +162,12 @@
   cursor: default;
 }
 
+// The layer covers the whole screen, so its controls keep to the safe areas: clear of a
+// notch, a status bar and a home indicator.
 .lightbox__close {
   position: absolute;
-  top: var(--s-3);
-  right: var(--s-3);
+  top: calc(var(--s-3) + env(safe-area-inset-top, 0px));
+  right: calc(var(--s-3) + env(safe-area-inset-right, 0px));
   height: var(--h-control);
   padding: 0 var(--s-3);
   border: var(--border);
@@ -176,18 +179,18 @@
 }
 
 .lightbox__arrow--prev {
-  left: var(--s-3);
+  left: calc(var(--s-3) + env(safe-area-inset-left, 0px));
   border-radius: var(--r-md);
 }
 
 .lightbox__arrow--next {
-  right: var(--s-3);
+  right: calc(var(--s-3) + env(safe-area-inset-right, 0px));
   border-radius: var(--r-md);
 }
 
 .lightbox__count {
   right: 50%;
-  bottom: var(--s-3);
+  bottom: calc(var(--s-3) + env(safe-area-inset-bottom, 0px));
   transform: translateX(50%);
   background: var(--c-surface);
   color: var(--c-ink);
@@ -201,6 +204,11 @@
   position: relative;
   margin-inline: calc(-1 * var(--gutter));
   background: var(--c-surface-sunk);
+
+  // The photo may run under a notch; its counter does not.
+  .gallery__count {
+    right: calc(var(--s-2) + env(safe-area-inset-right, 0px));
+  }
 }
 
 // One photo to a screen; the row scrolls sideways and snaps to whole photos, so a swipe

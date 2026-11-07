@@ -115,7 +115,8 @@ $tabs-h: 3.75rem;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--s-1);
-  padding: 6px var(--s-2) calc(6px + env(safe-area-inset-bottom));
+  padding: 6px max(var(--s-2), env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px))
+    max(var(--s-2), env(safe-area-inset-left, 0px));
   border-top: var(--border);
   background: var(--c-surface);
   box-shadow: 0 -2px 12px rgb(11 31 58 / 6%);

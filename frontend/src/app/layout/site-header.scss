@@ -9,6 +9,9 @@
   border-bottom: 2px solid var(--c-navy);
   position: relative;
   z-index: 20;
+  // Under a status bar that the page runs beneath (the site saved to a home screen); the
+  // sides are the gutter's.
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .header__inner {

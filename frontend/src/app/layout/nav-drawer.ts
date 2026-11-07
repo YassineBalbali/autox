@@ -223,7 +223,9 @@ import { NavItem } from './primary-nav';
       overscroll-behavior: contain;
       background: var(--c-surface);
       box-shadow: var(--shadow-overlay);
-      // Clear of a phone's home indicator.
+      // Clear of a phone's status bar and home indicator; its rows keep to the gutter, which
+      // clears a notch on the left.
+      padding-top: env(safe-area-inset-top, 0px);
       padding-bottom: env(safe-area-inset-bottom);
     }
 
