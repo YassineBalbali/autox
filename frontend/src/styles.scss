@@ -1,7 +1,8 @@
 // Global stylesheet. Three partials and nothing else: tokens declare the vocabulary, base
 // applies it to bare HTML, controls cover the form and action classes that have to look the
 // same on every screen. Components bring their own styles beyond that and reference only
-// tokens, so a colour or a spacing step is changed in one place.
-@use 'styles/tokens';
+// tokens, so a colour or a spacing step is changed in one place. The custom properties are
+// printed here, once; a component's @use of the tokens takes only the breakpoints.
+@use 'styles/tokens' with ($emit: true);
 @use 'styles/base';
 @use 'styles/controls';
