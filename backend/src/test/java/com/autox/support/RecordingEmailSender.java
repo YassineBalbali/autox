@@ -51,8 +51,14 @@ public class RecordingEmailSender implements EmailSender {
         return sent.getLast();
     }
 
+    /**
+     * Empties the mailbox and goes back to delivering. Both, because one sender is shared by
+     * every class that records mail ({@link RecordingMail}): a failure one test left set would
+     * otherwise reach the next class.
+     */
     public void clear() {
         sent.clear();
+        failure = null;
     }
 
     /** The reset token out of the most recent message's link, as a user clicking it would send. */

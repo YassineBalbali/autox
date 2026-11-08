@@ -9,6 +9,7 @@ import com.autox.mail.OutboxPoller;
 import com.autox.support.AbstractIntegrationTest;
 import com.autox.support.ListingTestFixtures;
 import com.autox.support.RecordingEmailSender;
+import com.autox.support.RecordingMail;
 import com.autox.user.UserRole;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
@@ -18,26 +19,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
 
 /** Who is told about a message, how often, and what the email does not say. */
-@TestPropertySource(properties = "autox.mail.provider = recording")
+@RecordingMail
 class NewMessageNotificationIntegrationTest extends AbstractIntegrationTest {
 
     private static final String MESSAGE = "Mon numéro privé est le 06 12 34 56 78, appelez-moi";
-
-    @TestConfiguration
-    static class RecordingMailConfiguration {
-
-        @Bean
-        RecordingEmailSender recordingEmailSender() {
-            return new RecordingEmailSender();
-        }
-    }
 
     @Autowired RecordingEmailSender emails;
     @Autowired OutboxPoller poller;

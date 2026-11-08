@@ -17,6 +17,7 @@ import com.autox.mail.OutboxPoller;
 import com.autox.support.AbstractIntegrationTest;
 import com.autox.support.ListingTestFixtures;
 import com.autox.support.RecordingEmailSender;
+import com.autox.support.RecordingMail;
 import com.autox.user.UserRole;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
@@ -35,20 +36,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /** Saved searches and their daily e-mail, against a real PostgreSQL with real commits. */
-@TestPropertySource(properties = "autox.mail.provider = recording")
-// Imported rather than found by being nested here: @Nested test classes do not look for it.
-@org.springframework.context.annotation.Import(SavedSearchIntegrationTest.RecordingMailConfiguration.class)
+@RecordingMail
 class SavedSearchIntegrationTest extends AbstractIntegrationTest {
 
     private static final String SEARCHES = "/api/v1/saved-searches";
@@ -62,15 +58,6 @@ class SavedSearchIntegrationTest extends AbstractIntegrationTest {
             "durationMonths", 36, "mileagePerYear", 10_000);
     private static final Map<String, Object> DAMAGE = Map.of(
             "damaged", true, "types", List.of("BODYWORK"), "running", false, "description", "Choc avant.");
-
-    @TestConfiguration
-    static class RecordingMailConfiguration {
-
-        @Bean
-        RecordingEmailSender recordingEmailSender() {
-            return new RecordingEmailSender();
-        }
-    }
 
     @Autowired RecordingEmailSender emails;
     @Autowired OutboxPoller poller;

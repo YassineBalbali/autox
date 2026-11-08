@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.within;
 import com.autox.auth.verification.EmailVerificationService;
 import com.autox.support.AbstractIntegrationTest;
 import com.autox.support.RecordingEmailSender;
+import com.autox.support.RecordingMail;
 import com.autox.user.AppUser;
 import com.autox.user.UserRole;
 import com.autox.user.UserStatus;
@@ -24,11 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.context.annotation.Bean;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -38,20 +36,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * The outbox, against a real PostgreSQL with real commits: the row goes with the transaction, and
  * the poller's claim, backoff, cap and failure handling.
  */
-@TestPropertySource(properties = "autox.mail.provider = recording")
+@RecordingMail
 @ExtendWith(OutputCaptureExtension.class)
 class OutboxIntegrationTest extends AbstractIntegrationTest {
 
     private static final String SECRET = "le-jeton-secret-0123456789";
-
-    @TestConfiguration
-    static class RecordingMailConfiguration {
-
-        @Bean
-        RecordingEmailSender recordingEmailSender() {
-            return new RecordingEmailSender();
-        }
-    }
 
     @Autowired RecordingEmailSender emails;
     @Autowired EmailOutbox outbox;

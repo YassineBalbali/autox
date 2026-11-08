@@ -22,6 +22,8 @@
         <awssdk.version>2.57.5</awssdk.version>
         <springdoc.version>2.10.0</springdoc.version>
         <therapi.version>0.16.0</therapi.version>
+        <!-- Parallel test JVMs: see the surefire plugin below. Four fits CI's four cores. -->
+        <test.forks>4</test.forks>
 
         <!-- Security overrides of versions the Spring Boot parent manages. Each one is here
              because the dependency scan in CI reported a HIGH or CRITICAL advisory fixed in
@@ -195,6 +197,56 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+            <!-- Test classes run in parallel JVMs, each with its own PostgreSQL and MinIO
+                 (AbstractIntegrationTest starts them once per JVM). The classes are
+                 independent only because they do not share a database: every test truncates
+                 what it wrote, so two classes in one JVM, against one database, would empty
+                 each other's tables. Hence forks, not JUnit's threads.
+
+                 A fork takes the next class when it finishes one, so the slow demo classes do
+                 not hold up the rest. Alphabetical order starts them early, under com.autox.demo.
+                 `-Dtest.forks=1` runs everything in one JVM, as before. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <forkCount>${test.forks}</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <runOrder>alphabetical</runOrder>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Windows, with no DOCKER_HOST of its own: the test JVMs are told where Docker Desktop
+             is. Left to find it, Testcontainers checks that the named pipe exists, and that check
+             says no while the pipe is busy, which it is when four JVMs start at once: one of them
+             then found "no valid Docker environment" and every class it ran failed. Told the
+             address, it connects without the check. Linux, CI included, is not concerned. -->
+        <profile>
+            <id>windows-docker-pipe</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+                <property>
+                    <name>!env.DOCKER_HOST</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <environmentVariables>
+                                <DOCKER_HOST>npipe:////./pipe/docker_engine</DOCKER_HOST>
+                            </environmentVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

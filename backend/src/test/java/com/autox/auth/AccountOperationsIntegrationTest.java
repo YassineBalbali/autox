@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.autox.support.AbstractIntegrationTest;
 import com.autox.support.RecordingEmailSender;
+import com.autox.support.RecordingMail;
 import com.autox.user.UserRole;
 import com.autox.user.UserStatus;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,11 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
 
 /**
  * The account operations that were missing: change password, forgotten-password reset, and
@@ -34,20 +32,11 @@ import org.springframework.test.context.TestPropertySource;
  * what stops working afterwards, because that is the part a half-built implementation gets
  * wrong.
  */
-@TestPropertySource(properties = "autox.mail.provider = recording")
+@RecordingMail
 class AccountOperationsIntegrationTest extends AbstractIntegrationTest {
 
     private static final String ORIGINAL_PASSWORD = "correct-horse-battery";
     private static final String NEW_PASSWORD = "an-entirely-different-passphrase";
-
-    @TestConfiguration
-    static class RecordingMailConfiguration {
-
-        @Bean
-        RecordingEmailSender recordingEmailSender() {
-            return new RecordingEmailSender();
-        }
-    }
 
     @Autowired RecordingEmailSender emails;
     @Autowired com.autox.mail.OutboxPoller outboxPoller;
