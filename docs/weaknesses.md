@@ -274,9 +274,11 @@ else, and listings expire silently after 60 days.
 
 ### W8. Moderation works for one moderator and a short queue — frontend and backend
 
-Enough to do the job, and no more: no search or filter (finding one listing means paging
-to it), no reports inbox (R3), and when a listing returns to the queue
-after an edit the card says so but cannot show *what* changed.
+Enough to do the job, and no more. Each list can now be searched (title, make, model, version,
+seller's name and e-mail), filtered, sorted and read as compact rows (`docs/moderation-search.md`).
+There is no claim on a listing, so two moderators can open the
+same one, and when a listing returns to the queue after an edit the card says so but cannot show
+*what* changed.
 
 ### W9. The backend is operationally blind, and so is the frontend — both
 
