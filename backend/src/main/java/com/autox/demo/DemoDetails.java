@@ -37,11 +37,15 @@ final class DemoDetails {
     private DemoDetails() {
     }
 
+    /**
+     * A van has four: two at the front, a sliding one at the side, and the rear doors, counted
+     * as one as French listings count them.
+     */
     static int doors(DemoCatalogue.Vehicle vehicle) {
         if (vehicle.modelSlug().equals("500")) {
             return 3;
         }
-        return vehicle.body() == BodyType.SEDAN ? 4 : 5;
+        return vehicle.body() == BodyType.SEDAN || vehicle.body() == BodyType.VAN ? 4 : 5;
     }
 
     /** A van's cab: a bench for two passengers in the larger Jumpy, a single seat in the others. */
@@ -120,8 +124,20 @@ final class DemoDetails {
         return String.join("\n\n",
                 vehicle.title() + ".",
                 "Vendu en l’état, sans garantie. À voir à " + vehicle.city() + " sur rendez-vous.",
-                "Annonce de démonstration : ce véhicule n’existe pas. Il sert à illustrer le site.");
+                NOTICE);
     }
+
+    /**
+     * The last paragraph of every demo description. In words that fit the public demo, where
+     * visitors read it: an earlier one said the listing illustrated "AutoX en développement
+     * local", which was not true of the site it was on.
+     */
+    static final String NOTICE =
+            "Annonce de démonstration : ce véhicule n’existe pas. Elle montre le fonctionnement d’AutoX.";
+
+    /** The same for a leasing offer, which invents an offer as well as a car. */
+    static final String LEASING_NOTICE = "Annonce de démonstration : ce véhicule et cette offre "
+            + "n’existent pas. Elle montre le fonctionnement d’AutoX.";
 
     /** The same for a leasing offer. */
     static String leasedDescription(DemoCatalogue.LeasedVehicle leased) {
@@ -129,7 +145,7 @@ final class DemoDetails {
         return String.join("\n\n",
                 vehicle.title() + ".",
                 "Disponible auprès de notre concession de " + vehicle.city() + ". Conditions détaillées sur demande.",
-                "Annonce de démonstration : ce véhicule et cette offre n’existent pas. Ils servent à illustrer le site.");
+                LEASING_NOTICE);
     }
 
     /** A few sentences in the register of a real listing, and one that says it is not one. */
@@ -145,7 +161,6 @@ final class DemoDetails {
                 vehicle.title() + ".",
                 state + " " + history,
                 "Visible à " + vehicle.city() + " sur rendez-vous. Essai possible.",
-                "Annonce de démonstration : ce véhicule n’existe pas. Il sert à illustrer "
-                        + "AutoX en développement local.");
+                NOTICE);
     }
 }

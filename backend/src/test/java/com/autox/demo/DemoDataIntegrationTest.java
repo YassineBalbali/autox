@@ -470,6 +470,105 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     @ExtendWith(OutputCaptureExtension.class)
+    @DisplayName("a start corrects an older seed's listings in place, through the ledger, and only what differs")
+    void startCorrectsAnOlderSeed(CapturedOutput output) {
+        demoData.seed();
+        List<java.util.UUID> seeded = ledger.ids(DemoLedger.LISTING);
+        DemoCatalogue.Vehicle peugeot = DemoCatalogue.vehicles().get(0);
+        DemoCatalogue.Vehicle golf = DemoCatalogue.vehicles().get(2);
+        assertThat(peugeot.modelSlug()).isEqualTo("308");
+        assertThat(golf.modelSlug()).isEqualTo("golf");
+        java.util.UUID wrong = idByTitle(peugeot.title());
+
+        // What an older seed left: the old last sentence everywhere, another car's text on one
+        // listing and the wrong body, doors, seats, fuel and power on it, and the photos of the
+        // one silhouette, recorded as drawn by nobody.
+        jdbcTemplate.update("UPDATE listing SET description = replace(description, ?, ?)", DemoDetails.NOTICE,
+                "Annonce de démonstration : ce véhicule n’existe pas. Il sert à illustrer AutoX en développement local.");
+        jdbcTemplate.update("""
+                UPDATE listing SET description = ?, body_type = 'MPV', doors = 3, seats = 7, fuel_type = 'PETROL',
+                                   power_hp = 90, power_kw = 66 WHERE id = ?""",
+                DemoDetails.description(golf), wrong);
+        jdbcTemplate.update("DELETE FROM demo_seed_ledger WHERE entity_type = ?", DemoLedger.DRAWING);
+        String photoKey = jdbcTemplate.queryForObject(
+                "SELECT storage_key FROM listing_image WHERE listing_id = ? AND position = 0", String.class, wrong);
+        String oldChecksum = jdbcTemplate.queryForObject(
+                "SELECT checksum_sha256 FROM listing_image WHERE storage_key = ?", String.class, photoKey);
+        // And a visitor's listing with the same title and the same wrong text, which is not the seed's.
+        java.util.UUID[] demoModel = firstDemoModel();
+        java.util.UUID visitor = insertVisitorListing(demoModel[0], demoModel[1]);
+        jdbcTemplate.update("UPDATE listing SET title = ?, description = ? WHERE id = ?",
+                peugeot.title(), DemoDetails.description(golf), visitor);
+        java.util.Map<String, Object> visitorBefore = jdbcTemplate.queryForMap("SELECT * FROM listing WHERE id = ?", visitor);
+        String stateSql = """
+                SELECT id, status, moderation_status, title, price_amount, published_at, expires_at,
+                       created_at, updated_at, version FROM listing ORDER BY id""";
+        List<java.util.Map<String, Object>> state = jdbcTemplate.queryForList(stateSql);
+        List<java.util.Map<String, Object>> imageRows = jdbcTemplate.queryForList(
+                "SELECT id, listing_id, position, status, storage_key FROM listing_image ORDER BY id");
+
+        assertThat(demoData.seed()).as("no listing created").isZero();
+
+        java.util.Map<String, Object> corrected = jdbcTemplate.queryForMap("""
+                SELECT description, body_type, doors, seats, fuel_type, power_hp, power_kw FROM listing WHERE id = ?""",
+                wrong);
+        assertThat((String) corrected.get("description"))
+                .isEqualTo(DemoDetails.description(peugeot))
+                .contains("Peugeot 308").doesNotContain("Golf").doesNotContain("développement");
+        assertThat(corrected).containsEntry("body_type", peugeot.body().name())
+                .containsEntry("fuel_type", peugeot.fuel().name());
+        assertThat(((Number) corrected.get("doors")).intValue()).isEqualTo(DemoDetails.doors(peugeot));
+        assertThat(((Number) corrected.get("seats")).intValue()).isEqualTo(DemoDetails.seats(peugeot));
+        assertThat(((Number) corrected.get("power_hp")).intValue()).isEqualTo(peugeot.powerHp());
+        assertThat(((Number) corrected.get("power_kw")).intValue()).isEqualTo(DemoDetails.powerKw(peugeot));
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT description FROM listing WHERE id IN (SELECT entity_id FROM demo_seed_ledger WHERE entity_type = ?)",
+                String.class, DemoLedger.LISTING))
+                .hasSize(SEEDED).allSatisfy(text -> assertThat(text).endsWith(DemoDetails.NOTICE));
+
+        // New photos behind the same rows and keys, recorded with their own sizes.
+        String newChecksum = jdbcTemplate.queryForObject(
+                "SELECT checksum_sha256 FROM listing_image WHERE storage_key = ?", String.class, photoKey);
+        assertThat(newChecksum).isNotEqualTo(oldChecksum)
+                .isEqualTo(com.autox.common.Sha256.hex(storage.read(photoKey)));
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT id, listing_id, position, status, storage_key FROM listing_image ORDER BY id"))
+                .isEqualTo(imageRows);
+        assertThat(ledger.ids(DemoLedger.DRAWING)).containsExactlyInAnyOrderElementsOf(seeded);
+
+        // Nothing else: not the status, the verdict or a date; and not the visitor's listing.
+        assertThat(jdbcTemplate.queryForList(stateSql)).isEqualTo(state);
+        assertThat(jdbcTemplate.queryForMap("SELECT * FROM listing WHERE id = ?", visitor)).isEqualTo(visitorBefore);
+        assertThat(output.getOut()).contains("Demo listings corrected in place: " + SEEDED + " descriptions, "
+                + "1 with body, doors, seats, fuel or power, " + SEEDED + " redrawn ("
+                + SEEDED * DemoData.PHOTOS_PER_LISTING + " photos); 0 not matched.");
+
+        // And a second start finds nothing to do.
+        String photos = storageChecksums();
+        List<java.util.Map<String, Object>> everything = jdbcTemplate.queryForList(
+                "SELECT * FROM listing WHERE id <> ? ORDER BY id", visitor);
+        demoData.seed();
+        assertThat(jdbcTemplate.queryForList("SELECT * FROM listing WHERE id <> ? ORDER BY id", visitor))
+                .isEqualTo(everything);
+        assertThat(storageChecksums()).isEqualTo(photos);
+        assertThat(output.getOut()).contains("Demo listings: all match the catalogue, nothing corrected (0 not matched).");
+
+        jdbcTemplate.update("DELETE FROM listing WHERE id = ?", visitor);
+    }
+
+    private java.util.UUID idByTitle(String title) {
+        return jdbcTemplate.queryForObject("""
+                SELECT l.id FROM listing l JOIN demo_seed_ledger d ON d.entity_type = ? AND d.entity_id = l.id
+                 WHERE l.title = ?""", java.util.UUID.class, DemoLedger.LISTING, title);
+    }
+
+    private String storageChecksums() {
+        return String.join(",", jdbcTemplate.queryForList(
+                "SELECT checksum_sha256 FROM listing_image ORDER BY id", String.class));
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
     @DisplayName("the approval says what it did, and a second start finds nothing to do")
     void approvalIsIdempotentAndSaysSo(CapturedOutput output) {
         demoData.seed();

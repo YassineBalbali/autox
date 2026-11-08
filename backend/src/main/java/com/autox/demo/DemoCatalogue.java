@@ -70,6 +70,24 @@ final class DemoCatalogue {
             String city,
             String postalCode,
             int publishedDaysAgo) {
+
+        /** The same car in another town. */
+        Vehicle in(String town) {
+            return new Vehicle(sellerKey, makeSlug, modelSlug, version, title, priceEuros, year, month, mileageKm,
+                    fuel, gearbox, body, powerHp, condition, colour, town, postalCode, publishedDaysAgo);
+        }
+
+        /** The same car in another colour. */
+        Vehicle coloured(ExteriorColor other) {
+            return new Vehicle(sellerKey, makeSlug, modelSlug, version, title, priceEuros, year, month, mileageKm,
+                    fuel, gearbox, body, powerHp, condition, other, city, postalCode, publishedDaysAgo);
+        }
+
+        /** The same car under another title. */
+        Vehicle titled(String other) {
+            return new Vehicle(sellerKey, makeSlug, modelSlug, version, other, priceEuros, year, month, mileageKm,
+                    fuel, gearbox, body, powerHp, condition, colour, city, postalCode, publishedDaysAgo);
+        }
     }
 
     static final List<Seller> SELLERS = List.of(
@@ -603,7 +621,8 @@ final class DemoCatalogue {
                     LeasingType.LOA, 419, 4_000, 49, 15_000, 21_900L),
             new LeasedVehicle(leased("nord-vo", "renault", "kangoo", "1.5 Blue dCi 95 Grand Confort",
                     "Renault Kangoo Blue dCi 95 Grand Confort en LLD", 27_300, 2025, 9_500, FuelType.DIESEL, Gearbox.MANUAL,
-                    BodyType.MPV, 95, VehicleCondition.USED, ExteriorColor.WHITE, "Lille", "59000", 14),
+                    // A van, as every other Kangoo in the demo: "Grand Confort" is the van's trim.
+                    BodyType.VAN, 95, VehicleCondition.USED, ExteriorColor.WHITE, "Lille", "59000", 14),
                     LeasingType.LLD, 299, 2_000, 36, 20_000, null));
 
     static final List<Vehicle> VEHICLES = List.of(

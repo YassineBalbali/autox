@@ -332,6 +332,27 @@ Demo data is already present (172 listings); nothing seeded.
 A later start says `Demo leasing offers: complete, nothing added (12 offers).` As with the damaged
 vehicles, an offer is recognised by its title among those in the ledger.
 
+**To correct a seeded database's demo listings in place** (descriptions, fields and photos made by
+an older seed), it is the same single deploy with `SPRING_PROFILES_ACTIVE=demo` and no
+`AUTOX_DEMO_ACTION`, then remove the profile. For each listing in the ledger it rewrites the
+description, the body, doors, seats, fuel and power where they differ from the demo catalogue, and
+redraws the photos in the listing's body type. Each listing is matched to its car by its title. The
+photos keep their rows and storage keys; the bytes and recorded sizes change. Status, verdict and
+dates are not touched, so nothing re-enters the moderation queue. Visitors' listings are never
+reached. Redrawing takes a few minutes (about three for 172 listings on a laptop), after the
+"Started" line; do not deploy again until the lines below appear. On the 172-listing seed of
+November 2026 the log shows:
+
+```
+Demo listings corrected in place: 172 descriptions, 17 with body, doors, seats, fuel or power, 172 redrawn (516 photos); 0 not matched. Status, verdict and dates untouched.
+Demo data is already present (172 listings); nothing seeded.
+```
+
+The 17 are the 16 vans, which now have four doors, and the leasing Kangoo, which was a monospace. A
+redrawn listing is marked in the ledger and not redrawn again. A later start says `Demo listings:
+all match the catalogue, nothing corrected (0 not matched).` A figure other than 0 for "not matched"
+counts ledger listings whose title is in no demo list; they are left as they are.
+
 **To reset the demo later** (once visitors have filled it with test listings): deploy once
 with `SPRING_PROFILES_ACTIVE=demo` **and** `AUTOX_DEMO_ACTION=remove`, then once with only
 the profile (seed again), then remove both. Removal deletes exactly what the seed recorded.
