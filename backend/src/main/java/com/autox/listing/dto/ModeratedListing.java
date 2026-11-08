@@ -26,13 +26,15 @@ import java.util.UUID;
  *                       been approved or reinstated, and its seller has since changed its
  *                       content. The trail then ends in a decision that no longer stands,
  *                       and this is what says why.
+ * @param demo           true when the demo seed created this listing
  */
 public record ModeratedListing(
         ListingResponse listing,
         ModeratedSeller seller,
         Set<ModerationActionType> allowedActions,
         List<ModerationEntry> trail,
-        boolean editedSinceReview) {
+        boolean editedSinceReview,
+        boolean demo) {
 
     /** The seller, as an administrator may see them. */
     public record ModeratedSeller(
