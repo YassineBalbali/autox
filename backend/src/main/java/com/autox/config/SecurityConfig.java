@@ -26,17 +26,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    /**
-     * BCrypt at cost 12: roughly 250 ms per hash on current hardware, which makes
-     * offline cracking expensive while keeping login responsive. The cost is stored
-     * in the hash, so raising it later leaves existing hashes verifiable.
-     */
     /** Nothing may be loaded by, or frame, a response from the API. */
     static final String API_CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'";
 
+    /**
+     * BCrypt at cost 12: roughly 250 ms per hash on current hardware, which makes
+     * offline cracking expensive while keeping login responsive. The cost is stored
+     * in the hash, so raising it later leaves existing hashes verifiable. Only the test
+     * profile sets it lower ({@link AuthProperties#passwordHashCost()}).
+     */
     @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
+    PasswordEncoder passwordEncoder(AuthProperties auth) {
+        return new BCryptPasswordEncoder(auth.passwordHashCost());
     }
 
     @Bean

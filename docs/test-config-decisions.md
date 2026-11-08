@@ -187,6 +187,57 @@ docker run --rm -v "/$(pwd):/repo" -w /repo rhysd/actionlint:latest
 
 ---
 
+## Running the suite in parallel
+
+The suite took 10 to 14 minutes, locally and in CI, one class after another in one JVM.
+
+**Four JVMs, each with its own containers.** Surefire runs the test classes in four forks
+(`test.forks` in the pom); a fork takes the next class when it finishes one.
+`AbstractIntegrationTest` starts PostgreSQL and MinIO once per JVM and every class in that JVM
+uses them, so each fork has a database of its own. That is what makes the classes
+independent: every test truncates the tables it wrote, so two classes running side by side
+against one database would empty each other's. JUnit's own parallel threads would share one
+JVM, and so one database, and are not used. `-Dtest.forks=1` runs the old way.
+
+**Order.** Alphabetical, so the slowest classes, the demo seed's (about a third of the suite's
+time), are under `com.autox.demo` and start early instead of finishing last.
+
+**Fewer Spring contexts.** A context is cached and reused by every class that describes the
+same configuration; a class with a configuration of its own starts a new one, about five
+seconds each, now in every fork that meets it. The five classes that read their mail each
+declared an identical nested configuration, which Spring counts as five configurations. They
+now share `@RecordingMail`, one context. The ones left each set something that is the point
+of the class, and stay: the registration, message and public rate limits switched on, the
+stub language model, the demo profile with its own counts, and a real port for
+`NoInternalDetailIntegrationTest` and the three proxy setups of `ClientAddressIntegrationTest`.
+Because the mail classes now share one `RecordingEmailSender`, its `clear()` also undoes a
+failure a test asked it to simulate.
+
+**Password hashing at BCrypt's least cost.** Every registration and login hashes a password,
+and the suite makes thousands of them: at production's cost of 12, about 250 ms of CPU each, a
+large part of the suite's time, and more again with four JVMs sharing the cores. The test
+profile sets `autox.auth.password-hash-cost: 4`. It is still BCrypt through the same encoder,
+and a login still verifies the hash. Production sets no value and keeps the default, 12;
+`ConfigurationLayeringIntegrationTest` checks both.
+
+**Measured** (local: 8 logical cores, Docker Desktop on Windows):
+
+| | before | after |
+|---|---|---|
+| `mvn clean verify`, local | 14.1 min | 6.5 min |
+| CI "Build and test" step, last three runs | 8.0, 10.4, 11.6 min | not yet measured |
+
+Each fork spends about 45 seconds starting: its containers, the migrations, the first context,
+all four at once. After that the demo seed classes are the longest path, about four minutes,
+most of it resizing photos.
+
+**Docker Desktop on Windows.** Testcontainers finds Docker Desktop by checking that its named
+pipe exists, and that check fails while the pipe is busy, which it is when four JVMs start at
+once. A pom profile, active on Windows when `DOCKER_HOST` is not set, gives the test JVMs the
+pipe's address so no check is made.
+
+---
+
 ## Loading `.env` into the application
 
 `mvn spring-boot:run` failed from a clean terminal with

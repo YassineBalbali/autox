@@ -40,6 +40,11 @@ autox:
     jwt-secret: test-only-signing-key-at-least-32-bytes-long-0123456789
     issuer: https://api.autox.test
 
+    # BCrypt's least cost rather than production's 12. Every registration and login hashes,
+    # and the suite makes thousands of them: at 12, about 250 ms of CPU each, they were most
+    # of its time. Still BCrypt, through the same encoder; a login still verifies the hash.
+    password-hash-cost: 4
+
     # Seconds instead of minutes, so escalation is observable without the suite sleeping.
     # Only the delays deviate — the thresholds are production's, and the policy arithmetic
     # is asserted separately against the production numbers.
