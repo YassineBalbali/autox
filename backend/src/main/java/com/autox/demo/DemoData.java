@@ -75,6 +75,7 @@ class DemoData {
     private final ListingImageService imageService;
     private final ListingImageRepository images;
     private final ImageResizer resizer;
+    private final com.autox.listing.image.ImageProperties imageProperties;
     private final ObjectStorage storage;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbc;
@@ -97,7 +98,8 @@ class DemoData {
     DemoData(DemoLedger ledger, AppUserRepository users, ProProfileRepository proProfiles,
              CountryRepository countries, VehicleMakeRepository makes, VehicleModelRepository models,
              ListingService listings, ListingImageService imageService, ListingImageRepository images,
-             ImageResizer resizer, ObjectStorage storage, PasswordEncoder passwordEncoder,
+             ImageResizer resizer, com.autox.listing.image.ImageProperties imageProperties,
+             ObjectStorage storage, PasswordEncoder passwordEncoder,
              JdbcTemplate jdbc, PlatformTransactionManager transactionManager,
              @Value("${autox.demo.photo-dir:}") String photoDirectory,
              @Value("${autox.demo.listings:" + DemoCatalogue.SIZE + "}") int limit,
@@ -113,6 +115,7 @@ class DemoData {
         this.imageService = imageService;
         this.images = images;
         this.resizer = resizer;
+        this.imageProperties = imageProperties;
         this.storage = storage;
         this.passwordEncoder = passwordEncoder;
         this.jdbc = jdbc;
@@ -141,6 +144,7 @@ class DemoData {
             // DemoCatalogue since the seed ran are inserted, and nothing else is written.
             topUpCatalogue();
             approvePending();
+            correctListings();
             // Only what an earlier seed recorded counts. Removal drops the whole ledger, so a
             // make or model it kept for someone else's listing is not in here, and a seed
             // that was stopped partway is told apart from one that finished.
@@ -365,6 +369,151 @@ class DemoData {
         return approved;
     }
 
+    /** What {@link #correctListings} did. */
+    record Corrections(int descriptions, int fields, int redrawn, int photos, int unmatched) {
+        boolean none() {
+            return descriptions + fields + redrawn == 0;
+        }
+    }
+
+    /**
+     * Brings the seed's listings on a database already seeded into line with {@link DemoCatalogue}
+     * and {@link DemoDetails} as they are now: the description, the body, doors, seats, fuel and
+     * power, and the photos, redrawn in the listing's body type.
+     *
+     * <p>Through the ledger, so no visitor's listing can be reached. A listing is matched to its
+     * car by its title, which the seed wrote and nothing here changes; the generated set has cars
+     * with the same title, and they share everything corrected here except the town, which is read
+     * from the listing. One whose title is in no list is left alone and counted.
+     *
+     * <p>Only what differs is written, and nothing else: not the status, not the verdict, not
+     * {@code updated_at}, so the listing neither re-enters the moderation queue nor looks edited.
+     * The photos keep their rows and their keys; the bytes behind them are replaced, and the sizes
+     * recorded with them. A listing whose photos have been redrawn is marked in the ledger
+     * ({@link DemoLedger#DRAWING}) and not redrawn again. A second run finds nothing to do.
+     */
+    Corrections correctListings() {
+        Map<String, Expected> expected = expectations();
+        int descriptions = 0;
+        int fields = 0;
+        int redrawn = 0;
+        int photos = 0;
+        int unmatched = 0;
+        java.util.Set<UUID> drawn = new java.util.HashSet<>(ledger.ids(DemoLedger.DRAWING));
+
+        for (UUID listingId : ledger.ids(DemoLedger.LISTING)) {
+            List<Map<String, Object>> rows = jdbc.queryForList(
+                    "SELECT title, city, exterior_color FROM listing WHERE id = ?", listingId);
+            if (rows.isEmpty()) {
+                continue;
+            }
+            Map<String, Object> row = rows.getFirst();
+            Expected car = expected.get((String) row.get("title"));
+            if (car == null) {
+                unmatched++;
+                continue;
+            }
+            DemoCatalogue.Vehicle vehicle = car.vehicle();
+            String description = car.description().apply((String) row.get("city"));
+
+            descriptions += jdbc.update("""
+                    UPDATE listing SET description = ? WHERE id = ? AND description IS DISTINCT FROM ?""",
+                    description, listingId, description);
+            fields += jdbc.update("""
+                    UPDATE listing SET body_type = ?, doors = ?, seats = ?, fuel_type = ?, power_hp = ?, power_kw = ?
+                     WHERE id = ?
+                       AND (body_type, doors, seats, fuel_type, power_hp, power_kw)
+                           IS DISTINCT FROM (?, ?::smallint, ?::smallint, ?, ?::smallint, ?::smallint)""",
+                    vehicle.body().name(), DemoDetails.doors(vehicle), DemoDetails.seats(vehicle),
+                    vehicle.fuel().name(), vehicle.powerHp(), DemoDetails.powerKw(vehicle), listingId,
+                    vehicle.body().name(), DemoDetails.doors(vehicle), DemoDetails.seats(vehicle),
+                    vehicle.fuel().name(), vehicle.powerHp(), DemoDetails.powerKw(vehicle));
+
+            if (!drawn.contains(listingId)) {
+                com.autox.listing.ExteriorColor colour = row.get("exterior_color") == null ? vehicle.colour()
+                        : com.autox.listing.ExteriorColor.valueOf((String) row.get("exterior_color"));
+                photos += redraw(listingId, vehicle, colour, (String) row.get("title"));
+                ledger.record(DemoLedger.DRAWING, listingId);
+                redrawn++;
+            }
+        }
+
+        Corrections done = new Corrections(descriptions, fields, redrawn, photos, unmatched);
+        if (done.none()) {
+            log.info("Demo listings: all match the catalogue, nothing corrected ({} not matched).", unmatched);
+        } else {
+            log.warn("Demo listings corrected in place: {} descriptions, {} with body, doors, seats, fuel or "
+                            + "power, {} redrawn ({} photos); {} not matched. Status, verdict and dates untouched.",
+                    descriptions, fields, redrawn, photos, unmatched);
+        }
+        return done;
+    }
+
+    /** A demo car and its description, given the town it is in. */
+    private record Expected(DemoCatalogue.Vehicle vehicle, java.util.function.Function<String, String> description) {
+    }
+
+    /** By title: every listing the seed can have written, with what it should say. */
+    private static Map<String, Expected> expectations() {
+        Map<String, Expected> byTitle = new HashMap<>();
+        for (DemoCatalogue.Vehicle vehicle : DemoCatalogue.vehicles()) {
+            byTitle.putIfAbsent(vehicle.title(),
+                    new Expected(vehicle, city -> DemoDetails.description(vehicle.in(city))));
+        }
+        for (DemoCatalogue.DamagedVehicle damaged : DemoCatalogue.DAMAGED) {
+            byTitle.put(damaged.vehicle().title(),
+                    new Expected(damaged.vehicle(), city -> DemoDetails.damagedDescription(damaged)));
+        }
+        for (DemoCatalogue.LeasedVehicle leased : DemoCatalogue.LEASED) {
+            byTitle.put(leased.vehicle().title(),
+                    new Expected(leased.vehicle(), city -> DemoDetails.leasedDescription(leased)));
+        }
+        return byTitle;
+    }
+
+    /**
+     * Draws a listing's photos again and puts the new bytes where the old ones were: the original
+     * and each variant, under the same keys, with their sizes. The photo at position {@code n} is
+     * view {@code n} of three, as the seed drew it.
+     *
+     * @return how many photos were redrawn
+     */
+    private int redraw(UUID listingId, DemoCatalogue.Vehicle vehicle, com.autox.listing.ExteriorColor colour,
+                       String title) {
+        List<Map<String, Object>> photos = jdbc.queryForList("""
+                SELECT id, position, storage_key FROM listing_image
+                 WHERE listing_id = ? AND status = 'READY' ORDER BY position""", listingId);
+        DemoCatalogue.Vehicle painted = vehicle.coloured(colour).titled(title);
+        for (Map<String, Object> photo : photos) {
+            UUID imageId = (UUID) photo.get("id");
+            int view = ((Number) photo.get("position")).intValue() % PHOTOS_PER_LISTING;
+            byte[] original = photoFor(painted, view);
+            java.awt.image.BufferedImage decoded = resizer.decode(original);
+
+            storage.write((String) photo.get("storage_key"), original, "image/jpeg");
+            jdbc.update("""
+                    UPDATE listing_image SET byte_size = ?, width = ?, height = ?, checksum_sha256 = ?
+                     WHERE id = ?""",
+                    (long) original.length, decoded.getWidth(), decoded.getHeight(),
+                    com.autox.common.Sha256.hex(original), imageId);
+
+            for (Map<String, Object> variant : jdbc.queryForList(
+                    "SELECT id, variant, storage_key FROM listing_image_variant WHERE image_id = ?", imageId)) {
+                com.autox.listing.ImageVariantType type =
+                        com.autox.listing.ImageVariantType.valueOf((String) variant.get("variant"));
+                Integer edge = imageProperties.variantMaxEdge().get(type);
+                if (edge == null) {
+                    continue;
+                }
+                ImageResizer.Rendition rendition = resizer.render(decoded, edge, imageProperties.jpegQuality());
+                storage.write((String) variant.get("storage_key"), rendition.content(), "image/jpeg");
+                jdbc.update("UPDATE listing_image_variant SET byte_size = ?, width = ?, height = ? WHERE id = ?",
+                        (long) rendition.content().length, rendition.width(), rendition.height(), variant.get("id"));
+            }
+        }
+        return photos.size();
+    }
+
     /**
      * Creates the damaged vehicles of {@link DemoCatalogue#DAMAGED} this database lacks, through
      * the same pipeline as any other demo listing and recorded in the ledger, so a removal takes
@@ -516,6 +665,9 @@ class DemoData {
             storage.write(key, photo, "image/jpeg");
             imageService.confirmUpload(sellerId, false, listingId, ticket.imageId());
         }
+
+        // Drawn in its own body type already: nothing for correctListings to redraw.
+        ledger.record(DemoLedger.DRAWING, listingId);
 
         listings.publish(sellerId, false, listingId);
 

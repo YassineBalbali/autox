@@ -28,6 +28,12 @@ class DemoLedger {
     static final String MAKE = "MAKE";
     static final String MODEL = "MODEL";
     static final String LISTING = "LISTING";
+    /**
+     * A listing whose photos are drawn in its own body type: written by a seed that draws them so,
+     * and by the correction that redraws an older seed's. Keyed by the listing's id; removing the
+     * demo drops it with the rest of the ledger.
+     */
+    static final String DRAWING = "DRAWING";
 
     private final JdbcTemplate jdbc;
 
