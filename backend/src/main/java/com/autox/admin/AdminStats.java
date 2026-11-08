@@ -87,6 +87,8 @@ public record AdminStats(
      * @param oldestPendingDemo  the same for the seed's
      * @param openReports        reported messages no moderator has dealt with
      * @param oldestOpenReport   when the oldest of those was reported, if any
+     * @param openListingReports reported listings' open reports
+     * @param oldestOpenListingReport when the oldest of those was filed, if any
      * @param oldestPending      the queue's first listings: the five oldest, and the five oldest real
      *                           ones, which the page chooses between with the demo switch
      */
@@ -97,6 +99,8 @@ public record AdminStats(
             Instant oldestPendingDemo,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long openReports,
             Instant oldestOpenReport,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long openListingReports,
+            Instant oldestOpenListingReport,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<PendingListing> oldestPending) {
     }
 

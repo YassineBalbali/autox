@@ -451,6 +451,46 @@
         ]
       }
     },
+    "/api/v1/me/deletion": {
+      "post": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Deletes the account, for good.",
+        "description": "Deletes the account, for good. Its listings and their photos, saved searches, sessions and\n personal data go; in conversations its messages stay under \"Compte supprimé\", without their\n text. A confirmation e-mail is sent to the address. 400 <code>CURRENT_PASSWORD_INCORRECT</code>;\n 409 <code>DEMO_ACCOUNT_CANNOT_BE_DELETED</code>, or <code>LAST_ADMIN</code> for the last administrator\n able to sign in.",
+        "operationId": "deleteAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/listings": {
       "get": {
         "tags": [
@@ -548,6 +588,103 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/listings/{listingId}/report": {
+      "get": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Whether the caller has already reported it, so the page can say so instead of offering it again.",
+        "description": "Whether the caller has already reported it, so the page can say so instead of offering it again.",
+        "operationId": "listingReportStatus",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Reports a listing to the moderators: a listing the public can see, not one's own, with a\n verified address.",
+        "description": "Reports a listing to the moderators: a listing the public can see, not one's own, with a\n verified address. 409 <code>LISTING_ALREADY_REPORTED</code> the second time; 429 past five an hour.",
+        "operationId": "reportListing",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportListingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "default": {
             "description": "Error. RFC 9457 problem+json; branch on `code`.",
@@ -1825,6 +1962,88 @@
         ]
       }
     },
+    "/api/v1/admin/listing-reports/{id}/remove": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Takes the listing down, recorded as a moderation decision with the report's reason, and closes\n its reports.",
+        "description": "Takes the listing down, recorded as a moderation decision with the report's reason, and closes\n its reports. 409 if already dealt with, or if the listing is no longer online.",
+        "operationId": "removeReportedListing",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/listing-reports/{id}/dismiss": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Closes the reports on the listing and leaves it online.",
+        "description": "Closes the reports on the listing and leaves it online. 409 if already dealt with.",
+        "operationId": "dismissListingReport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/alerts/send-mine": {
       "post": {
         "tags": [
@@ -2483,6 +2702,44 @@
                   "items": {
                     "$ref": "#/components/schemas/SessionResponse"
                   }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/export": {
+      "get": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Everything AutoX holds about the account, as a JSON file: the account and company, listings\n with photos and price history, conversations, saved searches, sessions.",
+        "description": "Everything AutoX holds about the account, as a JSON file: the account and company, listings\n with photos and price history, conversations, saved searches, sessions. Three an hour; past\n that, 429 <code>RATE_LIMITED</code>.",
+        "operationId": "exportData",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
                 }
               }
             }
@@ -3394,6 +3651,68 @@
         ]
       }
     },
+    "/api/v1/admin/listing-reports": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Open reports on listings, oldest first.",
+        "description": "Open reports on listings, oldest first.",
+        "operationId": "openListingReports",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseReportedListing"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/me/sessions/{sessionId}": {
       "delete": {
         "tags": [
@@ -4119,6 +4438,20 @@
           }
         }
       },
+      "DeleteAccountRequest": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "the account's password, again: a valid token may be a stolen one, and this\n                 cannot be undone",
+            "maxLength": 128,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
       "CreateListingRequest": {
         "type": "object",
         "description": "A new listing. Created as a DRAFT; nothing here publishes it.\n\n <p>Two either/or rules are enforced before the request reaches the service, mirroring\n the database's own constraints:\n <ul>\n   <li><b>Vehicle</b>: each of make and model is given either as a catalogue id or as\n       text, never both and never neither. A trim requires a model.</li>\n   <li><b>Location</b>: either a gazetteer place id, or postal code plus city as text\n       while the gazetteer is unavailable.</li>\n </ul>\n Numeric bounds repeat the table's CHECK constraints so a bad value is a 400 with a\n field name rather than a 500 from the driver.",
@@ -4778,6 +5111,33 @@
           }
         }
       },
+      "ListingReportReason": {
+        "type": "string",
+        "description": "Why someone reports a listing. Mirrors <code>ck_listing_report_reason</code>.",
+        "enum": [
+          "SCAM",
+          "MISLEADING",
+          "INAPPROPRIATE",
+          "OTHER"
+        ]
+      },
+      "ReportListingRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/ListingReportReason"
+          },
+          "note": {
+            "type": "string",
+            "description": "optional, except with <code>OTHER</code>, where it says what is wrong",
+            "maxLength": 1000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "ImageUploadRequest": {
         "type": "object",
         "description": "Asks for a pre-signed upload URL.\n\n <p>The declared size is not a courtesy: it is signed into the URL, so storage rejects an\n upload of any other length. That is what stops a client from announcing a 2 MB photo and\n then pushing 2 GB through a URL we handed it.",
@@ -4931,10 +5291,14 @@
           },
           "body": {
             "type": "string",
-            "description": "null when a moderator hid the message"
+            "description": "null when a moderator hid the message, or its author deleted their account"
           },
           "hidden": {
             "type": "boolean"
+          },
+          "erased": {
+            "type": "boolean",
+            "description": "its author deleted their account, and its text was erased with it"
           },
           "reportedByMe": {
             "type": "boolean",
@@ -6534,6 +6898,15 @@
           }
         }
       },
+      "ReportStatus": {
+        "type": "object",
+        "description": "Whether the caller has reported a listing.",
+        "properties": {
+          "reported": {
+            "type": "boolean"
+          }
+        }
+      },
       "PublicListingDetail": {
         "type": "object",
         "description": "The buyer-facing detail page.\n\n <p>Narrower than the seller's own view of the same listing. Absent on purpose: the VIN\n (identifies the vehicle and indirectly its owner), the moderation state (an internal\n matter), the exact coordinates, and anything about the seller beyond a display name.\n\n <p>As in the summary, every enumerated value is a stable code and every feature is a code.\n There is no human-readable label anywhere in this response.",
@@ -6821,7 +7194,8 @@
             "description": "which side the caller is on"
           },
           "listing": {
-            "$ref": "#/components/schemas/ListingRef"
+            "$ref": "#/components/schemas/ListingRef",
+            "description": "null once the listing no longer exists; the other party then shows\n                    \"Compte supprimé\" if it was their account that went"
           },
           "counterpart": {
             "$ref": "#/components/schemas/Party"
@@ -6849,13 +7223,17 @@
         "properties": {
           "preview": {
             "type": "string",
-            "description": "the start of the message, or null when a moderator hid it"
+            "description": "the start of the message, or null when a moderator hid it or it was erased"
           },
           "sentByMe": {
             "type": "boolean"
           },
           "hidden": {
             "type": "boolean"
+          },
+          "erased": {
+            "type": "boolean",
+            "description": "its author deleted their account, and its text with it"
           },
           "sentAt": {
             "type": "string",
@@ -7155,6 +7533,16 @@
             "format": "date-time",
             "description": "when the oldest of those was reported, if any"
           },
+          "openListingReports": {
+            "type": "integer",
+            "format": "int64",
+            "description": "reported listings' open reports"
+          },
+          "oldestOpenListingReport": {
+            "type": "string",
+            "format": "date-time",
+            "description": "when the oldest of those was filed, if any"
+          },
           "oldestPending": {
             "type": "array",
             "description": "the queue's first listings: the five oldest, and the five oldest real\n                           ones, which the page chooses between with the demo switch",
@@ -7165,6 +7553,7 @@
         },
         "required": [
           "oldestPending",
+          "openListingReports",
           "openReports",
           "pendingModeration"
         ]
@@ -7679,6 +8068,104 @@
           }
         }
       },
+      "PageResponseReportedListing": {
+        "type": "object",
+        "description": "The envelope every list endpoint returns.\n\n <p>Spring's own <code>Page</code> serialises its internal structure, which would tie the\n public contract to a Spring Data version. This is our shape, and it is the only\n one a mobile client has to understand.\n\n <p>Offset paging is correct for admin tables. Public search will use a keyset\n cursor instead — same envelope, with a <code>nextCursor</code> added — because offset\n paging skips and repeats rows while listings are being inserted underneath.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportedListing"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNext": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReportedListing": {
+        "type": "object",
+        "description": "An open report on a listing, for a moderator: why, by whom, and the listing as it is now.",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ListingReportReason"
+          },
+          "note": {
+            "type": "string"
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "listingStatus": {
+            "type": "string",
+            "description": "the listing's status now: a report on one already offline is dismissed"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "leasingMonthly": {
+            "type": "integer",
+            "format": "int64",
+            "description": "the monthly payment of a leasing offer, in minor units; null for a sale"
+          },
+          "seller": {
+            "$ref": "#/components/schemas/Party"
+          },
+          "reporter": {
+            "$ref": "#/components/schemas/Party"
+          },
+          "openOnListing": {
+            "type": "integer",
+            "format": "int32",
+            "description": "how many open reports the listing has, this one included"
+          }
+        },
+        "required": [
+          "currencyCode",
+          "listingId",
+          "listingStatus",
+          "openOnListing",
+          "priceAmount",
+          "reason",
+          "reportId",
+          "reportedAt",
+          "reporter",
+          "seller",
+          "title"
+        ]
+      },
       "ApiError": {
         "description": "RFC 9457 problem+json, extended with a stable `code`. Branch on `code`, never on `detail` — `detail` is untranslated developer text.",
         "properties": {
@@ -7751,6 +8238,8 @@
           "ADMIN_SELF_ACTION",
           "LAST_ADMIN",
           "DEMO_ACCOUNT_CANNOT_BE_ADMIN",
+          "DEMO_ACCOUNT_CANNOT_BE_DELETED",
+          "LISTING_ALREADY_REPORTED",
           "ACTIVE_LISTING_LIMIT_REACHED",
           "SAVED_SEARCH_LIMIT_REACHED",
           "INVALID_UNSUBSCRIBE_TOKEN",

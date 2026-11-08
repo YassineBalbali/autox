@@ -155,7 +155,8 @@ public class MessagingService {
 
     public PageResponse<ConversationSummary> inbox(UUID userId, int page, int size) {
         List<MessagingRepository.InboxRow> rows = repository.inbox(userId, size, (long) page * size);
-        Map<UUID, String> covers = covers(rows.stream().map(row -> row.header().listingId()).toList());
+        Map<UUID, String> covers = covers(rows.stream().map(row -> row.header().listingId())
+                .filter(java.util.Objects::nonNull).toList());
         List<ConversationSummary> items = rows.stream().map(row -> summary(userId, row, covers)).toList();
         return PageResponse.of(new PageImpl<>(items, PageRequest.of(page, size), repository.countConversations(userId)),
                 item -> item);
@@ -175,7 +176,7 @@ public class MessagingService {
         return new ConversationDetail(
                 header.id(),
                 roleOf(userId, header),
-                listingRef(header, covers(List.of(header.listingId()))),
+                listingRef(header, covers(listingIds(header))),
                 party(counterpartOf(userId, header)),
                 header.canReply(),
                 shown.stream().map(row -> new ConversationDetail.MessageView(
@@ -183,6 +184,7 @@ public class MessagingService {
                         row.senderId().equals(userId),
                         row.hidden() ? null : row.body(),
                         row.hidden(),
+                        row.erased(),
                         row.reportedByReader(),
                         row.sentAt())).toList(),
                 omitted);
@@ -197,7 +199,7 @@ public class MessagingService {
             return new ReportedMessage(
                     row.id(), row.reason(), row.note(), row.reportedAt(),
                     party(row.reporter()), party(row.sender()),
-                    listingRef(header, covers(List.of(header.listingId()))),
+                    listingRef(header, covers(listingIds(header))),
                     row.messageId(),
                     repository.context(row.conversationId(), row.messageId(), REPORT_CONTEXT).stream()
                             .map(context -> new ReportedMessage.ContextMessage(
@@ -271,9 +273,10 @@ public class MessagingService {
     private ConversationSummary summary(UUID userId, MessagingRepository.InboxRow row, Map<UUID, String> covers) {
         MessagingRepository.Header header = row.header();
         ConversationSummary.LastMessage last = row.lastSentAt() == null ? null : new ConversationSummary.LastMessage(
-                row.lastHidden() ? null : preview(row.lastBody()),
+                row.lastHidden() || row.lastBody() == null ? null : preview(row.lastBody()),
                 userId.equals(row.lastSenderId()),
                 row.lastHidden(),
+                row.lastErased(),
                 row.lastSentAt());
         return new ConversationSummary(
                 header.id(),
@@ -303,9 +306,17 @@ public class MessagingService {
         return new ConversationSummary.Party(row.id(), row.displayName(), row.role());
     }
 
+    /** Null once the listing is gone: deleted with its seller's account, or by the retention sweep. */
     private static ConversationSummary.ListingRef listingRef(MessagingRepository.Header header, Map<UUID, String> covers) {
+        if (header.listingId() == null) {
+            return null;
+        }
         return new ConversationSummary.ListingRef(header.listingId(), header.title(), header.priceAmount(),
                 header.currencyCode(), header.online(), covers.get(header.listingId()));
+    }
+
+    private static List<UUID> listingIds(MessagingRepository.Header header) {
+        return header.listingId() == null ? List.of() : List.of(header.listingId());
     }
 
     /** The smallest version of each listing's first photo, in one query. */

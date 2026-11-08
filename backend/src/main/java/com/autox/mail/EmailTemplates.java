@@ -49,6 +49,24 @@ public final class EmailTemplates {
     }
 
     /**
+     * The last e-mail to an address: its account is gone. Sent to the address as it was, which is
+     * erased from the account in the same transaction; the outbox keeps it until sent, then for
+     * its usual retention.
+     */
+    public static Rendered accountDeleted() {
+        String intro = "Votre compte AutoX a été supprimé, à votre demande.";
+        String details = "Votre profil, vos annonces et leurs photos, vos recherches enregistrées et vos sessions ont "
+                + "été effacés. Dans les conversations, vos messages apparaissent désormais sous « Compte supprimé », "
+                + "sans leur texte.";
+        String closing = "La suppression a été confirmée avec votre mot de passe. Si vous n’en êtes pas à l’origine, "
+                + "quelqu’un le connaît : changez-le partout où vous l’utilisez.";
+        return new Rendered(
+                "Votre compte AutoX a été supprimé",
+                intro + "\n\n" + details + "\n\n" + closing + "\n\n" + NO_REPLY,
+                page(escape(intro), "<p style=\"margin:0 0 16px\">" + escape(details) + "</p>", escape(closing)));
+    }
+
+    /**
      * Who wrote, about what, and a link. Never the message's text: it stays on the site, where it
      * can be reported and hidden.
      */

@@ -68,6 +68,12 @@ public enum ErrorCode {
     /** Nobody can sign in to a demo account, so it cannot be made an administrator. */
     DEMO_ACCOUNT_CANNOT_BE_ADMIN,
 
+    /** A demo account belongs to the demo seed, which removes it; it is not deleted by hand. */
+    DEMO_ACCOUNT_CANNOT_BE_DELETED,
+
+    /** The caller has already reported this listing. */
+    LISTING_ALREADY_REPORTED,
+
     /** The seller already has as many live listings as their account allows. */
     ACTIVE_LISTING_LIMIT_REACHED,
 
