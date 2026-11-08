@@ -359,7 +359,7 @@ describe('ModerationPage, finding a listing', () => {
       localStorage.setItem(LAYOUT_KEY, 'liste');
       await show([
         item('a', { demo: true, editedSinceReview: true }, { damage: { types: ['BODYWORK'], description: 'Choc' } }),
-        item('b', {}, { leasing: { type: 'LLD', monthly: 30000 } }),
+        item('b', {}, { leasing: { type: 'LLD', monthlyPayment: 16900 } }),
       ]);
       const a = row('a');
       const b = row('b');
@@ -381,6 +381,17 @@ describe('ModerationPage, finding a listing', () => {
       expect(Array.from(b.querySelectorAll('[data-badge]')).map((badge) => badge.getAttribute('data-badge'))).toEqual(['leasing']);
       expect(a.querySelector('[data-tag=status]')?.textContent?.trim()).toBe('En ligne');
       expect(a.querySelector('.mrow__date')?.textContent?.trim()).toMatch(/^Déposée le 20 oct/);
+    });
+
+    it('prices a leasing offer by the month, as the public results do, and a sale by its price', async () => {
+      localStorage.setItem(LAYOUT_KEY, 'liste');
+      await show([item('a'), item('b', {}, { leasing: { type: 'LLD', monthlyPayment: 16900 } })]);
+
+      const monthly = row('b').querySelector('[data-price=monthly]')?.textContent?.replace(/\s/g, ' ');
+      expect(monthly).toBe('169 €/mois');
+      expect(row('b').querySelector('app-price')).toBeNull();
+      expect(row('a').querySelector('[data-price=monthly]')).toBeNull();
+      expect(row('a').querySelector('app-price')).not.toBeNull();
     });
 
     it('dates a row by what its list is about', async () => {

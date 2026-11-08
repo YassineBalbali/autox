@@ -5,7 +5,7 @@ import { ListingStatus, ModeratedListing, ModerationView } from '../../core/api'
 import { formatDateFr } from '../../shared/format/date';
 import { SELLER_ROLE_LABELS, labelOf } from '../../shared/listing/labels.fr';
 import { MODERATION_STATUS_LABELS } from '../../shared/listing/moderation.fr';
-import { Price } from '../../shared/listing/price';
+import { Price, formatPrice } from '../../shared/listing/price';
 import { vehicleName } from '../../shared/listing/vehicle-name';
 import { STATUS_LABELS } from '../seller/listing-status';
 import { ModerationDecision, ModerationDecisionControls } from './moderation-decision';
@@ -72,7 +72,11 @@ const DATE_OF: Readonly<Record<ModerationView, { label: string; field: 'createdA
       <!-- One line under the listing on a phone; two columns of the row from 1024px. -->
       <div class="mrow__facts">
         <div class="mrow__price">
-          @if (listing().priceAmount !== undefined) {
+          <!-- A leasing offer by its monthly payment, as the public results show it: its cash
+               price is not what the seller asked anyone to pay. -->
+          @if (monthly(); as monthly) {
+            <span class="mrow__monthly" data-price="monthly">{{ monthly }}<span class="mrow__unit">/mois</span></span>
+          } @else if (listing().priceAmount !== undefined) {
             <app-price [amountMinor]="listing().priceAmount!" [currency]="listing().currencyCode ?? 'EUR'" [minorUnit]="minorUnit()" />
           }
         </div>
@@ -114,6 +118,10 @@ export class ModerationRow {
   protected readonly seller = computed(() => this.item().seller ?? {});
   protected readonly online = computed(() => this.listing().status === ListingStatus.ACTIVE);
   protected readonly leasing = computed(() => !!this.listing().leasing);
+  protected readonly monthly = computed(() => {
+    const payment = this.listing().leasing?.monthlyPayment;
+    return payment === undefined ? null : formatPrice(payment, this.listing().currencyCode ?? 'EUR', this.minorUnit());
+  });
 
   protected readonly thumbnail = computed(() => {
     const first = this.listing().images?.[0]?.variants;
