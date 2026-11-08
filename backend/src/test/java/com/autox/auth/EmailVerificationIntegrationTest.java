@@ -11,6 +11,7 @@ import com.autox.mail.OutboxPoller;
 import com.autox.support.AbstractIntegrationTest;
 import com.autox.support.ListingTestFixtures;
 import com.autox.support.RecordingEmailSender;
+import com.autox.support.RecordingMail;
 import com.autox.user.AppUser;
 import com.autox.user.UserRole;
 import com.autox.user.UserStatus;
@@ -20,27 +21,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.ResultActions;
 
 /** The verification link, and what an account cannot do without it. */
-@TestPropertySource(properties = "autox.mail.provider = recording")
+@RecordingMail
 class EmailVerificationIntegrationTest extends AbstractIntegrationTest {
 
     private static final String RESEND = "/api/v1/me/email/verification";
-
-    @TestConfiguration
-    static class RecordingMailConfiguration {
-
-        @Bean
-        RecordingEmailSender recordingEmailSender() {
-            return new RecordingEmailSender();
-        }
-    }
 
     @Autowired RecordingEmailSender emails;
     @Autowired OutboxPoller poller;
