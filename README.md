@@ -740,6 +740,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/test-config-decisions.md` | Why the test profile layers rather than replaces, what the suite was silently not testing, and the CI workflows |
 | `docs/deployment.md` | **Deploying the demo**, step by step: Neon, Supabase Storage, Render, Vercel — every variable, seeding, the first admin, the checks afterwards. |
 | `docs/frontend-decisions.md` | The generated API client, the single in-flight refresh, token storage, guards, error translation, design tokens |
+| `docs/legal-pages.md` | The footer's pages: what to fill in (the contact address), and where each fact in the privacy and cookies pages comes from in the code |
 
 ---
 

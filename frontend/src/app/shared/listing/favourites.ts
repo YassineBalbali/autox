@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-const STORAGE_KEY = 'autox.favourites';
+/** The `localStorage` key. Listed on the cookies page, whose spec reads it from here. */
+export const FAVOURITES_STORAGE_KEY = 'autox.favourites';
 
 /**
  * Most favourites one browser keeps. Far above what anyone saves by hand; it exists so a
@@ -44,7 +45,7 @@ export class Favourites {
 
 function read(): readonly string[] {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
+    const parsed: unknown = JSON.parse(localStorage.getItem(FAVOURITES_STORAGE_KEY) ?? '[]');
     // Whatever is stored was written by an earlier version of this code, or by hand:
     // anything that is not a list of strings is ignored rather than trusted.
     return Array.isArray(parsed)
@@ -57,7 +58,7 @@ function read(): readonly string[] {
 
 function write(ids: readonly string[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+    localStorage.setItem(FAVOURITES_STORAGE_KEY, JSON.stringify(ids));
   } catch {
     // Not remembered, still marked. See the class comment.
   }

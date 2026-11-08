@@ -256,6 +256,62 @@ export const routes: Routes = [
     ],
   },
 
+  // ---- the footer's pages -------------------------------------------------
+  //
+  // Public, short and text only. The legal ones are written from the code: what the server
+  // stores and for how long, what the browser keeps. See features/info.
+
+  {
+    path: 'a-propos',
+    title: 'Qui sommes-nous · AutoX',
+    loadComponent: () => import('./features/info/about-page').then((m) => m.AboutPage),
+  },
+  {
+    path: 'comment-ca-marche',
+    title: 'Comment ça marche · AutoX',
+    loadComponent: () => import('./features/info/how-it-works-page').then((m) => m.HowItWorksPage),
+  },
+  {
+    path: 'pro',
+    title: 'Espace professionnel · AutoX',
+    loadComponent: () => import('./features/info/pro-page').then((m) => m.ProPage),
+  },
+  {
+    path: 'aide',
+    title: 'Centre d’aide · AutoX',
+    loadComponent: () => import('./features/info/help-page').then((m) => m.HelpPage),
+  },
+  {
+    path: 'conseils-achat',
+    title: 'Conseils pour acheter · AutoX',
+    loadComponent: () => import('./features/info/buying-tips-page').then((m) => m.BuyingTipsPage),
+  },
+  {
+    path: 'conseils-vente',
+    title: 'Conseils pour vendre · AutoX',
+    loadComponent: () => import('./features/info/selling-tips-page').then((m) => m.SellingTipsPage),
+  },
+  {
+    path: 'mentions-legales',
+    title: 'Mentions légales · AutoX',
+    loadComponent: () => import('./features/info/legal-notice-page').then((m) => m.LegalNoticePage),
+  },
+  {
+    path: 'conditions-generales',
+    title: 'Conditions générales d’utilisation · AutoX',
+    loadComponent: () => import('./features/info/terms-page').then((m) => m.TermsPage),
+  },
+  {
+    path: 'confidentialite',
+    title: 'Politique de confidentialité · AutoX',
+    loadComponent: () => import('./features/info/privacy-page').then((m) => m.PrivacyPage),
+  },
+  {
+    path: 'cookies',
+    title: 'Cookies · AutoX',
+    loadComponent: () => import('./features/info/cookies-page').then((m) => m.CookiesPage),
+  },
+
   // ---- internal -----------------------------------------------------------
 
   {

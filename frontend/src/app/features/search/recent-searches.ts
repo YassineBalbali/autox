@@ -3,7 +3,8 @@ import { Params, convertToParamMap } from '@angular/router';
 
 import { DEFAULT_SORT, SearchQuery, activeFilterCount, parseQuery, toQueryParams } from './search-query';
 
-const KEY = 'autox.search.recent';
+/** The `localStorage` key. Listed on the cookies page, whose spec reads it from here. */
+export const RECENT_SEARCHES_STORAGE_KEY = 'autox.search.recent';
 /** How many the home page shows, and so how many are worth keeping. */
 export const RECENT_LIMIT = 3;
 
@@ -59,7 +60,7 @@ export function idOf(query: SearchQuery): string {
 
 function read(): SearchQuery[] {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? '[]');
+    const parsed: unknown = JSON.parse(localStorage.getItem(RECENT_SEARCHES_STORAGE_KEY) ?? '[]');
     if (!Array.isArray(parsed)) {
       return [];
     }
@@ -85,7 +86,7 @@ function read(): SearchQuery[] {
 
 function write(entries: readonly SearchQuery[]): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(entries.map((entry) => toQueryParams(entry))));
+    localStorage.setItem(RECENT_SEARCHES_STORAGE_KEY, JSON.stringify(entries.map((entry) => toQueryParams(entry))));
   } catch {
     // Full or blocked. The list still works for this visit; it just will not outlive it.
   }

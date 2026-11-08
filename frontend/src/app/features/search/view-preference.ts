@@ -5,7 +5,8 @@ export type ResultsView = 'liste' | 'grille';
 
 export const DEFAULT_VIEW: ResultsView = 'liste';
 
-const KEY = 'autox.search.view';
+/** The `localStorage` key. Listed on the cookies page, whose spec reads it from here. */
+export const SEARCH_VIEW_STORAGE_KEY = 'autox.search.view';
 
 /**
  * Whether this visitor reads the results as a list or as a grid.
@@ -33,7 +34,7 @@ export class ViewPreference {
   set(view: ResultsView): void {
     this.current.set(view);
     try {
-      localStorage.setItem(KEY, view);
+      localStorage.setItem(SEARCH_VIEW_STORAGE_KEY, view);
     } catch {
       // Not remembered. Nothing to tell the user: the view they asked for is on screen.
     }
@@ -42,7 +43,7 @@ export class ViewPreference {
 
 function read(): ResultsView {
   try {
-    const stored = localStorage.getItem(KEY);
+    const stored = localStorage.getItem(SEARCH_VIEW_STORAGE_KEY);
     // Validated, not trusted: storage is writable by anything on the origin, and a value
     // from an older release should fall back rather than select a view that is not there.
     return stored === 'liste' || stored === 'grille' ? stored : DEFAULT_VIEW;

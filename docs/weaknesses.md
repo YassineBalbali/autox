@@ -329,6 +329,15 @@ Adding a language is a real project, not a translation file.
 - **Reference data is cached by the browser for an hour**, so a catalogue change is slow
   to appear.
 
+### W15. A user cannot delete their account or download their data — backend and frontend
+
+There is no endpoint and no screen for either: `app_user.deleted_at` exists and nothing sets
+it. A user's rights under the GDPR are therefore exercised by writing to the contact address,
+and handled by hand, as the privacy page says (`/confidentialite`). Two more things have no
+end date: a deleted listing is soft-deleted, with its photos still in storage, and messages
+and the administration logs are kept indefinitely. A listing cannot be reported from the
+site either; only a message can.
+
 ---
 
 ## 3. What became of the earlier ten
