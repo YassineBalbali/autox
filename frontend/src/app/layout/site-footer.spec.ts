@@ -8,11 +8,10 @@ import { FOOTER_COLUMNS, SiteFooter, resolveFooter } from './site-footer';
 /**
  * The footer.
  *
- * <p>It lists pages that do not exist yet — among them the legal ones a French marketplace
- * is obliged to publish. The rule under test is that such an entry is never a link: the
- * wildcard route sends an unknown path to the home page, so a "Mentions légales" link
- * would not fail, it would open the search results and look as though the obligation were
- * met.
+ * <p>Every entry is a page that exists, the legal ones a French site is obliged to publish
+ * among them. The rule kept from when they did not: an entry without a page is never a link,
+ * since the wildcard route would answer it with something else, and a "Mentions légales" link
+ * would look as though the obligation were met.
  */
 describe('resolveFooter', () => {
   const columns = [{ title: 'Légal', items: [{ label: 'Mentions légales', path: 'mentions-legales' }] }];
@@ -72,7 +71,6 @@ describe('SiteFooter', () => {
       'À propos',
       'Aide',
       'Informations légales',
-      'Contact',
     ]);
   });
 
@@ -84,25 +82,22 @@ describe('SiteFooter', () => {
     );
   });
 
-  it('links to nothing that does not exist', async () => {
-    // Today that is every entry. The assertion is that there is not one dead link.
+  it('links every entry to a page that exists', async () => {
     const root = await render();
     const declared = FOOTER_COLUMNS.flatMap((column) => column.items);
-    const existing = resolveFooter(FOOTER_COLUMNS, routes).flatMap((column) => column.items).filter((item) => item.available);
 
-    expect(root.querySelectorAll('.footer__columns a')).toHaveLength(existing.length);
-    expect(root.querySelectorAll('.footer__link--soon')).toHaveLength(declared.length - existing.length);
+    expect(resolveFooter(FOOTER_COLUMNS, routes).flatMap((column) => column.items).every((item) => item.available)).toBe(true);
+    expect(Array.from(root.querySelectorAll('.footer__columns a')).map((link) => link.getAttribute('href'))).toEqual(
+      declared.map((item) => '/' + item.path),
+    );
   });
 
-  it('shows an unavailable entry as text, and tells a screen reader so', async () => {
-    // Grey alone is a visual hint. aria-disabled is what says it to someone who cannot
-    // see the grey.
-    const root = await render();
-    const soon = root.querySelector('.footer__link--soon') as HTMLElement;
+  it('offers nothing with nothing behind it: no report link, no contact form, no press page', () => {
+    const paths = FOOTER_COLUMNS.flatMap((column) => column.items).map((item) => item.path);
 
-    expect(soon.tagName).toBe('SPAN');
-    expect(soon.getAttribute('aria-disabled')).toBe('true');
-    expect(soon.hasAttribute('href')).toBe(false);
+    expect(paths).not.toContain('signalement');
+    expect(paths).not.toContain('contact');
+    expect(paths).not.toContain('presse');
   });
 
   it('gives every entry a distinct path, so two can never claim one page', () => {
@@ -123,7 +118,6 @@ describe('SiteFooter', () => {
         'À propos',
         'Aide',
         'Informations légales',
-        'Contact',
       ]);
       for (const button of toggles(root)) {
         expect(button.parentElement?.tagName).toBe('H2');

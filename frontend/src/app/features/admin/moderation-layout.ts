@@ -5,7 +5,8 @@ export type ModerationLayout = 'cartes' | 'liste';
 
 export const DEFAULT_LAYOUT: ModerationLayout = 'cartes';
 
-const KEY = 'autox.admin.moderation.layout';
+/** The `localStorage` key. Listed on the cookies page, whose spec reads it from here. */
+export const MODERATION_LAYOUT_STORAGE_KEY = 'autox.admin.moderation.layout';
 
 /** A page of cards holds whole listings; a page of rows is for finding one. */
 export const PAGE_SIZES: Readonly<Record<ModerationLayout, number>> = { cartes: 10, liste: 25 };
@@ -27,7 +28,7 @@ export class ModerationLayoutPreference {
   set(layout: ModerationLayout): void {
     this.current.set(layout);
     try {
-      localStorage.setItem(KEY, layout);
+      localStorage.setItem(MODERATION_LAYOUT_STORAGE_KEY, layout);
     } catch {
       // Not remembered; the layout asked for is on screen all the same.
     }
@@ -36,7 +37,7 @@ export class ModerationLayoutPreference {
 
 function read(): ModerationLayout {
   try {
-    const stored = localStorage.getItem(KEY);
+    const stored = localStorage.getItem(MODERATION_LAYOUT_STORAGE_KEY);
     return stored === 'cartes' || stored === 'liste' ? stored : DEFAULT_LAYOUT;
   } catch {
     return DEFAULT_LAYOUT;

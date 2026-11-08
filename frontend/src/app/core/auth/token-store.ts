@@ -24,7 +24,8 @@ export interface TokenStore {
 
 export const TOKEN_STORE = new InjectionToken<TokenStore>('autox.tokenStore');
 
-const KEY = 'autox.session';
+/** The `localStorage` key. Listed on the cookies page, whose spec reads it from here. */
+export const SESSION_STORAGE_KEY = 'autox.session';
 
 /**
  * `localStorage`, with the honest caveat.
@@ -58,7 +59,7 @@ export class LocalStorageTokenStore implements TokenStore {
   read(): StoredTokens | null {
     let raw: string | null;
     try {
-      raw = localStorage.getItem(KEY);
+      raw = localStorage.getItem(SESSION_STORAGE_KEY);
     } catch {
       // Safari in private mode, and any browser with site data blocked, throw on access
       // rather than returning null. A user with storage disabled gets a session that lasts
@@ -81,7 +82,7 @@ export class LocalStorageTokenStore implements TokenStore {
 
   write(tokens: StoredTokens): void {
     try {
-      localStorage.setItem(KEY, JSON.stringify(tokens));
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(tokens));
     } catch {
       // Out of quota, or blocked. The session still works for this page load.
     }
@@ -89,7 +90,7 @@ export class LocalStorageTokenStore implements TokenStore {
 
   clear(): void {
     try {
-      localStorage.removeItem(KEY);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
     } catch {
       // Nothing to do, and nothing worth telling the user.
     }

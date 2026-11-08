@@ -18,13 +18,13 @@ export interface FooterColumn {
 }
 
 /**
- * What a marketplace footer carries: who we are, how to get help, the legal pages, and
- * how to reach us.
+ * What the footer carries: the site's main pages, who we are, help, and the legal pages a
+ * French site is obliged to publish — mentions légales, conditions générales, politique de
+ * confidentialité.
  *
- * <p>Declared in full now, although none of these pages exists, because the footer's
- * shape depends on them and because a French marketplace is obliged to publish several —
- * mentions légales, conditions générales, politique de confidentialité. Listing them here
- * is also the to-do list.
+ * <p>Only pages with something real behind them. "Signaler une annonce", "Nous contacter" and
+ * "Presse" were here once, as a to-do list: a listing cannot be reported from the site, and
+ * there is no press and no contact form, so they went.
  */
 export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   {
@@ -51,7 +51,6 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       { label: 'Centre d’aide', path: 'aide' },
       { label: 'Conseils pour acheter', path: 'conseils-achat' },
       { label: 'Conseils pour vendre', path: 'conseils-vente' },
-      { label: 'Signaler une annonce', path: 'signalement' },
     ],
   },
   {
@@ -61,13 +60,6 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       { label: 'Conditions générales', path: 'conditions-generales' },
       { label: 'Politique de confidentialité', path: 'confidentialite' },
       { label: 'Cookies', path: 'cookies' },
-    ],
-  },
-  {
-    title: 'Contact',
-    items: [
-      { label: 'Nous contacter', path: 'contact' },
-      { label: 'Presse', path: 'presse' },
     ],
   },
 ];
@@ -111,7 +103,7 @@ export function resolveFooter(
  * <p>Inside `.page`, the same container as the header and the content, so its columns
  * start on the same vertical line as the wordmark above.
  *
- * <p>On a phone the five columns are seventeen links stacked one under another — a screen
+ * <p>On a phone the four columns are thirteen links stacked one under another — a screen
  * and a half of small print to scroll past. Below the medium breakpoint each column folds
  * to its title, a button that opens it: the standard accordion, a heading holding a
  * button with aria-expanded and aria-controls. Above it there is nothing to open, so the
@@ -201,7 +193,7 @@ export function resolveFooter(
       }
 
       @media (min-width: t.$bp-lg) {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
     }
 
