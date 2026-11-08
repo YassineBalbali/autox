@@ -1,13 +1,19 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
-import { Observable } from 'rxjs';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Observable, catchError, map, of } from 'rxjs';
 
 import { AdminService, ModeratedListing, ModerationActionType, ModerationView } from '../../core/api';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
+import { countFr } from '../../shared/format/plural';
 import { Alert } from '../../shared/ui/alert';
-import { ModerationCard, ModerationDecision } from './moderation-card';
+import { ModerationCard } from './moderation-card';
+import { ModerationDecision } from './moderation-decision';
+import { ModerationFilters } from './moderation-filters';
+import { ModerationLayout, ModerationLayoutPreference, PAGE_SIZES } from './moderation-layout';
+import { EMPTY_QUERY, ModerationQuery, isNarrowed, paramsFromQuery, queryFromParams, requestFromQuery } from './moderation-query';
+import { ModerationRow } from './moderation-row';
 
 /** The three lists, by the name each has in the URL (`?vue=`). The first is the default. */
 export const VIEWS: readonly { view: ModerationView; slug: string; label: string; empty: string }[] = [
@@ -26,8 +32,8 @@ export function viewOfSlug(slug: string | undefined) {
   return VIEWS.find((candidate) => candidate.slug === slug) ?? VIEWS[0];
 }
 
-/** Whole listings with all their photos: few per page. */
-export const PAGE_SIZE = 10;
+/** Whole listings with all their photos: few per page. The list of rows takes more. */
+export const PAGE_SIZE = PAGE_SIZES.cartes;
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -40,11 +46,14 @@ const DONE: Record<ModerationActionType, string> = {
 };
 
 /**
- * Moderation: the queue, what is online, and what was taken down.
+ * Moderation: the queue, what is online, and what was taken down — each searchable and
+ * filterable, as cards to judge a listing on or as rows to find one among many.
  *
- * <p>Three lists of the same card. The view and the page number live in the URL, so a
- * moderator can reload, share a link to "retirées, page 3", or come back to where they
- * were.
+ * <p>The view, the search, the filters, the order and the page number live in the URL, so a
+ * moderator can reload, share a link to "en ligne, Peugeot, professionnels, page 3", or come
+ * back to where they were. Moving to another list keeps the search and the filters and starts
+ * again from its first page, in its own order. Cards or rows is a preference, kept per browser
+ * (`ModerationLayoutPreference`).
  *
  * <p>After every decision the current page is fetched again rather than patched in place.
  * A listing that was approved leaves the queue, one that was taken down leaves "en ligne",
@@ -58,7 +67,7 @@ const DONE: Record<ModerationActionType, string> = {
  */
 @Component({
   selector: 'app-moderation-page',
-  imports: [RouterLink, Alert, ModerationCard],
+  imports: [RouterLink, Alert, ModerationCard, ModerationFilters, ModerationRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './moderation-page.html',
   styleUrl: './moderation-page.scss',
@@ -67,6 +76,8 @@ export class ModerationPage {
   private readonly api = inject(AdminService);
   private readonly errors = inject(ErrorMessageService);
   private readonly router = inject(Router);
+  private readonly preference = inject(ModerationLayoutPreference);
+  private readonly reference = inject(ReferenceStore);
 
   /** `?vue=` — which list. */
   readonly vue = input<string | undefined>();
@@ -75,6 +86,23 @@ export class ModerationPage {
 
   protected readonly views = VIEWS;
   protected readonly current = computed(() => viewOfSlug(this.vue()));
+
+  /** The search, the filters and the order, from the URL. */
+  private readonly params = toSignal(inject(ActivatedRoute).queryParams, { initialValue: {} });
+  protected readonly query = computed<ModerationQuery>(() => queryFromParams(this.params()));
+  protected readonly narrowed = computed(() => isNarrowed(this.query()));
+
+  protected readonly layout = this.preference.layout;
+  private readonly pageSize = computed(() => PAGE_SIZES[this.layout()]);
+
+  /** The catalogue's makes, for the filter; null until they come, and if they never do. */
+  protected readonly makes = toSignal(
+    this.reference.makes().pipe(
+      map((makes) => makes.map((make) => make.name ?? '').filter(Boolean)),
+      catchError(() => of(null)),
+    ),
+    { initialValue: null },
+  );
 
   /** Zero-based, as the API counts. Anything that is not a positive whole number is the first page. */
   protected readonly pageIndex = computed(() => {
@@ -98,10 +126,22 @@ export class ModerationPage {
     const total = this.total();
     return total === 0 ? null : `${total} annonce${total > 1 ? 's' : ''}`;
   });
+  /** How many listings the list holds, or the search found. */
+  protected readonly resultLine = computed(() =>
+    this.narrowed()
+      ? countFr(this.total(), 'annonce trouvée', 'annonces trouvées')
+      : countFr(this.total(), 'annonce', 'annonces'),
+  );
   protected readonly hasPrevious = computed(() => this.pageIndex() > 0);
   protected readonly hasNext = computed(() => this.pageIndex() + 1 < this.totalPages());
 
-  private readonly minorUnits = toSignal(inject(ReferenceStore).minorUnits(), {
+  /** A tab keeps the search and the filters, and starts its list from the top in its own order. */
+  protected readonly tabParams = computed(() => {
+    const kept = paramsFromQuery({ ...this.query(), sort: null }, this.current().view);
+    return VIEWS.map((entry, index) => ({ ...kept, vue: index === 0 ? null : entry.slug }));
+  });
+
+  private readonly minorUnits = toSignal(this.reference.minorUnits(), {
     initialValue: {} as Readonly<Record<string, number>>,
   });
 
@@ -111,10 +151,12 @@ export class ModerationPage {
   private steppingBack = false;
 
   constructor() {
-    // A different list or a different page is a new fetch — and a clean slate.
+    // A different list, page, search or filter is a new fetch — and a clean slate.
     effect(() => {
       this.current();
       this.pageIndex();
+      this.query();
+      this.pageSize();
       if (this.steppingBack) {
         // Not the moderator moving on: the page they were on emptied under them. What
         // they were just told about their decision still applies.
@@ -155,10 +197,36 @@ export class ModerationPage {
     this.fetch();
   }
 
+  /** A new search or filter: into the URL, from the first page. */
+  protected onQuery(query: ModerationQuery): void {
+    void this.router.navigate([], {
+      queryParams: { ...paramsFromQuery(query, this.current().view), page: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  protected clearAll(): void {
+    this.onQuery({ ...EMPTY_QUERY, sort: this.query().sort });
+  }
+
+  /** Cards or rows. A page of rows holds more, so the list starts again from the top. */
+  protected onLayout(layout: ModerationLayout): void {
+    if (layout === this.layout()) {
+      return;
+    }
+    this.preference.set(layout);
+    if (this.pageIndex() > 0) {
+      void this.router.navigate([], { queryParams: { page: null }, queryParamsHandling: 'merge' });
+    }
+  }
+
   private fetch(): void {
     const generation = ++this.generation;
     const index = this.pageIndex();
-    this.api.moderationList({ view: this.current().view, page: index, size: PAGE_SIZE }).subscribe({
+    // Untracked: the currencies arriving is not a reason to ask for the list again. Prices are
+    // asked in euros; until the currencies are in, a euro has the usual two decimals.
+    const request = requestFromQuery(this.query(), this.current().view, untracked(() => this.minorUnit('EUR')));
+    this.api.moderationList({ ...request, page: index, size: this.pageSize() }).subscribe({
       next: (answer) => {
         if (generation !== this.generation) {
           return;

@@ -1,0 +1,133 @@
+<div class="filters" role="search" aria-label="Rechercher une annonce">
+  <div class="filters__top">
+    <form class="filters__search" (submit)="$event.preventDefault(); search()">
+      <label class="visually-hidden" for="moderation-q">Rechercher</label>
+      <app-icon class="filters__search-icon" name="search" [size]="18" />
+      <input
+        id="moderation-q"
+        class="input"
+        type="search"
+        autocomplete="off"
+        maxlength="100"
+        placeholder="Titre, marque, modèle, vendeur ou e-mail"
+        [value]="typed()"
+        (input)="onType($any($event.target).value)"
+      />
+    </form>
+
+    <button
+      class="btn btn--quiet filters__toggle"
+      type="button"
+      aria-controls="moderation-filters"
+      [attr.aria-expanded]="open()"
+      (click)="open.set(!open())"
+    >
+      <app-icon name="sliders-horizontal" [size]="18" />
+      {{ filterLabel() }}
+    </button>
+
+    <div class="filters__layout" role="group" aria-label="Affichage">
+      <button class="filters__layout-button" type="button" data-layout="cartes" [attr.aria-pressed]="layout() === 'cartes'" (click)="layoutChange.emit('cartes')">
+        <app-icon name="layers" [size]="16" />
+        Cartes
+      </button>
+      <button class="filters__layout-button" type="button" data-layout="liste" [attr.aria-pressed]="layout() === 'liste'" (click)="layoutChange.emit('liste')">
+        <app-icon name="menu" [size]="16" />
+        Liste
+      </button>
+    </div>
+  </div>
+
+  <div id="moderation-filters" class="filters__panel" [class.filters__panel--open]="open()">
+    <label class="filters__field">
+      <span class="field__label">Marque</span>
+      <select class="input" data-filter="make" (change)="chooseMake($any($event.target).value)">
+        <option value="" [selected]="!query().make">Toutes</option>
+        @for (name of makeOptions(); track name) {
+          <option [value]="name" [selected]="name.toLocaleLowerCase('fr-FR') === query().make.toLocaleLowerCase('fr-FR')">{{ name }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="filters__field">
+      <span class="field__label">Vendeur</span>
+      <select class="input" data-filter="seller" (change)="choose('sellerRole', sellers, $any($event.target).value)">
+        <option value="" [selected]="!query().sellerRole">Tous</option>
+        @for (choice of sellers; track choice.slug) {
+          <option [value]="choice.slug" [selected]="choice.value === query().sellerRole">{{ choice.label }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="filters__field">
+      <span class="field__label">État</span>
+      <select class="input" data-filter="damage" (change)="choose('damaged', damages, $any($event.target).value)">
+        <option value="" [selected]="query().damaged === null">Tous</option>
+        @for (choice of damages; track choice.slug) {
+          <option [value]="choice.slug" [selected]="choice.value === query().damaged">{{ choice.label }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="filters__field">
+      <span class="field__label">Offre</span>
+      <select class="input" data-filter="offer" (change)="choose('offer', offers, $any($event.target).value)">
+        <option value="" [selected]="!query().offer">Vente et leasing</option>
+        @for (choice of offers; track choice.slug) {
+          <option [value]="choice.slug" [selected]="choice.value === query().offer">{{ choice.label }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="filters__field">
+      <span class="field__label">Origine</span>
+      <select class="input" data-filter="origin" (change)="choose('demo', origins, $any($event.target).value)">
+        <option value="" [selected]="query().demo === null">Réelles et démo</option>
+        @for (choice of origins; track choice.slug) {
+          <option [value]="choice.slug" [selected]="choice.value === query().demo">{{ choice.label }}</option>
+        }
+      </select>
+    </label>
+
+    <fieldset class="filters__field filters__price">
+      <legend class="field__label">Prix (€)</legend>
+      <input
+        class="input"
+        type="text"
+        inputmode="numeric"
+        aria-label="Prix minimum, en euros"
+        placeholder="Min"
+        data-filter="price-min"
+        [value]="query().priceMin ?? ''"
+        (change)="setPrice('priceMin', $any($event.target).value)"
+      />
+      <span aria-hidden="true">–</span>
+      <input
+        class="input"
+        type="text"
+        inputmode="numeric"
+        aria-label="Prix maximum, en euros"
+        placeholder="Max"
+        data-filter="price-max"
+        [value]="query().priceMax ?? ''"
+        (change)="setPrice('priceMax', $any($event.target).value)"
+      />
+    </fieldset>
+
+    <label class="filters__field filters__sort">
+      <span class="field__label">Trier par</span>
+      <select class="input" data-filter="sort" (change)="chooseSort($any($event.target).value)">
+        @for (choice of sorts; track choice.slug) {
+          <option [value]="choice.slug" [selected]="choice.slug === sortSlug()">{{ choice.label }}</option>
+        }
+      </select>
+    </label>
+
+    @if (narrowed()) {
+      <button class="btn btn--quiet filters__clear" type="button" data-action="clear-filters" (click)="clear()">
+        <app-icon name="x" [size]="16" />
+        Effacer la recherche et les filtres
+      </button>
+    }
+  </div>
+</div>

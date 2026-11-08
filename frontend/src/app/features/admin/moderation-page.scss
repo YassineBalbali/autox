@@ -46,6 +46,17 @@
   padding-block: var(--s-5);
 }
 
+.moderation__result {
+  margin: 0;
+}
+
+// The rows sit in one bordered block, divided by their own lines.
+.moderation__rows {
+  overflow: hidden;
+  border: var(--border);
+  border-radius: var(--r-md);
+}
+
 .moderation__pages {
   display: flex;
   flex-wrap: wrap;

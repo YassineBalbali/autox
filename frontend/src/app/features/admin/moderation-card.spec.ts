@@ -15,7 +15,8 @@ import {
   VehicleCondition,
 } from '../../core/api';
 import { NBSP } from '../../shared/format/number';
-import { ModerationCard, ModerationDecision } from './moderation-card';
+import { ModerationCard } from './moderation-card';
+import { ModerationDecision } from './moderation-decision';
 
 const { APPROVE, REJECT, REMOVE, REINSTATE } = ModerationActionType;
 
