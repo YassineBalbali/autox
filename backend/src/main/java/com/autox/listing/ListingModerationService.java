@@ -14,13 +14,14 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,50 +77,61 @@ public class ListingModerationService {
     private final AppUserRepository users;
     private final ListingQuotaPolicy quota;
     private final ObjectStorage storage;
+    private final ModerationSearchRepository search;
 
     public ListingModerationService(ListingRepository listings,
                                     ListingImageRepository images,
                                     ModerationActionRepository actions,
                                     AppUserRepository users,
                                     ListingQuotaPolicy quota,
-                                    ObjectStorage storage) {
+                                    ObjectStorage storage,
+                                    ModerationSearchRepository search) {
         this.listings = listings;
         this.images = images;
         this.actions = actions;
         this.users = users;
         this.quota = quota;
         this.storage = storage;
+        this.search = search;
     }
 
     // --- reads ------------------------------------------------------------
 
+    /**
+     * One of the three lists, searched and filtered. By default the queue is oldest first — it
+     * is worked from the front, and the listing that has been online unreviewed the longest is
+     * the one that most needs a look — and the two others newest first.
+     */
     @Transactional(readOnly = true)
-    public Page<ModeratedListing> list(ModerationView view, int page, int size) {
-        Page<Listing> found = switch (view) {
-            // Oldest first: a queue is worked from the front, and the listing that has
-            // been online unreviewed the longest is the one that most needs a look.
-            case PENDING -> listings.findAwaitingReview(
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt")));
-            case LIVE -> listings.findByStatus(ListingStatus.ACTIVE,
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "publishedAt")));
-            case REMOVED -> listings.findByStatus(ListingStatus.REMOVED,
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt")));
-        };
+    public Page<ModeratedListing> list(ModerationView view, ModerationFilter filter, int page, int size) {
+        ModerationSearchRepository.Found found = search.find(view, filter, page, size);
+        List<UUID> ids = found.ids();
 
-        // Photos and trails for the whole page in two queries, not two per row.
-        List<UUID> ids = found.getContent().stream().map(Listing::getId).toList();
+        // The listings, their photos and their trails for the whole page in three queries, not
+        // three per row.
+        Map<UUID, Listing> byId = new HashMap<>();
         Map<UUID, List<ListingImage>> photos = new HashMap<>();
         Map<UUID, List<ModerationAction>> trails = new HashMap<>();
+        Set<UUID> demo = Set.of();
         if (!ids.isEmpty()) {
+            listings.findAllById(ids).forEach(listing -> byId.put(listing.getId(), listing));
             images.findReadyByListings(ids).forEach(image ->
                     photos.computeIfAbsent(image.getListing().getId(), key -> new ArrayList<>()).add(image));
             actions.findTrails(ids).forEach(action ->
                     trails.computeIfAbsent(action.getListing().getId(), key -> new ArrayList<>()).add(action));
+            demo = search.demo(ids);
         }
 
-        return found.map(listing -> view(listing,
-                photos.getOrDefault(listing.getId(), List.of()),
-                trails.getOrDefault(listing.getId(), List.of())));
+        Set<UUID> seeded = demo;
+        List<ModeratedListing> rows = ids.stream()
+                .map(byId::get)
+                .filter(Objects::nonNull)
+                .map(listing -> view(listing,
+                        photos.getOrDefault(listing.getId(), List.of()),
+                        trails.getOrDefault(listing.getId(), List.of()),
+                        seeded.contains(listing.getId())))
+                .toList();
+        return new PageImpl<>(rows, PageRequest.of(page, size), found.total());
     }
 
     @Transactional(readOnly = true)
@@ -293,10 +305,12 @@ public class ListingModerationService {
 
     private ModeratedListing view(Listing listing) {
         List<UUID> id = List.of(listing.getId());
-        return view(listing, images.findReadyByListings(id), actions.findTrails(id));
+        return view(listing, images.findReadyByListings(id), actions.findTrails(id),
+                search.demo(id).contains(listing.getId()));
     }
 
-    private ModeratedListing view(Listing listing, List<ListingImage> photos, List<ModerationAction> trail) {
+    private ModeratedListing view(Listing listing, List<ListingImage> photos, List<ModerationAction> trail,
+                                  boolean demo) {
         List<ImageResponse> gallery = photos.stream()
                 .map(image -> ImageResponse.from(image, storage::readUrl))
                 .toList();
@@ -305,6 +319,7 @@ public class ListingModerationService {
                 ModeratedListing.ModeratedSeller.from(listing.getSeller()),
                 allowedActions(listing),
                 trail.stream().map(ModerationEntry::from).toList(),
-                editedSinceReview(listing, trail));
+                editedSinceReview(listing, trail),
+                demo);
     }
 }

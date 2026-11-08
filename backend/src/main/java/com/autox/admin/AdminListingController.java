@@ -1,15 +1,21 @@
 package com.autox.admin;
 
 import com.autox.api.PageResponse;
+import com.autox.api.error.ApiException;
 import com.autox.listing.ListingModerationService;
+import com.autox.listing.ModerationFilter;
+import com.autox.listing.ModerationSort;
 import com.autox.listing.ModerationView;
+import com.autox.listing.OfferType;
 import com.autox.listing.dto.ModeratedListing;
 import com.autox.listing.dto.ModerationDecisionRequest;
 import com.autox.listing.dto.ModerationNoteRequest;
 import com.autox.user.CurrentUser;
+import com.autox.user.UserRole;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -53,15 +59,32 @@ public class AdminListingController {
     }
 
     /**
-     * One of the three moderation lists, a page at a time. {@code PENDING} is the queue:
-     * online and not yet reviewed, oldest first.
+     * One of the three moderation lists, a page at a time, searched and filtered. {@code PENDING}
+     * is the queue: online and not yet reviewed, oldest first unless another order is asked.
+     *
+     * <p>{@code q} finds each of its words in the listing's title, make, model and version, or
+     * in its seller's display name and e-mail, whatever the case and accents. Prices are in
+     * minor units, as everywhere in the API.
      */
     @GetMapping
     public PageResponse<ModeratedListing> moderationList(
             @RequestParam(defaultValue = "PENDING") ModerationView view,
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "10") @Min(1) @Max(MAX_PAGE_SIZE) int size) {
-        return PageResponse.of(moderation.list(view, page, size), listing -> listing);
+            @RequestParam(defaultValue = "10") @Min(1) @Max(MAX_PAGE_SIZE) int size,
+            @RequestParam(required = false) @Size(max = 100) String q,
+            @RequestParam(required = false) @Size(max = 80) String make,
+            @RequestParam(required = false) UserRole sellerRole,
+            @RequestParam(required = false) Boolean damaged,
+            @RequestParam(required = false) OfferType offer,
+            @RequestParam(required = false) Boolean demo,
+            @RequestParam(required = false) @Min(0) Long priceMin,
+            @RequestParam(required = false) @Min(0) Long priceMax,
+            @RequestParam(required = false) ModerationSort sort) {
+        if (priceMin != null && priceMax != null && priceMin > priceMax) {
+            throw ApiException.validationFailed("priceMin cannot be above priceMax.");
+        }
+        ModerationFilter filter = new ModerationFilter(q, make, sellerRole, damaged, offer, demo, priceMin, priceMax, sort);
+        return PageResponse.of(moderation.list(view, filter, page, size), listing -> listing);
     }
 
     /** One listing in any state, with its moderation trail. 404 once its seller has deleted it. */

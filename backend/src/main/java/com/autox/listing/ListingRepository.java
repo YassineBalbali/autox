@@ -36,10 +36,6 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
             """)
     Page<Listing> findAwaitingReview(Pageable pageable);
 
-    /** Every seller's listings in one state. For moderators; sellers go through {@link #findBySellerAndStatus}. */
-    @Query("select l from Listing l where l.status = :status and l.deletedAt is null")
-    Page<Listing> findByStatus(@Param("status") ListingStatus status, Pageable pageable);
-
     /** Backs the active-listing quota. Counts only what {@link ListingStatus#occupiesQuota()} says counts. */
     @Query("""
             select count(l) from Listing l
