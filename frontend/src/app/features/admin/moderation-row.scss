@@ -134,3 +134,18 @@
   grid-column: 1 / -1;
   justify-self: stretch;
 }
+
+// A leasing offer's monthly payment, set like app-price beside it on other rows.
+.mrow__monthly {
+  color: var(--c-accent);
+  font-size: var(--t-lg);
+  font-weight: var(--fw-heavy);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mrow__unit {
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+}
