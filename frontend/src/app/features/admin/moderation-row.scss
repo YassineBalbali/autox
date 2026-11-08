@@ -1,0 +1,136 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+// The photo and the listing side by side; below them the price and where it stands, and the
+// decisions. From 1024px, all of it on one line.
+.mrow {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: var(--s-2) var(--s-3);
+  align-items: start;
+  padding: var(--s-3);
+  background: var(--c-surface);
+  border-bottom: var(--divider);
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: 6rem minmax(0, 1fr) 8rem 10rem minmax(12rem, auto);
+    align-items: center;
+  }
+}
+
+.mrow__thumb {
+  grid-row: span 2;
+  align-self: start;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--c-surface-sunk);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @media (min-width: t.$bp-lg) {
+    grid-row: auto;
+  }
+}
+
+.mrow__main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mrow__title {
+  font-size: var(--t-body);
+  font-weight: var(--fw-bold);
+  overflow-wrap: anywhere;
+}
+
+.mrow__vehicle,
+.mrow__seller {
+  margin: 0;
+  font-size: var(--t-sm);
+}
+
+.mrow__seller {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--s-1);
+}
+
+.mrow__name {
+  font-weight: var(--fw-semibold);
+}
+
+// On a phone the name and the kind of seller are enough to tell sellers apart on a line; the
+// address, long and rarely needed there, is on the card.
+.mrow__email {
+  display: none;
+  overflow-wrap: anywhere;
+
+  @media (min-width: t.$bp-md) {
+    display: inline;
+  }
+}
+
+.mrow__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+  margin: var(--s-1) 0 0;
+}
+
+.mrow__demo {
+  background: var(--c-warn-soft);
+  border-color: transparent;
+  color: var(--c-warn);
+}
+
+// Below 1024px the price and the state share one line under the listing; from 1024px the
+// wrapper steps aside and each is a column of the row.
+.mrow__facts {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-3);
+
+  @media (min-width: t.$bp-lg) {
+    display: contents;
+  }
+}
+
+.mrow__state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+  font-size: var(--t-sm);
+
+  @media (min-width: t.$bp-lg) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+}
+
+.mrow__decision {
+  grid-column: 1 / -1;
+
+  @media (min-width: t.$bp-lg) {
+    grid-column: auto;
+    justify-self: end;
+  }
+}
+
+// A refusal's form needs the room of the whole row, under the listing it is about.
+.mrow--deciding .mrow__decision {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+}

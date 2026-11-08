@@ -1,0 +1,138 @@
+@use '../../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+
+.filters {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: var(--border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+}
+
+.filters__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.filters__search {
+  position: relative;
+  flex: 1 1 18rem;
+
+  .input {
+    width: 100%;
+    max-width: none;
+    padding-left: 2.25rem;
+  }
+}
+
+.filters__search-icon {
+  position: absolute;
+  top: 50%;
+  left: var(--s-2);
+  transform: translateY(-50%);
+  color: var(--c-ink-faint);
+  pointer-events: none;
+}
+
+// The filters fold behind this on a phone; from 768px they are always out.
+.filters__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+
+  @media (min-width: t.$bp-md) {
+    display: none;
+  }
+}
+
+.filters__layout {
+  display: inline-flex;
+  padding: 2px;
+  border: var(--border);
+  border-radius: var(--r-md);
+}
+
+.filters__layout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  min-height: calc(var(--h-control) - 6px);
+  padding: 0 var(--s-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--c-ink-soft);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+
+  &[aria-pressed='true'] {
+    background: var(--c-navy);
+    color: var(--c-accent-ink);
+  }
+}
+
+.filters__panel {
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2) var(--s-3);
+  align-items: end;
+
+  @media (min-width: t.$bp-md) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  }
+}
+
+.filters__panel--open {
+  display: grid;
+}
+
+.filters__field {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  .input {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.filters__price {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s-1);
+
+  legend {
+    grid-column: 1 / -1;
+    float: left;
+    width: 100%;
+    padding: 0;
+  }
+}
+
+// Its labels are the longest: on a phone it takes the whole line.
+.filters__sort {
+  grid-column: 1 / -1;
+
+  @media (min-width: t.$bp-md) {
+    grid-column: auto;
+  }
+}
+
+.filters__clear {
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+}

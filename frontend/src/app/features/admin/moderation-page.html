@@ -9,13 +9,13 @@
   </header>
 
   <nav class="moderation__views" aria-label="Listes de modération" i18n-aria-label="@@moderationViews">
-    @for (entry of views; track entry.slug; let first = $first) {
+    @for (entry of views; track entry.slug; let i = $index) {
       <a
         class="moderation__view"
         [class.moderation__view--active]="entry.slug === current().slug"
         [attr.aria-current]="entry.slug === current().slug ? 'page' : null"
         routerLink="/admin/moderation"
-        [queryParams]="{ vue: first ? null : entry.slug }"
+        [queryParams]="tabParams()[i]"
       >
         {{ entry.label }}
         @if (entry.slug === current().slug && countLine() && state() === 'ready') {
@@ -24,6 +24,15 @@
       </a>
     }
   </nav>
+
+  <app-moderation-filters
+    [query]="query()"
+    [view]="current().view"
+    [makes]="makes()"
+    [layout]="layout()"
+    (queryChange)="onQuery($event)"
+    (layoutChange)="onLayout($event)"
+  />
 
   @if (notice()) {
     <app-alert kind="success">{{ notice() }}</app-alert>
@@ -52,19 +61,45 @@
     }
 
     @case ('ready') {
+      <p class="meta moderation__result" data-result aria-live="polite">{{ resultLine() }}</p>
+
       @if (items().length === 0) {
         <div class="panel moderation__state">
-          <p>{{ current().empty }}</p>
+          @if (narrowed()) {
+            <p>Aucune annonce ne correspond à cette recherche dans « {{ current().label }} ».</p>
+            <div class="form-actions">
+              <button class="btn btn--quiet" type="button" data-action="clear-empty" (click)="clearAll()">
+                Effacer la recherche et les filtres
+              </button>
+            </div>
+          } @else {
+            <p>{{ current().empty }}</p>
+          }
         </div>
       } @else {
-        @for (item of items(); track item.listing?.id) {
-          <app-moderation-card
-            [item]="item"
-            [busy]="busy() === item.listing?.id"
-            [failure]="failureFor(item)"
-            [minorUnit]="minorUnit(item.listing?.currencyCode)"
-            (decided)="decide(item, $event)"
-          />
+        @if (layout() === 'liste') {
+          <div class="moderation__rows">
+            @for (item of items(); track item.listing?.id) {
+              <app-moderation-row
+                [item]="item"
+                [view]="current().view"
+                [busy]="busy() === item.listing?.id"
+                [failure]="failureFor(item)"
+                [minorUnit]="minorUnit(item.listing?.currencyCode)"
+                (decided)="decide(item, $event)"
+              />
+            }
+          </div>
+        } @else {
+          @for (item of items(); track item.listing?.id) {
+            <app-moderation-card
+              [item]="item"
+              [busy]="busy() === item.listing?.id"
+              [failure]="failureFor(item)"
+              [minorUnit]="minorUnit(item.listing?.currencyCode)"
+              (decided)="decide(item, $event)"
+            />
+          }
         }
 
         @if (totalPages() > 1) {
