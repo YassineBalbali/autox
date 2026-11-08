@@ -173,6 +173,23 @@ class ConfigurationLayeringIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("passwords are hashed at BCrypt's least cost here, and production sets none, so keeps 12")
+    void passwordHashCost() throws Exception {
+        assertThat(passwordEncoder.encode("x")).as("the encoder in use").startsWith("$2a$04$");
+
+        // Production's value is the default, so the production file must not set one.
+        java.util.Properties production = new java.util.Properties();
+        try (var in = getClass().getClassLoader().getResourceAsStream("application.yml")) {
+            org.springframework.beans.factory.config.YamlPropertiesFactoryBean yaml =
+                    new org.springframework.beans.factory.config.YamlPropertiesFactoryBean();
+            yaml.setResources(new org.springframework.core.io.InputStreamResource(in));
+            production.putAll(yaml.getObject());
+        }
+        assertThat(production).doesNotContainKey("autox.auth.password-hash-cost");
+        assertThat(AuthProperties.DEFAULT_PASSWORD_HASH_COST).isEqualTo(12);
+    }
+
+    @Test
     @DisplayName("the login throttle inherits production thresholds and overrides only the delays")
     void partialOverridesMergePerKey() {
         // Proof that layering happens key by key rather than file by file: the test profile
