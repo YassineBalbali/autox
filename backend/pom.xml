@@ -242,6 +242,10 @@
                         <configuration>
                             <environmentVariables>
                                 <DOCKER_HOST>npipe:////./pipe/docker_engine</DOCKER_HOST>
+                                <!-- And this strategy only. Testcontainers otherwise tries first the one it
+                                     saved in ~/.testcontainers.properties, the pipe check again, which can
+                                     fail the same way and then stops the search. -->
+                                <TESTCONTAINERS_DOCKER_CLIENT_STRATEGY>org.testcontainers.dockerclient.EnvironmentAndSystemPropertyClientProviderStrategy</TESTCONTAINERS_DOCKER_CLIENT_STRATEGY>
                             </environmentVariables>
                         </configuration>
                     </plugin>

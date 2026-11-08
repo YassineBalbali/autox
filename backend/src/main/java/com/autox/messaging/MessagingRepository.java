@@ -33,6 +33,9 @@ public class MessagingRepository {
      * writing in an existing conversation: the listing has not been taken down or deleted,
      * and neither account is closed or suspended. A listing that is sold, paused or expired
      * leaves the conversation open — that is when a buyer and a seller have the most to say.
+     *
+     * <p>The listing may be gone altogether: erased with its seller's account, or by the retention
+     * sweep. The conversation stays for the other party, read-only, without it.
      */
     private static final String HEADER = """
             SELECT c.id, c.listing_id, c.buyer_id, c.seller_id, c.buyer_read_at, c.seller_read_at,
@@ -40,12 +43,12 @@ public class MessagingRepository {
                    l.title, l.price_amount, l.price_currency_code,
                    COALESCE(mk.name, l.make_text) AS make_name, COALESCE(mo.name, l.model_text) AS model_name,
                    l.version_text,
-                   (%1$s) AS online,
-                   (l.status <> 'REMOVED' AND l.deleted_at IS NULL AND %2$s AND %3$s) AS can_reply,
+                   (l.id IS NOT NULL AND %1$s) AS online,
+                   (l.id IS NOT NULL AND l.status <> 'REMOVED' AND l.deleted_at IS NULL AND %2$s AND %3$s) AS can_reply,
                    b.display_name AS buyer_name, b.role AS buyer_role,
                    s.display_name AS seller_name, s.role AS seller_role
               FROM conversation c
-              JOIN listing l ON l.id = c.listing_id
+              LEFT JOIN listing l ON l.id = c.listing_id
               JOIN app_user b ON b.id = c.buyer_id
               JOIN app_user s ON s.id = c.seller_id
               LEFT JOIN vehicle_make mk ON mk.id = l.make_id
@@ -160,7 +163,7 @@ public class MessagingRepository {
     public List<InboxRow> inbox(UUID userId, int limit, long offset) {
         String sql = HEADER.replace(" FROM conversation c", """
                        , lm.body AS last_body, lm.sender_id AS last_sender, lm.hidden_at AS last_hidden,
-                       lm.created_at AS last_at,
+                       lm.erased_at AS last_erased, lm.created_at AS last_at,
                        (SELECT count(*) FROM message m
                          WHERE m.conversation_id = c.id
                            AND m.sender_id <> :me
@@ -171,7 +174,7 @@ public class MessagingRepository {
                   FROM conversation c""")
                 + """
                  LEFT JOIN LATERAL (
-                       SELECT body, sender_id, hidden_at, created_at FROM message
+                       SELECT body, sender_id, hidden_at, erased_at, created_at FROM message
                         WHERE conversation_id = c.id
                         ORDER BY created_at DESC, id DESC LIMIT 1) lm ON true
                  WHERE c.buyer_id = :me OR c.seller_id = :me
@@ -184,6 +187,7 @@ public class MessagingRepository {
                         rs.getString("last_body"),
                         rs.getObject("last_sender", UUID.class),
                         rs.getTimestamp("last_hidden") != null,
+                        rs.getTimestamp("last_erased") != null,
                         instant(rs.getTimestamp("last_at")),
                         rs.getInt("unread")));
     }
@@ -215,7 +219,7 @@ public class MessagingRepository {
     /** The latest {@code limit} messages, oldest first, with whether the reader reported each. */
     public List<MessageRow> messages(UUID conversationId, UUID readerId, int limit) {
         List<MessageRow> newestFirst = jdbc.query("""
-                SELECT m.id, m.sender_id, m.body, m.hidden_at, m.created_at,
+                SELECT m.id, m.sender_id, m.body, m.hidden_at, m.erased_at, m.created_at,
                        EXISTS (SELECT 1 FROM message_report r
                                 WHERE r.message_id = m.id AND r.reporter_id = :reader) AS reported
                   FROM message m
@@ -229,6 +233,7 @@ public class MessagingRepository {
                         rs.getObject("sender_id", UUID.class),
                         rs.getString("body"),
                         rs.getTimestamp("hidden_at") != null,
+                        rs.getTimestamp("erased_at") != null,
                         rs.getBoolean("reported"),
                         instant(rs.getTimestamp("created_at"))));
         List<MessageRow> oldestFirst = new ArrayList<>(newestFirst);
@@ -391,11 +396,12 @@ public class MessagingRepository {
     }
 
     public record InboxRow(Header header, String lastBody, UUID lastSenderId, boolean lastHidden,
-                           Instant lastSentAt, int unread) {
+                           boolean lastErased, Instant lastSentAt, int unread) {
     }
 
-    public record MessageRow(UUID id, UUID senderId, String body, boolean hidden, boolean reportedByReader,
-                             Instant sentAt) {
+    /** {@code erased}: its author deleted their account, and its text with it. */
+    public record MessageRow(UUID id, UUID senderId, String body, boolean hidden, boolean erased,
+                             boolean reportedByReader, Instant sentAt) {
     }
 
     public record MessageOwner(UUID conversationId, UUID senderId) {

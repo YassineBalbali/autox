@@ -21,10 +21,11 @@ public record ConversationDetail(
         boolean earlierOmitted) {
 
     /**
-     * @param body         null when a moderator hid the message
+     * @param body         null when a moderator hid the message, or its author deleted their account
+     * @param erased       its author deleted their account, and its text was erased with it
      * @param reportedByMe whether the caller has reported it; a message can be reported once
      */
-    public record MessageView(UUID id, boolean sentByMe, String body, boolean hidden,
+    public record MessageView(UUID id, boolean sentByMe, String body, boolean hidden, boolean erased,
                               boolean reportedByMe, Instant sentAt) {
     }
 }

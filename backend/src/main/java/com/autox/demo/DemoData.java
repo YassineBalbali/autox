@@ -219,6 +219,11 @@ class DemoData {
         }
 
         listingIds.forEach(id -> jdbc.update("DELETE FROM listing WHERE id = ?", id));
+        // A conversation outlives its listing (it is the other party's too), so a visitor's
+        // conversation with a demo seller is still here, and would hold the account back. A demo
+        // seller never answered: there is nothing in it for the visitor to keep.
+        ledger.ids(DemoLedger.USER).forEach(id ->
+                jdbc.update("DELETE FROM conversation WHERE buyer_id = ? OR seller_id = ?", id, id));
         ledger.ids(DemoLedger.USER).forEach(id -> jdbc.update("DELETE FROM app_user WHERE id = ?", id));
         // A make or model someone else's listing uses stays. Visitors' listings are left
         // alone, and a visitor who sold a "Peugeot 308" picked the demo's 308: deleting it

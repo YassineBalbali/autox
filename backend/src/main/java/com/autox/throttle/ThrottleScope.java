@@ -51,5 +51,11 @@ public enum ThrottleScope {
     SEARCH_INTERPRET,
 
     /** Verification links asked for again by one account. Keyed by user id. */
-    EMAIL_VERIFICATION
+    EMAIL_VERIFICATION,
+
+    /** Downloads of one account's data. Keyed by user id: each one reads everything the account has. */
+    DATA_EXPORT,
+
+    /** Listings reported by one account. Keyed by user id. */
+    LISTING_REPORT
 }

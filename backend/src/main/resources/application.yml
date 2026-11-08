@@ -202,6 +202,9 @@ autox:
     outbox-poll-cron: ${AUTOX_SCHEDULE_OUTBOX_POLL:*/30 * * * * *}
     # Saved searches' daily e-mails: 7:00, in Paris time, whatever the server's zone.
     alert-digest-cron: ${AUTOX_SCHEDULE_ALERT_DIGEST:0 0 7 * * *}
+    # Retention: deleted listings and old conversations erased, once a day at 4:20, Paris time
+    # (DataRetentionSweeper; the privacy page states the rules).
+    data-retention-cron: ${AUTOX_SCHEDULE_DATA_RETENTION:0 20 4 * * *}
 
   # Per account, in fixed windows. A reply costs one message; starting a conversation costs
   # one conversation and one message. Twenty messages in ten minutes is more than anyone types

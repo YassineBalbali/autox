@@ -219,6 +219,16 @@ public class ApiException extends RuntimeException {
                 "This is the last administrator able to sign in.");
     }
 
+    public static ApiException demoAccountCannotBeDeleted() {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.DEMO_ACCOUNT_CANNOT_BE_DELETED,
+                "A demo account is removed with the demo data, not deleted on its own.");
+    }
+
+    public static ApiException listingAlreadyReported() {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.LISTING_ALREADY_REPORTED,
+                "You have already reported this listing.");
+    }
+
     public static ApiException demoAccountCannotBeAdmin() {
         return new ApiException(HttpStatus.CONFLICT, ErrorCode.DEMO_ACCOUNT_CANNOT_BE_ADMIN,
                 "Nobody can sign in to a demo account, so it cannot be made an administrator.");

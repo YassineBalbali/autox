@@ -15,6 +15,8 @@ import java.util.UUID;
  * @param unreadCount messages from the other party the caller has not opened
  * @param canReply    false once the listing has been taken down or deleted, or either
  *                    account is closed or suspended; the conversation stays readable
+ * @param listing     null once the listing no longer exists; the other party then shows
+ *                    "Compte supprimé" if it was their account that went
  */
 public record ConversationSummary(
         UUID id,
@@ -41,8 +43,9 @@ public record ConversationSummary(
     }
 
     /**
-     * @param preview the start of the message, or null when a moderator hid it
+     * @param preview the start of the message, or null when a moderator hid it or it was erased
+     * @param erased  its author deleted their account, and its text with it
      */
-    public record LastMessage(String preview, boolean sentByMe, boolean hidden, Instant sentAt) {
+    public record LastMessage(String preview, boolean sentByMe, boolean hidden, boolean erased, Instant sentAt) {
     }
 }

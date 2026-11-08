@@ -160,12 +160,16 @@ class AdminStatsRepository {
                 + " FROM " + LISTINGS);
         Map<String, Object> reports = jdbc.queryForMap(
                 "SELECT count(*) AS open, min(created_at) AS oldest FROM message_report WHERE resolution IS NULL");
+        Map<String, Object> listingReports = jdbc.queryForMap(
+                "SELECT count(*) AS open, min(created_at) AS oldest FROM listing_report WHERE resolution IS NULL");
         return new Attention(
                 new Split(number(queue, "pending_real"), number(queue, "pending_demo")),
                 instant(queue.get("oldest_real")),
                 instant(queue.get("oldest_demo")),
                 number(reports, "open"),
                 instant(reports.get("oldest")),
+                number(listingReports, "open"),
+                instant(listingReports.get("oldest")),
                 oldestPending(ledger));
     }
 
