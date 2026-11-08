@@ -132,22 +132,9 @@ export function securityHeaders(options = {}) {
 const NEVER_CACHED = 'no-cache';
 const CACHED_FOR_GOOD = 'public, max-age=31536000, immutable';
 
-/** A `_headers` file, the format Netlify and Cloudflare Pages read from the site root. */
-export function headersFile(options = {}) {
-  const lines = ['/*'];
-  for (const [name, value] of Object.entries(securityHeaders(options))) {
-    lines.push(`  ${name}: ${value}`);
-  }
-  lines.push('', '/index.html', `  Cache-Control: ${NEVER_CACHED}`, '');
-  for (const pattern of ['/*.js', '/*.css', '/media/*']) {
-    lines.push(pattern, `  Cache-Control: ${CACHED_FOR_GOOD}`, '');
-  }
-  return lines.join('\n');
-}
-
 /**
- * Vercel's counterpart of `_headers` and `_redirects`: `.vercel/output/config.json`, in its
- * Build Output API. `vercel.json` cannot do this: it is read before the build, and the policy
+ * The site's headers and routing on Vercel: `.vercel/output/config.json`, in its Build Output
+ * API. `vercel.json` cannot do this: it is read before the build, and the policy
  * names origins only the build knows.
  *
  * The order is the routing. Security headers go on every response. Only a path with no file

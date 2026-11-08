@@ -153,7 +153,7 @@ Every photo a visitor views is egress.
    | `AUTOX_S3_ENDPOINT` | `S3_ENDPOINT` — `https://<ref>.supabase.co/storage/v1/s3` | Supabase |
    | `AUTOX_S3_ACCESS_KEY` | `S3_ACCESS_KEY_ID` | Supabase |
    | `AUTOX_S3_SECRET_KEY` | `S3_SECRET_ACCESS_KEY` | Supabase |
-   | `AUTOX_CORS_ALLOWED_ORIGINS` | `SITE` — e.g. `https://autox-demo.vercel.app`, no trailing slash. While Netlify is still up, comma-separated with no spaces: `https://autox-demo.vercel.app,https://autox-demo.netlify.app`. The Netlify origin is transitional: remove it when Netlify is shut down (step 5) | Vercel (planned) |
+   | `AUTOX_CORS_ALLOWED_ORIGINS` | `SITE` — e.g. `https://autox-demo.vercel.app`, no trailing slash. Several are comma-separated with no spaces | Vercel (planned) |
    | `AUTOX_PASSWORD_RESET_URL` | `SITE` + `/reinitialiser-mot-de-passe` — e.g. `https://autox-demo.vercel.app/reinitialiser-mot-de-passe` | Vercel (planned) |
    | `AUTOX_JWT_ISSUER` | `API` — e.g. `https://autox-api-kyuo.onrender.com` | Render (planned) |
    | `AUTOX_MAIL_API_KEY` | The Brevo API key | Brevo → SMTP & API → API keys |
@@ -412,9 +412,10 @@ Three things about this build:
 - **The Node version comes from `scripts/pinned-node.sh`.** Vercel offers majors only, so the
   commands in `vercel.json` fetch 24.22.1 and check its checksum. Vercel's build image has
   Java 11, the level the generator's jar is compiled for.
-- **The headers are in `.vercel/output/config.json`,** written by `npm run build` from the same
-  functions as `_headers`. `vercel.json` is read before the build, too early to know the
-  origins in the policy, and with a Build Output folder there is no output directory to set.
+- **The headers are in `.vercel/output/config.json`,** written by `npm run build` from
+  `vercelOutputConfig` in `scripts/security-headers.mjs`. `vercel.json` is read before the
+  build, too early to know the origins in the policy, and with a Build Output folder there is
+  no output directory to set.
 
 Check the result, with `SITE` the new address:
 
@@ -425,66 +426,6 @@ curl -sI SITE/missing.js       # 200, the app, and no year-long Cache-Control
 ```
 
 and one hashed script from the page source, which should carry `immutable`.
-
-### Netlify, until it is shut down
-
-The site moved to Vercel in November 2026. Netlify stays up during the move, which is why its
-origin is still in `AUTOX_CORS_ALLOWED_ORIGINS`. **To shut it down:** remove
-`https://autox-demo.netlify.app` from that variable, delete the site on Netlify, and delete
-`netlify.toml`. The rest of this section then goes too.
-
-A rebuild is the only way a changed build variable reaches this site: **Deploys → Trigger deploy
-→ Clear cache and deploy project**.
-
-`netlify.toml` at the repository root holds the build settings: base directory
-`frontend`, build command `npm run build`, publish directory `dist/frontend/browser`,
-and Node 24.22.1. Its `ignore` command builds production only, and only when a commit
-changes something under `frontend/`, so a backend-only commit costs no credits and pull
-requests get no preview. A change to `netlify.toml` alone does not rebuild either, for the
-same reason.
-
-1. app.netlify.com → **Add new project → Import an existing project → GitHub** → choose
-   `YassineBalbali/autox`.
-2. Netlify reads `netlify.toml`, so the build fields arrive filled in. Leave them. Set the
-   **project name** you chose.
-3. **Add environment variables** (on the same screen, or later under Project configuration →
-   Environment variables). They are compiled into the site, because a static site has no
-   server to read them at run time. Changing one means rebuilding.
-
-   | Variable | Value | From |
-   |---|---|---|
-   | `AUTOX_API_BASE_URL` | `API` — e.g. `https://autox-api-kyuo.onrender.com` | Render |
-   | `AUTOX_STORAGE_ORIGINS` | `S3_ENDPOINT` — the full endpoint is fine; the build keeps its origin, `https://<ref>.supabase.co` | Supabase |
-   | `AUTOX_SITE_URL` | `SITE` — e.g. `https://autox-demo.netlify.app` | Netlify |
-
-4. **Deploy.** At the end, the build log prints the API, storage and site URLs it used,
-   and the security policy. Check them there.
-
-**The build needs Java as well as Node.** The API client is generated from
-`frontend/openapi.json` on every build, by OpenAPI Generator, a Java program. It is not
-committed. Netlify's current build image ships Java 25. The generator this repository pins
-(7.26.0) was run on Java 25 and produced the full client. If a Netlify build fails at
-`api:generate` with `java: not found`, that is the cause.
-
-`npm run build` writes two files into the published folder, and Netlify reads both:
-
-- **`_redirects`**, containing `/*  /index.html  200`: every path with no file behind it is
-  served the app, **with a 200**. A shared link to a listing therefore previews and loads,
-  instead of 404ing. Netlify never lets this rule shadow a real file, so scripts,
-  `robots.txt` and the preview image are served as themselves.
-- **`_headers`**: the Content-Security-Policy, HSTS and the other security headers for every
-  path, plus long caching for the hashed scripts and styles.
-
-Both were checked with Netlify's own tooling: its local server answered `/annonces/…`,
-`/recherche` and `/admin/moderation` with the app, a 200 and the full set of security
-headers, while `robots.txt`, the preview image and the scripts were served as files.
-Netlify's `_headers` parser read every rule without error.
-
-**Credits.** The free plan has 300 credits a month. A production deploy costs 15 and
-bandwidth 20 per GB. That allows about fifteen to twenty production deploys a month. Once
-the balance is gone, Netlify's documentation says every site on the account is paused until
-the next cycle. Backend-only commits do not count: their builds are skipped.
-Photos are served by Supabase, not Netlify, so the site's own bandwidth is small.
 
 ## Step 6 — Close the loop
 
@@ -647,7 +588,7 @@ reason for each setting is not lost.
 | The client address came from the **first** value of `X-Forwarded-For` — client-written on Render, so every rate limit could be dodged | Tomcat's own proxy handling (`native`), trusting private-network proxies only, reading Render's `True-Client-IP` |
 | Hikari's idle connections, the sweeps and a database health check would have kept Neon awake and spent its month's compute in about two weeks | The settings above |
 | A free Supabase project pauses after a week without database activity, which a quiet demo can reach | A bucket check every twelve hours (step 2) |
-| Without a fallback rule, every deep link (`/annonces/…`) would have been a 404 on Netlify | `npm run build` writes `_redirects` with `/*  /index.html  200` |
+| Without a fallback rule, every deep link (`/annonces/…`) would have been a 404 | `npm run build` writes Vercel's routes: a path with no file behind it gets the app, with a 200 |
 | The JVM's defaults in 512 MB: a heap too small for image work, and nothing bounding the rest | Memory flags in the Dockerfile, measured below |
 | 200 Tomcat threads | `SERVER_TOMCAT_THREADS_MAX=20` |
 | The demo seed, run against the demo's dealer cap of 3, stopped at the first dealer's fourth listing and left a half-seed that later starts skipped | The seed's own accounts are uncapped |
@@ -691,8 +632,7 @@ variables above):
 - **Cold starts.** If the monitor stops, the first visitor waits for a full start (about
   three minutes). If Neon is asleep, the first query waits about a second. If Supabase has
   paused, photos are missing until it is resumed.
-- **No preview deployments.** Vercel deploys `main` only, and Netlify builds production only.
-  A preview's URL would not be in `AUTOX_CORS_ALLOWED_ORIGINS` anyway, so it could not reach
+- **No preview deployments.** Vercel deploys `main` only. A preview's URL would not be in `AUTOX_CORS_ALLOWED_ORIGINS` anyway, so it could not reach
   the API.
 - **Swagger UI** is public at `API/swagger-ui.html`, which for a portfolio is arguably the
   point.

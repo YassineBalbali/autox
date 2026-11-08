@@ -6,8 +6,8 @@
 # Vercel takes the newest major a range allows. So the install and build commands in
 # vercel.json fetch this exact release and put it first on the PATH.
 #
-# Keep VERSION in step with .github/workflows/frontend.yml and netlify.toml;
-# scripts/deploy-config.test.mjs fails if they part. SHA256 is the linux-x64 line of
+# Keep VERSION in step with .github/workflows/frontend.yml; scripts/deploy-config.test.mjs
+# fails if they part. SHA256 is the linux-x64 line of
 # https://nodejs.org/dist/v<VERSION>/SHASUMS256.txt.
 set -eu
 

@@ -34,8 +34,7 @@ services:
         sync: false
       - key: AUTOX_S3_SECRET_KEY           # Supabase S3 access key: Secret access key
         sync: false
-      # The site: https://autox-demo.vercel.app. Comma-separated, with https://autox-demo.netlify.app
-      # after it until Netlify is shut down.
+      # The site: https://autox-demo.vercel.app. Comma-separated if there is ever more than one.
       - key: AUTOX_CORS_ALLOWED_ORIGINS
         sync: false
       - key: AUTOX_PASSWORD_RESET_URL      # https://autox-demo.vercel.app/reinitialiser-mot-de-passe

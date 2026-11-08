@@ -92,7 +92,7 @@ takeover — including an administrator's, who can read every seller's email add
 `docs/frontend-decisions.md` accepted this *on the condition of a Content-Security-Policy*.
 
 **That condition is now met.** The production build writes a policy into the page and into
-`_headers`: scripts from the site's own origin only, no `eval`, `connect-src` and
+the host's headers (`.vercel/output/config.json`): scripts from the site's own origin only, no `eval`, `connect-src` and
 `img-src` limited to the API and photo storage, no framing, plus `nosniff`,
 `Referrer-Policy`, `Permissions-Policy` and HSTS on https. Verified in a browser against
 the production build: no violation in normal use, and an injected inline script, an inline
@@ -100,7 +100,7 @@ handler, a third-party script, `eval`, and an attempt to send the session to ano
 origin by `fetch`, image or form were all refused. The API sends its own strict policy.
 
 What remains: **`style-src` allows inline styles**, which Angular needs without a
-per-response nonce; and on a host that does not read `_headers`, only the `<meta>` form
+per-response nonce; and on a host other than Vercel, only the `<meta>` form
 applies — no `frame-ancestors`, no HSTS — unless the headers are configured by hand.
 
 ### R5. Abuse controls stop at the login form — high

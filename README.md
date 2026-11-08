@@ -605,7 +605,8 @@ counterparts, since one pair configures the container and the other the client.
 ### Building the site for a host
 
 `npm run build` is `ng build` followed by `scripts/build.mjs`, which writes the
-Content-Security-Policy into the page and the security headers into `_headers`. The policy
+Content-Security-Policy into the page and Vercel's headers and routes into
+`.vercel/output/config.json`. The policy
 has to name the API and the photo storage, so three variables are read **at build time**:
 
 | Variable | Meaning |
@@ -617,9 +618,8 @@ has to name the API and the photo storage, so three variables are read **at buil
 With none set, the policy allows the site's own origin only, which is what CI builds. The
 build fails if Angular ever emits inline script, which the policy would block in production.
 A shared link to a listing is served the app with a 200 rather than a 404: there is a
-single-page fallback and, on purpose, no `404.html`. The same build writes the headers and the
-fallback for both hosts: `.vercel/output/config.json` for Vercel, whose build settings are in
-`frontend/vercel.json`, and `_headers` and `_redirects` for Netlify, whose are in `netlify.toml`.
+single-page fallback and, on purpose, no `404.html`. Vercel is the site's host; its build
+settings are in `frontend/vercel.json`.
 
 ### Deploying
 
@@ -713,7 +713,6 @@ frontend/
 .github/dependabot.yml           weekly upgrade proposals for every ecosystem
 render.yaml                      the API service on Render (Blueprint); see docs/deployment.md
 frontend/vercel.json             the site's build on Vercel; see docs/deployment.md
-netlify.toml                     the site's build on Netlify, until it is shut down
 
 docs/            why things are the way they are — read these before changing them
 ```

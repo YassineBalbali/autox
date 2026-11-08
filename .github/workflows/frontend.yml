@@ -46,8 +46,8 @@ jobs:
           # Pinned, not "lts/*": a runner image rolling forward to a Node major Angular has
           # not qualified is a red build with no commit behind it. 24.22.1 is the October 2026
           # security release (Brotli decoder, CVE-2026-111497, and nine others); nothing
-          # older on the 24 line. Keep this in step with netlify.toml, scripts/pinned-node.sh
-          # (Vercel) and the `engines` floor in package.json.
+          # older on the 24 line. Keep this in step with scripts/pinned-node.sh (Vercel) and
+          # the `engines` floor in package.json.
           node-version: '24.22.1'
           cache: npm
           cache-dependency-path: frontend/package-lock.json

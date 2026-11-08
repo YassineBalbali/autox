@@ -6,7 +6,6 @@ import { describe, it } from 'node:test';
 import {
   contentSecurityPolicy,
   directives,
-  headersFile,
   inlineScriptProblems,
   originOf,
   originsOf,
@@ -132,13 +131,6 @@ describe('the other headers', () => {
     assert.match(securityHeaders({ https: true })['Strict-Transport-Security'], /max-age=31536000/);
   });
 
-  it('writes them for every path, and keeps index.html out of caches', () => {
-    const file = headersFile({ apiOrigin: API });
-
-    assert.match(file, /^\/\*\n {2}Content-Security-Policy: default-src 'self'/);
-    assert.match(file, /\/index\.html\n {2}Cache-Control: no-cache/);
-    assert.match(file, /\/\*\.js\n {2}Cache-Control: public, max-age=31536000, immutable/);
-  });
 });
 
 describe('the built page', () => {
@@ -218,15 +210,12 @@ describe("Vercel's configuration", () => {
     assert.equal(version, 3);
   });
 
-  it('puts the very headers of _headers on every path, before anything can answer', () => {
+  it('puts the security headers on every path, before anything can answer', () => {
     const [first] = routes;
 
     assert.deepEqual(first.headers, securityHeaders(options));
     assert.equal(first.continue, true);
     assert.ok(new RegExp(first.src).test('/annonces/42'));
-    for (const [name, value] of Object.entries(first.headers)) {
-      assert.ok(headersFile(options).includes(`  ${name}: ${value}\n`), name);
-    }
   });
 
   it('answers a path with no file behind it with the app and a 200, after the files', () => {
@@ -238,7 +227,7 @@ describe("Vercel's configuration", () => {
     assert.equal(fallback.headers['Cache-Control'], 'no-cache');
   });
 
-  it('caches what _headers caches, and only on files that exist', () => {
+  it('caches bundles and fonts for good, index.html never, and only files that exist', () => {
     const forGood = 'public, max-age=31536000, immutable';
 
     assert.ok(phase('filesystem') < phase('hit'));
