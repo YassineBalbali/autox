@@ -16,7 +16,9 @@ import java.util.UUID;
  * @param canReply    false once the listing has been taken down or deleted, or either
  *                    account is closed or suspended; the conversation stays readable
  * @param listing     null once the listing no longer exists; the other party then shows
- *                    "Compte supprimé" if it was their account that went
+ *                    "Compte supprimé" if it was their account that went. Null as well for a
+ *                    conversation started from a dealer's page, which {@code dealerPage} says
+ * @param dealerPage  set when the visitor wrote from the dealer's page rather than about a listing
  */
 public record ConversationSummary(
         UUID id,
@@ -26,7 +28,12 @@ public record ConversationSummary(
         LastMessage lastMessage,
         int unreadCount,
         boolean canReply,
-        Instant lastMessageAt) {
+        Instant lastMessageAt,
+        DealerPageRef dealerPage) {
+
+    /** The dealer's page the conversation was started from: /professionnels/{slug}. */
+    public record DealerPageRef(String slug) {
+    }
 
     /**
      * The listing the conversation is about, as it is now.

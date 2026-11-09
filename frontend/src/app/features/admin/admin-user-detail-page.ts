@@ -32,7 +32,7 @@ import { USER_ACTION_LABELS, USER_ROLES, USER_ROLE_LABELS, USER_STATUS_LABELS, u
 type LoadState = 'loading' | 'ready' | 'error' | 'missing';
 
 /** Which confirmation is open. Changing a role takes two steps: choosing it, then confirming it. */
-type Step = 'suspend' | 'reactivate' | 'choose-role' | 'confirm-role' | null;
+type Step = 'suspend' | 'reactivate' | 'choose-role' | 'confirm-role' | 'hide-page' | 'show-page' | null;
 
 const MAX_REASON = 2000;
 
@@ -102,6 +102,9 @@ export class AdminUserDetailPage {
     }));
   });
   protected readonly chosenRole = signal<UserRole | null>(null);
+
+  /** A professional's public page, and whether it is hidden. Null for anyone else. */
+  protected readonly dealerPage = computed(() => this.user()?.dealerPage ?? null);
 
   /** The suspension in force, for saying why at the top of the page. */
   protected readonly suspension = computed(() =>
@@ -245,6 +248,28 @@ export class AdminUserDetailPage {
         changeUserRoleRequest: { role, note: this.note.value.trim() || undefined },
       }),
       () => `Rôle modifié : ${USER_ROLE_LABELS[role]}. Effectif à la prochaine connexion, ou d’ici ${lifetime} au plus.`,
+    );
+  }
+
+  protected confirmHidePage(): void {
+    if (this.reason.invalid) {
+      this.reason.markAsTouched();
+      return;
+    }
+    this.run(
+      this.api.hideDealerPage({ id: this.id(), hideDealerPageRequest: { reason: this.reason.value.trim() } }),
+      () => 'Page professionnelle masquée : elle n’est plus dans l’annuaire et répond « introuvable » au public. Ses annonces restent en ligne.',
+    );
+  }
+
+  protected confirmShowPage(): void {
+    if (this.note.invalid) {
+      this.note.markAsTouched();
+      return;
+    }
+    this.run(
+      this.api.showDealerPage({ id: this.id(), showDealerPageRequest: { note: this.note.value.trim() || undefined } }),
+      () => 'Page professionnelle rétablie : elle est de retour dans l’annuaire.',
     );
   }
 

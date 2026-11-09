@@ -18,7 +18,9 @@ public record ConversationDetail(
         ConversationSummary.Party counterpart,
         boolean canReply,
         List<MessageView> messages,
-        boolean earlierOmitted) {
+        boolean earlierOmitted,
+        /** Set when the visitor wrote from the dealer's page rather than about a listing. */
+        ConversationSummary.DealerPageRef dealerPage) {
 
     /**
      * @param body         null when a moderator hid the message, or its author deleted their account

@@ -63,7 +63,7 @@ public record PublicListingDetail(
         Instant updatedAt) {
 
     public static PublicListingDetail from(Listing listing, List<ImageResponse> images,
-                                           PriceIndicator priceIndicator, boolean demoSeller) {
+                                           PriceIndicator priceIndicator, boolean demoSeller, String dealerSlug) {
         return new PublicListingDetail(
                 listing.getId(),
                 listing.getTitle(),
@@ -74,7 +74,7 @@ public record PublicListingDetail(
                 listing.getVatDeductible(),
                 VehicleView.from(listing),
                 LocationView.from(listing),
-                SellerView.from(listing, demoSeller),
+                SellerView.from(listing, demoSeller, dealerSlug),
                 listing.getMileageKm(),
                 name(listing.getVehicleCondition()),
                 name(listing.getExteriorColor()),
@@ -154,14 +154,16 @@ public record PublicListingDetail(
     /**
      * {@code role} tells a buyer whether this is a dealer or a private sale. {@code demo} says
      * the seller is one of the demo seed's accounts, which nobody signs in to, so a message to
-     * them will not be answered. Nothing more.
+     * them will not be answered. {@code dealerSlug} is a professional's public page,
+     * /professionnels/{slug}, when the public can see it; null otherwise. Nothing more.
      */
-    public record SellerView(UUID id, String displayName, String role, Instant memberSince, boolean demo) {
+    public record SellerView(UUID id, String displayName, String role, Instant memberSince, boolean demo,
+                             String dealerSlug) {
 
-        static SellerView from(Listing listing, boolean demo) {
+        static SellerView from(Listing listing, boolean demo, String dealerSlug) {
             var seller = listing.getSeller();
             return new SellerView(seller.getId(), seller.getDisplayName(),
-                    seller.getRole().name(), seller.getCreatedAt(), demo);
+                    seller.getRole().name(), seller.getCreatedAt(), demo, dealerSlug);
         }
     }
 

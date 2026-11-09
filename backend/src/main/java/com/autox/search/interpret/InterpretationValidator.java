@@ -235,6 +235,8 @@ class InterpretationValidator {
                 durationMin,
                 durationMax,
                 allowanceMin,
+                null,
+                // A description names no seller.
                 null);
 
         String summary = summary(make, model, bodies, fuels, gearboxes, conditions, damage,

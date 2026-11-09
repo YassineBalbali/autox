@@ -2,6 +2,7 @@ package com.autox.user;
 
 import com.autox.api.error.ApiException;
 import com.autox.reference.CurrencyRepository;
+import com.autox.storage.ObjectStorage;
 import com.autox.user.dto.UpdateProfileRequest;
 import com.autox.user.dto.UserProfileResponse;
 import java.util.UUID;
@@ -15,17 +16,20 @@ public class UserService {
     private final AppUserRepository users;
     private final ProProfileRepository proProfiles;
     private final CurrencyRepository currencies;
+    private final ObjectStorage storage;
 
-    public UserService(AppUserRepository users, ProProfileRepository proProfiles, CurrencyRepository currencies) {
+    public UserService(AppUserRepository users, ProProfileRepository proProfiles, CurrencyRepository currencies,
+                       ObjectStorage storage) {
         this.users = users;
         this.proProfiles = proProfiles;
         this.currencies = currencies;
+        this.storage = storage;
     }
 
     @Transactional(readOnly = true)
     public UserProfileResponse getProfile(UUID userId) {
         AppUser user = require(userId);
-        return UserProfileResponse.from(user, proProfiles.findByUserId(userId).orElse(null));
+        return UserProfileResponse.from(user, proProfiles.findByUserId(userId).orElse(null), storage::readUrl);
     }
 
     @Transactional
@@ -63,7 +67,7 @@ public class UserService {
             applyProfessional(user, request.professional());
         }
 
-        return UserProfileResponse.from(user, proProfiles.findByUserId(userId).orElse(null));
+        return UserProfileResponse.from(user, proProfiles.findByUserId(userId).orElse(null), storage::readUrl);
     }
 
     private void applyProfessional(AppUser user, UpdateProfileRequest.ProProfileUpdate update) {
@@ -100,6 +104,12 @@ public class UserService {
         }
         if (update.contactPhone() != null) {
             profile.setContactPhoneE164(blankToNull(update.contactPhone()));
+        }
+        if (update.openingHours() != null) {
+            profile.setOpeningHours(blankToNull(update.openingHours()));
+        }
+        if (update.showPhone() != null) {
+            profile.setShowPhone(update.showPhone());
         }
     }
 

@@ -178,6 +178,52 @@
                 </form>
               }
 
+              @case ('hide-page') {
+                <form class="stack form--rows" (submit)="$event.preventDefault(); confirmHidePage()" novalidate>
+                  <p i18n="@@userHidePageExplain">
+                    La page professionnelle sort de l’annuaire et répond « introuvable » au public. Le professionnel la
+                    voit encore, avec le motif. Le compte, ses annonces et ses messages ne changent pas.
+                  </p>
+                  <app-text-field
+                    label="Motif"
+                    i18n-label="@@userHidePageReason"
+                    type="textarea"
+                    hint="Montré au professionnel sur sa page, et conservé dans l’historique du compte."
+                    i18n-hint="@@userHidePageReasonHint"
+                    [rows]="3"
+                    [maxLength]="maxReason"
+                    [control]="reason"
+                  />
+                  <div class="form-actions">
+                    <button class="btn btn--danger" type="submit" data-action="confirm-hide-page" [disabled]="busy()" i18n="@@userHidePageConfirm">
+                      Masquer la page
+                    </button>
+                    <button class="btn btn--quiet" type="button" (click)="close()" i18n="@@cancel">Annuler</button>
+                  </div>
+                </form>
+              }
+
+              @case ('show-page') {
+                <form class="stack form--rows" (submit)="$event.preventDefault(); confirmShowPage()" novalidate>
+                  <p i18n="@@userShowPageQuestion">Rétablir la page professionnelle ? Elle revient dans l’annuaire.</p>
+                  <app-text-field
+                    label="Note"
+                    i18n-label="@@userNote"
+                    type="textarea"
+                    [optional]="true"
+                    [rows]="2"
+                    [maxLength]="maxReason"
+                    [control]="note"
+                  />
+                  <div class="form-actions">
+                    <button class="btn btn--primary" type="submit" data-action="confirm-show-page" [disabled]="busy()" i18n="@@userShowPageConfirm">
+                      Rétablir la page
+                    </button>
+                    <button class="btn btn--quiet" type="button" (click)="close()" i18n="@@cancel">Annuler</button>
+                  </div>
+                </form>
+              }
+
               @case ('choose-role') {
                 <form class="stack form--rows" (submit)="$event.preventDefault(); chooseRole()" novalidate>
                   <app-select-field
@@ -237,7 +283,27 @@
                   <button class="btn btn--quiet" type="button" data-action="change-role" (click)="openStep('choose-role')" i18n="@@userChangeRole">
                     Changer le rôle
                   </button>
+                  @if (dealerPage(); as page) {
+                    @if (page.hiddenAt) {
+                      <button class="btn btn--quiet" type="button" data-action="show-page" (click)="openStep('show-page')" i18n="@@userShowPage">
+                        Rétablir la page pro
+                      </button>
+                    } @else {
+                      <button class="btn btn--quiet" type="button" data-action="hide-page" (click)="openStep('hide-page')" i18n="@@userHidePage">
+                        Masquer la page pro
+                      </button>
+                    }
+                  }
                 </div>
+                @if (dealerPage(); as page) {
+                  <p class="meta" data-dealer-page>
+                    <ng-container i18n="@@userDealerPage">Page professionnelle :</ng-container>&ngsp;
+                    <a [routerLink]="['/professionnels', page.slug]">/professionnels/{{ page.slug }}</a>
+                    @if (page.hiddenAt) {
+                      — <ng-container i18n="@@userDealerPageHidden">masquée le</ng-container> {{ date(page.hiddenAt) }} : {{ page.hiddenReason }}
+                    }
+                  </p>
+                }
               }
             }
           }

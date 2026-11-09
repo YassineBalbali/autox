@@ -191,7 +191,8 @@ describe('routes', () => {
     // A listing titles itself once it knows which car it is; a static title here would
     // be "Annonce" on every tab.
     // The editor does the same on its edit route: "Modifier « Peugeot 308 »".
-    const selfTitled = ['mon-compte', 'annonces/:id', 'mes-annonces/:id/modifier'];
+    // A dealer's page too, once it knows who the dealer is.
+    const selfTitled = ['mon-compte', 'annonces/:id', 'mes-annonces/:id/modifier', 'professionnels/:slug'];
     const screens = [
       ...routes.filter((route) => route.loadComponent && !selfTitled.includes(route.path ?? '')),
       ...(account.children ?? []),

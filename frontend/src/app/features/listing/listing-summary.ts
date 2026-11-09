@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, viewChild } from '@angular/core';
 
+import { RouterLink } from '@angular/router';
+
 import { PublicListingDetail } from '../../core/api';
 import { NBSP } from '../../shared/format/number';
 import { formatDateFr } from '../../shared/format/date';
@@ -25,7 +27,7 @@ const MONTH_AND_YEAR = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: '
  */
 @Component({
   selector: 'app-listing-summary',
-  imports: [DamageNotice, LeasingOffer, Price, PriceBadge, SellerBadge, Icon, ContactSeller],
+  imports: [RouterLink, DamageNotice, LeasingOffer, Price, PriceBadge, SellerBadge, Icon, ContactSeller],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-summary.html',
   styleUrl: './listing-summary.scss',
@@ -52,6 +54,9 @@ export class ListingSummary {
   });
 
   /** "mars 2026" */
+  /** A professional's public page, when the public can see it. */
+  protected readonly dealerSlug = computed(() => this.listing().seller?.dealerSlug ?? null);
+
   protected readonly memberSince = computed(() => {
     const since = this.listing().seller?.memberSince;
     const date = since ? new Date(since) : null;

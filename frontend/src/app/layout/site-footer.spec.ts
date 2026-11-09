@@ -96,6 +96,8 @@ describe('SiteFooter', () => {
     const paths = FOOTER_COLUMNS.flatMap((column) => column.items).map((item) => item.path);
 
     expect(paths).toContain('signalement');
+    // The directory of professionals, beside the search.
+    expect(paths).toContain('professionnels');
     expect(paths).not.toContain('contact');
     expect(paths).not.toContain('presse');
   });

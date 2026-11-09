@@ -734,6 +734,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/messaging.md` | Messages between buyers and sellers: who may write, what each side sees, unread, rate limits, reports |
 | `docs/leasing.md` | LOA and LLD offers: the rules, what the page says and on what basis, what it does not cover, and that none of it is legal advice |
 | `docs/similar-listings.md` | "Annonces similaires": which listings, in what order, and when none are shown |
+| `docs/dealer-pages.md` | The directory of professionals and dealer pages: who is listed, the slug, the listings as the search with `sellerId`, contact, the phone and e-mail rules, hiding a page |
 | `docs/ai-search.md` | Natural-language search: the prompt, the server-side validation, the evaluation set and its results, the limits |
 | `docs/reference-decisions.md` | The reference endpoints and the public rate limit |
 | `docs/account-and-correctness-decisions.md` | Price history, the password and session endpoints, and three fixed concurrency/keying bugs |

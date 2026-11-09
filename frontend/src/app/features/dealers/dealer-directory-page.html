@@ -1,0 +1,116 @@
+<div class="directory stack--loose stack">
+  <header class="directory__head">
+    <h1 class="page-title" i18n="@@dealersTitle">Annuaire des professionnels</h1>
+    <p class="lede" i18n="@@dealersLede">
+      Les garages et concessionnaires qui vendent sur AutoX, avec toutes leurs annonces en ligne.
+    </p>
+  </header>
+
+  <form class="panel directory__filters" role="search" (submit)="search($event)" aria-label="Rechercher un professionnel" i18n-aria-label="@@dealersSearchLabel">
+    <div class="field directory__field directory__field--name">
+      <label for="pro-nom" i18n="@@dealersName">Nom</label>
+      <input class="input" id="pro-nom" name="q" type="search" maxlength="80" autocomplete="off"
+             placeholder="Garage, concession…" i18n-placeholder="@@dealersNamePlaceholder" [value]="query().q" />
+    </div>
+    <div class="field directory__field">
+      <label for="pro-ville" i18n="@@dealersCity">Ville ou code postal</label>
+      <input class="input" id="pro-ville" name="ville" type="search" maxlength="80" autocomplete="address-level2"
+             [value]="query().ville" />
+    </div>
+    <div class="field directory__field">
+      <label for="pro-departement" i18n="@@dealersDepartement">Département</label>
+      <select class="input" id="pro-departement" (change)="setDepartement($event)">
+        <option value="" [selected]="!query().departement" i18n="@@dealersAllDepartements">Tous</option>
+        @for (option of departements(); track option.code) {
+          <option [value]="option.code" [selected]="option.code === query().departement">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+    <div class="directory__submit">
+      <button class="btn btn--primary" type="submit">
+        <app-icon name="search" [size]="16" [strokeWidth]="2" />
+        <span i18n="@@dealersSearch">Rechercher</span>
+      </button>
+    </div>
+  </form>
+
+  <section class="stack" aria-labelledby="pro-resultats">
+    <div class="directory__bar">
+      <h2 id="pro-resultats" class="directory__count" aria-live="polite">
+        @if (state() === 'ready') {
+          {{ countText() }}
+        } @else {
+          <ng-container i18n="@@dealersCounting">Professionnels</ng-container>
+        }
+      </h2>
+      <div class="directory__sort">
+        <label for="pro-tri" i18n="@@dealersSortLabel">Trier par</label>
+        <select class="input" id="pro-tri" (change)="setSort($event)">
+          <option value="annonces" [selected]="query().tri === 'annonces'" i18n="@@dealersSortListings">Nombre d’annonces</option>
+          <option value="nom" [selected]="query().tri === 'nom'" i18n="@@dealersSortName">Nom</option>
+        </select>
+      </div>
+    </div>
+
+    @switch (state()) {
+      @case ('loading') {
+        <p class="panel meta" aria-busy="true" i18n="@@loading">Chargement…</p>
+      }
+      @case ('error') {
+        <div class="panel stack">
+          <app-alert kind="error">{{ failure() }}</app-alert>
+          <div><button class="btn btn--quiet" type="button" (click)="retry()" i18n="@@retry">Réessayer</button></div>
+        </div>
+      }
+      @case ('ready') {
+        @if (cards().length === 0) {
+          <div class="panel stack" data-empty>
+            @if (filtered()) {
+              <p i18n="@@dealersEmptyFiltered">Aucun professionnel ne correspond à cette recherche.</p>
+              <div>
+                <button class="btn btn--quiet" type="button" (click)="clear()" i18n="@@dealersClear">Effacer la recherche</button>
+              </div>
+            } @else {
+              <p i18n="@@dealersEmpty">Aucun professionnel n’a d’annonce en ligne pour le moment.</p>
+            }
+          </div>
+        } @else {
+          <ul class="directory__grid" role="list">
+            @for (card of cards(); track card.slug) {
+              <li>
+                <a class="dealer-card" [routerLink]="['/professionnels', card.slug]" [attr.data-dealer]="card.slug">
+                  <app-dealer-logo [name]="card.name ?? ''" [logoUrl]="card.logoUrl" />
+                  <span class="dealer-card__text">
+                    <span class="dealer-card__name">{{ card.name }}</span>
+                    @if (place(card); as where) {
+                      <span class="dealer-card__line">
+                        <app-icon name="map-pin" [size]="14" />
+                        {{ where }}
+                      </span>
+                    }
+                    <span class="dealer-card__line dealer-card__listings" data-listings>{{ listings(card) }}</span>
+                    @if (memberSince(card); as since) {
+                      <span class="dealer-card__line meta">{{ since }}</span>
+                    }
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+
+          @if (pages() > 1) {
+            <nav class="directory__pages" aria-label="Pages" i18n-aria-label="@@dealersPages">
+              <button class="btn btn--quiet" type="button" data-page="previous" [disabled]="query().page <= 1"
+                      (click)="goTo(query().page - 1)" i18n="@@dealersPrevious">Précédente</button>
+              <span class="meta" data-page-of>
+                <ng-container i18n="@@dealersPageOf">Page</ng-container> {{ query().page }} / {{ pages() }}
+              </span>
+              <button class="btn btn--quiet" type="button" data-page="next" [disabled]="query().page >= pages()"
+                      (click)="goTo(query().page + 1)" i18n="@@dealersNext">Suivante</button>
+            </nav>
+          }
+        }
+      }
+    }
+  </section>
+</div>

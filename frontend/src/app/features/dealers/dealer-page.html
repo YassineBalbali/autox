@@ -1,0 +1,118 @@
+@switch (state()) {
+  @case ('loading') {
+    <p class="panel meta dealer-loading" aria-busy="true" i18n="@@loading">Chargement…</p>
+  }
+
+  @case ('error') {
+    <div class="panel stack dealer-loading">
+      <app-alert kind="error">{{ failure() }}</app-alert>
+      <div><button class="btn btn--quiet" type="button" (click)="retry()" i18n="@@retry">Réessayer</button></div>
+    </div>
+  }
+
+  @case ('missing') {
+    <app-not-found
+      heading="Ce professionnel n’est pas sur AutoX"
+      i18n-heading="@@dealerMissingTitle"
+      message="L’adresse est peut-être incomplète, ou sa page n’est plus en ligne."
+      i18n-message="@@dealerMissingMessage"
+      linkUrl="/professionnels"
+      linkLabel="Voir l’annuaire des professionnels"
+      i18n-linkLabel="@@dealerMissingLink"
+    />
+  }
+
+  @case ('ready') {
+    @if (dealer(); as dealer) {
+      <article class="dealer" [attr.data-dealer]="dealer.slug">
+        <nav class="dealer__crumbs meta" aria-label="Fil d’Ariane" i18n-aria-label="@@breadcrumb">
+          <a routerLink="/professionnels" i18n="@@dealerBackToDirectory">Annuaire des professionnels</a>
+          <span aria-hidden="true">›</span>
+          <span>{{ dealer.name }}</span>
+        </nav>
+
+        <!-- Only the dealer and administrators get this far on a hidden page. -->
+        @if (dealer.hiddenAt) {
+          <app-alert kind="info" data-hidden>
+            <strong i18n="@@dealerHiddenTitle">Cette page est masquée par la modération.</strong>
+            <ng-container i18n="@@dealerHiddenWhy">Elle n’est visible que par vous et les administrateurs. Motif :</ng-container>
+            {{ dealer.hiddenReason }}
+          </app-alert>
+        }
+
+        <div class="dealer__top">
+          <header class="panel dealer__identity">
+            <div class="dealer__who">
+              <app-dealer-logo [name]="dealer.name ?? ''" [logoUrl]="dealer.logoUrl" [large]="true" />
+              <div class="dealer__names">
+                <h1 class="page-title dealer__name">{{ dealer.name }}</h1>
+                @if (dealer.companyName) {
+                  <p class="meta" data-company>{{ dealer.companyName }}</p>
+                }
+                <ul class="dealer__facts" role="list">
+                  @if (place()) {
+                    <li><app-icon name="map-pin" [size]="16" /> {{ place() }}</li>
+                  }
+                  <li data-listings><app-icon name="car-front" [size]="16" /> {{ listingsText() }}</li>
+                  @if (memberSince()) {
+                    <li><app-icon name="calendar" [size]="16" /> {{ memberSince() }}</li>
+                  }
+                </ul>
+              </div>
+            </div>
+
+            @if (dealer.description) {
+              <!-- Plain text, the dealer's line breaks kept by CSS. Never innerHTML. -->
+              <p class="dealer__description" data-description>{{ dealer.description }}</p>
+            }
+
+            @if (dealer.own) {
+              <p class="dealer__own meta">
+                <ng-container i18n="@@dealerOwnPage">C’est votre page, telle que les visiteurs la voient.</ng-container>
+                <a routerLink="/mon-compte/entreprise" i18n="@@dealerEditPage">Modifier ma page</a>
+              </p>
+            }
+          </header>
+
+          <aside class="dealer__aside stack" aria-label="Contacter ce professionnel" i18n-aria-label="@@dealerContactLabel">
+            <section class="panel stack">
+              <app-contact-seller [dealer]="dealer" />
+            </section>
+
+            @if (dealer.phone || dealer.websiteUrl || dealer.openingHours) {
+              <section class="panel dealer__details">
+                <dl>
+                  @if (dealer.phone) {
+                    <div class="dealer__detail" data-phone>
+                      <dt i18n="@@dealerPhone">Téléphone</dt>
+                      <dd><a [href]="phoneHref()">{{ dealer.phone }}</a></dd>
+                    </div>
+                  }
+                  @if (dealer.websiteUrl) {
+                    <div class="dealer__detail" data-website>
+                      <dt i18n="@@dealerWebsite">Site web</dt>
+                      <!-- nofollow: AutoX vouches for no one's site; noopener: it opens apart from this tab. -->
+                      <dd>
+                        <a [href]="dealer.websiteUrl" target="_blank" rel="nofollow noopener noreferrer">{{ websiteLabel() }}</a>
+                      </dd>
+                    </div>
+                  }
+                  @if (dealer.openingHours) {
+                    <div class="dealer__detail" data-hours>
+                      <dt><app-icon name="clock" [size]="16" /> <span i18n="@@dealerHours">Horaires</span></dt>
+                      <dd class="dealer__hours">{{ dealer.openingHours }}</dd>
+                    </div>
+                  }
+                </dl>
+              </section>
+            }
+          </aside>
+        </div>
+
+        <section class="dealer__listings" aria-label="Annonces de ce professionnel" i18n-aria-label="@@dealerListingsLabel">
+          <app-search-page [sellerId]="dealer.sellerId ?? null" />
+        </section>
+      </article>
+    }
+  }
+}

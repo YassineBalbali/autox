@@ -242,6 +242,11 @@ public class ListingSearchRepository {
             parameters.addValue("model", criteria.model().trim());
         }
 
+        if (criteria.sellerId() != null) {
+            sql.append(" AND l.seller_id = :sellerId");
+            parameters.addValue("sellerId", criteria.sellerId());
+        }
+
         appendFreeText(criteria.q(), sql, parameters);
 
         if (criteria.yearFrom() != null) {

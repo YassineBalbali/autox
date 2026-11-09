@@ -36,12 +36,22 @@ public record UpdateProfileRequest(
             @Size(max = 60) String legalForm,
             @Size(max = 40) String registrationNumber,
             @Size(max = 40) String vatNumber,
-            @Size(max = 255) String websiteUrl,
+            /** http or https only, as on the public page it links from (ck_pro_profile_website). */
+            @Size(max = 255)
+            @Pattern(regexp = "^(https?://[^\\s/$.?#][^\\s]*)?$", flags = Pattern.Flag.CASE_INSENSITIVE,
+                    message = "must be a web address starting with http:// or https://, or empty to clear")
+            String websiteUrl,
             @Size(max = 5000) String description,
             @Size(max = 160) String addressLine1,
             @Size(max = 160) String addressLine2,
 
             @Pattern(regexp = "^(\\+[1-9][0-9]{6,18})?$", message = "must be in international format")
-            String contactPhone) {
+            String contactPhone,
+
+            /** Free text for the public page. */
+            @Size(max = 1000) String openingHours,
+
+            /** Whether the contact phone appears on the public page. Null leaves it as it is. */
+            Boolean showPhone) {
     }
 }

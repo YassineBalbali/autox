@@ -60,7 +60,14 @@
         <app-icon [name]="isProfessional() ? 'store' : 'user'" [size]="20" />
       </span>
       <div class="seller__identity">
-        <p class="seller__name">{{ listing().seller?.displayName }}</p>
+        @if (dealerSlug(); as slug) {
+          <!-- A professional with a public page: their name leads to it. -->
+          <a class="seller__name seller__name--link" [routerLink]="['/professionnels', slug]" data-dealer-link>
+            {{ listing().seller?.displayName }}
+          </a>
+        } @else {
+          <p class="seller__name">{{ listing().seller?.displayName }}</p>
+        }
         <app-seller-badge [role]="listing().seller?.role" [full]="true" />
       </div>
     </div>
@@ -84,5 +91,11 @@
         </div>
       }
     </dl>
+    @if (dealerSlug(); as slug) {
+      <a class="btn btn--quiet btn--block seller__all" [routerLink]="['/professionnels', slug]" data-dealer-listings>
+        <app-icon name="store" [size]="16" />
+        <span i18n="@@listingSellerAll">Voir toutes ses annonces</span>
+      </a>
+    }
   </section>
 </section>

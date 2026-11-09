@@ -2,9 +2,21 @@
   <header>
     <h1 class="page-title" i18n="@@companyTitle">Informations de l’entreprise</h1>
     <p class="lede" i18n="@@companyLede">
-      Ces informations apparaissent sur vos annonces et permettent aux acheteurs de vous
-      identifier.
+      Ces informations apparaissent sur votre page professionnelle et sur vos annonces, et permettent aux
+      acheteurs de vous identifier. Votre adresse e-mail n’y figure jamais.
     </p>
+    @if (pageSlug(); as slug) {
+      <p class="company__page" data-preview>
+        <a class="btn btn--quiet" [routerLink]="['/professionnels', slug]" i18n="@@companySeePage">Voir ma page publique</a>
+        <span class="meta">/professionnels/{{ slug }}</span>
+      </p>
+    }
+    @if (pageHidden()) {
+      <app-alert kind="info" data-hidden>
+        <ng-container i18n="@@companyPageHidden">Votre page est masquée par la modération et n’est plus dans l’annuaire. Motif :</ng-container>
+        {{ hiddenReason() }}
+      </app-alert>
+    }
   </header>
 
   @if (loadFailure()) {
@@ -25,6 +37,8 @@
             Les informations de l’entreprise ont été enregistrées.
           </app-alert>
         }
+
+        <app-company-logo />
 
         <app-text-field
           label="Raison sociale"
@@ -70,6 +84,8 @@
           type="url"
           inputMode="url"
           autocomplete="url"
+          hint="Affiché sur votre page professionnelle, par exemple www.mon-garage.fr."
+          i18n-hint="@@fieldWebsiteUrlHint"
           [optional]="true"
           [maxLength]="maxLengths.websiteUrl"
           [control]="form.controls.websiteUrl"
@@ -108,10 +124,33 @@
           [rejectedByServer]="state.rejected('professional.contactPhone')"
         />
 
+        <div class="field">
+          <span class="field__label" aria-hidden="true"></span>
+          <label class="check">
+            <input type="checkbox" [formControl]="form.controls.showPhone" data-field="showPhone" />
+            <span i18n="@@fieldShowPhone">Afficher ce numéro sur ma page professionnelle</span>
+          </label>
+        </div>
+
+        <app-text-field
+          label="Horaires d’ouverture"
+          i18n-label="@@fieldOpeningHours"
+          type="textarea"
+          hint="Tels qu’ils s’afficheront, par exemple « Lundi au samedi : 9 h – 19 h »."
+          i18n-hint="@@fieldOpeningHoursHint"
+          [rows]="3"
+          [optional]="true"
+          [maxLength]="maxLengths.openingHours"
+          [control]="form.controls.openingHours"
+          [rejectedByServer]="state.rejected('professional.openingHours')"
+        />
+
         <app-text-field
           label="Présentation"
           i18n-label="@@fieldDescription"
           type="textarea"
+          hint="Le texte de votre page professionnelle : votre activité, vos services."
+          i18n-hint="@@fieldDescriptionHint"
           [rows]="5"
           [optional]="true"
           [maxLength]="maxLengths.description"

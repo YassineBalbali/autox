@@ -118,7 +118,12 @@ public class AccountDeletionService {
         jdbc.update("DELETE FROM refresh_token WHERE user_id = :id", params);
         jdbc.update("DELETE FROM email_verification_token WHERE user_id = :id", params);
         jdbc.update("DELETE FROM password_reset_token WHERE user_id = :id", params);
+        // The company's logo goes from storage with the profile, once the deletion is committed.
+        List<String> logo = jdbc.queryForList(
+                "SELECT logo_storage_key FROM pro_profile WHERE user_id = :id AND logo_storage_key IS NOT NULL",
+                params, String.class);
         jdbc.update("DELETE FROM pro_profile WHERE user_id = :id", params);
+        listings.deleteObjectsAfterCommit(logo);
         jdbc.update("DELETE FROM throttle_counter WHERE scope_key IN (:key, lower(:email))",
                 params.addValue("key", userId.toString()));
 

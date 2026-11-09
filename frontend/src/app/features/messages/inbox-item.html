@@ -19,13 +19,22 @@
       <time class="item__when" [attr.datetime]="item().lastMessageAt" [attr.title]="whenFull()">{{ when() }}</time>
     </span>
     <span class="item__listing">
-      @if (item().role === 'SELLER') {
-        <span class="item__role" i18n="@@messagesYourListing">Votre annonce ·</span>
-      }
-      @if (item().listing; as listing) {
-        {{ listing.title }}
+      @if (item().dealerPage) {
+        <!-- Written from the dealer's page, about no listing in particular. -->
+        @if (item().role === 'SELLER') {
+          <span data-dealer-page i18n="@@messagesFromYourPage">Depuis votre page professionnelle</span>
+        } @else {
+          <span data-dealer-page i18n="@@messagesFromDealerPage">Depuis sa page professionnelle</span>
+        }
       } @else {
-        <span data-listing-gone i18n="@@messagesListingGone">Annonce supprimée</span>
+        @if (item().role === 'SELLER') {
+          <span class="item__role" i18n="@@messagesYourListing">Votre annonce ·</span>
+        }
+        @if (item().listing; as listing) {
+          {{ listing.title }}
+        } @else {
+          <span data-listing-gone i18n="@@messagesListingGone">Annonce supprimée</span>
+        }
       }
     </span>
     <span class="item__preview" [class.item__preview--hidden]="item().lastMessage?.hidden">{{ preview() }}</span>

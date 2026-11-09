@@ -106,6 +106,32 @@ public class MessagingService {
         return conversation(buyerId, conversationId);
     }
 
+    /**
+     * A visitor writes to a dealer from the dealer's page: starts the conversation, or continues the
+     * one they already have from there. Whether the page may be written from (a dealer whose page
+     * is public) is decided by the caller, {@code DealerService}.
+     */
+    @Transactional
+    public ConversationDetail contactDealer(UUID buyerId, UUID sellerId, String body) {
+        if (sellerId.equals(buyerId)) {
+            throw ApiException.forbidden("This is your own page.");
+        }
+        var existing = repository.dealerConversationId(sellerId, buyerId);
+        if (existing.isPresent()) {
+            return reply(buyerId, existing.get(), body);
+        }
+        requireOpenAccount(buyerId);
+        emailVerification.requireVerified(buyerId);
+        String text = clean(body);
+        allow(buyerId, true);
+
+        Instant now = Instant.now();
+        UUID conversationId = repository.createDealerConversation(sellerId, buyerId, now);
+        repository.addMessage(conversationId, buyerId, text, now);
+        notifier.messageSent(conversationId, buyerId);
+        return conversation(buyerId, conversationId);
+    }
+
     /** Either side writes in a conversation they are part of. */
     @Transactional
     public ConversationDetail reply(UUID senderId, UUID conversationId, String body) {
@@ -187,7 +213,8 @@ public class MessagingService {
                         row.erased(),
                         row.reportedByReader(),
                         row.sentAt())).toList(),
-                omitted);
+                omitted,
+                dealerPage(header));
     }
 
     // ---- moderation -------------------------------------------------------------------
@@ -286,7 +313,14 @@ public class MessagingService {
                 last,
                 row.unread(),
                 header.canReply(),
-                header.lastMessageAt());
+                header.lastMessageAt(),
+                dealerPage(header));
+    }
+
+    private static ConversationSummary.DealerPageRef dealerPage(MessagingRepository.Header header) {
+        return header.viaDealerPage() && header.dealerSlug() != null
+                ? new ConversationSummary.DealerPageRef(header.dealerSlug())
+                : null;
     }
 
     private static String preview(String body) {

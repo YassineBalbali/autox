@@ -23,7 +23,10 @@ public class AdminUserAction extends CreatedEntity {
     public enum Type {
         SUSPEND,
         REACTIVATE,
-        CHANGE_ROLE
+        CHANGE_ROLE,
+        /** A dealer's public page taken off the site; a reason is required, as for a suspension. */
+        HIDE_DEALER_PAGE,
+        SHOW_DEALER_PAGE
     }
 
     @Column(name = "admin_id", nullable = false, updatable = false)

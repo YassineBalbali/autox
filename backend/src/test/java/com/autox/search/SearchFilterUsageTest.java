@@ -18,7 +18,7 @@ class SearchFilterUsageTest {
                                                   List<LeasingType> leasingType, Long monthlyMax) {
         return new ListingSearchCriteria(makeId, null, make, null, null, null, priceMin, priceMax, "EUR", null, null,
                 fuel, null, null, null, null, null, null, null, null, null, null, q, null, damage, offer,
-                leasingType, null, monthlyMax, null, null, null, null);
+                leasingType, null, monthlyMax, null, null, null, null, null);
     }
 
     @Test

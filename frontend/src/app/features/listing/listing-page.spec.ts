@@ -228,6 +228,20 @@ describe('ListingPage', () => {
       await load({ ...LISTING, seller: { displayName: 'Camille R.', role: 'PARTICULIER' } });
 
       expect(root.querySelector('.seller app-seller-badge')?.textContent?.trim()).toBe('Particulier');
+      // A private seller has no page: their name leads nowhere.
+      expect(root.querySelector('[data-dealer-link]')).toBeNull();
+      expect(root.querySelector('[data-dealer-listings]')).toBeNull();
+    });
+
+    it('leads from a professional seller’s name to their page, with all their listings', async () => {
+      await load({ ...LISTING, seller: { ...LISTING.seller, dealerSlug: 'garage-bellevue' } });
+
+      const name = root.querySelector('.seller [data-dealer-link]') as HTMLAnchorElement;
+      expect(name.getAttribute('href')).toBe('/professionnels/garage-bellevue');
+      expect(name.textContent?.trim()).toBe('Garage Bellevue');
+      const all = root.querySelector('.seller [data-dealer-listings]') as HTMLAnchorElement;
+      expect(all.getAttribute('href')).toBe('/professionnels/garage-bellevue');
+      expect(all.textContent?.trim()).toBe('Voir toutes ses annonces');
     });
 
     it('keeps title, price, contact and seller together in the one panel that follows the page', async () => {

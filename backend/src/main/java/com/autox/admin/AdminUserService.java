@@ -122,6 +122,51 @@ public class AdminUserService {
     }
 
     /**
+     * Hides a dealer's public page: the directory leaves them out and the page answers 404 to the
+     * public. The account, its listings and its conversations are not touched; the dealer still
+     * sees their page, with the reason.
+     */
+    @Transactional
+    public AdminUserActionResult hideDealerPage(UUID actorId, UUID userId, String reason) {
+        List<AppUser> locked = users.lockAdministratorsAnd(userId);
+        AppUser target = targetIn(locked, userId);
+        AppUser actor = requirePermitted(actorId, target, locked, false);
+        ProProfile profile = dealerPageOf(target);
+        if (profile.getHiddenAt() != null) {
+            throw ApiException.conflict("This dealer's page is already hidden.");
+        }
+        profile.hide(reason.trim(), java.time.Instant.now());
+        record(actor, target, AdminUserAction.Type.HIDE_DEALER_PAGE, reason.trim(), "VISIBLE", "HIDDEN");
+        log.warn("Admin {} hid the dealer page of user {}", actor.getId(), target.getId());
+        proProfiles.flush();
+        return result(target, 0);
+    }
+
+    @Transactional
+    public AdminUserActionResult showDealerPage(UUID actorId, UUID userId, String note) {
+        List<AppUser> locked = users.lockAdministratorsAnd(userId);
+        AppUser target = targetIn(locked, userId);
+        AppUser actor = requirePermitted(actorId, target, locked, false);
+        ProProfile profile = dealerPageOf(target);
+        if (profile.getHiddenAt() == null) {
+            throw ApiException.conflict("This dealer's page is not hidden.");
+        }
+        profile.show();
+        record(actor, target, AdminUserAction.Type.SHOW_DEALER_PAGE, blankToNull(note), "HIDDEN", "VISIBLE");
+        log.warn("Admin {} put back the dealer page of user {}", actor.getId(), target.getId());
+        proProfiles.flush();
+        return result(target, 0);
+    }
+
+    /** A professional's company profile, which is their page. Anyone else has none to hide. */
+    private ProProfile dealerPageOf(AppUser target) {
+        if (target.getRole() != UserRole.PROFESSIONNEL) {
+            throw ApiException.conflict("Only a professional account has a public page.");
+        }
+        return proProfiles.findByUserId(target.getId()).orElseThrow(() -> ApiException.notFound("Company profile"));
+    }
+
+    /**
      * Changes an account's role. Takes effect at the account's next token: at the latest when
      * its current access token runs out and is refreshed.
      */
@@ -235,7 +280,10 @@ public class AdminUserService {
                 actions.findLatestForTarget(user.getId(), Limit.of(HISTORY_LIMIT)).stream()
                         .map(AdminUserActionEntry::from)
                         .toList(),
-                accessTokenTtlSeconds);
+                accessTokenTtlSeconds,
+                profile == null || user.getRole() != UserRole.PROFESSIONNEL ? null
+                        : new AdminUsers.DealerPageState(reads.dealerSlug(user.getId()), profile.getHiddenAt(),
+                                profile.getHiddenReason()));
     }
 
     private static String blankToNull(String text) {

@@ -48,3 +48,12 @@
   font-family: var(--font-mono);
   font-size: var(--t-2xs);
 }
+
+// The company page: the way to the public page, under the lede.
+.company__page {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin: var(--s-2) 0 0;
+}

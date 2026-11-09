@@ -569,6 +569,39 @@ class DemoDataIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     @ExtendWith(OutputCaptureExtension.class)
+    @DisplayName("the demo dealers' pages get a description and opening hours, through the ledger, once, and no logo")
+    void dealerPages(CapturedOutput output) throws Exception {
+        demoData.seed();
+        assertThat(output).contains("Demo dealer pages: gave 4 of 4 dealers a description and opening hours; "
+                + "nothing else changed.");
+        // A visitor's company with the same address pattern is out of the ledger, and out of reach.
+        String visitor = "garage-bellevue-visiteur@autox.test";
+        createUser(visitor, com.autox.user.UserRole.PROFESSIONNEL, com.autox.user.UserStatus.ACTIVE);
+        jdbcTemplate.update("""
+                INSERT INTO pro_profile (user_id, company_name) SELECT id, 'Visiteur SARL' FROM app_user WHERE email = ?""",
+                visitor);
+
+        mockMvc.perform(get("/api/v1/dealers/garage-bellevue"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description").value(org.hamcrest.Matchers.startsWith("Garage indépendant à Lyon")))
+                .andExpect(jsonPath("$.openingHours").value(org.hamcrest.Matchers.containsString("Samedi : 9 h – 12 h")))
+                .andExpect(jsonPath("$.demo").value(true))
+                .andExpect(jsonPath("$.logoUrl").doesNotExist());
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM pro_profile WHERE logo_storage_key IS NOT NULL", Integer.class)).isZero();
+
+        List<java.util.Map<String, Object>> before = jdbcTemplate.queryForList(
+                "SELECT * FROM pro_profile ORDER BY user_id");
+        assertThat(demoData.completeDealerPages()).isZero();
+        assertThat(output).contains("Demo dealer pages: complete, nothing changed (4 dealers).");
+        assertThat(jdbcTemplate.queryForList("SELECT * FROM pro_profile ORDER BY user_id")).isEqualTo(before);
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT description FROM pro_profile p JOIN app_user u ON u.id = p.user_id WHERE u.email = ?""",
+                String.class, visitor)).isNull();
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
     @DisplayName("the approval says what it did, and a second start finds nothing to do")
     void approvalIsIdempotentAndSaysSo(CapturedOutput output) {
         demoData.seed();

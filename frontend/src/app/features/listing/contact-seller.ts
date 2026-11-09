@@ -11,7 +11,9 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
-import { MessagesService, PublicListingDetail } from '../../core/api';
+import { Observable } from 'rxjs';
+
+import { ConversationDetail, DealerPage, DealersService, MessagesService, PublicListingDetail } from '../../core/api';
 import { RETURN_URL_PARAM, SIGN_IN_ROUTE } from '../../core/auth/auth.routes';
 import { AuthService } from '../../core/auth/auth.service';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
@@ -29,6 +31,11 @@ import { MESSAGE_MAX_LENGTH, sendFailure } from '../messages/messaging';
  * first, what to do about it; anyone else, a message form that opens in place with a first line
  * already written; and sent, a confirmation and the way to the conversation. Writing again continues the same conversation, so there is no state for
  * "already contacted".
+ *
+ * <p>Two things can be written to: a listing's seller, about the listing, and a dealer from their
+ * page, about nothing in particular. Give one of `listing` and `dealer`. The form, the rules and
+ * the states are the same; only the first line, the way back after signing in, and where the
+ * message goes differ.
  */
 @Component({
   selector: 'app-contact-seller',
@@ -40,22 +47,48 @@ import { MESSAGE_MAX_LENGTH, sendFailure } from '../messages/messaging';
 export class ContactSeller {
   private readonly auth = inject(AuthService);
   private readonly api = inject(MessagesService);
+  private readonly dealers = inject(DealersService);
   private readonly errors = inject(ErrorMessageService);
   private readonly router = inject(Router);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  readonly listing = input.required<PublicListingDetail>();
+  readonly listing = input<PublicListingDetail | null>(null);
+  /** A dealer's page: the message goes to the dealer, from there. */
+  readonly dealer = input<DealerPage | null>(null);
+
+  /** Who is written to, whichever of the two was given. */
+  protected readonly target = computed(() => {
+    const dealer = this.dealer();
+    if (dealer) {
+      return {
+        sellerId: dealer.sellerId,
+        name: dealer.name,
+        demo: dealer.demo === true,
+        back: `/professionnels/${dealer.slug}`,
+        greeting: `Bonjour, j’ai vu votre page sur AutoX. `,
+      };
+    }
+    const listing = this.listing();
+    return {
+      sellerId: listing?.seller?.id,
+      name: listing?.seller?.displayName,
+      demo: listing?.seller?.demo === true,
+      back: `/annonces/${listing?.id}`,
+      greeting: `Bonjour, votre annonce « ${listing?.title} » m’intéresse. Est-elle toujours disponible ?`,
+    };
+  });
 
   protected readonly maxLength = MESSAGE_MAX_LENGTH;
   protected readonly signInRoute = SIGN_IN_ROUTE;
-  protected readonly signInQuery = computed(() => ({ [RETURN_URL_PARAM]: `/annonces/${this.listing().id}` }));
+  protected readonly signInQuery = computed(() => ({ [RETURN_URL_PARAM]: this.target().back }));
 
   protected readonly signedIn = this.auth.isAuthenticated;
   /** Known only once the profile has loaded; until then the form is offered, and the API refuses. */
   protected readonly ownListing = computed(() => {
     const me = this.auth.user()?.id;
-    return !!me && me === this.listing().seller?.id;
+    return !!me && me === this.target().sellerId;
   });
+  protected readonly dealerPage = computed(() => this.dealer() !== null);
 
   /** This account cannot write yet. Known once the profile has loaded, as above. */
   protected readonly mustVerify = computed(() => this.auth.user()?.emailVerificationPending === true);
@@ -102,7 +135,7 @@ export class ContactSeller {
   protected start(): void {
     if (!this.body()) {
       // A first line to edit, not a blank box: most buyers ask the same thing first.
-      this.body.set(`Bonjour, votre annonce « ${this.listing().title} » m’intéresse. Est-elle toujours disponible ?`);
+      this.body.set(this.target().greeting);
     }
     this.failure.set(null);
     this.sentTo.set(null);
@@ -120,13 +153,13 @@ export class ContactSeller {
 
   protected send(event: Event): void {
     event.preventDefault();
-    const id = this.listing().id;
-    if (!this.canSend() || !id) {
+    const request = this.request(this.trimmed());
+    if (!this.canSend() || !request) {
       return;
     }
     this.sending.set(true);
     this.failure.set(null);
-    this.api.contactSeller({ listingId: id, sendMessageRequest: { body: this.trimmed() } }).subscribe({
+    request.subscribe({
       next: (conversation) => {
         this.sending.set(false);
         this.open.set(false);
@@ -138,5 +171,15 @@ export class ContactSeller {
         this.failure.set(sendFailure(error, this.errors));
       },
     });
+  }
+
+  /** The dealer's own endpoint from their page, the listing's otherwise. */
+  private request(body: string): Observable<ConversationDetail> | null {
+    const dealer = this.dealer();
+    if (dealer?.slug) {
+      return this.dealers.contactDealer({ slug: dealer.slug, sendMessageRequest: { body } });
+    }
+    const id = this.listing()?.id;
+    return id ? this.api.contactSeller({ listingId: id, sendMessageRequest: { body } }) : null;
   }
 }

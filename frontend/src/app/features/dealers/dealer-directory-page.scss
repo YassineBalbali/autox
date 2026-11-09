@@ -1,0 +1,145 @@
+@use '../../../styles/tokens' as t;
+
+// The directory of professionals: a filter panel, then cards in a grid that is one column on a phone.
+
+.directory {
+  padding-block: var(--s-5);
+}
+
+.directory__filters {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr auto;
+  gap: var(--s-3);
+  align-items: end;
+}
+
+.directory__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+
+  label {
+    font-size: var(--t-sm);
+    color: var(--c-ink-soft);
+  }
+
+  .input {
+    width: 100%;
+  }
+}
+
+.directory__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.directory__count {
+  margin: 0;
+  font-size: var(--t-lg);
+  line-height: var(--lh-tight);
+}
+
+.directory__sort {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+}
+
+.directory__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dealer-card {
+  display: flex;
+  gap: var(--s-3);
+  align-items: flex-start;
+  height: 100%;
+  padding: var(--s-3);
+  border: var(--divider);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: var(--shadow-raised);
+  transition: box-shadow 120ms ease;
+
+  &:hover {
+    box-shadow: var(--shadow-raised-hover);
+  }
+
+  &:hover .dealer-card__name {
+    color: var(--c-accent);
+  }
+}
+
+.dealer-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+}
+
+.dealer-card__name {
+  font-size: var(--t-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  overflow-wrap: anywhere;
+}
+
+.dealer-card__line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+}
+
+.dealer-card__listings {
+  color: var(--c-ink);
+  font-weight: var(--fw-semibold);
+}
+
+.directory__pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+}
+
+// Tablets: the name across the top, the rest below it.
+@media (max-width: calc(t.$bp-lg - 0.02px)) {
+  .directory__filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .directory__field--name {
+    grid-column: 1 / -1;
+  }
+}
+
+// Phones: one field a row, and the button the width of the screen.
+@media (max-width: calc(t.$bp-md - 0.02px)) {
+  .directory__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .directory__submit .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .directory__grid {
+    grid-template-columns: 1fr;
+  }
+}

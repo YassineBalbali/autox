@@ -36,16 +36,20 @@
       "description": "Moderation. Requires the ADMIN role."
     },
     {
+      "name": "Dealers",
+      "description": "The directory of professionals and their public pages. Reading needs no authentication; writing to a dealer does."
+    },
+    {
       "name": "La Cote",
       "description": "Public valuation of a described car against live listings. No authentication."
     },
     {
-      "name": "Listings (public)",
-      "description": "The buyer-facing shop window. No authentication."
-    },
-    {
       "name": "Profile",
       "description": "The signed-in account. Requires authentication."
+    },
+    {
+      "name": "Listings (public)",
+      "description": "The buyer-facing shop window. No authentication."
     },
     {
       "name": "Natural-language search",
@@ -3803,6 +3807,423 @@
           }
         ]
       }
+    },
+    "/api/v1/me/company/logo": {
+      "post": {
+        "tags": [
+          "Profile"
+        ],
+        "operationId": "requestLogoUpload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageUploadTicket"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Profile"
+        ],
+        "operationId": "removeLogo",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/company/logo/{uploadId}/confirm": {
+      "post": {
+        "tags": [
+          "Profile"
+        ],
+        "operationId": "confirmLogoUpload",
+        "parameters": [
+          {
+            "name": "uploadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dealers/{slug}/conversation": {
+      "post": {
+        "tags": [
+          "Dealers"
+        ],
+        "summary": "Writes to the dealer through AutoX's messaging: starts the conversation, or continues it.",
+        "description": "Writes to the dealer through AutoX's messaging: starts the conversation, or continues it.",
+        "operationId": "contactDealer",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,72}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}/dealer-page/show": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "showDealerPage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShowDealerPageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserActionResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/dealer-page/hide": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Takes a dealer's public page off the site: a 404 to the public, the dealer and their listings untouched.",
+        "description": "Takes a dealer's public page off the site: a 404 to the public, the dealer and their listings untouched.",
+        "operationId": "hideDealerPage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HideDealerPageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserActionResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/dealers": {
+      "get": {
+        "tags": [
+          "Dealers"
+        ],
+        "summary": "Professionals with at least one listing online.",
+        "description": "Professionals with at least one listing online.",
+        "operationId": "dealerDirectory",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "part of the name, accents and case aside",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "minLength": 0
+            }
+          },
+          {
+            "name": "departement",
+            "in": "query",
+            "description": "\"33\", \"974\", \"2A\"",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{2,3}|2[AaBb])$"
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "description": "part of the town's name, or the start of its postal code",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "minLength": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DealerSort",
+              "default": "LISTINGS"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 24,
+              "maximum": 48,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealerDirectory"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dealers/{slug}": {
+      "get": {
+        "tags": [
+          "Dealers"
+        ],
+        "summary": "A dealer's page: 404 when the public may not see it, except to the dealer and administrators.",
+        "description": "A dealer's page: 404 when the public may not see it, except to the dealer and administrators.",
+        "operationId": "dealerPage",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,72}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealerPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4165,6 +4586,10 @@
             "type": "integer",
             "format": "int32",
             "minimum": 0
+          },
+          "sellerId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -5240,6 +5665,9 @@
           "earlierOmitted": {
             "type": "boolean",
             "description": "true when the conversation has more messages than are returned\n                       (<code>MessagingService.MESSAGES_SHOWN</code>); the oldest are left out"
+          },
+          "dealerPage": {
+            "$ref": "#/components/schemas/DealerPageRef"
           }
         }
       },
@@ -5578,7 +6006,9 @@
         "enum": [
           "SUSPEND",
           "REACTIVATE",
-          "CHANGE_ROLE"
+          "CHANGE_ROLE",
+          "HIDE_DEALER_PAGE",
+          "SHOW_DEALER_PAGE"
         ]
       },
       "AdminUserActivity": {
@@ -5698,6 +6128,9 @@
           "accessTokenTtlSeconds": {
             "type": "integer",
             "format": "int64"
+          },
+          "dealerPage": {
+            "$ref": "#/components/schemas/DealerPageState"
           }
         }
       },
@@ -5963,7 +6396,8 @@
           "websiteUrl": {
             "type": "string",
             "maxLength": 255,
-            "minLength": 0
+            "minLength": 0,
+            "pattern": "^(https?://[^\\s/$.?#][^\\s]*)?$"
           },
           "description": {
             "type": "string",
@@ -5983,6 +6417,14 @@
           "contactPhone": {
             "type": "string",
             "pattern": "^(\\+[1-9][0-9]{6,18})?$"
+          },
+          "openingHours": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 0
+          },
+          "showPhone": {
+            "type": "boolean"
           }
         }
       },
@@ -6051,6 +6493,25 @@
             "type": "string"
           },
           "contactPhone": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "openingHours": {
+            "type": "string"
+          },
+          "showPhone": {
+            "type": "boolean"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "hiddenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hiddenReason": {
             "type": "string"
           }
         }
@@ -7017,7 +7478,7 @@
       },
       "SellerView": {
         "type": "object",
-        "description": "<code>role</code> tells a buyer whether this is a dealer or a private sale. <code>demo</code> says\n the seller is one of the demo seed's accounts, which nobody signs in to, so a message to\n them will not be answered. Nothing more.",
+        "description": "<code>role</code> tells a buyer whether this is a dealer or a private sale. <code>demo</code> says\n the seller is one of the demo seed's accounts, which nobody signs in to, so a message to\n them will not be answered. <code>dealerSlug</code> is a professional's public page,\n /professionnels/{slug}, when the public can see it; null otherwise. Nothing more.",
         "properties": {
           "id": {
             "type": "string",
@@ -7035,6 +7496,9 @@
           },
           "demo": {
             "type": "boolean"
+          },
+          "dealerSlug": {
+            "type": "string"
           }
         }
       },
@@ -7195,7 +7659,7 @@
           },
           "listing": {
             "$ref": "#/components/schemas/ListingRef",
-            "description": "null once the listing no longer exists; the other party then shows\n                    \"Compte supprimé\" if it was their account that went"
+            "description": "null once the listing no longer exists; the other party then shows\n                    \"Compte supprimé\" if it was their account that went. Null as well for a\n                    conversation started from a dealer's page, which <code>dealerPage</code> says"
           },
           "counterpart": {
             "$ref": "#/components/schemas/Party"
@@ -7215,6 +7679,10 @@
           "lastMessageAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "dealerPage": {
+            "$ref": "#/components/schemas/DealerPageRef",
+            "description": "set when the visitor wrote from the dealer's page rather than about a listing"
           }
         }
       },
@@ -8265,6 +8733,229 @@
           "message": {
             "type": "string",
             "example": "must be a well-formed email address"
+          }
+        }
+      },
+      "DealerPageRef": {
+        "type": "object",
+        "description": "The dealer's page the conversation was started from: /professionnels/{slug}.",
+        "properties": {
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "DealerPageState": {
+        "type": "object",
+        "description": "Where a dealer's public page is, and whether an administrator has hidden it.",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "hiddenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hiddenReason": {
+            "type": "string"
+          }
+        }
+      },
+      "ShowDealerPageRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        }
+      },
+      "HideDealerPageRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "DealerSort": {
+        "type": "string",
+        "description": "How the directory of professionals is ordered.",
+        "enum": [
+          "LISTINGS",
+          "NAME"
+        ]
+      },
+      "DealerCard": {
+        "type": "object",
+        "description": "One professional in the directory.",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "logoUrl": {
+            "type": "string",
+            "description": "null without a logo: the page shows the name's initials instead"
+          },
+          "city": {
+            "type": "string",
+            "description": "where the dealer is: their company's place, otherwise where most of their\n                        listings online are; null when neither says"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "departement": {
+            "type": "string",
+            "description": "read from the postal code: \"33\", \"974\", \"2A\""
+          },
+          "saleListings": {
+            "type": "integer",
+            "format": "int32",
+            "description": "listings for sale online now"
+          },
+          "leasingListings": {
+            "type": "integer",
+            "format": "int32",
+            "description": "leasing offers online now"
+          },
+          "memberSince": {
+            "type": "string",
+            "format": "date-time",
+            "description": "when the account was created"
+          }
+        }
+      },
+      "DealerDirectory": {
+        "type": "object",
+        "description": "A page of the directory, and the départements it can be narrowed to.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DealerCard"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "departements": {
+            "type": "array",
+            "description": "every département with a dealer in the directory, whatever the filters, with\n                     how many: the choices of the département filter",
+            "items": {
+              "$ref": "#/components/schemas/DepartementCount"
+            }
+          }
+        }
+      },
+      "DepartementCount": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "dealers": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DealerPage": {
+        "type": "object",
+        "description": "A professional's public page.\n\n <p>The way to reach them is AutoX's messaging, and a phone number only when they chose to show\n one. Never their e-mail address: it is not in this record, so it cannot be shown by mistake.",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "sellerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "the account, for the listings: the search with <code>sellerId</code> set"
+          },
+          "name": {
+            "type": "string"
+          },
+          "companyName": {
+            "type": "string",
+            "description": "the registered name, when it differs from the name shown"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "departement": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "openingHours": {
+            "type": "string"
+          },
+          "websiteUrl": {
+            "type": "string",
+            "description": "http or https only"
+          },
+          "phone": {
+            "type": "string",
+            "description": "the company's contact number, only when the dealer chose to show it"
+          },
+          "memberSince": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "saleListings": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leasingListings": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "demo": {
+            "type": "boolean",
+            "description": "one of the demo seed's dealers, which nobody answers"
+          },
+          "own": {
+            "type": "boolean",
+            "description": "the caller's own page: they can see it hidden, and cannot write to themselves"
+          },
+          "hiddenAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "set while an administrator has hidden the page; only the dealer and\n                     administrators are shown a hidden page, and only they get this and the reason"
+          },
+          "hiddenReason": {
+            "type": "string"
           }
         }
       }

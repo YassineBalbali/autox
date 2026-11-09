@@ -106,6 +106,47 @@ final class DemoCatalogue {
             new Seller("sarah", UserRole.PARTICULIER, "Sarah B.", null, null),
             new Seller("karim", UserRole.PARTICULIER, "Karim D.", null, null));
 
+    /**
+     * What the demo dealers' pages say about them: a description and opening hours. Invented, like
+     * the dealers. No logo: a page without one shows the name's initials, and a drawn logo would be
+     * a brand nobody owns.
+     */
+    record DealerPageText(String description, String openingHours) {
+    }
+
+    static final java.util.Map<String, DealerPageText> DEALER_PAGES = java.util.Map.of(
+            "garage-bellevue", new DealerPageText("""
+                    Garage indépendant à Lyon depuis plus de vingt ans. Nous vendons des citadines et des \
+                    compactes d’occasion, révisées dans notre atelier avant la vente, avec le carnet \
+                    d’entretien à jour.
+
+                    Essai sur rendez-vous, reprise de votre véhicule possible.""",
+                    """
+                    Lundi au vendredi : 8 h 30 – 12 h, 14 h – 19 h
+                    Samedi : 9 h – 12 h"""),
+            "auto-atlantique", new DealerPageText("""
+                    Deux sites en Gironde, à Bordeaux et à Mérignac. Véhicules récents et offres de \
+                    location avec option d’achat, berlines, SUV et utilitaires.
+
+                    Chaque véhicule est contrôlé et garanti 12 mois. Financement sur place.""",
+                    """
+                    Lundi au samedi : 9 h – 19 h
+                    Dimanche : fermé"""),
+            "sud-automobiles", new DealerPageText("""
+                    Spécialiste du véhicule d’occasion à Marseille et Aix-en-Provence : hybrides, \
+                    électriques et diesels récents, à prix affichés.
+
+                    Livraison possible dans toute la région.""",
+                    """
+                    Lundi au vendredi : 9 h – 12 h 30, 14 h – 19 h
+                    Samedi : 9 h – 18 h"""),
+            "nord-vo", new DealerPageText("""
+                    Véhicules d’occasion dans la métropole lilloise, à Lille et à Roubaix. Du premier \
+                    prix au véhicule premium, avec historique et contrôle technique de moins de six mois.""",
+                    """
+                    Mardi au samedi : 9 h – 12 h, 13 h 30 – 19 h
+                    Lundi : sur rendez-vous"""));
+
     /** The sellers a generated listing may belong to who are private individuals. */
     private static final java.util.Set<String> PRIVATE_SELLERS = java.util.Set.of("ines", "julien", "sarah", "karim");
 

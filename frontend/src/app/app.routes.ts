@@ -59,6 +59,21 @@ export const routes: Routes = [
     loadComponent: () => import('./features/listing/listing-page').then((m) => m.ListingPage),
   },
 
+  {
+    // The directory of professionals, and each one's page. Public, like their listings. The
+    // directory's state is its query string — features/dealers/dealer-directory-page.ts.
+    path: 'professionnels',
+    title: 'Annuaire des professionnels · AutoX',
+    loadComponent: () =>
+      import('./features/dealers/dealer-directory-page').then((m) => m.DealerDirectoryPage),
+  },
+  {
+    // The slug reaches the page as an input, and the listings' filters are its query string.
+    // No static title: the page names the dealer once it knows who they are.
+    path: 'professionnels/:slug',
+    loadComponent: () => import('./features/dealers/dealer-page').then((m) => m.DealerPage),
+  },
+
   // ---- public -------------------------------------------------------------
 
   {

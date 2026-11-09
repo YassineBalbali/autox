@@ -145,6 +145,7 @@ class DemoData {
             topUpCatalogue();
             approvePending();
             correctListings();
+            completeDealerPages();
             // Only what an earlier seed recorded counts. Removal drops the whole ledger, so a
             // make or model it kept for someone else's listing is not in here, and a seed
             // that was stopped partway is told apart from one that finished.
@@ -184,6 +185,7 @@ class DemoData {
         }
         created += addMissingDamaged();
         created += addMissingLeased();
+        completeDealerPages();
 
         log.warn("Seeded {} demo listings, {} demo accounts and {} demo makes. This is invented data "
                         + "— remove it with AUTOX_DEMO_ACTION=remove.",
@@ -343,6 +345,38 @@ class DemoData {
                 SELECT u.id FROM app_user u
                   JOIN demo_seed_ledger d ON d.entity_type = ? AND d.entity_id = u.id
                  WHERE u.email = ?""", UUID.class, DemoLedger.USER, vehicle.sellerKey() + DemoCatalogue.EMAIL_DOMAIN);
+    }
+
+    /**
+     * Gives the seed's dealers what their public page says about them: the description and opening
+     * hours of {@link DemoCatalogue#DEALER_PAGES}.
+     *
+     * <p>Through the ledger, so no visitor's company can be reached, and by address, which the seed
+     * wrote. Only what differs is written: a second run changes nothing. Nothing else about the
+     * profile is touched, the logo least of all: the demo dealers have none.
+     *
+     * @return how many dealers' pages were changed
+     */
+    int completeDealerPages() {
+        int changed = 0;
+        for (Map.Entry<String, DemoCatalogue.DealerPageText> page : DemoCatalogue.DEALER_PAGES.entrySet()) {
+            changed += jdbc.update("""
+                    UPDATE pro_profile p SET description = ?, opening_hours = ?
+                      FROM app_user u
+                     WHERE u.id = p.user_id AND u.email = ?
+                       AND u.id IN (SELECT entity_id FROM demo_seed_ledger WHERE entity_type = ?)
+                       AND (p.description, p.opening_hours) IS DISTINCT FROM (?, ?)""",
+                    page.getValue().description(), page.getValue().openingHours(),
+                    page.getKey() + DemoCatalogue.EMAIL_DOMAIN, DemoLedger.USER,
+                    page.getValue().description(), page.getValue().openingHours());
+        }
+        if (changed == 0) {
+            log.info("Demo dealer pages: complete, nothing changed ({} dealers).", DemoCatalogue.DEALER_PAGES.size());
+        } else {
+            log.warn("Demo dealer pages: gave {} of {} dealers a description and opening hours; nothing else changed.",
+                    changed, DemoCatalogue.DEALER_PAGES.size());
+        }
+        return changed;
     }
 
     /**

@@ -80,6 +80,7 @@ public class SearchFilterUsage {
         add(names, "monthly", c.monthlyMin() != null || c.monthlyMax() != null);
         add(names, "duration", c.durationMin() != null || c.durationMax() != null);
         add(names, "mileageAllowance", c.mileageAllowanceMin() != null || c.mileageAllowanceMax() != null);
+        add(names, "seller", c.sellerId() != null);
         return names;
     }
 
