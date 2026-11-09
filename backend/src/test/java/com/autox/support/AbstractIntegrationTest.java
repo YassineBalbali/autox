@@ -49,6 +49,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public abstract class AbstractIntegrationTest {
 
     /**
+     * First of the static members, since they run in order and creating the containers below
+     * already reaches Docker: see {@link #staggerForWindowsDocker}.
+     */
+    private static final boolean STAGGERED = staggerForWindowsDocker();
+
+    /**
      * Production's version, pinned by digest. Neon runs 16.15. A floating tag such as
      * {@code 16-alpine} moves to the next minor release without a commit, and the planner can
      * choose differently between releases: a test that reads a query plan would then pass on
@@ -82,6 +88,24 @@ public abstract class AbstractIntegrationTest {
     static {
         POSTGRES.start();
         MINIO.start();
+    }
+
+    /**
+     * On Windows the pom gives each test JVM its fork number, and they reach Docker Desktop two
+     * seconds apart: its named pipe refuses connections it cannot take at once, and a refused first
+     * probe makes Testcontainers give up for the whole JVM. Elsewhere, CI included, no wait.
+     */
+    private static boolean staggerForWindowsDocker() {
+        String fork = System.getProperty("autox.test.stagger-fork");
+        if (fork == null || !fork.matches("\\d+")) {
+            return false;
+        }
+        try {
+            Thread.sleep(Math.max(0, Integer.parseInt(fork) - 1) * 2_000L);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return true;
     }
 
     @org.springframework.test.context.DynamicPropertySource
