@@ -92,10 +92,10 @@ describe('SiteFooter', () => {
     );
   });
 
-  it('offers nothing with nothing behind it: no report link, no contact form, no press page', () => {
+  it('offers nothing with nothing behind it: no contact form, no press page; reporting a listing is real', () => {
     const paths = FOOTER_COLUMNS.flatMap((column) => column.items).map((item) => item.path);
 
-    expect(paths).not.toContain('signalement');
+    expect(paths).toContain('signalement');
     expect(paths).not.toContain('contact');
     expect(paths).not.toContain('presse');
   });

@@ -68,7 +68,7 @@ describe('ReportedMessagesPage', () => {
     await show([report('r1')]);
     const card = root.querySelector('.report-card') as HTMLElement;
 
-    expect(card.querySelector('h2')?.textContent?.trim()).toBe('Arnaque ou demande de paiement suspecte');
+    expect(card.querySelector('h3')?.textContent?.trim()).toBe('Arnaque ou demande de paiement suspecte');
     // With its spaces: the sentence is not three pieces run together.
     const words = card.textContent?.replace(/\s+/g, ' ');
     expect(words).toContain('Signalé par Garage Bellevue le');

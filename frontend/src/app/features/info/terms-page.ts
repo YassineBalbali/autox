@@ -71,15 +71,20 @@ import { ContactAddress, InfoPage } from './info-page';
         modifiée après avoir été acceptée est relue de nouveau.
       </p>
       <p>
-        Dans la messagerie, chacun peut signaler un message (arnaque, propos abusifs, démarchage). Un administrateur
-        peut alors le masquer. Un compte qui enfreint ces conditions peut être suspendu.
+        Chacun peut signaler une annonce (arnaque, annonce trompeuse, contenu inapproprié) avec le bouton « Signaler
+        cette annonce », et un message reçu (arnaque, propos abusifs, démarchage). Un administrateur décide : il retire
+        l’annonce ou masque le message, ou classe le signalement. Un compte qui enfreint ces conditions peut être
+        suspendu.
       </p>
+      <p>Pour contester une décision : <app-contact-address />.</p>
+
+      <h2>6. Suppression du compte</h2>
       <p>
-        Pour contester une décision, ou signaler une annonce : <app-contact-address />. Le site ne propose pas encore
-        de bouton pour signaler une annonce.
+        Vous pouvez supprimer votre compte à tout moment, dans <a routerLink="/mon-compte/donnees">Mes données</a>. Ce qui
+        est effacé et ce qui reste est décrit dans la <a routerLink="/confidentialite">politique de confidentialité</a>.
       </p>
 
-      <h2>6. Responsabilité</h2>
+      <h2>7. Responsabilité</h2>
       <p>
         AutoX est fourni tel quel, gratuitement et à titre de démonstration, sans garantie de disponibilité ni
         d’exactitude. L’éditeur ne vérifie pas les véhicules, les vendeurs ni les acheteurs, et n’est pas partie aux
@@ -88,13 +93,13 @@ import { ContactAddress, InfoPage } from './info-page';
         sans avoir vu le véhicule et ses papiers.
       </p>
 
-      <h2>7. Vos données</h2>
+      <h2>8. Vos données</h2>
       <p>
         Voir la <a routerLink="/confidentialite">politique de confidentialité</a> et la page
         <a routerLink="/cookies">cookies</a>.
       </p>
 
-      <h2>8. Droit applicable</h2>
+      <h2>9. Droit applicable</h2>
       <p>Ces conditions sont soumises au droit français. Elles peuvent changer ; la date en haut de page l’indique.</p>
     </app-info-page>
   `,

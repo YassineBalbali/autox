@@ -83,7 +83,7 @@ describe('AccountLayout', () => {
   it('lists the account in one place', async () => {
     await render('/mon-compte');
 
-    expect(labels()).toEqual(['Identité', 'Mes informations', 'Mot de passe', 'Sessions']);
+    expect(labels()).toEqual(['Identité', 'Mes informations', 'Mot de passe', 'Sessions', 'Mes données']);
   });
 
   it('loads the profile once for the whole section', async () => {

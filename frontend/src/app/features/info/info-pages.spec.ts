@@ -19,6 +19,8 @@ import { CONTACT_EMAIL } from './info-page';
 import { LegalNoticePage } from './legal-notice-page';
 import { PrivacyPage } from './privacy-page';
 import { ProPage } from './pro-page';
+import { ReportPage } from './report-page';
+import { AccountDeletedPage } from './account-deleted-page';
 import { SellingTipsPage } from './selling-tips-page';
 import { TermsPage } from './terms-page';
 
@@ -37,6 +39,8 @@ const GUIDES: [string, Type<unknown>][] = [
   ['aide', HelpPage],
   ['conseils-achat', BuyingTipsPage],
   ['conseils-vente', SellingTipsPage],
+  ['signalement', ReportPage],
+  ['compte-supprime', AccountDeletedPage],
 ];
 
 async function render(page: Type<unknown>): Promise<HTMLElement> {
@@ -133,12 +137,24 @@ describe('Politique de confidentialité', () => {
     expect(page).toContain('enregistre donc les clics');
   });
 
-  it('says plainly that an account cannot yet be deleted, nor its data exported, from the site', async () => {
+  it('points to the export and the deletion, and says what deleting the account erases and what stays', async () => {
     const root = await render(PrivacyPage);
-    const gap = root.querySelector('[data-gap]')?.textContent?.replace(/\s+/g, ' ');
+    const deletion = root.querySelector('[data-deletion]')?.textContent?.replace(/\s+/g, ' ');
 
-    expect(gap).toContain('ne permet pas encore de supprimer soi-même son compte');
-    expect(gap).toContain('télécharger une copie de ses données');
+    expect(root.querySelector('a[href="/mon-compte/donnees"]')).not.toBeNull();
+    expect(deletion).toContain('vos annonces et leurs photos');
+    expect(deletion).toContain('« Compte supprimé », sans leur texte');
+    expect(deletion).toContain('signalement en cours');
+    expect(root.querySelector('[data-gap]')).toBeNull();
+  });
+
+  it('gives the retention of deleted listings and of conversations the daily sweep applies', async () => {
+    const page = text(await render(PrivacyPage));
+
+    // DataRetentionSweeper: 30 days after deletion, a year after the last message.
+    expect(page).toContain('effacée 30 jours plus tard');
+    expect(page).toContain('un an après son dernier message');
+    expect(page).not.toContain('Sans limite de durée aujourd’hui');
   });
 
   it('points to the CNIL', async () => {

@@ -164,7 +164,8 @@ export function buildCsv(stats: AdminStats, period: Period, demo: boolean): stri
   rows.push(['Période', 'Données de démonstration', demo ? 'incluses' : 'exclues', '', '']);
 
   now('À traiter', 'Annonces à modérer', pick(stats.attention.pendingModeration, demo));
-  now('À traiter', 'Signalements ouverts', stats.attention.openReports);
+  now('À traiter', 'Annonces signalées', stats.attention.openListingReports);
+  now('À traiter', 'Messages signalés', stats.attention.openReports);
 
   compared('Activité', 'Nouvelles annonces', stats.activity.newListings);
   compared('Activité', 'Inscriptions', stats.activity.registrations);

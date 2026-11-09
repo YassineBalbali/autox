@@ -60,6 +60,11 @@
             </section>
           }
 
+          <!-- Under the description, where a reader who doubts it is. Signed in, and not the seller. -->
+          @if (canReport() && item.id) {
+            <app-report-listing class="listing__report" [listingId]="item.id" />
+          }
+
           @if (specification().length) {
             <section class="section" aria-labelledby="titre-caracteristiques">
               <!-- On a phone the heading is a button that folds the section; above it, the

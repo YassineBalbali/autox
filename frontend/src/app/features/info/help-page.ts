@@ -54,14 +54,17 @@ import { ContactAddress, InfoPage } from './info-page';
 
       <h2>Comment signaler un message ou une annonce ?</h2>
       <p>
-        Un message se signale depuis la conversation, avec le bouton prévu : arnaque, propos abusifs ou démarchage. Une
-        annonce ne se signale pas encore depuis le site : écrivez à <app-contact-address /> avec son adresse.
+        Un message se signale depuis la conversation, avec le bouton « Signaler » : arnaque, propos abusifs ou
+        démarchage. Une annonce se signale avec « Signaler cette annonce », sous sa description ; voir
+        <a routerLink="/signalement">Signaler une annonce</a>.
       </p>
 
       <h2>Comment supprimer mon compte ou obtenir mes données ?</h2>
       <p>
-        Le site ne le permet pas encore lui-même : écrivez à <app-contact-address />. Voir la
-        <a routerLink="/confidentialite">politique de confidentialité</a>.
+        Dans <a routerLink="/mon-compte/donnees">Mes données</a> : « Télécharger mes données » pour une copie, et
+        « Supprimer mon compte », avec votre mot de passe. Voir la
+        <a routerLink="/confidentialite">politique de confidentialité</a> pour ce qui est effacé et ce qui reste. Une
+        question : <app-contact-address />.
       </p>
     </app-info-page>
   `,

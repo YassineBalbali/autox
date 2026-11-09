@@ -627,4 +627,92 @@ describe('ListingPage', () => {
       });
     });
   });
+
+  describe('reporting the listing', () => {
+    const REPORT = `${DETAIL}/report`;
+    const button = () => root.querySelector('[data-action="report-listing"]') as HTMLButtonElement | null;
+
+    afterEach(() => {
+      session = null;
+    });
+
+    async function as(id: string | null, alreadyReported = false): Promise<void> {
+      session = id ? { accessToken: 'a', refreshToken: 'r', accessTokenExpiresAt: Date.now() + 900_000 } : null;
+      await visit();
+      if (id) {
+        TestBed.inject(AuthService).setUser({ id, email: 'moi@autox.test', role: UserRole.PARTICULIER });
+      }
+      open(DETAIL)[0].flush(LISTING);
+      await settle();
+      open(REPORT).forEach((request) => request.flush({ reported: alreadyReported }));
+      await settle();
+    }
+
+    const choose = async (label: string) => {
+      const option = Array.from(root.querySelectorAll('app-report-listing label')).find((l) => l.textContent?.trim() === label);
+      (option?.querySelector('input') as HTMLInputElement).click();
+      await settle();
+    };
+    const type = async (text: string) => {
+      const note = root.querySelector('#listing-report-note') as HTMLTextAreaElement;
+      note.value = text;
+      note.dispatchEvent(new Event('input'));
+      await settle();
+    };
+    const send = () => root.querySelector('[data-action="send-report"]') as HTMLButtonElement;
+
+    it('is not offered to a visitor who is not signed in, nor to the seller', async () => {
+      await as(null);
+      expect(button()).toBeNull();
+      expect(open(REPORT)).toHaveLength(0);
+
+      await as('s-1');
+      expect(button()).toBeNull();
+    });
+
+    it('takes a reason and an optional note, required for « Autre », and thanks the visitor', async () => {
+      await as('u-visitor');
+      button()!.click();
+      await settle();
+
+      await choose('Autre');
+      expect(send().disabled).toBe(true);
+      await choose('Arnaque');
+      expect(send().disabled).toBe(false);
+      await type('Demande un acompte par virement.');
+      send().click();
+      await settle();
+
+      const request = open(REPORT).find((candidate) => candidate.request.method === 'POST')!;
+      expect(request.request.body).toEqual({ reason: 'SCAM', note: 'Demande un acompte par virement.' });
+      request.flush(null, { status: 204, statusText: 'No Content' });
+      await settle();
+
+      expect(root.querySelector('[data-reported]')?.textContent).toContain('signalée aux modérateurs');
+      expect(button()).toBeNull();
+    });
+
+    it('says so instead of offering it again to a visitor who already reported it', async () => {
+      await as('u-visitor', true);
+
+      expect(button()).toBeNull();
+      expect(root.querySelector('[data-reported]')?.textContent?.trim()).toBe('Vous avez signalé cette annonce.');
+    });
+
+    it('takes « already reported » from the server as reported', async () => {
+      await as('u-visitor');
+      button()!.click();
+      await settle();
+      await choose('Annonce trompeuse');
+      send().click();
+      await settle();
+
+      open(REPORT)
+        .find((candidate) => candidate.request.method === 'POST')!
+        .flush({ code: ErrorCode.LISTING_ALREADY_REPORTED, status: 409 }, { status: 409, statusText: 'Conflict' });
+      await settle();
+
+      expect(root.querySelector('[data-reported]')?.textContent?.trim()).toBe('Vous avez signalé cette annonce.');
+    });
+  });
 });

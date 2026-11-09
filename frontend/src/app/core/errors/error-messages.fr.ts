@@ -76,6 +76,9 @@ export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = {
   [ErrorCode.LAST_ADMIN]: 'C’est le dernier administrateur en mesure de se connecter : cette action est refusée.',
   [ErrorCode.DEMO_ACCOUNT_CANNOT_BE_ADMIN]:
     'Personne ne peut se connecter à un compte de démonstration : il ne peut pas devenir administrateur.',
+  [ErrorCode.DEMO_ACCOUNT_CANNOT_BE_DELETED]:
+    'Un compte de démonstration ne se supprime pas ainsi : il disparaît avec les données de démonstration.',
+  [ErrorCode.LISTING_ALREADY_REPORTED]: 'Vous avez déjà signalé cette annonce.',
 
   // --- listings ---------------------------------------------------------
   [ErrorCode.ACTIVE_LISTING_LIMIT_REACHED]:

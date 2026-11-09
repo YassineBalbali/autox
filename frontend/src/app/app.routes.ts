@@ -135,6 +135,12 @@ export const routes: Routes = [
           import('./features/account/sessions-page').then((m) => m.SessionsPage),
       },
       {
+        // A copy of the account's data, and deleting the account.
+        path: 'donnees',
+        title: 'Mes données · AutoX',
+        loadComponent: () => import('./features/account/my-data-page').then((m) => m.MyDataPage),
+      },
+      {
         // ADMIN is included because an administrator has to be able to see a dealer's own
         // screens to support them, and excluding the role here would be a guard that says
         // "no" to the one account that is allowed everything.
@@ -310,6 +316,17 @@ export const routes: Routes = [
     path: 'cookies',
     title: 'Cookies · AutoX',
     loadComponent: () => import('./features/info/cookies-page').then((m) => m.CookiesPage),
+  },
+  {
+    path: 'signalement',
+    title: 'Signaler une annonce · AutoX',
+    loadComponent: () => import('./features/info/report-page').then((m) => m.ReportPage),
+  },
+  {
+    // Where deleting an account leads: the session has gone with it.
+    path: 'compte-supprime',
+    title: 'Compte supprimé · AutoX',
+    loadComponent: () => import('./features/info/account-deleted-page').then((m) => m.AccountDeletedPage),
   },
 
   // ---- internal -----------------------------------------------------------

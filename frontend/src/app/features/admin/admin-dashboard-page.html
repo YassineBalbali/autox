@@ -81,15 +81,25 @@
 
           <app-attention-card
             data-attention="reports"
-            [tone]="s.attention.openReports > 0 ? 'danger' : 'ok'"
+            [tone]="openReports() > 0 ? 'danger' : 'ok'"
             icon="triangle-alert"
             title="Signalements"
-            [since]="s.attention.openReports > 0 && reportsSince() ? 'Le plus ancien attend ' + reportsSince() : null"
+            [since]="openReports() > 0 && reportsSince() ? 'Le plus ancien attend ' + reportsSince() : null"
             action="Voir les signalements"
             link="/admin/moderation/messages"
           >
-            @if (s.attention.openReports > 0) {
-              <strong>{{ number(s.attention.openReports) }}</strong> {{ s.attention.openReports > 1 ? 'messages signalés' : 'message signalé' }}
+            @if (openReports() > 0) {
+              @if (s.attention.openListingReports > 0) {
+                <span data-reports="listings"><strong>{{ number(s.attention.openListingReports) }}</strong>
+                  {{ s.attention.openListingReports > 1 ? 'annonces signalées' : 'annonce signalée' }}</span>
+              }
+              @if (s.attention.openListingReports > 0 && s.attention.openReports > 0) {
+                ·
+              }
+              @if (s.attention.openReports > 0) {
+                <span data-reports="messages"><strong>{{ number(s.attention.openReports) }}</strong>
+                  {{ s.attention.openReports > 1 ? 'messages signalés' : 'message signalé' }}</span>
+              }
             } @else {
               Aucun signalement ouvert
             }

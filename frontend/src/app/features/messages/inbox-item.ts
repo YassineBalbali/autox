@@ -31,7 +31,11 @@ export class InboxItem {
     if (!last) {
       return '';
     }
-    const text = last.hidden ? 'Message masqué par la modération' : (last.preview ?? '');
+    const text = last.hidden
+      ? 'Message masqué par la modération'
+      : last.erased
+        ? 'Message effacé'
+        : (last.preview ?? '');
     return last.sentByMe ? `Vous : ${text}` : text;
   });
 

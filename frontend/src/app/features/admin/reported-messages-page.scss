@@ -73,3 +73,19 @@
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+// The page's two lists, listings then messages, each under its own heading.
+.report-section__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  font-size: var(--t-lg);
+}
+
+// A message whose author deleted their account: its text went with it.
+.context__body--erased {
+  color: var(--c-ink-faint);
+  font-style: italic;
+}
