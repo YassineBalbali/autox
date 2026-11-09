@@ -179,8 +179,8 @@ class AdminUserIntegrationTest extends AbstractIntegrationTest {
             suspend(colleague, suspended).andExpect(status().isOk());
             suspend(colleague, target).andExpect(status().isOk());
 
-            reactivate(session, suspended).andExpect(status().isForbidden());
-            reactivate(session, target).andExpect(status().isForbidden());
+            reactivate(session, suspended).andExpect(status().isUnauthorized());
+            reactivate(session, target).andExpect(status().isUnauthorized());
             assertThat(statusOf(suspended)).isEqualTo("SUSPENDED");
             assertThat(statusOf(target)).isEqualTo("SUSPENDED");
         }
@@ -439,12 +439,16 @@ class AdminUserIntegrationTest extends AbstractIntegrationTest {
 
             suspend(signIn(admin()), target).andExpect(status().isOk());
 
+            // The token from before the suspension is refused at the door, on every route.
             send(targetSession, "/api/v1/conversations/" + conversation + "/messages", Map.of("body", "Encore moi"))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.code").value("ACCOUNT_SUSPENDED"));
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
             send(targetSession, "/api/v1/listings/" + elsewhere + "/conversation", Map.of("body", "Bonjour"))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.code").value("ACCOUNT_SUSPENDED"));
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, bearer(targetSession)))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/v1/conversations").header(HttpHeaders.AUTHORIZATION, bearer(targetSession)))
+                    .andExpect(status().isUnauthorized());
             assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM message", Integer.class)).isOne();
         }
 

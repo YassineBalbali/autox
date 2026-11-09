@@ -110,8 +110,9 @@ public final class AdminUsers {
     }
 
     /**
-     * The account after an action. {@code accessTokenTtlSeconds} is how long an access token
-     * issued just before a suspension can still be used: it cannot be recalled.
+     * The account after an action. {@code accessTokenTtlSeconds} is how long a role change can take
+     * to reach the account: until its next token. A suspension needs no wait: the account's next
+     * request is refused.
      */
     public record AdminUserActionResult(
             AdminUserDetail user,

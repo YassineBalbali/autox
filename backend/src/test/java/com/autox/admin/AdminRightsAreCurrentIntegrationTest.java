@@ -121,10 +121,10 @@ class AdminRightsAreCurrentIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("a suspended administrator is refused at once on each of them")
+    @DisplayName("a suspended administrator is not signed in at all any more, on each of them")
     void suspended() throws Exception {
         jdbcTemplate.update("UPDATE app_user SET status = 'SUSPENDED' WHERE id = ?", admin.getId());
-        assertRefusedEverywhere(session);
+        assertUnauthenticatedEverywhere(session);
     }
 
     @Test
@@ -152,7 +152,7 @@ class AdminRightsAreCurrentIntegrationTest extends AbstractIntegrationTest {
     void restored() throws Exception {
         jdbcTemplate.update("UPDATE app_user SET status = 'SUSPENDED' WHERE id = ?", admin.getId());
         mockMvc.perform(get("/api/v1/admin/stats").header(HttpHeaders.AUTHORIZATION, bearer(session)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
 
         jdbcTemplate.update("UPDATE app_user SET status = 'ACTIVE' WHERE id = ?", admin.getId());
         mockMvc.perform(get("/api/v1/admin/stats").header(HttpHeaders.AUTHORIZATION, bearer(session)))
