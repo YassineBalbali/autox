@@ -128,14 +128,23 @@ class AdminRightsAreCurrentIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("so is a closed account, and a token for an account that no longer exists")
+    @DisplayName("a closed account, and a token for an account that no longer exists, are not signed in at all")
     void gone() throws Exception {
         jdbcTemplate.update("UPDATE app_user SET deleted_at = now() WHERE id = ?", admin.getId());
-        assertRefusedEverywhere(session);
+        assertUnauthenticatedEverywhere(session);
 
         jdbcTemplate.update("DELETE FROM refresh_token WHERE user_id = ?", admin.getId());
         jdbcTemplate.update("DELETE FROM app_user WHERE id = ?", admin.getId());
-        assertRefusedEverywhere(session);
+        assertUnauthenticatedEverywhere(session);
+    }
+
+    /** No account behind the token: a 401, as for an expired one, rather than a 403 for a lesser role. */
+    private void assertUnauthenticatedEverywhere(JsonNode caller) throws Exception {
+        for (Endpoint endpoint : adminEndpoints()) {
+            MvcResult result = call(endpoint, caller);
+            assertThat(result.getResponse().getStatus()).as("%s %s", endpoint.method(), endpoint.path()).isEqualTo(401);
+            assertThat(json(result).path("code").asText()).as(endpoint.path()).isEqualTo("INVALID_TOKEN");
+        }
     }
 
     @Test

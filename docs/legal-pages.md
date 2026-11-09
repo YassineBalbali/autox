@@ -73,6 +73,9 @@ address, then queues one last e-mail to it (`ACCOUNT_DELETED`, through the outbo
 - **Records kept without personal data**: a moderation decision outlives its listing without its
   note; the administration log loses the addresses and a suspension's reason (its trigger allows
   only clearing those).
+- **Signed out at once**: the refresh tokens are deleted, and the access token still in hand is
+  refused from the next request (401 `INVALID_TOKEN`): `CurrentAdminAuthenticationConverter` reads
+  the account's row on every authenticated request, and a deleted or missing account ends there.
 - **Who cannot**: a demo account (the seed removes those) and the last administrator able to
   sign in (409 `LAST_ADMIN`, the same row locks as the admin actions).
 
@@ -83,7 +86,10 @@ a message they wrote and a moderator hid, without its text), saved searches, ses
 **Retention**, `DataRetentionSweeper`, once a day at 4:20 Paris time
 (`AUTOX_SCHEDULE_DATA_RETENTION` to change it; optional): listings deleted more than 30 days ago,
 with their photos; conversations whose last message is more than a year old, unless a message in
-them is under an open report; the text of deleted accounts' messages once no open report holds it.
+them is under an open report; the text of deleted accounts' messages once no open report holds it;
+administration log entries (`admin_user_action`) more than a year old. Since V27 the log's trigger
+allows a delete only for an entry over 365 days old, so the bound holds whatever asks. Moderation
+decisions on listings are not swept: they keep no personal data.
 A conversation now outlives its listing (`listing_id` set to null), and so does a moderation
 decision.
 

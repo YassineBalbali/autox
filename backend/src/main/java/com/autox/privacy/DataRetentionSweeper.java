@@ -15,7 +15,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * How long deleted listings and conversations are kept, applied once a day. The privacy page
+ * How long deleted listings, conversations and the administration log are kept, applied once a day. The privacy page
  * states these rules; a change here is a change there.
  *
  * <ul>
@@ -27,6 +27,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  *       report: the moderator decides first.</li>
  *   <li><b>The text of a deleted account's messages</b> is erased once no open report holds it
  *       back ({@link AccountDeletionService} erases the rest at the deletion itself).</li>
+ *   <li><b>The administration log</b> (admin_user_action: suspensions, reactivations, role changes)
+ *       is deleted {@link #ADMIN_ACTIONS} after each action: long enough to answer for a decision,
+ *       not kept for ever. Moderation decisions on listings are not concerned: they carry no
+ *       personal data and belong to the listing's history.</li>
  * </ul>
  */
 @Component
@@ -36,6 +40,8 @@ public class DataRetentionSweeper {
 
     static final Duration DELETED_LISTINGS = Duration.ofDays(30);
     static final Duration CONVERSATIONS = Duration.ofDays(365);
+    /** Matches the bound in the trigger on admin_user_action (V27). */
+    static final Duration ADMIN_ACTIONS = Duration.ofDays(365);
 
     private final NamedParameterJdbcTemplate jdbc;
     private final ListingPurge listings;
@@ -57,7 +63,7 @@ public class DataRetentionSweeper {
     }
 
     /** What one run erased. */
-    public record Swept(int listings, int objects, int conversations, int messagesErased) {
+    public record Swept(int listings, int objects, int conversations, int messagesErased, int adminActions) {
     }
 
     /** One run, as of {@code now}, in one transaction. Called by {@link #sweep()}, and by tests with a clock of their own. */
@@ -69,6 +75,7 @@ public class DataRetentionSweeper {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("listingsBefore", Timestamp.from(now.minus(DELETED_LISTINGS)))
                 .addValue("conversationsBefore", Timestamp.from(now.minus(CONVERSATIONS)))
+                .addValue("adminActionsBefore", Timestamp.from(now.minus(ADMIN_ACTIONS)))
                 .addValue("now", Timestamp.from(now));
 
         ListingPurge.Purged purged = listings.purge(jdbc.queryForList(
@@ -88,11 +95,15 @@ public class DataRetentionSweeper {
                    AND NOT EXISTS (SELECT 1 FROM message_report r WHERE r.message_id = m.id AND r.resolution IS NULL)
                 """, params);
 
-        Swept swept = new Swept(purged.listings(), purged.objects(), conversations, erased);
-        if (swept.listings() + swept.conversations() + swept.messagesErased() > 0) {
+        // The trigger on admin_user_action refuses a row younger than a year, whatever asks.
+        int adminActions = jdbc.update("DELETE FROM admin_user_action WHERE created_at < :adminActionsBefore", params);
+
+        Swept swept = new Swept(purged.listings(), purged.objects(), conversations, erased, adminActions);
+        if (swept.listings() + swept.conversations() + swept.messagesErased() + swept.adminActions() > 0) {
             log.info("Retention: erased {} deleted listing(s) ({} stored object(s)), {} conversation(s), "
-                    + "the text of {} message(s) from deleted accounts", swept.listings(), swept.objects(),
-                    swept.conversations(), swept.messagesErased());
+                    + "the text of {} message(s) from deleted accounts, {} administration log entr(ies)",
+                    swept.listings(), swept.objects(), swept.conversations(), swept.messagesErased(),
+                    swept.adminActions());
         }
         return swept;
     }

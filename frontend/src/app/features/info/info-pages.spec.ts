@@ -157,6 +157,15 @@ describe('Politique de confidentialité', () => {
     expect(page).not.toContain('Sans limite de durée aujourd’hui');
   });
 
+  it('keeps the administration log a year, as the daily sweep does', async () => {
+    const root = await render(PrivacyPage);
+    const row = root.querySelector('[data-retention="admin-log"]')?.textContent?.replace(/\s+/g, ' ');
+
+    // DataRetentionSweeper.ADMIN_ACTIONS, and the trigger in V27.
+    expect(row).toContain('Un an après chaque action, puis effacé');
+    expect(row).not.toContain('Sans limite');
+  });
+
   it('points to the CNIL', async () => {
     const root = await render(PrivacyPage);
 

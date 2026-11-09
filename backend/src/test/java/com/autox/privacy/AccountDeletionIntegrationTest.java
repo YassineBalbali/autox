@@ -102,10 +102,45 @@ class AccountDeletionIntegrationTest extends PrivacyTestSupport {
         mockMvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("refreshToken", seller.get("refreshToken").asText()))))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
-                .andExpect(status().isNotFound());
         // The address is free again.
         register(sellerEmail, UserRole.PARTICULIER);
+    }
+
+    @Test
+    @DisplayName("the access token still in hand is refused at once, everywhere, not 15 minutes later")
+    void accessTokenRevokedAtOnce() throws Exception {
+        mockMvc.perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, bearer(seller))).andExpect(status().isOk());
+        JsonNode admin = admin();
+        // A second administrator, so that the first one may leave.
+        admin();
+
+        deleteAccount(seller, PASSWORD).andExpect(status().isNoContent());
+        deleteAccount(admin, PASSWORD).andExpect(status().isNoContent());
+
+        for (String path : List.of("/api/v1/me", "/api/v1/conversations", "/api/v1/me/export")) {
+            mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                    .andExpect(status().isUnauthorized());
+        }
+        // A public page too: a token that is sent is checked, as an expired one would be.
+        mockMvc.perform(get("/api/v1/listings").header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/admin/stats").header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isUnauthorized());
+        // The one who stays is not concerned.
+        mockMvc.perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, bearer(buyer))).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("a token whose account row is gone altogether is refused too")
+    void accountRowGone() throws Exception {
+        JsonNode gone = register(uniqueEmail("gone"), UserRole.PARTICULIER);
+        for (String table : List.of("refresh_token", "email_verification_token")) {
+            jdbcTemplate.update("DELETE FROM " + table + " WHERE user_id = ?::uuid", userId(gone));
+        }
+        jdbcTemplate.update("DELETE FROM app_user WHERE id = ?::uuid", userId(gone));
+
+        mockMvc.perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, bearer(gone)))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

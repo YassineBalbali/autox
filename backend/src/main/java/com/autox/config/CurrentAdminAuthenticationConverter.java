@@ -6,28 +6,36 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.stereotype.Component;
 
 /**
- * Turns an access token into who is calling, and is the one place administrator rights are decided.
+ * Turns an access token into who is calling: the one place that decides whether the account behind
+ * a token still exists, and whether it is still an administrator.
  *
- * <p>The role travels in the token, which is what keeps an ordinary request free of a database
- * read. But a token cannot be recalled, and one that says ADMIN could otherwise keep moderating
- * and reading every address on the site for up to 15 minutes after a demotion or a suspension. So
- * a token that claims ADMIN, and only such a token, is checked against the account's row on every
- * request. If the row no longer backs the claim, the claim is removed from the token before anything
- * else sees it.
+ * <p>A token cannot be recalled, and lives 15 minutes. Two things cannot wait that long, so the
+ * account's row is read on every authenticated request, one lookup by primary key:
+ *
+ * <ul>
+ *   <li><b>A deleted account</b>, or one whose row is gone (a demo removal), is refused at once: the
+ *       request is a 401, as for an expired token, and the site signs out. Its refresh tokens went
+ *       with the deletion, so there is no new token to get either.</li>
+ *   <li><b>A token that claims ADMIN</b> keeps the claim only while the row backs it. Otherwise
+ *       it could keep moderating and reading every address on the site after a demotion or a
+ *       suspension. The claim is removed from the token before anything else sees it.</li>
+ * </ul>
  *
  * <p>Here rather than in a filter on {@code /api/v1/admin/**}, because those paths are not the only
  * thing the claim opens: {@code CurrentUser.isAdmin} lets an administrator act on anyone's listing
  * through the sellers' own endpoints. Everything downstream reads the corrected token, so path
- * rules, {@code @PreAuthorize} and {@code isAdmin} cannot disagree, and a new admin endpoint is
- * covered without anyone remembering to.
+ * rules, {@code @PreAuthorize} and {@code isAdmin} cannot disagree, and a new endpoint is covered
+ * without anyone remembering to.
  *
  * <p>Only rights are taken away here, never given. An account promoted a minute ago has a token
- * that does not say ADMIN, and gets the rights with its next one.
+ * that does not say ADMIN, and gets the rights with its next one. A suspended account is not
+ * refused here: what it may still do (read its own data, for one) is decided where it acts.
  */
 @Component
 class CurrentAdminAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
@@ -44,23 +52,34 @@ class CurrentAdminAuthenticationConverter implements Converter<Jwt, AbstractAuth
         delegate.setJwtGrantedAuthoritiesConverter(authorities);
     }
 
-    @Override
-    public AbstractAuthenticationToken convert(Jwt token) {
-        boolean claimsAdmin = "ADMIN".equals(token.getClaimAsString(JwtClaims.ROLE));
-        return delegate.convert(claimsAdmin && !isAdministratorNow(token.getSubject()) ? withoutRole(token) : token);
+    /** What the row says now, for an account that still exists. */
+    private record Account(boolean administrator) {
     }
 
-    private boolean isAdministratorNow(String subject) {
+    @Override
+    public AbstractAuthenticationToken convert(Jwt token) {
+        Account account = currentAccount(token.getSubject());
+        if (account == null) {
+            // An AuthenticationException here is the bearer filter's 401, with the usual body.
+            throw new InvalidBearerTokenException("The account behind this token no longer exists");
+        }
+        boolean claimsAdmin = "ADMIN".equals(token.getClaimAsString(JwtClaims.ROLE));
+        return delegate.convert(claimsAdmin && !account.administrator() ? withoutRole(token) : token);
+    }
+
+    /** Null when no live account has this id: a malformed subject, a row gone, or an account deleted. */
+    private Account currentAccount(String subject) {
         UUID id;
         try {
             id = UUID.fromString(subject);
         } catch (IllegalArgumentException | NullPointerException malformed) {
-            return false;
+            return null;
         }
-        List<Boolean> rows = jdbc.queryForList("""
-                SELECT role = 'ADMIN' AND status NOT IN ('SUSPENDED', 'DELETED') AND deleted_at IS NULL
-                  FROM app_user WHERE id = ?""", Boolean.class, id);
-        return rows.size() == 1 && Boolean.TRUE.equals(rows.getFirst());
+        List<Account> rows = jdbc.query("""
+                SELECT role = 'ADMIN' AND status <> 'SUSPENDED' AS administrator
+                  FROM app_user WHERE id = ? AND status <> 'DELETED' AND deleted_at IS NULL""",
+                (row, n) -> new Account(row.getBoolean("administrator")), id);
+        return rows.isEmpty() ? null : rows.getFirst();
     }
 
     private static Jwt withoutRole(Jwt token) {
