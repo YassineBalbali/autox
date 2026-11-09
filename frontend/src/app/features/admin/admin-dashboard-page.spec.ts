@@ -46,6 +46,7 @@ const EMPTY: AdminStats = {
   attention: {
     pendingModeration: { real: 0, demo: 0 },
     openReports: 0,
+    openListingReports: 0,
     oldestPending: [],
   },
   activity: {
@@ -203,7 +204,7 @@ describe('AdminDashboardPage', () => {
       expect(moderation.querySelector('a')?.getAttribute('href')).toBe('/admin/moderation');
       const reports = root.querySelector('[data-attention="reports"]') as HTMLElement;
       expect(reports.classList).toContain('attention--danger');
-      expect(text('[data-attention="reports"] .attention__figure')).toBe('1 message signalé');
+      expect(text('[data-attention="reports"] .attention__figure')).toBe('2 annonces signalées · 1 message signalé');
       expect(reports.querySelector('a')?.getAttribute('href')).toBe('/admin/moderation/messages');
     });
 

@@ -1,16 +1,21 @@
 <div class="stack moderation">
   <header>
     <p class="moderation__section" i18n="@@adminSection">Administration</p>
-    <h1 class="page-title" i18n="@@reportedTitle">Messages signalés</h1>
+    <h1 class="page-title" i18n="@@reportedTitle">Signalements</h1>
     <p class="lede" i18n="@@reportedLede">
-      Un message signalé par son destinataire, avec ceux qui l’entourent. Le masquer remplace son texte par un
-      avis pour les deux personnes ; le texte est conservé.
+      Les annonces signalées par des visiteurs, puis les messages signalés par leur destinataire, avec ceux qui
+      l’entourent. Masquer un message remplace son texte par un avis pour les deux personnes ; le texte est conservé.
     </p>
   </header>
 
-  @if (state() === 'ready' && total() > 0) {
-    <p class="meta" data-count>{{ total() }} <ng-container i18n="@@reportedCount">en attente</ng-container></p>
-  }
+  <app-reported-listings />
+
+  <h2 id="messages-signales" class="report-section__title">
+    Messages signalés
+    @if (state() === 'ready' && total() > 0) {
+      <span class="meta" data-count>{{ total() }} <ng-container i18n="@@reportedCount">en attente</ng-container></span>
+    }
+  </h2>
 
   @if (notice()) {
     <app-alert kind="success">{{ notice() }}</app-alert>
@@ -41,7 +46,7 @@
         @for (item of items(); track item.reportId) {
           <article class="panel report-card" [attr.aria-labelledby]="'signalement-' + item.reportId">
             <header class="report-card__head">
-              <h2 class="report-card__reason" [id]="'signalement-' + item.reportId">{{ reasonLabel(item) }}</h2>
+              <h3 class="report-card__reason" [id]="'signalement-' + item.reportId">{{ reasonLabel(item) }}</h3>
               <!-- One sentence, one translation unit: split into pieces, Angular drops the
                    spaces that stand alone between them. -->
               <p class="meta" i18n="@@reportedByOn">
@@ -82,7 +87,12 @@
                       <span class="tag" i18n="@@reportedHiddenTag">Déjà masqué</span>
                     }
                   </p>
-                  <p class="context__body">{{ message.body }}</p>
+                  @if (message.body === undefined || message.body === null) {
+                    <!-- Its author deleted their account; the text went with it. -->
+                    <p class="context__body context__body--erased" data-erased>Texte effacé : compte supprimé</p>
+                  } @else {
+                    <p class="context__body">{{ message.body }}</p>
+                  }
                 </li>
               }
             </ol>

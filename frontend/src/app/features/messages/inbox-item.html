@@ -22,7 +22,11 @@
       @if (item().role === 'SELLER') {
         <span class="item__role" i18n="@@messagesYourListing">Votre annonce ·</span>
       }
-      {{ item().listing?.title }}
+      @if (item().listing; as listing) {
+        {{ listing.title }}
+      } @else {
+        <span data-listing-gone i18n="@@messagesListingGone">Annonce supprimée</span>
+      }
     </span>
     <span class="item__preview" [class.item__preview--hidden]="item().lastMessage?.hidden">{{ preview() }}</span>
   </span>

@@ -25,6 +25,8 @@ export const STATS: AdminStats = {
     oldestPendingDemo: '2026-10-25T09:30:00Z',
     openReports: 1,
     oldestOpenReport: '2026-11-05T07:30:00Z',
+    openListingReports: 2,
+    oldestOpenListingReport: '2026-11-04T07:30:00Z',
     oldestPending: [],
   },
   activity: {

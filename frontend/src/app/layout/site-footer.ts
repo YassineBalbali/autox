@@ -22,9 +22,9 @@ export interface FooterColumn {
  * French site is obliged to publish — mentions légales, conditions générales, politique de
  * confidentialité.
  *
- * <p>Only pages with something real behind them. "Signaler une annonce", "Nous contacter" and
- * "Presse" were here once, as a to-do list: a listing cannot be reported from the site, and
- * there is no press and no contact form, so they went.
+ * <p>Only pages with something real behind them. "Nous contacter" and "Presse" were here once,
+ * as a to-do list, and went: there is no contact form and no press. "Signaler une annonce" leads
+ * to a page that says where the button is, on every listing.
  */
 export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   {
@@ -51,6 +51,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       { label: 'Centre d’aide', path: 'aide' },
       { label: 'Conseils pour acheter', path: 'conseils-achat' },
       { label: 'Conseils pour vendre', path: 'conseils-vente' },
+      { label: 'Signaler une annonce', path: 'signalement' },
     ],
   },
   {
@@ -103,7 +104,7 @@ export function resolveFooter(
  * <p>Inside `.page`, the same container as the header and the content, so its columns
  * start on the same vertical line as the wordmark above.
  *
- * <p>On a phone the four columns are thirteen links stacked one under another — a screen
+ * <p>On a phone the four columns are fourteen links stacked one under another — a screen
  * and a half of small print to scroll past. Below the medium breakpoint each column folds
  * to its title, a button that opens it: the standard accordion, a heading holding a
  * button with aria-expanded and aria-controls. Above it there is nothing to open, so the

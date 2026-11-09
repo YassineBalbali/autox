@@ -1,0 +1,78 @@
+<div class="stack">
+  <header>
+    <h1 class="page-title">Mes données</h1>
+    <p class="lede">
+      Une copie de tout ce qu’AutoX garde sur votre compte, et la suppression du compte. Voir aussi la
+      <a routerLink="/confidentialite">politique de confidentialité</a>.
+    </p>
+  </header>
+
+  <section class="panel stack" aria-labelledby="telecharger">
+    <h2 id="telecharger">Télécharger mes données</h2>
+    <p>
+      Un fichier JSON avec votre compte, vos annonces et leurs photos, vos conversations, vos recherches enregistrées
+      et vos sessions. Les liens des photos restent valables quelques heures. Trois téléchargements par heure au plus.
+    </p>
+    @if (exportFailure()) {
+      <app-alert kind="error">{{ exportFailure() }}</app-alert>
+    }
+    @if (exported()) {
+      <app-alert kind="success">Fichier téléchargé.</app-alert>
+    }
+    <div class="form-actions">
+      <button class="btn btn--quiet" type="button" data-action="export" [disabled]="exporting()" (click)="download()">
+        @if (exporting()) {
+          Préparation…
+        } @else {
+          Télécharger mes données
+        }
+      </button>
+    </div>
+  </section>
+
+  <section class="panel stack" aria-labelledby="supprimer">
+    <h2 id="supprimer">Supprimer mon compte</h2>
+    <p>La suppression est définitive. Elle ne peut pas être annulée.</p>
+
+    <div class="stack stack--tight" data-summary>
+      <h3>Ce qui est effacé</h3>
+      <ul>
+        <li>votre profil : adresse e-mail, nom, téléphone, et les informations de votre entreprise ;</li>
+        <li>vos annonces et leurs photos ;</li>
+        <li>vos recherches enregistrées et leurs alertes ;</li>
+        <li>vos sessions : vous serez déconnecté de tous vos appareils.</li>
+      </ul>
+      <h3>Ce qui reste, sans rien qui vous identifie</h3>
+      <ul>
+        <li>
+          vos conversations, pour les personnes avec qui vous avez échangé : vos messages y apparaissent sous
+          « Compte supprimé », sans leur texte ;
+        </li>
+        <li>les décisions de modération qui vous concernaient, sans votre nom ni votre adresse.</li>
+      </ul>
+      <p class="meta">Un e-mail de confirmation est envoyé à votre adresse.</p>
+    </div>
+
+    <form class="stack form--rows" [formGroup]="deletion" (ngSubmit)="deleteAccount()" novalidate>
+      @if (state.message()) {
+        <app-alert kind="error">{{ state.message() }}</app-alert>
+      }
+      <app-text-field
+        label="Votre mot de passe, pour confirmer"
+        type="password"
+        autocomplete="current-password"
+        [control]="deletion.controls.password"
+        [rejectedByServer]="state.rejected('password')"
+      />
+      <div class="form-actions">
+        <button class="btn btn--danger" type="submit" data-action="delete-account" [disabled]="state.pending()">
+          @if (state.pending()) {
+            Suppression…
+          } @else {
+            Supprimer définitivement mon compte
+          }
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

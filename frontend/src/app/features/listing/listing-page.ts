@@ -8,6 +8,7 @@ import { catchError, of, switchMap, tap } from 'rxjs';
 
 import { ErrorCode, Feature, ListingsPublicService, PublicListingDetail } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
+import { ReportListing } from './report-listing';
 import { asApiError } from '../../core/errors/api-error';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
@@ -56,7 +57,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 @Component({
   selector: 'app-listing-page',
-  imports: [PhotoGallery, KeyFacts, ListingSummary, SimilarListings, ContactBar, Icon, Alert, NotFound],
+  imports: [PhotoGallery, KeyFacts, ListingSummary, SimilarListings, ContactBar, Icon, Alert, NotFound, ReportListing],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-page.html',
   styleUrl: './listing-page.scss',
@@ -83,6 +84,12 @@ export class ListingPage {
    * Decided from the page's own listing and session; of the contact block only its open
    * state is read, which is a plain signal and safe while that block is still being created.
    */
+  /** Signed in, and not the seller: who may report the listing. */
+  protected readonly canReport = computed(() => {
+    const me = this.auth.user()?.id;
+    return !!me && me !== this.listing()?.seller?.id;
+  });
+
   protected readonly barShown = computed(() => {
     const own = !!this.auth.user()?.id && this.auth.user()?.id === this.listing()?.seller?.id;
     return !own && !this.summary()?.contact()?.open();

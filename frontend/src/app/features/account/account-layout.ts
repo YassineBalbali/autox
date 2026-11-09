@@ -26,6 +26,7 @@ const SIDEBAR: readonly SidebarItem[] = [
   { label: 'Entreprise', path: '/mon-compte/entreprise', dealerOnly: true },
   { label: 'Mot de passe', path: '/mon-compte/mot-de-passe' },
   { label: 'Sessions', path: '/mon-compte/sessions' },
+  { label: 'Mes données', path: '/mon-compte/donnees' },
 ];
 
 /**

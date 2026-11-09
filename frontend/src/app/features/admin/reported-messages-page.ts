@@ -7,19 +7,21 @@ import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { SellerBadge } from '../../shared/listing/seller-badge';
 import { Alert } from '../../shared/ui/alert';
 import { REPORT_REASONS, sentAtFull } from '../messages/messaging';
+import { ReportedListings } from './reported-listings';
 
 const PAGE_SIZE = 10;
 
 /**
- * The reported messages: each with the reason, the reporter's note, and the messages around
- * it, which are the only part of a conversation a moderator ever sees.
+ * Signalements: the reported listings ({@link ReportedListings}), then the reported messages,
+ * each with the reason, the reporter's note, and the messages around it, which are the only part
+ * of a conversation a moderator ever sees.
  *
  * <p>Two decisions. Hiding the message replaces its text with a notice on both sides — the
  * text is kept, for the record. Dismissing leaves it as it was. Either one closes the report.
  */
 @Component({
   selector: 'app-reported-messages-page',
-  imports: [RouterLink, Alert, SellerBadge],
+  imports: [RouterLink, Alert, SellerBadge, ReportedListings],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './reported-messages-page.html',
   // The page's frame, tabs included, is the listing moderation page's.

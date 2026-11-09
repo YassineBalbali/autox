@@ -160,7 +160,19 @@ export class AdminDashboardPage {
     return waitingFr(candidates[0]);
   });
 
-  protected readonly reportsSince = computed(() => waitingFr(this.stats()?.attention.oldestOpenReport));
+  /** Open reports, on listings and on messages: one card, one queue. */
+  protected readonly openReports = computed(() => {
+    const attention = this.stats()?.attention;
+    return (attention?.openReports ?? 0) + (attention?.openListingReports ?? 0);
+  });
+  /** How long the oldest open report of either kind has waited. */
+  protected readonly reportsSince = computed(() => {
+    const attention = this.stats()?.attention;
+    const oldest = [attention?.oldestOpenReport, attention?.oldestOpenListingReport]
+      .filter((value): value is string => !!value)
+      .sort()[0];
+    return waitingFr(oldest);
+  });
 
   /** The queue's five oldest: real and demo with the switch on, real alone with it off. */
   protected readonly oldestPending = computed(() =>

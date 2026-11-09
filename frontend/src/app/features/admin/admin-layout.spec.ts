@@ -15,6 +15,7 @@ class Page {}
 const BASE = 'http://api.test';
 const QUEUE = `${BASE}/api/v1/admin/listings`;
 const REPORTS = `${BASE}/api/v1/admin/message-reports`;
+const LISTING_REPORTS = `${BASE}/api/v1/admin/listing-reports`;
 
 const total = (totalElements: number) => ({ items: [], page: 0, size: 1, totalElements, totalPages: 1, hasNext: false });
 
@@ -60,9 +61,10 @@ describe('AdminLayout', () => {
     }
   }
 
-  async function answer(listings: number, reports: number) {
+  async function answer(listings: number, reports: number, listingReports = 0) {
     open(QUEUE).forEach((request) => request.flush(total(listings)));
     open(REPORTS).forEach((request) => request.flush(total(reports)));
+    open(LISTING_REPORTS).forEach((request) => request.flush(total(listingReports)));
     await settle();
   }
 
@@ -143,6 +145,7 @@ describe('AdminLayout', () => {
     await at('/admin', null);
     open(QUEUE)[0].flush(total(4));
     open(REPORTS)[0].flush({ status: 500 }, { status: 500, statusText: 'Server Error' });
+    open(LISTING_REPORTS).forEach((request) => request.flush(total(2)));
     await settle();
 
     expect(root.querySelectorAll('.admin__badge')).toHaveLength(0);
@@ -162,8 +165,17 @@ describe('AdminLayout', () => {
     expect(again).toHaveLength(1);
     again[0].flush(total(1));
     open(REPORTS)[0].flush(total(0));
+    open(LISTING_REPORTS)[0].flush(total(0));
     await settle();
     expect(badge('/admin/moderation')).toBe('1');
+  });
+
+  it('counts reported listings and reported messages in one badge, since one page holds both', async () => {
+    await at('/admin', null);
+    await answer(0, 1, 2);
+
+    expect(badge('/admin/moderation/messages')).toBe('3');
+    expect(tab('/admin/moderation/messages').querySelector('.visually-hidden')?.textContent).toContain('3 signalements ouverts');
   });
 
   it('has a short label for every entry that fits under an icon', () => {

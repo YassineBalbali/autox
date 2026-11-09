@@ -39,7 +39,7 @@ export interface AdminNavItem {
 export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: 'Tableau de bord', short: 'Tableau', icon: 'gauge', path: '' },
   { label: 'Modération', hint: 'Annonces', icon: 'shield-check', path: 'moderation', waiting: 'listings' },
-  { label: 'Signalements', hint: 'Messages', icon: 'flag', path: 'moderation/messages', waiting: 'reports' },
+  { label: 'Signalements', hint: 'Annonces et messages', icon: 'flag', path: 'moderation/messages', waiting: 'reports' },
   { label: 'Utilisateurs', icon: 'users', path: 'utilisateurs', section: true },
 ];
 
@@ -135,10 +135,12 @@ export class AdminLayout {
         forkJoin({
           listings: this.api.moderationList({ view: ModerationView.PENDING, page: 0, size: 1 }),
           reports: this.api.openReports({ page: 0, size: 1 }),
+          listingReports: this.api.openListingReports({ page: 0, size: 1 }),
         }).pipe(
           map((answer): Counts => ({
             listings: answer.listings.totalElements ?? 0,
-            reports: answer.reports.totalElements ?? 0,
+            // One page, one badge: reported listings and reported messages wait in the same place.
+            reports: (answer.reports.totalElements ?? 0) + (answer.listingReports.totalElements ?? 0),
           })),
           catchError(() => of(null)),
         ),

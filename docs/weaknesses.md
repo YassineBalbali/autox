@@ -329,14 +329,24 @@ Adding a language is a real project, not a translation file.
 - **Reference data is cached by the browser for an hour**, so a catalogue change is slow
   to appear.
 
-### W15. A user cannot delete their account or download their data — backend and frontend
+### W15. Account deletion, data export, retention, listing reports — resolved, with what is left
 
-There is no endpoint and no screen for either: `app_user.deleted_at` exists and nothing sets
-it. A user's rights under the GDPR are therefore exercised by writing to the contact address,
-and handled by hand, as the privacy page says (`/confidentialite`). Two more things have no
-end date: a deleted listing is soft-deleted, with its photos still in storage, and messages
-and the administration logs are kept indefinitely. A listing cannot be reported from the
-site either; only a message can.
+Resolved in November 2026 (`docs/legal-pages.md`, "Deletion, export, retention, reports"): an
+account can be deleted and its data downloaded from Mon compte → Mes données; deleted listings
+are erased with their photos 30 days later, and conversations a year after their last message,
+by a daily sweep; a listing can be reported, and moderators deal with those reports beside the
+message reports.
+
+What is left:
+
+- **A deleted account's access token works for up to 15 minutes**, as after a suspension. Every
+  route that writes checks the account (status, verified address) and refuses it; a route that
+  only reads the caller's own data finds nothing, since the data is gone.
+- **The administration log and moderation decisions have no end date.** They keep no personal
+  data of a deleted account, but nothing erases them.
+- **An expired or sold listing is kept until its seller deletes it**, on purpose (it is theirs to
+  renew or relist), and the privacy page says so.
+- **The data export gives photos as links valid six hours**, not as files.
 
 ---
 

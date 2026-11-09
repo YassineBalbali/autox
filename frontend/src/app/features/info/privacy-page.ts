@@ -43,7 +43,7 @@ import { ContactAddress, InfoPage } from './info-page';
                 d’inscription, de vérification de l’adresse et de dernière connexion.
               </td>
               <td>Vous identifier et faire fonctionner votre compte.</td>
-              <td>Tant que le compte existe (voir « Ce qui manque » plus bas).</td>
+              <td>Jusqu’à ce que vous supprimiez le compte.</td>
             </tr>
             <tr>
               <td>
@@ -60,8 +60,9 @@ import { ContactAddress, InfoPage } from './info-page';
               </td>
               <td>Les publier, les rechercher, les modérer.</td>
               <td>
-                En ligne 60 jours, puis expirée. Une annonce expirée, vendue ou que vous supprimez n’est plus
-                visible, mais elle reste enregistrée.
+                En ligne 60 jours, puis expirée. Une annonce que vous supprimez disparaît du site aussitôt, et elle est
+                effacée 30 jours plus tard. Une annonce expirée ou vendue reste enregistrée, pour que vous la
+                retrouviez dans vos annonces, jusqu’à ce que vous la supprimiez.
               </td>
             </tr>
             <tr>
@@ -71,8 +72,8 @@ import { ContactAddress, InfoPage } from './info-page';
               </td>
               <td>Illustrer vos annonces.</td>
               <td>
-                Avec l’annonce, y compris après sa suppression. Un envoi jamais confirmé est effacé dans
-                l’heure.
+                Avec l’annonce : effacées avec elle, 30 jours après sa suppression. Un envoi jamais confirmé est effacé
+                dans l’heure.
               </td>
             </tr>
             <tr>
@@ -81,7 +82,18 @@ import { ContactAddress, InfoPage } from './info-page';
                 message est signalé : le motif, la note éventuelle et la décision.
               </td>
               <td>Permettre aux acheteurs et vendeurs de se parler ; traiter les signalements.</td>
-              <td>Sans limite de durée aujourd’hui.</td>
+              <td>
+                Une conversation est effacée, avec ses messages, un an après son dernier message ; plus tard seulement
+                si un de ses messages fait l’objet d’un signalement en cours.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Vos signalements d’annonces</strong> : l’annonce, le motif, la précision éventuelle, et la
+                décision du modérateur.
+              </td>
+              <td>Retirer les annonces frauduleuses ou trompeuses.</td>
+              <td>Effacés avec l’annonce, ou avec votre compte.</td>
             </tr>
             <tr>
               <td>
@@ -128,7 +140,10 @@ import { ContactAddress, InfoPage } from './info-page';
                 actions sur les comptes (avec l’adresse e-mail du compte et de l’administrateur), motif.
               </td>
               <td>Pouvoir justifier une décision et en retrouver l’auteur.</td>
-              <td>Sans limite de durée aujourd’hui.</td>
+              <td>
+                Sans limite de durée. Quand un compte est supprimé, ce journal ne garde plus son adresse, ni le motif
+                écrit à son sujet.
+              </td>
             </tr>
             <tr>
               <td>
@@ -220,8 +235,13 @@ import { ContactAddress, InfoPage } from './info-page';
         limitation de leur traitement, ou vous y opposer. Écrivez à <app-contact-address /> ; la réponse vient
         dans un délai d’un mois.
       </p>
-      <p>Une partie se fait directement sur le site :</p>
+      <p>L’essentiel se fait directement sur le site :</p>
       <ul>
+        <li>
+          télécharger une copie de vos données (compte, annonces, conversations, recherches, sessions), dans
+          <a routerLink="/mon-compte/donnees">Mes données</a> ;
+        </li>
+        <li>supprimer votre compte, au même endroit, avec votre mot de passe ;</li>
         <li>modifier votre profil et les informations de votre entreprise, dans <a routerLink="/mon-compte">Mon compte</a> ;</li>
         <li>déconnecter un appareil, dans <a routerLink="/mon-compte/sessions">Appareils connectés</a> ;</li>
         <li>supprimer une annonce, dans <a routerLink="/mes-annonces">Mes annonces</a> ;</li>
@@ -231,12 +251,23 @@ import { ContactAddress, InfoPage } from './info-page';
         </li>
       </ul>
 
-      <h3>Ce qui manque</h3>
-      <p class="info__gap" data-gap>
-        Le site ne permet pas encore de supprimer soi-même son compte, ni de télécharger une copie de ses données.
-        Les deux se font sur demande écrite, traitée à la main. De même, une annonce supprimée et ses photos restent
-        enregistrées, et les messages sont conservés sans limite : un effacement complet se demande aussi par écrit.
-      </p>
+      <h3>Quand vous supprimez votre compte</h3>
+      <ul data-deletion>
+        <li>
+          Sont effacés : votre profil (adresse e-mail, nom, téléphone, entreprise), vos annonces et leurs photos, vos
+          recherches enregistrées, vos sessions, vos signalements d’annonces.
+        </li>
+        <li>
+          Vos conversations restent pour les personnes avec qui vous avez échangé : vos messages y apparaissent sous
+          « Compte supprimé », sans leur texte. Un message qui fait l’objet d’un signalement en cours garde son texte
+          jusqu’à la décision du modérateur, puis il est effacé.
+        </li>
+        <li>
+          Les décisions de modération et le journal d’administration sont conservés, sans votre adresse ni votre nom ni
+          les notes écrites à votre sujet.
+        </li>
+        <li>Un dernier e-mail confirme la suppression ; il est effacé 90 jours après l’envoi, comme les autres.</li>
+      </ul>
 
       <h2>Réclamation</h2>
       <p>
