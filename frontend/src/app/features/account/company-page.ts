@@ -1,12 +1,20 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { ProfileService, ProProfileView } from '../../core/api';
 import { TextField } from '../../shared/forms/text-field';
-import { MAX_LENGTHS, phoneValidators, requiredText } from '../../shared/forms/validation';
+import {
+  MAX_LENGTHS,
+  normaliseWebsite,
+  phoneValidators,
+  requiredText,
+  websiteValidator,
+} from '../../shared/forms/validation';
 import { submitState } from '../../shared/forms/submit-state';
 import { Alert } from '../../shared/ui/alert';
 import { AccountProfileStore } from './account-profile.store';
+import { CompanyLogo } from './company-logo';
 
 /**
  * A dealer's company details.
@@ -18,12 +26,16 @@ import { AccountProfileStore } from './account-profile.store';
  *
  * <p>Company name and registry number are required here, matching registration: they were
  * mandatory to create the account and emptying them afterwards would leave exactly the
- * unverifiable dealer that requirement exists to prevent. The other seven are optional, and
+ * unverifiable dealer that requirement exists to prevent. The others are optional, and
  * blanking one clears it.
+ *
+ * <p>It is also the dealer's public page, `/professionnels/<slug>`: the presentation, the opening
+ * hours, the website, the logo, and the phone if they choose to show it. The link to the page is
+ * here, so they can see it as visitors do.
  */
 @Component({
   selector: 'app-company-page',
-  imports: [ReactiveFormsModule, TextField, Alert],
+  imports: [ReactiveFormsModule, RouterLink, TextField, Alert, CompanyLogo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './company-page.html',
   styleUrl: './account.scss',
@@ -37,6 +49,11 @@ export class CompanyPage {
   protected readonly profile = this.store.profile;
   protected readonly loadFailure = this.store.loadFailure;
   protected readonly saved = signal(false);
+
+  /** The public page, and whether an administrator has hidden it. */
+  protected readonly pageSlug = computed(() => this.profile()?.professional?.slug ?? null);
+  protected readonly pageHidden = computed(() => this.profile()?.professional?.hiddenAt ?? null);
+  protected readonly hiddenReason = computed(() => this.profile()?.professional?.hiddenReason ?? null);
 
   protected readonly form = new FormGroup({
     companyName: new FormControl('', {
@@ -57,7 +74,7 @@ export class CompanyPage {
     }),
     websiteUrl: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.maxLength(MAX_LENGTHS.websiteUrl)],
+      validators: [Validators.maxLength(MAX_LENGTHS.websiteUrl), websiteValidator()],
     }),
     description: new FormControl('', {
       nonNullable: true,
@@ -72,6 +89,11 @@ export class CompanyPage {
       validators: [Validators.maxLength(MAX_LENGTHS.addressLine)],
     }),
     contactPhone: new FormControl('', { nonNullable: true, validators: phoneValidators }),
+    openingHours: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.maxLength(MAX_LENGTHS.openingHours)],
+    }),
+    showPhone: new FormControl(false, { nonNullable: true }),
   });
 
   protected readonly state = submitState(this.form);
@@ -113,11 +135,13 @@ export class CompanyPage {
             registrationNumber: value.registrationNumber.trim(),
             legalForm: value.legalForm.trim(),
             vatNumber: value.vatNumber.trim(),
-            websiteUrl: value.websiteUrl.trim(),
+            websiteUrl: normaliseWebsite(value.websiteUrl),
             description: value.description.trim(),
             addressLine1: value.addressLine1.trim(),
             addressLine2: value.addressLine2.trim(),
             contactPhone: value.contactPhone.trim(),
+            openingHours: value.openingHours.trim(),
+            showPhone: value.showPhone,
           },
         },
       })
@@ -145,6 +169,8 @@ export class CompanyPage {
         addressLine1: professional?.addressLine1 ?? '',
         addressLine2: professional?.addressLine2 ?? '',
         contactPhone: professional?.contactPhone ?? '',
+        openingHours: professional?.openingHours ?? '',
+        showPhone: professional?.showPhone ?? false,
       },
       { emitEvent: false },
     );

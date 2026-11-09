@@ -17,6 +17,12 @@ import { InfoPage } from './info-page';
           <strong>Votre entreprise sur vos annonces</strong> : raison sociale et informations que vous renseignez dans
           <a routerLink="/mon-compte/entreprise">Informations de l’entreprise</a>.
         </li>
+        <li>
+          <strong>Votre page dans l’<a routerLink="/professionnels">annuaire des professionnels</a></strong> : votre
+          présentation, vos horaires, votre site, votre logo et toutes vos annonces, avec les filtres de la recherche.
+          Les visiteurs vous écrivent depuis la page par la messagerie d’AutoX ; votre téléphone n’y figure que si vous le
+          choisissez. Elle se règle dans <a routerLink="/mon-compte/entreprise">Informations de l’entreprise</a>.
+        </li>
         <li><strong>Les offres de location</strong> : publiez une LOA ou une LLD avec sa mensualité et ses conditions.</li>
         <li>
           <strong>Le même outil pour tout gérer</strong> : vos annonces dans <a routerLink="/mes-annonces">Mes annonces</a>,

@@ -9,7 +9,11 @@
   </p>
 } @else if (ownListing()) {
   <p class="contact__own">
-    <ng-container i18n="@@contactOwnListing">C’est votre annonce. Les messages des acheteurs arrivent dans</ng-container>
+    @if (dealerPage()) {
+      <ng-container i18n="@@contactOwnPage">C’est votre page. Les messages des visiteurs arrivent dans</ng-container>
+    } @else {
+      <ng-container i18n="@@contactOwnListing">C’est votre annonce. Les messages des acheteurs arrivent dans</ng-container>
+    }
     <a routerLink="/messages" i18n="@@contactOwnMessages">vos messages</a>.
   </p>
 } @else if (mustVerify()) {
@@ -30,7 +34,7 @@
 } @else if (open()) {
   <form class="contact__form" (submit)="send($event)" aria-labelledby="contact-titre">
     <h2 id="contact-titre" class="contact__title" i18n="@@contactFormTitle">
-      Écrire à {{ listing().seller?.displayName }}
+      Écrire à {{ target().name }}
     </h2>
     <div class="field">
       <label class="visually-hidden" for="contact-message" i18n="@@contactMessageLabel">Votre message</label>
@@ -85,7 +89,7 @@
 <!-- The demo's own sellers: nobody signs in to them, so a buyer is told before writing, not
      left waiting. Under every state but the seller's own, since it matters as much after
      sending as before. -->
-@if (listing().seller?.demo && !ownListing()) {
+@if (target().demo && !ownListing()) {
   <p class="contact__demo meta" role="note" i18n="@@contactDemoSeller">
     Ce vendeur fait partie de la démonstration et ne répondra pas aux messages.
   </p>

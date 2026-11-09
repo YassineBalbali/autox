@@ -86,6 +86,12 @@ class AdminUserRepository {
         return new PageImpl<>(rows, page, total == null ? 0 : total);
     }
 
+    /** The slug of a dealer's page, read from the row: the entity does not hold it until refreshed. */
+    String dealerSlug(UUID userId) {
+        return jdbc.queryForList("SELECT slug FROM pro_profile WHERE user_id = :id",
+                new MapSqlParameterSource("id", userId), String.class).stream().findFirst().orElse(null);
+    }
+
     boolean isDemoAccount(UUID userId) {
         Boolean demo = jdbc.queryForObject("SELECT " + isDemo() + " FROM app_user u WHERE u.id = :id",
                 new MapSqlParameterSource("id", userId), Boolean.class);

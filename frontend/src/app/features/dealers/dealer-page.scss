@@ -1,0 +1,136 @@
+@use '../../../styles/tokens' as t;
+
+// A dealer's page: who they are and how to reach them across the top, their listings below.
+
+.dealer-loading {
+  margin-block: var(--s-5);
+}
+
+.dealer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding-block: var(--s-4) var(--s-5);
+}
+
+.dealer__crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.dealer__top {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+  gap: var(--s-4);
+  align-items: start;
+}
+
+.dealer__identity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.dealer__who {
+  display: flex;
+  gap: var(--s-4);
+  align-items: flex-start;
+}
+
+.dealer__names {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+
+  p {
+    margin: 0;
+  }
+}
+
+.dealer__name {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.dealer__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-4);
+  margin: var(--s-1) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--t-sm);
+  color: var(--c-ink-soft);
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+  }
+}
+
+.dealer__description {
+  margin: 0;
+  max-width: var(--w-prose);
+  line-height: var(--lh-body);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.dealer__own {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.dealer__details dl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.dealer__detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-0);
+
+  dt {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+    font-size: var(--t-sm);
+    color: var(--c-ink-soft);
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.dealer__hours {
+  white-space: pre-line;
+  line-height: var(--lh-body);
+}
+
+.dealer__listings {
+  border-top: var(--divider);
+  padding-top: var(--s-4);
+}
+
+// Below the large breakpoint: one column, the contact right under the name.
+@media (max-width: calc(t.$bp-lg - 0.02px)) {
+  .dealer__top {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: calc(t.$bp-md - 0.02px)) {
+  .dealer__who {
+    gap: var(--s-3);
+  }
+}

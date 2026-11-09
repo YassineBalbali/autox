@@ -71,6 +71,28 @@ public class ProProfile {
     @Column(name = "contact_phone_e164", length = 20)
     private String contactPhoneE164;
 
+    /**
+     * The public page's address. Written by the database when the row is inserted (V28) and
+     * never changed after, so never by this entity: read it with a query, or after a refresh.
+     */
+    @Column(name = "slug", length = 72, insertable = false, updatable = false)
+    private String slug;
+
+    /** Free text, as the dealer writes it: "Lundi–vendredi 9 h–19 h, samedi 9 h–12 h". */
+    @Column(name = "opening_hours")
+    private String openingHours;
+
+    /** Whether {@link #contactPhoneE164} appears on the public page. Off unless the dealer turns it on. */
+    @Column(name = "show_phone", nullable = false)
+    private boolean showPhone;
+
+    /** Set while an administrator has hidden the public page; the page is then a 404 to the public. */
+    @Column(name = "hidden_at")
+    private Instant hiddenAt;
+
+    @Column(name = "hidden_reason")
+    private String hiddenReason;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -211,6 +233,46 @@ public class ProProfile {
 
     public void setContactPhoneE164(String contactPhoneE164) {
         this.contactPhoneE164 = contactPhoneE164;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public String getOpeningHours() {
+        return openingHours;
+    }
+
+    public void setOpeningHours(String openingHours) {
+        this.openingHours = openingHours;
+    }
+
+    public boolean isShowPhone() {
+        return showPhone;
+    }
+
+    public void setShowPhone(boolean showPhone) {
+        this.showPhone = showPhone;
+    }
+
+    public Instant getHiddenAt() {
+        return hiddenAt;
+    }
+
+    public String getHiddenReason() {
+        return hiddenReason;
+    }
+
+    /** Hides the public page, with the administrator's reason. */
+    public void hide(String reason, Instant at) {
+        this.hiddenAt = at;
+        this.hiddenReason = reason;
+    }
+
+    /** Puts the public page back. */
+    public void show() {
+        this.hiddenAt = null;
+        this.hiddenReason = null;
     }
 
     public Instant getCreatedAt() {

@@ -173,7 +173,9 @@ import { ContactAddress, InfoPage } from './info-page';
       <h2>Ce qui est public</h2>
       <p>
         Vos annonces, avec la ville et le code postal du véhicule, votre nom affiché et, pour un professionnel, les
-        informations de l’entreprise. Votre adresse e-mail et votre téléphone personnel ne sont jamais affichés.
+        informations de l’entreprise et sa page dans l’<a routerLink="/professionnels">annuaire des professionnels</a> :
+        présentation, horaires, site web, logo, la ville de ses annonces, et le téléphone de l’entreprise s’il choisit
+        de l’afficher. Votre adresse e-mail et votre téléphone personnel ne sont jamais affichés.
         Les administrateurs du site voient les comptes, les annonces et les messages signalés.
       </p>
 

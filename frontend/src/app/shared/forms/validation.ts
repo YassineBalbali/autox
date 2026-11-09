@@ -37,6 +37,7 @@ export const MAX_LENGTHS = {
   legalForm: 60,
   websiteUrl: 255,
   description: 5000,
+  openingHours: 1000,
   addressLine: 160,
   deviceLabel: 120,
 } as const;
@@ -75,6 +76,29 @@ export const passwordValidators: ValidatorFn[] = [
 ];
 
 export const phoneValidators: ValidatorFn[] = [Validators.pattern(PHONE_PATTERN)];
+
+/**
+ * A web address, as a dealer types it: with or without its scheme. "www.garage.fr" is accepted
+ * here and sent as "https://www.garage.fr" ({@link normaliseWebsite}); the API takes http and
+ * https only, so a "javascript:" link can never reach a public page.
+ */
+export function websiteValidator(): ValidatorFn {
+  return (control) => {
+    const value = String(control.value ?? '').trim();
+    if (!value) {
+      return null;
+    }
+    return /^(https?:\/\/)?[^\s/$.?#:]+\.[^\s]+$/i.test(value) && !/^[a-z][a-z0-9+.-]*:(?!\/\/)/i.test(value)
+      ? null
+      : { website: true };
+  };
+}
+
+/** "www.garage.fr" → "https://www.garage.fr"; an address with its scheme, or nothing, as it is. */
+export function normaliseWebsite(value: string): string {
+  const trimmed = value.trim();
+  return trimmed && !/^https?:\/\//i.test(trimmed) ? `https://${trimmed}` : trimmed;
+}
 
 /**
  * Cross-checks a confirmation field against the password, and puts the error on the
@@ -207,6 +231,7 @@ const MESSAGES_FR: Record<string, (detail: unknown) => string> = {
   pattern: () => 'Utilisez le format international, par exemple +33612345678.',
   passwordMismatch: () => 'Les deux mots de passe ne correspondent pas.',
   wholeNumber: () => 'Saisissez un nombre entier, sans décimale.',
+  website: () => 'Saisissez une adresse web, par exemple https://www.mon-garage.fr.',
   range: (detail) => {
     const { min, max } = (detail ?? {}) as { min?: number; max?: number };
     return `Saisissez une valeur entre ${GROUPED.format(min ?? 0)} et ${GROUPED.format(max ?? 0)}.`;

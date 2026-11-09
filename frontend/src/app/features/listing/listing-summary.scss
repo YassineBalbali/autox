@@ -102,6 +102,21 @@
   line-height: var(--lh-snug);
 }
 
+.seller__name--link {
+  color: var(--c-ink);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--c-accent);
+    text-decoration: underline;
+  }
+}
+
+.seller__all {
+  margin-top: var(--s-3);
+  justify-content: center;
+}
+
 .seller__facts {
   display: flex;
   flex-direction: column;

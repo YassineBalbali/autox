@@ -73,6 +73,20 @@ class ListingPurge {
         return new Purged(deleted, keys.size());
     }
 
+    /** Other stored objects of something deleted in this transaction, such as a dealer's logo. */
+    void deleteObjectsAfterCommit(List<String> keys) {
+        if (keys.isEmpty()) {
+            return;
+        }
+        afterCommit(() -> {
+            try {
+                storage.deleteAll(keys);
+            } catch (RuntimeException e) {
+                log.warn("{} stored object(s) could not be deleted: {}", keys.size(), e.getMessage());
+            }
+        });
+    }
+
     static void afterCommit(Runnable action) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override

@@ -34,7 +34,7 @@ class SavedSearchCriteriaCodecTest {
             "FR", "Lyon",
             new BigDecimal("45.1"), new BigDecimal("46.2"), new BigDecimal("4.3"), new BigDecimal("5.4"),
             "golf gti", List.of(PriceLevel.GOOD_DEAL), DamageFilter.ALL, OfferType.LEASING,
-            List.of(LeasingType.LOA), 10_000L, 50_000L, 24, 48, 10_000, 30_000);
+            List.of(LeasingType.LOA), 10_000L, 50_000L, 24, 48, 10_000, 30_000, UUID.randomUUID());
 
     @Test
     @DisplayName("every filter survives being stored")
@@ -54,7 +54,7 @@ class SavedSearchCriteriaCodecTest {
     void compact() {
         ListingSearchCriteria nothing = new ListingSearchCriteria(null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         assertThat(codec.write(nothing)).isEqualTo("{}");
     }

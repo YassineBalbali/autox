@@ -1,8 +1,9 @@
 import { Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, map, switchMap } from 'rxjs';
+import { combineLatest, distinctUntilChanged, map, switchMap } from 'rxjs';
 
 import { OfferType, PublicListingSummary, ResultCount, SearchSort } from '../../core/api';
 import { DEFAULT_MINOR_UNIT, ReferenceStore } from '../../core/reference/reference.store';
@@ -61,6 +62,12 @@ import { ViewToggle } from './view-toggle';
  * sidebar becomes a full-screen sheet opened from a sticky bar that also holds the sort,
  * and the chips scroll sideways in one row. Nothing about the loop changes.
  *
+ * <p>The same page is a dealer's listings, on their page at `/professionnels/<slug>`: given a
+ * `sellerId`, every search it makes has that one criterion more, and everything else — the
+ * filters, the chips, the sort, sale or leasing, the URL as the only state — is this page's. What
+ * it leaves out there: the alert, which would not keep the seller, the description note, and the
+ * page heading, which is the dealer's name.
+ *
  * <p>The cursor is deliberately <em>not</em> in the URL. "Voir plus" extends the list in
  * place; putting the cursor in the address would make a shared link open on page three of
  * a list whose first two pages the recipient never saw.
@@ -68,6 +75,7 @@ import { ViewToggle } from './view-toggle';
 @Component({
   selector: 'app-search-page',
   imports: [
+    NgTemplateOutlet,
     OfferSwitch,
     SearchBar,
     ActiveFilters,
@@ -94,6 +102,10 @@ export class SearchPage {
   private readonly memory = inject(SearchMemory);
   private readonly resolver = inject(SearchResolver);
   private readonly recent = inject(RecentSearches);
+
+  /** One seller's listings only: a dealer's page. Null is the whole site. */
+  readonly sellerId = input<string | null>(null);
+  protected readonly scoped = computed(() => this.sellerId() !== null);
 
   /**
    * True when this page was reached by going back or forward in history.
@@ -169,24 +181,30 @@ export class SearchPage {
   );
 
   constructor() {
-    this.query$
+    // With the seller: an input, so known only once the page is in place, and part of the search.
+    combineLatest([this.query$, toObservable(this.sellerId)])
       .pipe(
         // Angular emits the param map again for navigations that did not change it. One
         // search per distinct query, compared by the canonical form of its URL.
-        distinctUntilChanged((a, b) => canonical(a) === canonical(b)),
+        distinctUntilChanged(([a, sellerA], [b, sellerB]) => canonical(a) === canonical(b) && sellerA === sellerB),
         // switchMap: a query that arrives while the previous one is still resolving its
         // make against the catalogue replaces it, rather than racing it.
-        switchMap((query) =>
-          this.resolver.criteria(query).pipe(map((criteria) => ({ query, criteria }))),
+        switchMap(([query, seller]) =>
+          this.resolver.criteria(query).pipe(
+            map((criteria) => ({ query, seller, criteria: seller ? { ...criteria, sellerId: seller } : criteria })),
+          ),
         ),
         takeUntilDestroyed(),
       )
-      .subscribe(({ query, criteria }) => {
+      .subscribe(({ query, seller, criteria }) => {
         const sort = query.sort;
         // So a listing opened from here knows which search to lead back to.
         this.memory.remember(this.router.url);
-        // And so the home page can offer it again. Ignores a search with no filters.
-        this.recent.record(query);
+        // And so the home page can offer it again. Ignores a search with no filters, and a
+        // dealer's page: offered again without the dealer, it would be another search.
+        if (!seller) {
+          this.recent.record(query);
+        }
 
         if (this.returning) {
           // Only the search the page arrived with. Every later one on this page is a

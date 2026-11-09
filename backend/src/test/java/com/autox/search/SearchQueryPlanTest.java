@@ -97,7 +97,7 @@ class SearchQueryPlanTest extends AbstractIntegrationTest {
                 priceMin, priceMax, null, null, mileageMax,
                 List.of(), List.of(), List.of(), List.of(), List.of(),
                 null, null, null, null, null, null, null, List.of(), null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
     /** Sellers the listings are spread over: a site's worth, not one account. */

@@ -33,6 +33,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     title: 'AutoX',
     items: [
       { label: 'Voitures d’occasion', path: 'recherche' },
+      { label: 'Annuaire des professionnels', path: 'professionnels' },
       { label: 'Déposer une annonce', path: 'vendre' },
       { label: 'Mes annonces', path: 'mes-annonces' },
     ],

@@ -59,6 +59,17 @@
                 }
               </div>
             </div>
+          } @else if (conversation.dealerPage; as page) {
+            <!-- Written from the dealer's page: no listing, and the page is where it started. -->
+            <p class="meta" data-dealer-page>
+              @if (conversation.role === 'SELLER') {
+                <ng-container i18n="@@conversationFromYourPage">Message envoyé depuis votre</ng-container>&ngsp;
+                <a [routerLink]="['/professionnels', page.slug]" i18n="@@conversationYourPage">page professionnelle</a>.
+              } @else {
+                <ng-container i18n="@@conversationFromDealerPage">Message envoyé depuis la</ng-container>&ngsp;
+                <a [routerLink]="['/professionnels', page.slug]" i18n="@@conversationDealerPage">page du professionnel</a>.
+              }
+            </p>
           } @else {
             <!-- Erased with its seller's account, or by the retention sweep; the conversation stays. -->
             <p class="meta" data-listing-gone i18n="@@conversationListingGone">L’annonce n’existe plus.</p>

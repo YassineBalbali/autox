@@ -36,6 +36,9 @@ public class MessagingRepository {
      *
      * <p>The listing may be gone altogether: erased with its seller's account, or by the retention
      * sweep. The conversation stays for the other party, read-only, without it.
+     *
+     * <p>Or there was never one: a visitor wrote to a dealer from the dealer's page
+     * ({@code via_dealer_page}). Such a conversation stays open while both accounts are.
      */
     private static final String HEADER = """
             SELECT c.id, c.listing_id, c.buyer_id, c.seller_id, c.buyer_read_at, c.seller_read_at,
@@ -44,7 +47,9 @@ public class MessagingRepository {
                    COALESCE(mk.name, l.make_text) AS make_name, COALESCE(mo.name, l.model_text) AS model_name,
                    l.version_text,
                    (l.id IS NOT NULL AND %1$s) AS online,
-                   (l.id IS NOT NULL AND l.status <> 'REMOVED' AND l.deleted_at IS NULL AND %2$s AND %3$s) AS can_reply,
+                   ((c.via_dealer_page OR (l.id IS NOT NULL AND l.status <> 'REMOVED' AND l.deleted_at IS NULL))
+                     AND %2$s AND %3$s) AS can_reply,
+                   c.via_dealer_page, sp.slug AS dealer_slug,
                    b.display_name AS buyer_name, b.role AS buyer_role,
                    s.display_name AS seller_name, s.role AS seller_role
               FROM conversation c
@@ -53,6 +58,7 @@ public class MessagingRepository {
               JOIN app_user s ON s.id = c.seller_id
               LEFT JOIN vehicle_make mk ON mk.id = l.make_id
               LEFT JOIN vehicle_model mo ON mo.id = l.model_id
+              LEFT JOIN pro_profile sp ON sp.user_id = c.seller_id AND c.via_dealer_page
             """.formatted(ListingSearchRepository.visible("l"),
                     ACCOUNT_OPEN.formatted("b"), ACCOUNT_OPEN.formatted("s"));
 
@@ -146,6 +152,25 @@ public class MessagingRepository {
                  WHERE id = :conversation
                 """, new MapSqlParameterSource("conversation", conversationId)
                 .addValue("user", userId).addValue("now", Timestamp.from(now)));
+    }
+
+    /** The conversation a visitor started from this dealer's page, if they have one. */
+    public Optional<UUID> dealerConversationId(UUID sellerId, UUID buyerId) {
+        return jdbc.queryForList("""
+                        SELECT id FROM conversation WHERE via_dealer_page AND seller_id = :seller AND buyer_id = :buyer""",
+                new MapSqlParameterSource("seller", sellerId).addValue("buyer", buyerId), UUID.class)
+                .stream().findFirst();
+    }
+
+    /** As {@link #createConversation}, from the dealer's page: one per visitor and dealer (V28). */
+    public UUID createDealerConversation(UUID sellerId, UUID buyerId, Instant now) {
+        jdbc.update("""
+                INSERT INTO conversation (id, listing_id, buyer_id, seller_id, created_at, last_message_at, via_dealer_page)
+                     VALUES (:id, NULL, :buyer, :seller, :now, :now, true)
+                ON CONFLICT (seller_id, buyer_id) WHERE via_dealer_page DO NOTHING
+                """, new MapSqlParameterSource("id", UuidV7.generate())
+                .addValue("buyer", buyerId).addValue("seller", sellerId).addValue("now", Timestamp.from(now)));
+        return dealerConversationId(sellerId, buyerId).orElseThrow();
     }
 
     // ---- reading ----------------------------------------------------------------------
@@ -371,7 +396,9 @@ public class MessagingRepository {
                 new PartyRow(rs.getObject("buyer_id", UUID.class), rs.getString("buyer_name"),
                         UserRole.valueOf(rs.getString("buyer_role"))),
                 new PartyRow(rs.getObject("seller_id", UUID.class), rs.getString("seller_name"),
-                        UserRole.valueOf(rs.getString("seller_role"))));
+                        UserRole.valueOf(rs.getString("seller_role"))),
+                rs.getBoolean("via_dealer_page"),
+                rs.getString("dealer_slug"));
     }
 
     private static Instant instant(Timestamp timestamp) {
@@ -388,7 +415,8 @@ public class MessagingRepository {
 
     public record Header(UUID id, UUID listingId, UUID buyerId, UUID sellerId, Instant buyerReadAt,
                          Instant sellerReadAt, Instant lastMessageAt, String title, String listingLabel, long priceAmount,
-                         String currencyCode, boolean online, boolean canReply, PartyRow buyer, PartyRow seller) {
+                         String currencyCode, boolean online, boolean canReply, PartyRow buyer, PartyRow seller,
+                         boolean viaDealerPage, String dealerSlug) {
 
         public boolean hasParticipant(UUID userId) {
             return buyerId.equals(userId) || sellerId.equals(userId);

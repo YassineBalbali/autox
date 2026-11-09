@@ -39,6 +39,7 @@ public class ListingSearchService {
     private final MarketPrice marketPrice;
     private final DemoAccounts demoAccounts;
     private final SimilarListings similarListings;
+    private final com.autox.dealer.DealerRepository dealers;
 
     public ListingSearchService(ListingSearchRepository searchRepository,
                                 ListingRepository listings,
@@ -46,7 +47,9 @@ public class ListingSearchService {
                                 ObjectStorage storage,
                                 MarketPrice marketPrice,
                                 DemoAccounts demoAccounts,
-                                SimilarListings similarListings) {
+                                SimilarListings similarListings,
+                                com.autox.dealer.DealerRepository dealers) {
+        this.dealers = dealers;
         this.searchRepository = searchRepository;
         this.listings = listings;
         this.images = images;
@@ -114,8 +117,11 @@ public class ListingSearchService {
                 .map(image -> ImageResponse.from(image, storage::readUrl))
                 .toList();
 
+        UUID sellerId = listing.getSeller().getId();
         return PublicListingDetail.from(listing, gallery, marketPrice.indicators(List.of(listingId)).get(listingId),
-                demoAccounts.isDemoAccount(listing.getSeller().getId()));
+                demoAccounts.isDemoAccount(sellerId),
+                listing.getSeller().getRole() == com.autox.user.UserRole.PROFESSIONNEL
+                        ? dealers.publicSlugOf(sellerId).orElse(null) : null);
     }
 
     /**

@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
 
-import { BASE_PATH, ErrorCode, PublicListingDetail, UserRole, UserSummary } from '../../core/api';
+import { BASE_PATH, DealerPage, ErrorCode, PublicListingDetail, UserRole, UserSummary } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { StoredTokens, TOKEN_STORE } from '../../core/auth/token-store';
 import { ContactSeller } from './contact-seller';
@@ -261,5 +261,66 @@ describe('ContactSeller', () => {
       expect(navigate).not.toHaveBeenCalled();
       expect(textarea()).toBeNull();
     });
+  });
+});
+
+@Component({
+  imports: [ContactSeller],
+  template: `<app-contact-seller [dealer]="dealer" />`,
+})
+class DealerHost {
+  readonly dealer: DealerPage = { slug: 'garage-bellevue', sellerId: 'seller-1', name: 'Garage Bellevue', demo: false };
+}
+
+/** The same form on a dealer's page: written to the dealer, through their own endpoint. */
+describe('ContactSeller on a dealer’s page', () => {
+  async function render(signedInAs: string | null): Promise<{ root: HTMLElement; backend: HttpTestingController; fixture: ComponentFixture<DealerHost> }> {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: BASE_PATH, useValue: BASE },
+        {
+          provide: TOKEN_STORE,
+          useValue: { read: () => (signedInAs ? SESSION : null), write: () => undefined, clear: () => undefined },
+        },
+      ],
+    });
+    const auth = TestBed.inject(AuthService);
+    auth.restore();
+    if (signedInAs) {
+      auth.setUser({ id: signedInAs, email: 'moi@autox.test', role: UserRole.PARTICULIER, displayName: 'Moi' } as UserSummary);
+    }
+    const fixture = TestBed.createComponent(DealerHost);
+    await fixture.whenStable();
+    return { root: fixture.nativeElement, backend: TestBed.inject(HttpTestingController), fixture };
+  }
+
+  it('writes to the dealer from the page, with a first line about the page', async () => {
+    const { root, backend, fixture } = await render('buyer-1');
+    (root.querySelector('button.contact__button') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    const area = root.querySelector('textarea') as HTMLTextAreaElement;
+    expect(area.value).toBe('Bonjour, j’ai vu votre page sur AutoX. ');
+    expect(root.querySelector('#contact-titre')?.textContent?.trim()).toBe('Écrire à Garage Bellevue');
+    area.value = 'Êtes-vous ouverts samedi ?';
+    area.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    (root.querySelector('button[type=submit]') as HTMLButtonElement).click();
+
+    const request = backend.expectOne(`${BASE}/api/v1/dealers/garage-bellevue/conversation`);
+    expect(request.request.body).toEqual({ body: 'Êtes-vous ouverts samedi ?' });
+    request.flush({ id: 'c-9' });
+    await fixture.whenStable();
+    expect(root.querySelector('a[href="/messages/c-9"]')).not.toBeNull();
+  });
+
+  it('tells the dealer it is their own page', async () => {
+    const { root } = await render('seller-1');
+
+    expect(root.querySelector('.contact__own')?.textContent).toContain('C’est votre page.');
   });
 });

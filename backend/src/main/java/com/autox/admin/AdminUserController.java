@@ -4,7 +4,9 @@ import com.autox.admin.AdminUsers.AdminUserActionResult;
 import com.autox.admin.AdminUsers.AdminUserDetail;
 import com.autox.admin.AdminUsers.AdminUserRow;
 import com.autox.admin.AdminUsers.ChangeUserRoleRequest;
+import com.autox.admin.AdminUsers.HideDealerPageRequest;
 import com.autox.admin.AdminUsers.ReactivateUserRequest;
+import com.autox.admin.AdminUsers.ShowDealerPageRequest;
 import com.autox.admin.AdminUsers.SuspendUserRequest;
 import com.autox.api.PageResponse;
 import com.autox.user.CurrentUser;
@@ -92,6 +94,19 @@ public class AdminUserController {
     public AdminUserActionResult reactivateUser(@AuthenticationPrincipal Jwt token, @PathVariable UUID id,
                                             @Valid @RequestBody(required = false) ReactivateUserRequest request) {
         return service.reactivate(CurrentUser.id(token), id, request == null ? null : request.note());
+    }
+
+    /** Takes a dealer's public page off the site: a 404 to the public, the dealer and their listings untouched. */
+    @PostMapping("/{id}/dealer-page/hide")
+    public AdminUserActionResult hideDealerPage(@AuthenticationPrincipal Jwt token, @PathVariable UUID id,
+                                                @Valid @RequestBody HideDealerPageRequest request) {
+        return service.hideDealerPage(CurrentUser.id(token), id, request.reason());
+    }
+
+    @PostMapping("/{id}/dealer-page/show")
+    public AdminUserActionResult showDealerPage(@AuthenticationPrincipal Jwt token, @PathVariable UUID id,
+                                                @Valid @RequestBody(required = false) ShowDealerPageRequest request) {
+        return service.showDealerPage(CurrentUser.id(token), id, request == null ? null : request.note());
     }
 
     @PostMapping("/{id}/role")

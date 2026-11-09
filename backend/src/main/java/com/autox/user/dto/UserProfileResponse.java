@@ -30,7 +30,9 @@ public record UserProfileResponse(
         Instant lastLoginAt,
         ProProfileView professional) {
 
-    public static UserProfileResponse from(AppUser user, ProProfile professional) {
+    /** @param url what a stored object's key reads as, for the logo */
+    public static UserProfileResponse from(AppUser user, ProProfile professional,
+                                           java.util.function.Function<String, String> url) {
         return new UserProfileResponse(
                 user.getId(),
                 user.getEmail(),
@@ -48,7 +50,7 @@ public record UserProfileResponse(
                 user.isEmailVerificationPending(),
                 user.getCreatedAt(),
                 user.getLastLoginAt(),
-                professional == null ? null : ProProfileView.from(professional));
+                professional == null ? null : ProProfileView.from(professional, url));
     }
 
     /** Present only for PROFESSIONNEL accounts. */
@@ -61,9 +63,18 @@ public record UserProfileResponse(
             String description,
             String addressLine1,
             String addressLine2,
-            String contactPhone) {
+            String contactPhone,
+            /** The public page: /professionnels/{slug}. */
+            String slug,
+            String openingHours,
+            boolean showPhone,
+            /** Null without a logo. */
+            String logoUrl,
+            /** Set while an administrator has hidden the page, with why. */
+            Instant hiddenAt,
+            String hiddenReason) {
 
-        static ProProfileView from(ProProfile profile) {
+        static ProProfileView from(ProProfile profile, java.util.function.Function<String, String> url) {
             return new ProProfileView(
                     profile.getCompanyName(),
                     profile.getLegalForm(),
@@ -73,7 +84,13 @@ public record UserProfileResponse(
                     profile.getDescription(),
                     profile.getAddressLine1(),
                     profile.getAddressLine2(),
-                    profile.getContactPhoneE164());
+                    profile.getContactPhoneE164(),
+                    profile.getSlug(),
+                    profile.getOpeningHours(),
+                    profile.isShowPhone(),
+                    profile.getLogoStorageKey() == null ? null : url.apply(profile.getLogoStorageKey()),
+                    profile.getHiddenAt(),
+                    profile.getHiddenReason());
         }
     }
 }

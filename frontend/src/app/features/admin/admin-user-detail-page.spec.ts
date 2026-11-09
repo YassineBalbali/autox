@@ -290,6 +290,56 @@ describe('AdminUserDetailPage', () => {
     });
   });
 
+  describe('a dealer’s public page', () => {
+    const dealer = (hidden = false) =>
+      account({
+        role: UserRole.PROFESSIONNEL,
+        dealerPage: hidden
+          ? { slug: 'garage-bellevue', hiddenAt: '2026-11-08T10:00:00Z', hiddenReason: 'Fausses coordonnées' }
+          : { slug: 'garage-bellevue' },
+      });
+
+    it('is offered only for a professional, with a link to the page', async () => {
+      await open();
+      expect(button('hide-page')).toBeNull();
+
+      await open(dealer());
+      expect(button('hide-page')).not.toBeNull();
+      expect(root.querySelector('[data-dealer-page] a')?.getAttribute('href')).toBe('/professionnels/garage-bellevue');
+    });
+
+    it('is hidden with a reason, required, and the page says so after', async () => {
+      await open(dealer());
+      await submit('hide-page');
+      await submit('confirm-hide-page');
+      backend.expectNone(`${USER}/dealer-page/hide`);
+
+      await type(' Fausses coordonnées ');
+      await submit('confirm-hide-page');
+      const request = backend.expectOne(`${USER}/dealer-page/hide`);
+      expect(request.request.body).toEqual({ reason: 'Fausses coordonnées' });
+      request.flush({ user: dealer(true), revokedSessions: 0, accessTokenTtlSeconds: 900 });
+      await stable();
+
+      expect(words(root.querySelector('app-alert'))).toContain('Page professionnelle masquée');
+      expect(words(root.querySelector('[data-dealer-page]'))).toContain('Fausses coordonnées');
+      expect(button('show-page')).not.toBeNull();
+    });
+
+    it('is put back after a confirmation', async () => {
+      await open(dealer(true));
+      await submit('show-page');
+      await submit('confirm-show-page');
+
+      const request = backend.expectOne(`${USER}/dealer-page/show`);
+      expect(request.request.body).toEqual({});
+      request.flush({ user: dealer(), revokedSessions: 0, accessTokenTtlSeconds: 900 });
+      await stable();
+
+      expect(button('hide-page')).not.toBeNull();
+    });
+  });
+
   describe('changing a role', () => {
     const options = () => Array.from(root.querySelectorAll('select option')).map((option) => words(option));
 

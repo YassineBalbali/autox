@@ -58,7 +58,13 @@ public final class AdminUsers {
             List<AdminUserListing> listings,
             List<AdminListingHistoryEntry> moderationHistory,
             List<AdminUserActionEntry> actions,
-            long accessTokenTtlSeconds) {
+            long accessTokenTtlSeconds,
+            /** A professional's public page; null for anyone else. */
+            DealerPageState dealerPage) {
+    }
+
+    /** Where a dealer's public page is, and whether an administrator has hidden it. */
+    public record DealerPageState(String slug, Instant hiddenAt, String hiddenReason) {
     }
 
     public record AdminUserActivity(
@@ -124,6 +130,12 @@ public final class AdminUsers {
     }
 
     public record ReactivateUserRequest(@Size(max = MAX_REASON) String note) {
+    }
+
+    public record HideDealerPageRequest(@NotBlank @Size(max = MAX_REASON) String reason) {
+    }
+
+    public record ShowDealerPageRequest(@Size(max = MAX_REASON) String note) {
     }
 
     public record ChangeUserRoleRequest(@NotNull UserRole role, @Size(max = MAX_REASON) String note) {

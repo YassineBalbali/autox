@@ -94,7 +94,13 @@ public record ListingSearchCriteria(
         @Min(0) Integer durationMin,
         @Min(0) Integer durationMax,
         @Min(0) Integer mileageAllowanceMin,
-        @Min(0) Integer mileageAllowanceMax) {
+        @Min(0) Integer mileageAllowanceMax,
+
+        /**
+         * One seller's listings only: a dealer's page, which is this search with this one
+         * criterion more. Appended last, like {@code q}.
+         */
+        UUID sellerId) {
 
     public boolean hasBoundingBox() {
         return latMin != null && latMax != null && lonMin != null && lonMax != null;

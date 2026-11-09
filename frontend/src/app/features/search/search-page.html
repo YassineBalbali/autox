@@ -4,6 +4,7 @@
 
   <!-- Full width, above everything: where a search is composed. -->
   <app-search-bar [query]="query()" (submitted)="searchFromBar($event)" />
+  <!-- On a dealer's page the bar searches their listings, like everything else here. -->
 
   <!-- Below the large breakpoint: the way into the filter sheet, and the sort, held at the
        top of the screen while the results scroll under it. -->
@@ -35,8 +36,10 @@
   </div>
 
   <!-- After a natural-language search: what was written, and what of it is not a filter. -->
-  @if (interpretation(); as described) {
-    <app-interpretation-note [interpretation]="described" (dismissed)="interpretation.set(null)" />
+  @if (!scoped()) {
+    @if (interpretation(); as described) {
+      <app-interpretation-note [interpretation]="described" (dismissed)="interpretation.set(null)" />
+    }
   }
 
   <!-- These results state monthly payments, and LOA is consumer credit: docs/leasing.md. -->
@@ -65,13 +68,25 @@
         <div>
           <!-- The figure is the heading: it is what a buyer reads first, and how they know
                whether a filter helped. Until it is known, what the page is. -->
-          <h1 id="titre-resultats" class="search__title">
+          <!-- A dealer's page has its own heading, the dealer's name: there, this is the second level. -->
+          @if (scoped()) {
+            <h2 id="titre-resultats" class="search__title">
+              <ng-container [ngTemplateOutlet]="heading" />
+            </h2>
+          } @else {
+            <h1 id="titre-resultats" class="search__title">
+              <ng-container [ngTemplateOutlet]="heading" />
+            </h1>
+          }
+          <ng-template #heading>
             @if (countText()) {
               {{ countText() }}
+            } @else if (scoped()) {
+              <ng-container i18n="@@searchScopedTitle">Annonces</ng-container>
             } @else {
               <ng-container i18n="@@searchTitle">Voitures d’occasion</ng-container>
             }
-          </h1>
+          </ng-template>
           <!-- Polite: read out when a filter changes the figure, without interrupting. -->
           <p class="search__range" aria-live="polite">
             @if (rangeText()) {
@@ -97,7 +112,10 @@
             </select>
           </div>
         </div>
-        <app-create-alert class="search__alert" [query]="query()" />
+        <!-- An alert would be saved without the seller: not on a dealer's page. -->
+        @if (!scoped()) {
+          <app-create-alert class="search__alert" [query]="query()" />
+        }
       </header>
 
       @switch (results.status()) {

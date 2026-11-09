@@ -95,6 +95,9 @@ public class SecurityConfig {
                         // the listings like each one.
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/*",
                                 "/api/v1/listings/*/similar").permitAll()
+                        // The directory of professionals and their pages, public like their listings.
+                        // Writing to a dealer from the page is not: /dealers/*/conversation is a POST.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/dealers", "/api/v1/dealers/*").permitAll()
                         // La Cote: a valuation is public, like the listings it is made from.
                         .requestMatchers(HttpMethod.GET, "/api/v1/valuation", "/api/v1/valuation/engines").permitAll()
                         // Vocabularies a client needs before it can render a login form, let

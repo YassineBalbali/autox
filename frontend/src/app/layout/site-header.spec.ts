@@ -264,6 +264,7 @@ describe('SiteHeader', () => {
       ['Acheter', '/recherche'],
       ['Vendre', '/vendre'],
       ['La Cote', '/la-cote'],
+      ['Professionnels', '/professionnels'],
     ]);
   });
 

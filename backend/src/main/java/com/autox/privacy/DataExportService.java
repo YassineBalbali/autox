@@ -76,7 +76,8 @@ public class DataExportService {
         Map<String, Object> account = accounts.getFirst();
         rows("""
                 SELECT company_name, legal_form, registration_number, vat_number, website_url, description,
-                       address_line1, address_line2, contact_phone_e164 AS contact_phone, created_at, updated_at
+                       address_line1, address_line2, contact_phone_e164 AS contact_phone, opening_hours,
+                       show_phone, slug AS public_page, hidden_at, hidden_reason, created_at, updated_at
                   FROM pro_profile WHERE user_id = :me""", me).stream().findFirst()
                 .ifPresent(company -> account.put("company", company));
 
