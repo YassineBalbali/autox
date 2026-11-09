@@ -133,9 +133,8 @@
                     Le compte ne pourra plus se connecter ni envoyer de messages. Toutes ses sessions sont fermées
                     et ses annonces sont masquées du public ; rien n’est supprimé, et tout revient à la réactivation.
                   </p>
-                  <p class="meta" data-token-lifetime>
-                    <ng-container i18n="@@userSuspendToken">Un jeton d’accès déjà émis ne peut pas être rappelé : il reste utilisable au plus</ng-container>
-                    {{ tokenLifetime() }}.
+                  <p class="meta" data-token-lifetime i18n="@@userSuspendToken">
+                    Il est déconnecté aussitôt, sur tous ses appareils : sa requête suivante est refusée.
                   </p>
                   <app-text-field
                     label="Motif de la suspension"

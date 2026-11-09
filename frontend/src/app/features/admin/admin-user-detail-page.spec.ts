@@ -207,7 +207,7 @@ describe('AdminUserDetailPage', () => {
       await submit('suspend');
 
       expect(words(root.querySelector('[data-section="actions"]'))).toContain('rien n’est supprimé');
-      expect(words(root.querySelector('[data-token-lifetime]'))).toContain('au plus 15 minutes');
+      expect(words(root.querySelector('[data-token-lifetime]'))).toContain('déconnecté aussitôt');
 
       await submit('confirm-suspend');
       backend.expectNone(`${USER}/suspend`);
@@ -231,7 +231,7 @@ describe('AdminUserDetailPage', () => {
 
       const notice = words(root.querySelector('app-alert[kind="success"]') ?? root.querySelector('app-alert'));
       expect(notice).toContain('2 sessions fermées');
-      expect(notice).toContain('au plus 15 minutes');
+      expect(notice).toContain('déconnecté sur tous ses appareils');
       expect(words(root.querySelector('[data-tag="status"]'))).toBe('Suspendu');
       expect(button('reactivate')).not.toBeNull();
       expect(button('suspend')).toBeNull();

@@ -120,9 +120,10 @@ class MessagingIntegrationTest extends AbstractIntegrationTest {
         void suspendedCannotWrite() throws Exception {
             jdbcTemplate.update("UPDATE app_user SET status = 'SUSPENDED' WHERE id = ?::uuid", userId(buyer));
 
+            // Refused before it reaches messaging: the token's account is suspended.
             contact(buyer, "Bonjour")
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.code").value("ACCOUNT_SUSPENDED"));
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
         }
     }
 

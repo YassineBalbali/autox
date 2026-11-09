@@ -201,13 +201,12 @@ export class AdminUserDetailPage {
       this.reason.markAsTouched();
       return;
     }
-    const lifetime = this.tokenLifetime();
     this.run(
       this.api.suspendUser({ id: this.id(), suspendUserRequest: { reason: this.reason.value.trim() } }),
       (result) => {
         const sessions = result.revokedSessions ?? 0;
         const closed = sessions === 1 ? '1 session fermée' : `${sessions} sessions fermées`;
-        return `Compte suspendu : ${closed}, annonces masquées. Un jeton d’accès déjà émis reste utilisable au plus ${lifetime}, mais plus pour envoyer un message.`;
+        return `Compte suspendu : ${closed}, annonces masquées, déconnecté sur tous ses appareils.`;
       },
     );
   }

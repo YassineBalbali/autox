@@ -346,8 +346,8 @@ What is left:
   sweep; the trigger refuses to delete a younger entry, whatever asks.
 - **Moderation decisions on listings have no end date.** They keep no personal data (no name, no
   address; the moderator's note goes with the listing), so nothing erases them.
-- **A suspended account's token still works for up to 15 minutes** on the routes that do not
-  check the status; the ones that write do.
+- ~~A suspended account's token still works for up to 15 minutes.~~ Fixed the same way: a
+  suspended account's next request is a 401, on every route.
 - **An expired or sold listing is kept until its seller deletes it**, on purpose (it is theirs to
   renew or relist), and the privacy page says so.
 - **The data export gives photos as links valid six hours**, not as files.

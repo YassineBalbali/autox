@@ -19,9 +19,9 @@ import org.springframework.stereotype.Component;
  * account's row is read on every authenticated request, one lookup by primary key:
  *
  * <ul>
- *   <li><b>A deleted account</b>, or one whose row is gone (a demo removal), is refused at once: the
- *       request is a 401, as for an expired token, and the site signs out. Its refresh tokens went
- *       with the deletion, so there is no new token to get either.</li>
+ *   <li><b>A suspended or deleted account</b>, or one whose row is gone (a demo removal), is refused
+ *       at once: the request is a 401, as for an expired token, and the site signs out. Its refresh
+ *       tokens went with the suspension or the deletion, so there is no new token to get either.</li>
  *   <li><b>A token that claims ADMIN</b> keeps the claim only while the row backs it. Otherwise
  *       it could keep moderating and reading every address on the site after a demotion or a
  *       suspension. The claim is removed from the token before anything else sees it.</li>
@@ -34,8 +34,7 @@ import org.springframework.stereotype.Component;
  * without anyone remembering to.
  *
  * <p>Only rights are taken away here, never given. An account promoted a minute ago has a token
- * that does not say ADMIN, and gets the rights with its next one. A suspended account is not
- * refused here: what it may still do (read its own data, for one) is decided where it acts.
+ * that does not say ADMIN, and gets the rights with its next one.
  */
 @Component
 class CurrentAdminAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
@@ -67,7 +66,7 @@ class CurrentAdminAuthenticationConverter implements Converter<Jwt, AbstractAuth
         return delegate.convert(claimsAdmin && !account.administrator() ? withoutRole(token) : token);
     }
 
-    /** Null when no live account has this id: a malformed subject, a row gone, or an account deleted. */
+    /** Null when no live account has this id: a malformed subject, a row gone, an account suspended or deleted. */
     private Account currentAccount(String subject) {
         UUID id;
         try {
@@ -76,8 +75,8 @@ class CurrentAdminAuthenticationConverter implements Converter<Jwt, AbstractAuth
             return null;
         }
         List<Account> rows = jdbc.query("""
-                SELECT role = 'ADMIN' AND status <> 'SUSPENDED' AS administrator
-                  FROM app_user WHERE id = ? AND status <> 'DELETED' AND deleted_at IS NULL""",
+                SELECT role = 'ADMIN' AS administrator
+                  FROM app_user WHERE id = ? AND status NOT IN ('SUSPENDED', 'DELETED') AND deleted_at IS NULL""",
                 (row, n) -> new Account(row.getBoolean("administrator")), id);
         return rows.isEmpty() ? null : rows.getFirst();
     }

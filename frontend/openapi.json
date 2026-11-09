@@ -5557,7 +5557,7 @@
       },
       "AdminUserActionResult": {
         "type": "object",
-        "description": "The account after an action. <code>accessTokenTtlSeconds</code> is how long an access token\n issued just before a suspension can still be used: it cannot be recalled.",
+        "description": "The account after an action. <code>accessTokenTtlSeconds</code> is how long a role change can take\n to reach the account: until its next token. A suspension needs no wait: the account's next\n request is refused.",
         "properties": {
           "user": {
             "$ref": "#/components/schemas/AdminUserDetail"
