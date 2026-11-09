@@ -247,6 +247,12 @@
                                      fail the same way and then stops the search. -->
                                 <TESTCONTAINERS_DOCKER_CLIENT_STRATEGY>org.testcontainers.dockerclient.EnvironmentAndSystemPropertyClientProviderStrategy</TESTCONTAINERS_DOCKER_CLIENT_STRATEGY>
                             </environmentVariables>
+                            <!-- And the forks reach Docker two seconds apart: even told the address,
+                                 a probe that meets three others on the pipe can fail, and then
+                                 every class in that JVM does. See AbstractIntegrationTest. -->
+                            <systemPropertyVariables>
+                                <autox.test.stagger-fork>${surefire.forkNumber}</autox.test.stagger-fork>
+                            </systemPropertyVariables>
                         </configuration>
                     </plugin>
                 </plugins>

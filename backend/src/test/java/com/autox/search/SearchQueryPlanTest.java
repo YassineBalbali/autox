@@ -100,13 +100,29 @@ class SearchQueryPlanTest extends AbstractIntegrationTest {
                 null, null, null, null, null, null, null, null);
     }
 
+    /** Sellers the listings are spread over: a site's worth, not one account. */
+    private static final int SELLERS = 2_000;
+
     /**
-     * Twenty thousand published listings, spread across makes, prices, mileages and
+     * Twenty thousand published listings, spread across sellers, makes, prices, mileages and
      * publication dates so that no single filter is trivially selective.
+     *
+     * <p>Across two thousand sellers, not one. The search joins the seller and leaves out
+     * suspended ones; with a single account in app_user, and statistics that say so, the planner
+     * rightly found it cheaper to read all of listing and sort it than to walk an index, and
+     * whether it had those statistics depended on what autovacuum had done after earlier classes.
+     * With a realistic app_user the plan is the one production gets, whatever ran before.
      */
     private void seedListings() {
         UUID sellerId = createUser(uniqueEmail("plan-seller"), com.autox.user.UserRole.PROFESSIONNEL,
                 com.autox.user.UserStatus.ACTIVE).getId();
+        jdbcTemplate.update("""
+                INSERT INTO app_user (id, email, password_hash, role, status, display_name, country_code, locale)
+                SELECT gen_random_uuid(), 'plan-seller-' || g || '@autox.test', u.password_hash, 'PROFESSIONNEL',
+                       'ACTIVE', 'Vendeur ' || g, u.country_code, u.locale
+                  FROM app_user u, generate_series(1, ?) g
+                 WHERE u.id = ?
+                """, SELLERS - 1, sellerId);
 
         jdbcTemplate.update("""
                 INSERT INTO listing (id, seller_id, status, moderation_status, title,
@@ -115,7 +131,8 @@ class SearchQueryPlanTest extends AbstractIntegrationTest {
                                      first_registration_year, mileage_km, fuel_type, gearbox,
                                      body_type, vehicle_condition, published_at, expires_at,
                                      created_at, updated_at)
-                SELECT gen_random_uuid(), ?, 'ACTIVE', 'NOT_REVIEWED', 'Listing ' || g,
+                SELECT gen_random_uuid(), sellers.ids[1 + (g % array_length(sellers.ids, 1))],
+                       'ACTIVE', 'NOT_REVIEWED', 'Listing ' || g,
                        500000 + ((g * 37) % 4000000), 'EUR', 'FR',
                        '7501' || (g % 10), 'Paris',
                        (ARRAY['BMW','Peugeot','Renault','Volkswagen','Audi'])[1 + (g % 5)],
@@ -127,9 +144,12 @@ class SearchQueryPlanTest extends AbstractIntegrationTest {
                        now() - (g || ' minutes')::interval,
                        now() + interval '60 days',
                        now(), now()
-                  FROM generate_series(1, ?) g
-                """, sellerId, LISTINGS);
+                  FROM generate_series(1, ?) g,
+                       (SELECT array_agg(id) AS ids FROM app_user WHERE email LIKE 'plan-seller%') sellers
+                """, LISTINGS);
 
-        jdbcTemplate.execute("ANALYZE listing");
+        // Statistics for every table the search reads, so the plan does not depend on what
+        // autovacuum has or has not analysed after the classes before this one.
+        jdbcTemplate.execute("ANALYZE listing, app_user, vehicle_make, vehicle_model, geo_place");
     }
 }
