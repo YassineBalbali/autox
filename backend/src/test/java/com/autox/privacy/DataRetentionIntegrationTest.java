@@ -1,6 +1,7 @@
 package com.autox.privacy;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
-/** The daily retention sweep: deleted listings after 30 days, conversations a year after their last message. */
+/** The daily retention sweep: deleted listings after 30 days, conversations a year after their last message, the administration log after a year. */
 class DataRetentionIntegrationTest extends PrivacyTestSupport {
 
     @Autowired DataRetentionSweeper retention;
@@ -97,10 +99,53 @@ class DataRetentionIntegrationTest extends PrivacyTestSupport {
     }
 
     @Test
+    @DisplayName("an administration log entry is deleted a year after the action, not before")
+    void adminLog() {
+        UUID old = adminAction("366 days");
+        UUID recent = adminAction("364 days");
+
+        DataRetentionSweeper.Swept swept = retention.apply(Instant.now());
+
+        assertThat(swept.adminActions()).isOne();
+        assertThat(adminActionExists(old)).isFalse();
+        assertThat(adminActionExists(recent)).isTrue();
+    }
+
+    @Test
+    @DisplayName("the database itself refuses to delete an administration log entry younger than a year")
+    void adminLogGuardedByTheTrigger() {
+        UUID recent = adminAction("364 days");
+
+        assertThatThrownBy(() -> jdbcTemplate.update("DELETE FROM admin_user_action WHERE id = ?", recent))
+                .hasMessageContaining("admin_user_action is append-only");
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                        "UPDATE admin_user_action SET new_value = 'ACTIVE' WHERE id = ?", recent))
+                .hasMessageContaining("admin_user_action is append-only");
+        assertThat(adminActionExists(recent)).isTrue();
+    }
+
+    @Test
     @DisplayName("the rules are the ones the privacy page states")
     void rules() {
         assertThat(DataRetentionSweeper.DELETED_LISTINGS).isEqualTo(Duration.ofDays(30));
         assertThat(DataRetentionSweeper.CONVERSATIONS).isEqualTo(Duration.ofDays(365));
+        assertThat(DataRetentionSweeper.ADMIN_ACTIONS).isEqualTo(Duration.ofDays(365));
+    }
+
+    /** A suspension, made {@code age} ago. */
+    private UUID adminAction(String age) {
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO admin_user_action (id, admin_id, admin_email, target_user_id, target_email, action,
+                                               reason, previous_value, new_value, created_at)
+                VALUES (?, ?, 'admin@autox.test', ?, 'cible@autox.test', 'SUSPEND', 'Arnaque', 'ACTIVE',
+                        'SUSPENDED', now() - ?::interval)""",
+                id, UUID.randomUUID(), UUID.randomUUID(), age);
+        return id;
+    }
+
+    private boolean adminActionExists(UUID id) {
+        return jdbcTemplate.queryForObject("SELECT count(*) FROM admin_user_action WHERE id = ?", Integer.class, id) == 1;
     }
 
     private boolean exists(String table, String id) {

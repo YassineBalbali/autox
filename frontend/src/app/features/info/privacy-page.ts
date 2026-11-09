@@ -134,15 +134,25 @@ import { ContactAddress, InfoPage } from './info-page';
               <td>Limiter les abus et les attaques.</td>
               <td>Effacés 24 heures après la dernière tentative.</td>
             </tr>
-            <tr>
+            <tr data-retention="admin-log">
               <td>
-                <strong>Le journal de modération et d’administration</strong> : décisions sur les annonces,
-                actions sur les comptes (avec l’adresse e-mail du compte et de l’administrateur), motif.
+                <strong>Le journal d’administration</strong> : suspensions, réactivations et changements de rôle
+                des comptes, avec l’adresse e-mail du compte et de l’administrateur, et le motif.
               </td>
               <td>Pouvoir justifier une décision et en retrouver l’auteur.</td>
               <td>
-                Sans limite de durée. Quand un compte est supprimé, ce journal ne garde plus son adresse, ni le motif
-                écrit à son sujet.
+                Un an après chaque action, puis effacé. Quand un compte est supprimé, ce journal ne garde plus son
+                adresse, ni le motif écrit à son sujet.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Les décisions de modération</strong> sur les annonces : la décision, son motif, la date.
+              </td>
+              <td>Pouvoir justifier une décision.</td>
+              <td>
+                Sans limite de durée : elles ne gardent ni nom ni adresse, et la note du modérateur est effacée avec
+                l’annonce.
               </td>
             </tr>
             <tr>
@@ -264,7 +274,7 @@ import { ContactAddress, InfoPage } from './info-page';
         </li>
         <li>
           Les décisions de modération et le journal d’administration sont conservés, sans votre adresse ni votre nom ni
-          les notes écrites à votre sujet.
+          les notes écrites à votre sujet ; le journal d’administration, un an après chaque action.
         </li>
         <li>Un dernier e-mail confirme la suppression ; il est effacé 90 jours après l’envoi, comme les autres.</li>
       </ul>

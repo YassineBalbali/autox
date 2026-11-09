@@ -339,11 +339,15 @@ message reports.
 
 What is left:
 
-- **A deleted account's access token works for up to 15 minutes**, as after a suspension. Every
-  route that writes checks the account (status, verified address) and refuses it; a route that
-  only reads the caller's own data finds nothing, since the data is gone.
-- **The administration log and moderation decisions have no end date.** They keep no personal
-  data of a deleted account, but nothing erases them.
+- ~~A deleted account's access token works for up to 15 minutes.~~ Fixed: the token converter
+  reads the account's row on every authenticated request, and a token whose account is deleted
+  or gone is a 401 at once. The cost is one primary-key read per request.
+- ~~The administration log has no end date.~~ Fixed: kept one year, then deleted by the daily
+  sweep; the trigger refuses to delete a younger entry, whatever asks.
+- **Moderation decisions on listings have no end date.** They keep no personal data (no name, no
+  address; the moderator's note goes with the listing), so nothing erases them.
+- **A suspended account's token still works for up to 15 minutes** on the routes that do not
+  check the status; the ones that write do.
 - **An expired or sold listing is kept until its seller deletes it**, on purpose (it is theirs to
   renew or relist), and the privacy page says so.
 - **The data export gives photos as links valid six hours**, not as files.
