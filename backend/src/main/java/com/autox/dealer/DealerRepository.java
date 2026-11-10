@@ -1,5 +1,6 @@
 package com.autox.dealer;
 
+import com.autox.listing.OfferType;
 import com.autox.search.ListingSearchRepository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -18,9 +19,15 @@ import org.springframework.stereotype.Repository;
  * <h2>Who is listed</h2>
  *
  * <p>A professional account that is neither suspended nor deleted, whose page an administrator
- * has not hidden, with at least one listing online by the search's own rule
- * ({@link ListingSearchRepository#visible}). The page itself answers for any such dealer,
- * listings or not; the directory only lists the ones with something to show.
+ * has not hidden, with at least one listing the public search shows. The page itself answers for
+ * any such dealer, listings or not; the directory only lists the ones with something to show.
+ *
+ * <h2>What is counted</h2>
+ *
+ * <p>Exactly what the search lists on the dealer's page before a visitor filters anything:
+ * {@link ListingSearchRepository#unfilteredMatch}, the search's own visibility rule and defaults,
+ * for sales and for leasing. So the header, the Acheter and Louer tabs and the directory card agree:
+ * a damaged vehicle, which the search leaves out unless asked for, is not counted either.
  *
  * <h2>Where a dealer is</h2>
  *
@@ -52,24 +59,25 @@ public class DealerRepository {
                    COALESCE(pg.city, loc.city) AS city,
                    COALESCE(pg.postal_code, loc.postal_code) AS postal_code,
                    counts.sale, counts.leasing,
-                   (%2$s) AS public_account
+                   (%3$s) AS public_account
               FROM pro_profile p
               JOIN app_user u ON u.id = p.user_id
               LEFT JOIN geo_place pg ON pg.id = p.geo_place_id
              CROSS JOIN LATERAL (
-                   SELECT count(*) FILTER (WHERE l.offer_type = 'SALE')    AS sale,
-                          count(*) FILTER (WHERE l.offer_type = 'LEASING') AS leasing
+                   SELECT count(*) FILTER (WHERE %1$s) AS sale,
+                          count(*) FILTER (WHERE %2$s) AS leasing
                      FROM listing l
-                    WHERE l.seller_id = u.id AND %1$s) counts
+                    WHERE l.seller_id = u.id AND (%1$s OR %2$s)) counts
               LEFT JOIN LATERAL (
                    SELECT COALESCE(gp.city, l.city) AS city, COALESCE(gp.postal_code, l.postal_code) AS postal_code
                      FROM listing l
                      LEFT JOIN geo_place gp ON gp.id = l.geo_place_id
-                    WHERE l.seller_id = u.id AND %1$s
+                    WHERE l.seller_id = u.id AND (%1$s OR %2$s)
                     GROUP BY 1, 2
                     ORDER BY count(*) DESC, 1, 2
                     LIMIT 1) loc ON true
-            """.formatted(ListingSearchRepository.visible("l"), PUBLIC_ACCOUNT);
+            """.formatted(ListingSearchRepository.unfilteredMatch(OfferType.SALE),
+                    ListingSearchRepository.unfilteredMatch(OfferType.LEASING), PUBLIC_ACCOUNT);
 
     /** The directory's rows: a public account, a page not hidden, something online. */
     private static final String LISTED = """

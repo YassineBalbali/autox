@@ -283,6 +283,59 @@ class DealerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.count").value(2));
     }
 
+    @Test
+    @DisplayName("the page's counts, its tabs and its directory card are the search's, damaged and non-public listings aside")
+    void countsAreTheSearchs() throws Exception {
+        JsonNode dealer = dealer("Sud Automobiles");
+        listing(dealer, "Marseille", "13008");
+        listing(dealer, "Marseille", "13008");
+        damage(listing(dealer, "Marseille", "13008"));
+        leasing(dealer, "Marseille", "13008");
+        // A leasing offer cannot be damaged (ck_listing_leasing_not_damaged): an expired one instead.
+        jdbcTemplate.update("UPDATE listing SET expires_at = now() - interval '1 day' WHERE id = ?::uuid",
+                leasing(dealer, "Marseille", "13008"));
+        // Not public, each its own way: a draft, an expired one, a rejected one, a deleted one.
+        draft(dealer);
+        jdbcTemplate.update("UPDATE listing SET expires_at = now() - interval '1 day' WHERE id = ?::uuid",
+                listing(dealer, "Marseille", "13008"));
+        jdbcTemplate.update("UPDATE listing SET moderation_status = 'REJECTED' WHERE id = ?::uuid",
+                listing(dealer, "Marseille", "13008"));
+        jdbcTemplate.update("UPDATE listing SET deleted_at = now() WHERE id = ?::uuid",
+                listing(dealer, "Marseille", "13008"));
+        String seller = id(dealer);
+
+        // What the search lists on the page, tab by tab, before any filter.
+        int sales = ids("/api/v1/listings?sellerId=" + seller).size();
+        int leases = ids("/api/v1/listings?sellerId=" + seller + "&offer=LEASING").size();
+        assertThat(sales).isEqualTo(2);
+        assertThat(leases).isOne();
+        mockMvc.perform(get("/api/v1/listings/count?sellerId=" + seller)).andExpect(jsonPath("$.count").value(sales));
+        mockMvc.perform(get("/api/v1/listings/count?sellerId=" + seller + "&offer=LEASING"))
+                .andExpect(jsonPath("$.count").value(leases));
+
+        // The page's header and the directory card say the same.
+        page("sud-automobiles", null)
+                .andExpect(jsonPath("$.saleListings").value(sales))
+                .andExpect(jsonPath("$.leasingListings").value(leases));
+        JsonNode card = directory("").at("/items/0");
+        assertThat(card.get("slug").asText()).isEqualTo("sud-automobiles");
+        assertThat(card.get("saleListings").asInt()).isEqualTo(sales);
+        assertThat(card.get("leasingListings").asInt()).isEqualTo(leases);
+
+        // The damaged ones are only out of the defaults: asked for, the search shows them.
+        assertThat(ids("/api/v1/listings?sellerId=" + seller + "&damage=ALL")).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("a dealer whose only listings are damaged is out of the directory, as the search shows none of them")
+    void onlyDamaged() throws Exception {
+        JsonNode dealer = dealer("Casse Auto");
+        damage(listing(dealer, "Lyon", "69003"));
+
+        assertThat(directory("").get("totalElements").asInt()).isZero();
+        page("casse-auto", null).andExpect(status().isOk()).andExpect(jsonPath("$.saleListings").value(0));
+    }
+
     // ---- writing to a dealer -----------------------------------------------------------------
 
     @Test
@@ -478,6 +531,21 @@ class DealerIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/v1/listings/" + id + "/publish").header(HttpHeaders.AUTHORIZATION, bearer(owner)))
                 .andExpect(status().is2xxSuccessful());
         return id;
+    }
+
+    /** Declares the listing damaged, as the editor would. */
+    private void damage(String listingId) {
+        jdbcTemplate.update("""
+                UPDATE listing SET damaged = true, damage_types = ARRAY['BODYWORK'],
+                                   damage_description = 'Aile avant enfoncée.' WHERE id = ?::uuid""", listingId);
+    }
+
+    /** Created and never published. */
+    private void draft(JsonNode owner) throws Exception {
+        mockMvc.perform(post("/api/v1/listings").header(HttpHeaders.AUTHORIZATION, bearer(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ListingTestFixtures.freeTextListingPayload())))
+                .andExpect(status().isCreated());
     }
 
     private JsonNode directory(String query) throws Exception {
