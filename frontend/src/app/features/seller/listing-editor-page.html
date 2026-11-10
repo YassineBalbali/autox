@@ -331,6 +331,15 @@
                 [control]="offer.controls.price"
               />
 
+              <!-- What La Cote estimates this car at, and the badge the price typed would get. Not for
+                   a damaged car or a leasing offer, which are never compared. -->
+              <app-price-estimate
+                [car]="estimatedCar()"
+                [price]="priceText()"
+                [currency]="marketCurrency()"
+                [minorUnit]="minorUnit()"
+              />
+
               @if (leasing()) {
                 <div class="damage-fields stack" data-section="leasing">
                   <fieldset class="damage-fields__group">

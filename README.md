@@ -732,6 +732,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/search-decisions.md` | Keyset pagination and the measured query plans |
 | `docs/price-indicator.md` | "Bonne affaire" and the rest: the comparables rule, why, and how it is computed; La Cote, the same rule for a car that is not listed, and its limits |
 | `docs/messaging.md` | Messages between buyers and sellers: who may write, what each side sees, unread, rate limits, reports |
+| `docs/financing-simulator.md` | The listing page's credit simulation: the formula, rounding, the mandatory mention, and what it is not |
 | `docs/leasing.md` | LOA and LLD offers: the rules, what the page says and on what basis, what it does not cover, and that none of it is legal advice |
 | `docs/similar-listings.md` | "Annonces similaires": which listings, in what order, and when none are shown |
 | `docs/dealer-pages.md` | The directory of professionals and dealer pages: who is listed, the slug, the listings as the search with `sellerId`, contact, the phone and e-mail rules, hiding a page |

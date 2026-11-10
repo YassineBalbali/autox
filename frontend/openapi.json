@@ -6879,6 +6879,10 @@
             "items": {
               "$ref": "#/components/schemas/ValuationWidening"
             }
+          },
+          "priceBounds": {
+            "$ref": "#/components/schemas/ValuationPriceBounds",
+            "description": "where the listing badge would draw its lines for this car, priced in\n                           the minor unit: only with an estimate under the badge's own rule\n                           (<code>EXACT</code>); null otherwise"
           }
         }
       },
@@ -8956,6 +8960,20 @@
           },
           "hiddenReason": {
             "type": "string"
+          }
+        }
+      },
+      "ValuationPriceBounds": {
+        "type": "object",
+        "description": "The badge's thresholds for this car, unrounded, as the badge computes them: a price at or\n below <code>goodDealAtMost</code> is a good deal, at or above <code>aboveMarketFrom</code> above the\n market, and between them the market price. Compare a price in the minor unit with them as\n they are; rounded, a price on the line could be placed on the wrong side of it.",
+        "properties": {
+          "goodDealAtMost": {
+            "type": "number",
+            "format": "double"
+          },
+          "aboveMarketFrom": {
+            "type": "number",
+            "format": "double"
           }
         }
       }

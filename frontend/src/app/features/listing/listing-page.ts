@@ -8,6 +8,7 @@ import { catchError, of, switchMap, tap } from 'rxjs';
 
 import { ErrorCode, Feature, ListingsPublicService, PublicListingDetail } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
+import { FinancingSimulator } from './financing-simulator';
 import { ReportListing } from './report-listing';
 import { asApiError } from '../../core/errors/api-error';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
@@ -57,7 +58,18 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 @Component({
   selector: 'app-listing-page',
-  imports: [PhotoGallery, KeyFacts, ListingSummary, SimilarListings, ContactBar, Icon, Alert, NotFound, ReportListing],
+  imports: [
+    PhotoGallery,
+    KeyFacts,
+    ListingSummary,
+    SimilarListings,
+    ContactBar,
+    Icon,
+    Alert,
+    NotFound,
+    ReportListing,
+    FinancingSimulator,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-page.html',
   styleUrl: './listing-page.scss',
@@ -137,6 +149,12 @@ export class ListingPage {
   protected readonly equipment = computed(() =>
     groupFeatures(this.listing()?.featureCodes, this.features()),
   );
+
+  /** A car for sale, with a price, and not damaged: what a car loan is simulated for. */
+  protected readonly financeable = computed(() => {
+    const listing = this.listing();
+    return !!listing && !listing.leasing && !listing.damage && (listing.priceAmount ?? 0) > 0;
+  });
 
   protected readonly minorUnit = computed(
     () => this.minorUnits()[this.listing()?.currencyCode ?? ''] ?? DEFAULT_MINOR_UNIT,

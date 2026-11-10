@@ -101,6 +101,45 @@ class LaCoteIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("gives a seller the badge's own lines: a price is placed as a listing of that car would be badged")
+    void boundsAreTheBadges() throws Exception {
+        for (long price : new long[] {900_000L, 950_000L, 1_000_000L, 1_050_000L, 1_100_000L}) {
+            listing(Map.of("priceAmount", price, "firstRegistrationMonth", 7));
+        }
+        JsonNode valuation = json(value(Map.of("month", 7)).andExpect(status().isOk()).andReturn());
+        double goodDealAtMost = valuation.at("/priceBounds/goodDealAtMost").asDouble();
+        double aboveMarketFrom = valuation.at("/priceBounds/aboveMarketFrom").asDouble();
+        org.assertj.core.api.Assertions.assertThat(goodDealAtMost).isEqualTo(900_000.0);
+        org.assertj.core.api.Assertions.assertThat(aboveMarketFrom).isEqualTo(1_100_000.0);
+
+        // On each line and either side of it, one at a time so each probe has the same comparables.
+        for (long price : new long[] {899_999L, 900_000L, 900_001L, 1_000_000L, 1_099_999L, 1_100_000L, 1_100_001L}) {
+            String expected = price <= goodDealAtMost ? "GOOD_DEAL" : price >= aboveMarketFrom ? "ABOVE_MARKET" : "MARKET";
+            String probe = listing(Map.of("priceAmount", price, "firstRegistrationMonth", 7));
+            mockMvc.perform(get("/api/v1/listings/" + probe))
+                    .andExpect(jsonPath("$.priceIndicator.level").value(expected));
+            jdbcTemplate.update("UPDATE listing SET deleted_at = now() WHERE id = ?::uuid", probe);
+        }
+    }
+
+    @Test
+    @DisplayName("gives no lines without enough comparables, nor under a loosened rule, which no badge uses")
+    void noBoundsWithoutTheBadgesRule() throws Exception {
+        for (int i = 0; i < 4; i++) {
+            listing(Map.of());
+        }
+        listing(Map.of("fuelType", "DIESEL", "powerHp", 130));
+
+        value(Map.of())
+                .andExpect(jsonPath("$.estimate").doesNotExist())
+                .andExpect(jsonPath("$.priceBounds").doesNotExist());
+        // Five under another engine: an estimate, but not the badge's comparables.
+        value(Map.of("scope", "ALL_ENGINES"))
+                .andExpect(jsonPath("$.estimate.medianAmount").exists())
+                .andExpect(jsonPath("$.priceBounds").doesNotExist());
+    }
+
+    @Test
     @DisplayName("with four comparables there is no figure, and the loosenings that would give one are offered")
     void tooFew() throws Exception {
         for (int i = 0; i < 4; i++) {

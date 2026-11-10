@@ -19,6 +19,9 @@ import java.util.List;
  * @param window             what was searched for
  * @param widerScopes        when there is no estimate: the loosenings that would give one,
  *                           with how many they find. Empty otherwise
+ * @param priceBounds        where the listing badge would draw its lines for this car, priced in
+ *                           the minor unit: only with an estimate under the badge's own rule
+ *                           ({@code EXACT}); null otherwise
  */
 public record Valuation(
         ValuationScope scope,
@@ -27,7 +30,18 @@ public record Valuation(
         Estimate estimate,
         Basis basis,
         Window window,
-        List<Widening> widerScopes) {
+        List<Widening> widerScopes,
+        PriceBounds priceBounds) {
+
+    /**
+     * The badge's thresholds for this car, unrounded, as the badge computes them: a price at or
+     * below {@code goodDealAtMost} is a good deal, at or above {@code aboveMarketFrom} above the
+     * market, and between them the market price. Compare a price in the minor unit with them as
+     * they are; rounded, a price on the line could be placed on the wrong side of it.
+     */
+    @Schema(name = "ValuationPriceBounds")
+    public record PriceBounds(double goodDealAtMost, double aboveMarketFrom) {
+    }
 
     /**
      * The median of the adjusted prices, with the middle half of them either side: a quarter

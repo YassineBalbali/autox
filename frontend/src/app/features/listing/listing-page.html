@@ -130,6 +130,19 @@
               </div>
             </section>
           }
+
+          <!-- A sale only: a leasing offer states its own monthly payment, and a damaged car is not
+               what a car loan is quoted for. Computed in the browser, nothing sent. -->
+          @if (financeable()) {
+            <section class="section" aria-labelledby="titre-financement" data-section="financing">
+              <h2 id="titre-financement" class="section__title" i18n="@@financingTitle">Simuler un financement</h2>
+              <app-financing-simulator
+                [price]="item.priceAmount!"
+                [currency]="item.currencyCode ?? 'EUR'"
+                [minorUnit]="minorUnit()"
+              />
+            </section>
+          }
         </div>
 
         <!-- Everything needed to decide, and to act: it follows the page down. -->

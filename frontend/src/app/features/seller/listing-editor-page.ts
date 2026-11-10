@@ -31,7 +31,7 @@ import { engineLabel } from '../la-cote/la-cote';
 import { FlashService } from '../../core/ui/flash.service';
 import { SelectField, SelectOption } from '../../shared/forms/select-field';
 import { TextField } from '../../shared/forms/text-field';
-import { requiredText } from '../../shared/forms/validation';
+import { parseWholeNumber, requiredText } from '../../shared/forms/validation';
 import {
   BODY_LABELS,
   CONDITION_LABELS,
@@ -73,6 +73,7 @@ import {
 } from './listing-form';
 import { transitionsOf } from './listing-status';
 import { PhotoUploader } from './photo-uploader';
+import { EstimatedCar, PriceEstimate } from './price-estimate';
 import { countFr } from '../../shared/format/plural';
 
 /** The four steps, by the name each has in the URL. */
@@ -128,6 +129,7 @@ export const MY_LISTINGS = '/mes-annonces';
     PhotoGallery,
     Price,
     SpecLine,
+    PriceEstimate,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-editor-page.html',
@@ -341,6 +343,28 @@ export class ListingEditorPage {
   protected readonly leasingOffer = OfferType.LEASING;
   protected readonly loaType = LeasingType.LOA;
   protected readonly lldType = LeasingType.LLD;
+  /** The vehicle step as it stands, for La Cote's estimate on the price step. */
+  private readonly vehicleValue = toSignal(this.vehicle.valueChanges.pipe(map(() => this.vehicle.getRawValue())), {
+    initialValue: this.vehicle.getRawValue(),
+  });
+  protected readonly estimatedCar = computed<EstimatedCar>(() => {
+    const vehicle = this.vehicleValue();
+    return {
+      modelId: vehicle.model && vehicle.model !== OTHER ? vehicle.model : null,
+      fuel: vehicle.fuel || null,
+      powerHp: parseWholeNumber(vehicle.power),
+      year: parseWholeNumber(vehicle.year),
+      mileageKm: parseWholeNumber(vehicle.mileage),
+      isNew: vehicle.condition === VehicleCondition.NEW,
+      damaged: vehicle.damaged,
+      leasing: this.leasing(),
+    };
+  });
+  protected readonly priceText = toSignal(this.offer.controls.price.valueChanges, {
+    initialValue: this.offer.controls.price.value,
+  });
+  protected readonly marketCurrency = computed(() => this.market().currencyCode);
+
   protected readonly priceLabel = computed(() => `Prix (${this.market().currencyCode === 'EUR' ? '€' : this.market().currencyCode})`);
 
   // --- preview -------------------------------------------------------------

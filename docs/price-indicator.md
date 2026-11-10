@@ -223,11 +223,31 @@ Everything listed above about the indicator applies, plus the following:
   - **Parameters:** `modelId`, `fuelType`, `powerHp`, `year`, `month` (optional),
     `mileageKm`, `scope` (default `EXACT`), `currency` (default `EUR`).
   - **Returns:** `{ scope, comparableCount, minimumComparables, estimate?, basis?, window,
-    widerScopes }`, with amounts in minor units.
+    widerScopes, priceBounds? }`, with amounts in minor units. `priceBounds` is
+    `{ goodDealAtMost, aboveMarketFrom }`, unrounded: the badge's lines for this car. Only with
+    an estimate under the badge's own rule (`EXACT`); a loosened scope is La Cote's, not the badge's.
   - **Errors:** 404 for an unknown model, 400 for a value out of range.
 - **`GET /api/v1/valuation/engines?modelId=`**
   - **Returns:** the model's listed engines, most listed first.
 - **Both:** public, and rate-limited per address with the rest of the public read API.
+
+### In the sell flow
+
+On the price step of `/vendre` (`features/seller/price-estimate.ts`), the seller sees what La Cote
+estimates the car at, with its range, and, live as they type a price, the badge that price would
+get. It is La Cote's own endpoint, under the `EXACT` rule, not a copy:
+
+- **The verdict is the badge's.** The two lines are SQL expressions in one place,
+  `MarketPrice.goodDealAtMost` and `aboveMarketFrom`. The badge's `LEVEL` reads them, and La Cote
+  returns them, computed on the same median, as `priceBounds`. The browser only compares the typed
+  price with them (`levelForPrice`), with no request per keystroke. A test badges listings priced
+  on each line and either side of it, and checks they get what the lines say.
+- **Too few comparables:** the step says so, with how many were found and how many are needed, and
+  gives no figure.
+- **Not asked at all** for a damaged car or a leasing offer, which are never compared, for a new
+  car, which the badge never judges, or for a model typed rather than chosen from the catalogue,
+  where the step says what to fill in.
+- **The seller's price is theirs:** nothing here blocks or changes it.
 
 ## The demo data
 
