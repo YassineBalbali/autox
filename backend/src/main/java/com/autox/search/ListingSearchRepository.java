@@ -223,7 +223,27 @@ public class ListingSearchRepository {
                 });
     }
 
-    private void appendFilters(ListingSearchCriteria criteria, StringBuilder sql, MapSqlParameterSource parameters) {
+    /**
+     * What an unfiltered search for this offer matches, as a predicate on a listing aliased {@code l}:
+     * the visibility rule and the search's defaults (sales or leasing, damaged vehicles left out).
+     *
+     * <p>Built by {@link #appendFilters} itself, not restated, so that a count shown next to the
+     * search — a dealer's page and its directory card — is the number the search then lists, and
+     * stays so when a default changes. A dealer's page said 36 listings over a list of 35 when it
+     * counted with {@link #visible} alone: the damaged one was counted and not listed.
+     */
+    public static String unfilteredMatch(com.autox.listing.OfferType offer) {
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        StringBuilder sql = new StringBuilder("(").append(VISIBLE);
+        appendFilters(ListingSearchCriteria.unfiltered(offer), sql, parameters);
+        if (parameters.getParameterNames().length > 0) {
+            // A default that binds a value cannot be inlined into another statement as it is.
+            throw new IllegalStateException("The unfiltered search binds parameters: " + sql);
+        }
+        return sql.append(")").toString();
+    }
+
+    private static void appendFilters(ListingSearchCriteria criteria, StringBuilder sql, MapSqlParameterSource parameters) {
         if (criteria.makeId() != null) {
             sql.append(" AND l.make_id = :makeId");
             parameters.addValue("makeId", criteria.makeId());

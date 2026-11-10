@@ -6,8 +6,14 @@
 ## Who is listed, and who has a page
 
 - **The directory** lists a professional account that is neither suspended nor deleted, whose
-  page an administrator has not hidden, with at least one listing online by the search's own rule
-  (`ListingSearchRepository.visible`). Counted by offer: sale and leasing.
+  page an administrator has not hidden, with at least one listing the public search shows.
+- **What is counted**, on the card, in the page's header and on its Acheter and Louer tabs, is
+  exactly what the search lists on the page before any filter:
+  `ListingSearchRepository.unfilteredMatch(offer)`, built by the search's own `appendFilters`, so it
+  cannot drift from it. That means the visibility rule and the search's defaults, damaged vehicles
+  left out. Counting with the visibility rule alone once put "36 annonces" over a list of 35: the
+  damaged one was counted and not listed. A dealer whose only listings are damaged is not in the
+  directory, as their page lists nothing until a visitor asks for damaged vehicles.
 - **A page** answers for any such dealer, listings or not. A hidden page, a suspended or a deleted
   account answers **404** to the public, like an offline listing. The dealer still sees their
   hidden page, with the reason, and so do administrators. A suspended dealer cannot sign in at all,

@@ -102,6 +102,13 @@ public record ListingSearchCriteria(
          */
         UUID sellerId) {
 
+    /** No filter at all, for this offer: what the search shows before a visitor narrows it. */
+    public static ListingSearchCriteria unfiltered(OfferType offer) {
+        return new ListingSearchCriteria(null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, offer,
+                null, null, null, null, null, null, null, null);
+    }
+
     public boolean hasBoundingBox() {
         return latMin != null && latMax != null && lonMin != null && lonMax != null;
     }
