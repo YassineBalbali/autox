@@ -199,13 +199,28 @@ public class MarketPrice {
                  AND l.offer_type = 'SALE'
             """.formatted(ADJUSTED_PRICE, comparable(YEAR_SPAN, true, true));
 
+    /**
+     * The highest price that is a good deal against this median, as SQL: a price at or below it
+     * is {@link PriceLevel#GOOD_DEAL}. With {@link #aboveMarketFrom}, the only place the lines are
+     * drawn: the badge reads them in {@link #LEVEL}, and La Cote gives them to a seller pricing a
+     * car, computed by the same expression, so the two cannot place a price differently.
+     */
+    static String goodDealAtMost(String median) {
+        return "((1 - %s) * %s)".formatted(DEAL_MARGIN, median);
+    }
+
+    /** The lowest price that is above the market: at or above it is {@link PriceLevel#ABOVE_MARKET}. */
+    static String aboveMarketFrom(String median) {
+        return "((1 + %s) * %s)".formatted(DEAL_MARGIN, median);
+    }
+
     /** The level of the listing aliased {@code l}, or null; needs {@link #LATERAL}. */
     public static final String LEVEL = """
             CASE WHEN mp.comparables >= %1$d THEN
-                CASE WHEN l.price_amount <= (1 - %2$s) * mp.median THEN 'GOOD_DEAL'
-                     WHEN l.price_amount >= (1 + %2$s) * mp.median THEN 'ABOVE_MARKET'
+                CASE WHEN l.price_amount <= %2$s THEN 'GOOD_DEAL'
+                     WHEN l.price_amount >= %3$s THEN 'ABOVE_MARKET'
                      ELSE 'MARKET' END
-            END""".formatted(MIN_COMPARABLES, DEAL_MARGIN);
+            END""".formatted(MIN_COMPARABLES, goodDealAtMost("mp.median"), aboveMarketFrom("mp.median"));
 
     private final NamedParameterJdbcTemplate jdbc;
 

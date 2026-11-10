@@ -8,7 +8,7 @@ import { Router, provideRouter, withComponentInputBinding } from '@angular/route
 import { RouterTestingHarness } from '@angular/router/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { BASE_PATH, ErrorCode, FuelType, Gearbox, PriceLevel, PublicListingDetail, UserRole } from '../../core/api';
+import { BASE_PATH, DamageType, ErrorCode, FuelType, Gearbox, LeasingType, PriceLevel, PublicListingDetail, UserRole } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { StoredTokens, TOKEN_STORE } from '../../core/auth/token-store';
 import { NBSP } from '../../shared/format/number';
@@ -231,6 +231,19 @@ describe('ListingPage', () => {
       // A private seller has no page: their name leads nowhere.
       expect(root.querySelector('[data-dealer-link]')).toBeNull();
       expect(root.querySelector('[data-dealer-listings]')).toBeNull();
+    });
+
+    it('offers a financing simulation on a car for sale, and none on a leasing offer or a damaged car', async () => {
+      await load();
+      const section = root.querySelector('[data-section="financing"]');
+      expect(section?.querySelector('h2')?.textContent?.trim()).toBe('Simuler un financement');
+      expect(section?.querySelector('app-financing-simulator [data-credit-warning]')).not.toBeNull();
+
+      await load({ ...LISTING, leasing: { type: LeasingType.LOA, monthlyPayment: 25_000, durationMonths: 37 } });
+      expect(root.querySelector('[data-section="financing"]')).toBeNull();
+
+      await load({ ...LISTING, damage: { types: [DamageType.BODYWORK], running: true, description: 'Aile enfoncée.' } });
+      expect(root.querySelector('[data-section="financing"]')).toBeNull();
     });
 
     it('leads from a professional seller’s name to their page, with all their listings', async () => {

@@ -54,6 +54,8 @@ public class LaCote {
                    percentile_cont(0.25) WITHIN GROUP (ORDER BY %1$s)       AS low,
                    percentile_cont(0.5)  WITHIN GROUP (ORDER BY %1$s)       AS median,
                    percentile_cont(0.75) WITHIN GROUP (ORDER BY %1$s)       AS high,
+                   %4$s                                                      AS good_deal_at_most,
+                   %5$s                                                      AS above_market_from,
                    min(c.first_registration_year)                            AS year_from,
                    max(c.first_registration_year)                            AS year_to,
                    min(c.mileage_km)                                         AS mileage_from,
@@ -107,7 +109,9 @@ public class LaCote {
         ValuationScope scope = car.scopeOrExact();
         MapSqlParameterSource parameters = parameters(car, currency);
 
-        String sql = ESTIMATE.formatted(MarketPrice.adjustedPrice(), DESCRIBED_CAR, scope.comparable());
+        String median = "percentile_cont(0.5) WITHIN GROUP (ORDER BY %s)".formatted(MarketPrice.adjustedPrice());
+        String sql = ESTIMATE.formatted(MarketPrice.adjustedPrice(), DESCRIBED_CAR, scope.comparable(),
+                MarketPrice.goodDealAtMost(median), MarketPrice.aboveMarketFrom(median));
         return jdbc.queryForObject(sql, parameters, (rs, row) -> {
             int count = rs.getInt("comparables");
             boolean enough = count >= MarketPrice.MIN_COMPARABLES;
@@ -120,8 +124,13 @@ public class LaCote {
             Valuation.Basis basis = count == 0 ? null : new Valuation.Basis(
                     rs.getInt("year_from"), rs.getInt("year_to"), rs.getInt("mileage_from"), rs.getInt("mileage_to"));
 
+            // The badge's lines, only under the badge's own rule: a loosened scope is La Cote's, and
+            // a listing priced against it would not get that badge.
+            Valuation.PriceBounds bounds = enough && scope == ValuationScope.EXACT
+                    ? new Valuation.PriceBounds(rs.getDouble("good_deal_at_most"), rs.getDouble("above_market_from"))
+                    : null;
             return new Valuation(scope, count, MarketPrice.MIN_COMPARABLES, estimate, basis,
-                    window(car, scope), enough ? List.of() : widerThan(scope, parameters));
+                    window(car, scope), enough ? List.of() : widerThan(scope, parameters), bounds);
         });
     }
 
