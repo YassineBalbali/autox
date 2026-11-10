@@ -122,6 +122,9 @@ public class AccountDeletionService {
         List<String> logo = jdbc.queryForList(
                 "SELECT logo_storage_key FROM pro_profile WHERE user_id = :id AND logo_storage_key IS NOT NULL",
                 params, String.class);
+        // Logo uploads never confirmed: the account row stays as a tombstone, so nothing cascades.
+        logo.addAll(jdbc.queryForList("DELETE FROM dealer_logo_upload WHERE user_id = :id RETURNING storage_key",
+                params, String.class));
         jdbc.update("DELETE FROM pro_profile WHERE user_id = :id", params);
         listings.deleteObjectsAfterCommit(logo);
         jdbc.update("DELETE FROM throttle_counter WHERE scope_key IN (:key, lower(:email))",

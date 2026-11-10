@@ -73,6 +73,10 @@ website, whether to show the phone, the logo, and a link to the page.
   side: EXIF and GPS are in none of its bytes, and the orientation tag is applied first. The upload
   is deleted once the logo is made, the previous logo after the commit, and the logo with the
   account. Without one, the page shows the name's initials.
+- **An upload never confirmed** is not left in storage: each slot is a `dealer_logo_upload` row
+  (V29), consumed by the confirmation, and `ListingImageSweeper` deletes the expired ones with
+  their objects, in the same run as the listing photos' abandoned uploads. Only expired slots, so
+  an upload still in flight is never pulled out from under the dealer.
 
 ## Administrators
 
@@ -105,7 +109,5 @@ their initials.
 
 ## Not built
 
-- An upload slot that is never confirmed leaves its object under `dealers/<id>/uploads/` in
-  storage; nothing sweeps that prefix yet (listing photos have `ListingImageSweeper`).
 - No map, no reviews, no opening hours as structured data (open now / closed), no address on the
   page: the address fields stay on the company profile and are not shown.
