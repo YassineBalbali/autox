@@ -12,10 +12,15 @@ import com.autox.user.ProProfile;
 import com.autox.user.ProProfileRepository;
 import com.autox.user.UserRole;
 import java.awt.image.BufferedImage;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -30,6 +35,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * camera serial number are in the uploaded file and in none of the bytes written back. The
  * orientation tag is acted on first, so a logo photographed on its side is not stored that way.
  * The upload itself is deleted once the logo is made.
+ *
+ * <p>Each slot is a {@code dealer_logo_upload} row until then (V29): the confirmation needs it,
+ * and {@link #purgeAbandonedUploads} deletes the expired ones with their objects, so an upload
+ * nobody confirmed does not stay in storage.
  */
 @Service
 public class CompanyLogoService {
@@ -47,9 +56,11 @@ public class CompanyLogoService {
     private final StorageProperties storageProperties;
     private final ImageProperties imageProperties;
     private final ImageResizer resizer;
+    private final NamedParameterJdbcTemplate jdbc;
 
     CompanyLogoService(ProProfileRepository profiles, ObjectStorage storage, StorageProperties storageProperties,
-                       ImageProperties imageProperties, ImageResizer resizer) {
+                       ImageProperties imageProperties, ImageResizer resizer, NamedParameterJdbcTemplate jdbc) {
+        this.jdbc = jdbc;
         this.profiles = profiles;
         this.storage = storage;
         this.storageProperties = storageProperties;
@@ -57,7 +68,7 @@ public class CompanyLogoService {
         this.resizer = resizer;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ImageUploadTicket requestUpload(UUID userId, ImageUploadRequest request) {
         requireProfile(userId);
         String contentType = request.contentType().trim().toLowerCase(Locale.ROOT);
@@ -70,6 +81,12 @@ public class CompanyLogoService {
                     + " MB or smaller.");
         }
         UUID uploadId = UUID.randomUUID();
+        Instant expiresAt = Instant.now().plus(storageProperties.uploadUrlTtl());
+        jdbc.update("""
+                INSERT INTO dealer_logo_upload (id, user_id, storage_key, expires_at)
+                VALUES (:id, :user, :key, :expires)""", new MapSqlParameterSource("id", uploadId)
+                .addValue("user", userId).addValue("key", uploadKey(userId, uploadId))
+                .addValue("expires", Timestamp.from(expiresAt)));
         ObjectStorage.PresignedUpload presigned = storage.presignUpload(
                 uploadKey(userId, uploadId), contentType, request.byteSize(), storageProperties.uploadUrlTtl());
         return new ImageUploadTicket(uploadId, presigned.url(), presigned.method(), presigned.requiredHeaders(),
@@ -81,6 +98,12 @@ public class CompanyLogoService {
     public void confirm(UUID userId, UUID uploadId) {
         ProProfile profile = requireProfile(userId);
         String uploaded = uploadKey(userId, uploadId);
+        // The slot this account was given, and only once: it goes whatever the outcome below.
+        int slots = jdbc.update("DELETE FROM dealer_logo_upload WHERE id = :id AND user_id = :user",
+                new MapSqlParameterSource("id", uploadId).addValue("user", userId));
+        if (slots == 0) {
+            throw ApiException.uploadNotFound("No logo upload slot was found. Request a new one.");
+        }
         ObjectStorage.StoredObject stored = storage.stat(uploaded)
                 .orElseThrow(() -> ApiException.uploadNotFound(
                         "No uploaded file was found for this logo. Upload to the pre-signed URL first;"
@@ -122,6 +145,28 @@ public class CompanyLogoService {
         String previous = profile.getLogoStorageKey();
         profile.setLogoStorageKey(null);
         deleteAfterCommit(previous);
+    }
+
+    /**
+     * Deletes the slots whose pre-signed URL has expired and was never confirmed, with whatever
+     * was uploaded to them. Run by {@code ListingImageSweeper}, with the photos' abandoned uploads.
+     * Only expired slots, so an upload still in flight is never pulled out from under a client.
+     *
+     * @return how many slots were removed
+     */
+    @Transactional
+    public int purgeAbandonedUploads() {
+        List<String> keys = jdbc.queryForList("""
+                DELETE FROM dealer_logo_upload WHERE expires_at < :now RETURNING storage_key""",
+                new MapSqlParameterSource("now", Timestamp.from(Instant.now())), String.class);
+        if (!keys.isEmpty()) {
+            try {
+                storage.deleteAll(keys);
+            } catch (RuntimeException e) {
+                log.warn("Could not delete {} abandoned logo upload(s): {}", keys.size(), e.getMessage());
+            }
+        }
+        return keys.size();
     }
 
     private ProProfile requireProfile(UUID userId) {

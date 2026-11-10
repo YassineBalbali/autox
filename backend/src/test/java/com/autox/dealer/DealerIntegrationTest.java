@@ -469,7 +469,57 @@ class DealerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    @DisplayName("a logo upload never confirmed is swept with its object by the image clean-up, once its slot has expired")
+    void abandonedLogoUploads() throws Exception {
+        storage.ensureReady();
+        JsonNode dealer = dealer("Garage Bellevue");
+        String abandoned = putLogo(dealer, jpegWithExif(600, 600));
+        String inFlight = putLogo(dealer, jpegWithExif(600, 600));
+        String abandonedKey = "dealers/" + id(dealer) + "/uploads/" + abandoned;
+        String inFlightKey = "dealers/" + id(dealer) + "/uploads/" + inFlight;
+        jdbcTemplate.update("UPDATE dealer_logo_upload SET expires_at = now() - interval '1 minute' WHERE id = ?::uuid",
+                abandoned);
+        assertThat(storage.stat(abandonedKey)).isPresent();
+
+        sweeper.purgeAbandonedUploads();
+
+        assertThat(storage.stat(abandonedKey)).as("the abandoned upload").isEmpty();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM dealer_logo_upload WHERE id = ?::uuid",
+                Integer.class, abandoned)).isZero();
+        assertThat(storage.stat(inFlightKey)).as("an upload still in time").isPresent();
+        // A swept slot cannot be confirmed; the one still in time can, and is then gone from the table.
+        mockMvc.perform(post("/api/v1/me/company/logo/" + abandoned + "/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(dealer)))
+                .andExpect(status().is4xxClientError());
+        mockMvc.perform(post("/api/v1/me/company/logo/" + inFlight + "/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(dealer)))
+                .andExpect(status().isOk());
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM dealer_logo_upload", Integer.class)).isZero();
+        assertThat(storage.stat(inFlightKey)).as("the upload, once made into the logo").isEmpty();
+    }
+
     // ---- helpers ----------------------------------------------------------------------------------
+
+    @Autowired com.autox.listing.image.ListingImageSweeper sweeper;
+
+    /** Asks for a slot and PUTs the bytes, without confirming. Returns the upload's id. */
+    private String putLogo(JsonNode dealer, byte[] content) throws Exception {
+        JsonNode ticket = json(mockMvc.perform(post("/api/v1/me/company/logo")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(dealer))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "filename", "logo.jpg", "contentType", "image/jpeg", "byteSize", content.length))))
+                .andExpect(status().isCreated()).andReturn());
+        HttpRequest put = HttpRequest.newBuilder(URI.create(ticket.get("uploadUrl").asText()))
+                .header("Content-Type", "image/jpeg")
+                .PUT(HttpRequest.BodyPublishers.ofByteArray(content))
+                .build();
+        try (HttpClient http = HttpClient.newHttpClient()) {
+            assertThat(http.send(put, HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(200);
+        }
+        return ticket.get("imageId").asText();
+    }
 
     private JsonNode dealer(String name) throws Exception {
         return dealer(name, uniqueEmail("dealer"));

@@ -16,6 +16,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>Only slots whose pre-signed URL has already expired are touched, so an upload still in
  * flight is never pulled out from under a client.
+ *
+ * <p>Dealers' logo uploads are swept here too ({@code CompanyLogoService}): the same handshake,
+ * the same waste when it stops halfway.
  */
 @Component
 public class ListingImageSweeper {
@@ -23,10 +26,13 @@ public class ListingImageSweeper {
     private static final Logger log = LoggerFactory.getLogger(ListingImageSweeper.class);
 
     private final ListingImageService imageService;
+    private final com.autox.dealer.CompanyLogoService logos;
     private final ScheduledTaskCoordinator coordinator;
 
-    public ListingImageSweeper(ListingImageService imageService, ScheduledTaskCoordinator coordinator) {
+    public ListingImageSweeper(ListingImageService imageService, com.autox.dealer.CompanyLogoService logos,
+                               ScheduledTaskCoordinator coordinator) {
         this.imageService = imageService;
+        this.logos = logos;
         this.coordinator = coordinator;
     }
 
@@ -43,6 +49,10 @@ public class ListingImageSweeper {
                 int removed = imageService.purgeAbandonedUploads();
                 if (removed > 0) {
                     log.info("Removed {} abandoned upload slot(s)", removed);
+                }
+                int logos = this.logos.purgeAbandonedUploads();
+                if (logos > 0) {
+                    log.info("Removed {} abandoned logo upload slot(s)", logos);
                 }
             } catch (RuntimeException e) {
                 // A storage outage must not kill the scheduler thread; the next run retries.
