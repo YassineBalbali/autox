@@ -124,6 +124,23 @@
     </fieldset>
     }
 
+    <!-- One at most, and pressing it again clears it. The class is the API's estimate, from the
+         fuel and the first registration: a listing it cannot estimate is left out once this is set. -->
+    <fieldset class="filters__group" data-filter="crit-air">
+      <legend i18n="@@filterCritAir">Crit’Air maximum</legend>
+      <div class="filters__chips">
+        @for (option of critAirOptions; track option.value) {
+          <app-filter-chip
+            [active]="query().critAirMax === option.value"
+            [attr.data-crit-air-max]="option.value"
+            (toggled)="changed.emit({ critAirMax: $event ? option.value : null })"
+          >
+            {{ option.label }}
+          </app-filter-chip>
+        }
+      </div>
+    </fieldset>
+
     <!-- ====================================================== multi-choice -->
     @for (group of groups(); track group.key) {
       <fieldset class="filters__group">

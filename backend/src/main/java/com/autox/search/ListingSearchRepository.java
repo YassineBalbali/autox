@@ -262,6 +262,12 @@ public class ListingSearchRepository {
             parameters.addValue("model", criteria.model().trim());
         }
 
+        // The stored estimate (V30): an unknown class is NULL and an unclassified one 6, so neither passes.
+        if (criteria.critAirMax() != null) {
+            sql.append(" AND l.crit_air <= :critAirMax");
+            parameters.addValue("critAirMax", criteria.critAirMax());
+        }
+
         if (criteria.sellerId() != null) {
             sql.append(" AND l.seller_id = :sellerId");
             parameters.addValue("sellerId", criteria.sellerId());

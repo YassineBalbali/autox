@@ -8,7 +8,7 @@ import { Router, provideRouter, withComponentInputBinding } from '@angular/route
 import { RouterTestingHarness } from '@angular/router/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { BASE_PATH, DamageType, ErrorCode, FuelType, Gearbox, LeasingType, PriceLevel, PublicListingDetail, UserRole } from '../../core/api';
+import { BASE_PATH, CritAir, DamageType, ErrorCode, FuelType, Gearbox, LeasingType, PriceLevel, PublicListingDetail, UserRole } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
 import { StoredTokens, TOKEN_STORE } from '../../core/auth/token-store';
 import { NBSP } from '../../shared/format/number';
@@ -231,6 +231,17 @@ describe('ListingPage', () => {
       // A private seller has no page: their name leads nowhere.
       expect(root.querySelector('[data-dealer-link]')).toBeNull();
       expect(root.querySelector('[data-dealer-listings]')).toBeNull();
+    });
+
+    it('shows the estimated Crit’Air next to the key facts, and nothing when the API has none', async () => {
+      await load({ ...LISTING, critAir: CritAir.TWO });
+      expect(root.querySelector('app-key-facts + app-crit-air .crit-air__number')?.textContent?.trim()).toBe('2');
+
+      await load({ ...LISTING, critAir: CritAir.ONE, leasing: { type: LeasingType.LLD, monthlyPayment: 30_000 } });
+      expect(root.querySelector('app-crit-air .crit-air__number')?.textContent?.trim()).toBe('1');
+
+      await load({ ...LISTING, critAir: undefined });
+      expect(root.querySelector('app-crit-air')?.textContent?.trim()).toBe('');
     });
 
     it('offers a financing simulation on a car for sale, and none on a leasing offer or a damaged car', async () => {

@@ -8,6 +8,7 @@ import { catchError, of, switchMap, tap } from 'rxjs';
 
 import { ErrorCode, Feature, ListingsPublicService, PublicListingDetail } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
+import { CritAirBadge } from '../../shared/listing/crit-air';
 import { FinancingSimulator } from './financing-simulator';
 import { ReportListing } from './report-listing';
 import { asApiError } from '../../core/errors/api-error';
@@ -69,6 +70,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     NotFound,
     ReportListing,
     FinancingSimulator,
+    CritAirBadge,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listing-page.html',

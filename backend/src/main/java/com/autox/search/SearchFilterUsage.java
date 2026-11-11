@@ -81,6 +81,7 @@ public class SearchFilterUsage {
         add(names, "duration", c.durationMin() != null || c.durationMax() != null);
         add(names, "mileageAllowance", c.mileageAllowanceMin() != null || c.mileageAllowanceMax() != null);
         add(names, "seller", c.sellerId() != null);
+        add(names, "critAir", c.critAirMax() != null);
         return names;
     }
 

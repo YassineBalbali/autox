@@ -133,6 +133,8 @@ export const FILTER_LABELS: Readonly<Record<string, string>> = {
   monthly: 'Mensualité',
   duration: 'Durée de location',
   mileageAllowance: 'Kilométrage annuel',
+  critAir: 'Crit’Air',
+  seller: 'Page d’un professionnel',
 };
 
 export function filterLabel(name: string): string {

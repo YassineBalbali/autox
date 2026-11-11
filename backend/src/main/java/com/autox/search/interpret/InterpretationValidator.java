@@ -236,8 +236,8 @@ class InterpretationValidator {
                 durationMax,
                 allowanceMin,
                 null,
-                // A description names no seller.
-                null);
+                // A description names no seller, and no Crit'Air.
+                null, null);
 
         String summary = summary(make, model, bodies, fuels, gearboxes, conditions, damage,
                 leasingSummary(leasing, leasingTypes, monthlyMin, monthlyMax, durationMin, durationMax, allowanceMin),

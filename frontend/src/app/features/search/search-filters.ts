@@ -29,6 +29,7 @@ import {
   GEARBOX_LABELS,
   labelOf,
 } from '../../shared/listing/labels.fr';
+import { CRIT_AIR_MAX_OPTIONS } from '../../shared/listing/crit-air';
 import { LEASING_TYPE_LABELS } from '../../shared/listing/leasing.fr';
 import { SearchQuery, activeFilterCount, allowsGoodDeals, isLeasing } from './search-query';
 import { VehicleFilter } from './vehicle-filter';
@@ -188,6 +189,8 @@ export class SearchFilters {
     const next = chosen ? [...current, value] : current.filter((entry) => entry !== value);
     this.changed.emit({ [key]: next } as Partial<SearchQuery>);
   }
+
+  protected readonly critAirOptions = CRIT_AIR_MAX_OPTIONS;
 
   protected setLocation(event: Event): void {
     this.changed.emit({ location: textOf(event) });

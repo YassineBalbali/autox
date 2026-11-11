@@ -352,6 +352,22 @@ What is left:
   renew or relist), and the privacy page says so.
 - **The data export gives photos as links valid six hours**, not as files.
 
+### W16. No technical sheet from manufacturer data — decided against, for now
+
+A "Fiche technique" with WLTP consumption, CO2 and fiscal power from ADEME's open data was studied
+in November 2026 and not built:
+- **Car Labelling** lists only the cars on sale new today, with no year.
+- **The older dataset** stops at the 2015 edition (NEDC figures).
+- **The gap:** nothing covers registrations from 2016 to 2023, which is most used cars on sale,
+  and most of the demo.
+
+Matched strictly (the source by year, then make, model, fuel, power within 1 kW and gearbox, and
+every remaining candidate with the same figures), **2.7 % of the demo listings** (4 of 150) would
+get a sheet. Looser rules reached 14 % only by matching wrong cars: a van to the passenger car, a
+Sandero to a Stepway. A sheet that is right on 3 % of listings and absent on the rest was not worth
+its import. What was built instead is the Crit'Air estimate (`docs/crit-air.md`), from the
+listing's own fuel and date.
+
 ---
 
 ## 3. What became of the earlier ten

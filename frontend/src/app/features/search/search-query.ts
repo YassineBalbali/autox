@@ -56,6 +56,8 @@ export interface SearchQuery {
   readonly durationMin: number | null;
   readonly durationMax: number | null;
   readonly allowanceMin: number | null;
+  /** "Crit'Air 2 ou mieux": the highest class wanted, 0 to 5. The API estimates each listing's. */
+  readonly critAirMax: number | null;
   readonly sort: SearchSort;
 }
 
@@ -85,6 +87,7 @@ export const EMPTY_QUERY: SearchQuery = {
   durationMin: null,
   durationMax: null,
   allowanceMin: null,
+  critAirMax: null,
   sort: DEFAULT_SORT,
 };
 
@@ -121,6 +124,7 @@ export const PARAM = {
   durationMax: 'duree_max',
   allowanceMin: 'km_an_min',
   sort: 'tri',
+  critAirMax: 'critair_max',
 } as const;
 
 /** Sort order to its slug in the URL. The default has none: it is simply absent. */
@@ -271,6 +275,7 @@ export function parseQuery(params: ParamMap): SearchQuery {
     durationMin: leasing ? durationMin : null,
     durationMax: leasing ? durationMax : null,
     allowanceMin: leasing ? integer(params.get(PARAM.allowanceMin), 0, MAX_ALLOWANCE) : null,
+    critAirMax: integer(params.get(PARAM.critAirMax), 0, 5),
     sort: sortFor(sortFromSlug(params.get(PARAM.sort)), offer),
   };
 }
@@ -317,6 +322,7 @@ export function toQueryParams(query: SearchQuery): Params {
     put(PARAM.durationMax, query.durationMax);
     put(PARAM.allowanceMin, query.allowanceMin);
   }
+  put(PARAM.critAirMax, query.critAirMax);
   const sort = sortFor(query.sort, query.offer);
   put(PARAM.sort, sort === DEFAULT_SORT ? null : SORT_SLUGS[sort]);
 
@@ -381,6 +387,7 @@ export function toCriteria(
     mileageAllowanceMin: leasing ? (query.allowanceMin ?? undefined) : undefined,
     location: query.location ?? undefined,
     priceLevel: query.goodDeals ? [PriceLevel.GOOD_DEAL] : undefined,
+    critAirMax: query.critAirMax ?? undefined,
   });
 }
 
@@ -404,6 +411,7 @@ export function activeFilterCount(query: SearchQuery): number {
     query.monthlyMin ?? query.monthlyMax,
     query.durationMin ?? query.durationMax,
     query.allowanceMin,
+    query.critAirMax,
   ].filter((value) => value !== null && value !== undefined).length;
 }
 

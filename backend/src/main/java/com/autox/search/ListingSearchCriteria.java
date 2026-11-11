@@ -100,13 +100,19 @@ public record ListingSearchCriteria(
          * One seller's listings only: a dealer's page, which is this search with this one
          * criterion more. Appended last, like {@code q}.
          */
-        UUID sellerId) {
+        UUID sellerId,
+
+        /**
+         * The highest Crit'Air class wanted, 0 to 5: "Crit'Air 2 ou mieux". A listing whose class
+         * cannot be estimated, or an unclassified one, is then left out. Appended last, like {@code q}.
+         */
+        @Min(0) @Max(5) Integer critAirMax) {
 
     /** No filter at all, for this offer: what the search shows before a visitor narrows it. */
     public static ListingSearchCriteria unfiltered(OfferType offer) {
         return new ListingSearchCriteria(null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, offer,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
     public boolean hasBoundingBox() {

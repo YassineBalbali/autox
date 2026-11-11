@@ -51,6 +51,9 @@
 
           <app-key-facts [listing]="item" [fuel]="fuelLabel()" [gearbox]="gearboxLabel()" />
 
+          <!-- Estimated by the API from the fuel and the date; nothing when they cannot settle it. -->
+          <app-crit-air [critAir]="item.critAir" />
+
           @if (item.description) {
             <section class="section" aria-labelledby="titre-description">
               <h2 id="titre-description" class="section__title" i18n="@@listingDescription">Description</h2>

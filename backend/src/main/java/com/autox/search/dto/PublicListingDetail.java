@@ -59,6 +59,12 @@ public record PublicListingDetail(
         /** Against comparable listings; null when there is not enough to compare with. */
         PriceIndicator priceIndicator,
 
+        /**
+         * Estimated from the fuel and the first registration (arrêté du 21 juin 2016); null when
+         * they cannot settle it. Not the vignette itself, which follows the Euro standard.
+         */
+        com.autox.listing.CritAir critAir,
+
         Instant publishedAt,
         Instant updatedAt) {
 
@@ -92,6 +98,7 @@ public record PublicListingDetail(
                 listing.getFeatures().stream().map(VehicleFeature::getCode).sorted().toList(),
                 images,
                 priceIndicator,
+                com.autox.listing.CritAir.fromCode(listing.getCritAir()),
                 listing.getPublishedAt(),
                 listing.getUpdatedAt());
     }

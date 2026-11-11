@@ -105,6 +105,14 @@ export function describeFilters(query: SearchQuery, names: VehicleNames = {}): A
     });
   }
 
+  if (query.critAirMax !== null) {
+    filters.push({
+      key: 'critAir',
+      label: query.critAirMax === 0 ? 'Crit’Air 0' : `Crit’Air ${query.critAirMax} ou mieux`,
+      remove: { critAirMax: null },
+    });
+  }
+
   for (const value of query.leasingType) {
     filters.push({
       key: `leasingType:${value}`,

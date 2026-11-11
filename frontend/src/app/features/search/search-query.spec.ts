@@ -77,6 +77,7 @@ describe('Acheter / Louer', () => {
       monthlyMax: 300,
       durationMin: 24,
       allowanceMin: 10000,
+      critAirMax: null,
       sort: SearchSort.MONTHLY_ASC,
     };
 
@@ -200,6 +201,7 @@ describe('parseQuery', () => {
       durationMin: null,
       durationMax: null,
       allowanceMin: null,
+      critAirMax: null,
       sort: SearchSort.PRICE_ASC,
     });
   });
@@ -391,6 +393,7 @@ describe('toQueryParams', () => {
       durationMin: null,
       durationMax: null,
       allowanceMin: null,
+      critAirMax: null,
       sort: SearchSort.PRICE_DESC,
     };
 

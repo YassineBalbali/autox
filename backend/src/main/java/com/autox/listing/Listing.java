@@ -141,6 +141,13 @@ public class Listing extends BaseEntity {
     @Column(name = "first_registration_year", nullable = false)
     private short firstRegistrationYear;
 
+    /**
+     * The estimated Crit'Air code, computed by the database from the fuel and the first
+     * registration (V30): never written from here. Fresh after a reload, not after a save.
+     */
+    @Column(name = "crit_air", insertable = false, updatable = false)
+    private Short critAir;
+
     @Column(name = "first_registration_month")
     private Short firstRegistrationMonth;
 
@@ -616,6 +623,10 @@ public class Listing extends BaseEntity {
 
     public void setFirstRegistrationYear(short firstRegistrationYear) {
         this.firstRegistrationYear = firstRegistrationYear;
+    }
+
+    public Short getCritAir() {
+        return critAir;
     }
 
     public Short getFirstRegistrationMonth() {

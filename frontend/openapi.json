@@ -4590,6 +4590,12 @@
           "sellerId": {
             "type": "string",
             "format": "uuid"
+          },
+          "critAirMax": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 5,
+            "minimum": 0
           }
         }
       },
@@ -7477,6 +7483,9 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "critAir": {
+            "$ref": "#/components/schemas/CritAir"
           }
         }
       },
@@ -8976,6 +8985,19 @@
             "format": "double"
           }
         }
+      },
+      "CritAir": {
+        "type": "string",
+        "description": "A listing's Crit'Air class, estimated from its fuel and first registration by the official\n table (arrêté du 21 juin 2016, annexe I). The rule is the database function\n <code>crit_air_class</code> (V30), stored on each listing as <code>crit_air</code>: it exists once, and\n the search filters on the same column. Absent when the fuel or the date cannot settle it.",
+        "enum": [
+          "ZERO",
+          "ONE",
+          "TWO",
+          "THREE",
+          "FOUR",
+          "FIVE",
+          "UNCLASSIFIED"
+        ]
       }
     },
     "securitySchemes": {

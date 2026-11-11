@@ -199,10 +199,18 @@ class ModerationSearchIntegrationTest extends AbstractIntegrationTest {
                 try (java.sql.Statement statement = connection.createStatement()) {
                     // Enough rows for an index to be worth it, copied from a real one and rolled
                     // back: on a near-empty table any plan will do, and none would prove anything.
+                    // The columns that can be written: a generated one (crit_air, V30) cannot be copied in.
+                    String columns = jdbcTemplate.queryForObject("""
+                            SELECT string_agg(quote_ident(column_name), ', ' ORDER BY ordinal_position)
+                              FROM information_schema.columns
+                             WHERE table_schema = 'public' AND table_name = 'listing' AND is_generated = 'NEVER'""",
+                            String.class);
                     statement.execute("""
-                            INSERT INTO listing SELECT (jsonb_populate_record(l, jsonb_build_object(
+                            INSERT INTO listing (%1$s) SELECT %1$s FROM (
+                                SELECT (jsonb_populate_record(l, jsonb_build_object(
                                        'id', md5('l' || n)::uuid, 'title', 'Annonce ' || n))).*
-                              FROM listing l, generate_series(1, 3000) n WHERE l.id = '%s'""".formatted(model));
+                                  FROM listing l, generate_series(1, 3000) n WHERE l.id = '%2$s') copy""".formatted(
+                            columns, model));
                     statement.execute("""
                             INSERT INTO app_user SELECT (jsonb_populate_record(u, jsonb_build_object(
                                        'id', md5('u' || n)::uuid, 'email', 'copy-' || n || '@autox.test'))).*
