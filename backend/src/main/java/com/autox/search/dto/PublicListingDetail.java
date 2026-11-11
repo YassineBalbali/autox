@@ -35,6 +35,8 @@ public record PublicListingDetail(
 
         int mileageKm,
         String condition,
+        /** "Neuf": condition new and a professional seller. See {@code Listing.isSoldNew}. */
+        boolean soldNew,
         String exteriorColor,
         String colorText,
         Boolean metallicPaint,
@@ -83,6 +85,7 @@ public record PublicListingDetail(
                 SellerView.from(listing, demoSeller, dealerSlug),
                 listing.getMileageKm(),
                 name(listing.getVehicleCondition()),
+                listing.isSoldNew(),
                 name(listing.getExteriorColor()),
                 listing.getColorText(),
                 listing.getMetallicPaint(),

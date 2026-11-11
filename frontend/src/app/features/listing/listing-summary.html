@@ -1,5 +1,9 @@
 <section class="summary">
   <div class="summary__head">
+    <!-- The API's rule: new, and a professional seller. -->
+    @if (listing().soldNew) {
+      <span class="tag tag--accent summary__new" data-badge="new" i18n="@@listingNewBadge">Neuf</span>
+    }
     <h1 class="summary__title">{{ listing().title }}</h1>
     @if (published()) {
       <p class="summary__published">

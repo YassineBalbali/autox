@@ -15,6 +15,10 @@
   gap: var(--s-1);
 }
 
+.summary__new {
+  align-self: flex-start;
+}
+
 .summary__title {
   margin: 0;
   font-size: var(--t-lg);

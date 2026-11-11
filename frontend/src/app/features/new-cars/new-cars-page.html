@@ -1,0 +1,75 @@
+<!-- ===== Hero: what this is, and the search, preset to "neuf" ================= -->
+<section class="hero" aria-labelledby="neuf-title">
+  <div class="hero__inner">
+    <div class="hero__headline">
+      <h1 id="neuf-title" class="hero__title" i18n="@@newCarsTitle">Voitures neuves</h1>
+      <p class="hero__lede" i18n="@@newCarsLede">
+        Les véhicules neufs et zéro kilomètre des professionnels, avec la garantie constructeur.
+      </p>
+    </div>
+    <app-home-finder class="hero__finder" [preset]="preset" [offerTabs]="false" />
+  </div>
+</section>
+
+@if (empty()) {
+  <p class="neuf__empty" data-state="empty" i18n="@@newCarsEmpty">
+    Aucune voiture neuve n’est en ligne pour le moment.
+  </p>
+}
+
+<!-- ===== The makes with new stock, each with its count ======================== -->
+@if (makes().length > 0) {
+  <section class="neuf-section" aria-labelledby="neuf-makes-title" data-section="makes">
+    <header class="neuf-section__head">
+      <h2 id="neuf-makes-title" class="neuf-section__title" i18n="@@newCarsMakesTitle">Marques en stock neuf</h2>
+    </header>
+    <ul class="tiles" role="list">
+      @for (make of makes(); track make.slug) {
+        <li>
+          <app-shortcut-tile [label]="make.name" [params]="makeParams(make)" [count]="makeCount(make)" />
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+<!-- ===== The latest arrivals: the search's first page ========================= -->
+@if (latest(); as listings) {
+  @if (listings.length > 0) {
+    <section class="neuf-section" aria-labelledby="neuf-latest-title" data-section="latest">
+      <header class="neuf-section__head">
+        <h2 id="neuf-latest-title" class="neuf-section__title" i18n="@@newCarsLatestTitle">Dernières arrivées</h2>
+        <a class="neuf-section__all" data-link="all" [routerLink]="searchPath" [queryParams]="allParams">{{ allLabel() }}</a>
+      </header>
+      @if (phone()) {
+        <ul class="neuf__list" role="list">
+          @for (listing of listings; track listing.id) {
+            <li class="neuf__item">
+              <app-listing-row
+                [listing]="listing"
+                [headingLevel]="3"
+                [minorUnit]="minorUnitOf(listing)"
+                [fuelLabel]="fuelLabel(listing)"
+                [gearboxLabel]="gearboxLabel(listing)"
+              />
+            </li>
+          }
+        </ul>
+      } @else {
+        <ul class="neuf__grid" role="list">
+          @for (listing of listings; track listing.id) {
+            <li>
+              <app-listing-card
+                [listing]="listing"
+                [headingLevel]="3"
+                [minorUnit]="minorUnitOf(listing)"
+                [fuelLabel]="fuelLabel(listing)"
+                [gearboxLabel]="gearboxLabel(listing)"
+              />
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+}

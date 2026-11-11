@@ -52,10 +52,10 @@ describe('availableNav', () => {
     expect(availableNav(withHome, home).map((item) => item.label)).toEqual(['Acheter']);
   });
 
-  it('shows buying, selling, La Cote and the professionals, each of which has a screen', () => {
+  it('shows buying, new cars, selling, La Cote and the professionals, each of which has a screen', () => {
     // The real route table. "Vendre" was declared long before its route existed and was
     // left out until it did; this is the test that used to assert its absence.
-    expect(availableNav(routes).map((item) => item.label)).toEqual(['Acheter', 'Vendre', 'La Cote', 'Professionnels']);
-    expect(PRIMARY_NAV.map((item) => item.path)).toEqual(['recherche', 'vendre', 'la-cote', 'professionnels']);
+    expect(availableNav(routes).map((item) => item.label)).toEqual(['Acheter', 'Neuf', 'Vendre', 'La Cote', 'Professionnels']);
+    expect(PRIMARY_NAV.map((item) => item.path)).toEqual(['recherche', 'neuf', 'vendre', 'la-cote', 'professionnels']);
   });
 });

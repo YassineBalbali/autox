@@ -262,6 +262,7 @@ describe('SiteHeader', () => {
     ).map((link) => [link.textContent?.trim(), link.getAttribute('href')]);
     expect(links).toEqual([
       ['Acheter', '/recherche'],
+      ['Neuf', '/neuf'],
       ['Vendre', '/vendre'],
       ['La Cote', '/la-cote'],
       ['Professionnels', '/professionnels'],

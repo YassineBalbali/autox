@@ -109,6 +109,16 @@ public class ListingSearchService {
         return new ResultCount(Math.min(counted, COUNT_CAP), counted > COUNT_CAP);
     }
 
+    /** The catalogue makes among the matches, with their counts. See {@link ListingSearchRepository#makeCounts}. */
+    @Transactional(readOnly = true)
+    public List<com.autox.search.dto.MakeMatchCount> makeCounts(ListingSearchCriteria criteria) {
+        if (criteria.hasPartialBoundingBox()) {
+            throw ApiException.validationFailed(
+                    "A bounding box needs all four of latMin, latMax, lonMin and lonMax.");
+        }
+        return searchRepository.makeCounts(criteria);
+    }
+
     @Transactional(readOnly = true)
     public PublicListingDetail detail(UUID listingId) {
         Listing listing = publicListing(listingId);
@@ -191,6 +201,7 @@ public class ListingSearchService {
                     row.drivetrain(),
                     row.powerHp(),
                     row.condition(),
+                    com.autox.listing.Listing.soldNew(row.condition(), row.sellerRole()),
                     row.countryCode(),
                     row.city(),
                     row.postalCode(),

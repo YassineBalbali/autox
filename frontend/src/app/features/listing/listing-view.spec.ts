@@ -73,6 +73,19 @@ describe('specificationRows', () => {
     expect(labels.join(' ')).not.toMatch(/VIN|série/i);
   });
 
+  describe('new or used, by the API’s rule', () => {
+    it('is "Neuf" when sold new by a professional, with its few kilometres said to be a new car’s', () => {
+      const listed = rows({ ...FULL, condition: 'NEW', soldNew: true, mileageKm: 12 });
+
+      expect(listed['État']).toBe('Neuf');
+      expect(listed['Kilométrage']).toBe(`12${NBSP}km (véhicule neuf)`);
+    });
+
+    it('is "Occasion" for a private seller’s car, whatever its condition says', () => {
+      expect(rows({ ...FULL, condition: 'NEW', soldNew: false })['État']).toBe('Occasion');
+    });
+  });
+
   describe('leaves out what the seller did not state', () => {
     it('shows only the rows it has values for', () => {
       expect(specificationRows({ id: 'bare', title: 'Sans détail' })).toEqual([]);

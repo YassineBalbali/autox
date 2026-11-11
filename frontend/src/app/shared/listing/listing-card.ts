@@ -54,6 +54,7 @@ import { headlineOf, listingLink, placeOf } from './summary';
           layout="grid"
           [year]="listing().firstRegistrationYear"
           [mileage]="listing().mileageKm"
+          [isNew]="!!listing().soldNew"
           [fuel]="fuelLabel()"
           [electric]="electric()"
           [gearbox]="gearboxLabel()"

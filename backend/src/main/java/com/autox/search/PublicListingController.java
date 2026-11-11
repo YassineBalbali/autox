@@ -75,6 +75,18 @@ public class PublicListingController {
     }
 
     /**
+     * The catalogue makes among the listings these filters match, each with how many: the count
+     * {@code GET /api/v1/listings/count} gives for the same filters plus that make. Most listings
+     * first. The "Neuf" page lists the makes with new stock this way ({@code condition=NEW}).
+     * Makes typed as free text are not listed.
+     */
+    @io.swagger.v3.oas.annotations.Operation(operationId = "makeCounts")
+    @GetMapping("/makes")
+    public List<com.autox.search.dto.MakeMatchCount> makes(@Valid ListingSearchCriteria criteria) {
+        return searchService.makeCounts(criteria);
+    }
+
+    /**
      * One listing, as a buyer sees it: full description, equipment codes and the image gallery
      * in order, each image with its three size variants.
      *

@@ -148,6 +148,16 @@ final class DemoDetails {
                 LEASING_NOTICE);
     }
 
+    /** The same for a new car: its own sentence, then what every new car from a dealer has. */
+    static String newDescription(DemoCatalogue.NewVehicle car) {
+        DemoCatalogue.Vehicle vehicle = car.vehicle();
+        return String.join("\n\n",
+                vehicle.title() + ".",
+                car.pitch(),
+                "Véhicule neuf, garantie constructeur. Visible à " + vehicle.city() + " sur rendez-vous.",
+                NOTICE);
+    }
+
     /** A few sentences in the register of a real listing, and one that says it is not one. */
     static String description(DemoCatalogue.Vehicle vehicle) {
         String state = vehicle.condition() == VehicleCondition.NEW

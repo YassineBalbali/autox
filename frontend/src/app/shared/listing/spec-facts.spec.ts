@@ -17,6 +17,7 @@ import { SpecFacts, SpecFactsLayout } from './spec-facts';
       [gearbox]="gearbox()"
       [powerHp]="power()"
       [layout]="layout()"
+      [isNew]="isNew()"
     />
   `,
 })
@@ -28,6 +29,7 @@ class FactsHost {
   readonly gearbox = signal<string | undefined>('Manuelle');
   readonly power = signal<number | undefined>(130);
   readonly layout = signal<SpecFactsLayout>('line');
+  readonly isNew = signal(false);
 }
 
 /** A result's key facts, each behind its icon. */
@@ -77,6 +79,16 @@ describe('SpecFacts', () => {
 
   it('keeps a mileage of zero: a new car has one', async () => {
     expect(texts(await render((host) => host.mileage.set(0)))).toContain(`0${NBSP}km`);
+  });
+
+  it('says "Neuf" where a used car’s mileage would be, for a car sold new', async () => {
+    const root = await render((host) => {
+      host.mileage.set(12);
+      host.isNew.set(true);
+    });
+
+    expect(texts(root)).toEqual(['2021', 'Neuf', 'Diesel', 'Manuelle', `130${NBSP}ch`]);
+    expect(root.textContent).not.toContain('km');
   });
 
   it('gives an electric car a plug instead of a pump', async () => {

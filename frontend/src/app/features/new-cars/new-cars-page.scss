@@ -1,0 +1,160 @@
+@use '../../../styles/tokens' as t;
+@use '../search/results';
+
+// The "Neuf" page: a short navy band with the search, then the makes and the latest arrivals.
+// Mobile-first: one column, wider screens add columns.
+
+:host {
+  display: block;
+  padding-bottom: var(--s-7);
+}
+
+// ---- hero -------------------------------------------------------------------
+
+// A band the full width of the window, flush under the header, as the home page's; short,
+// with no photo: the cars below are the picture.
+.hero {
+  position: relative;
+  isolation: isolate;
+  margin-top: calc(-1 * var(--s-5));
+  padding-block: var(--s-5);
+
+  @media (min-width: t.$bp-md) {
+    margin-top: calc(-1 * var(--s-6));
+    padding-block: var(--s-6);
+  }
+
+  // body clips horizontal overflow (_base.scss), so 100vw never becomes a scroll.
+  &::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    z-index: -1;
+    background: var(--c-navy);
+  }
+}
+
+.hero__inner {
+  display: grid;
+  gap: var(--s-5);
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: 1fr 24rem;
+    align-items: center;
+    gap: var(--s-7);
+  }
+}
+
+.hero__title {
+  margin: 0;
+  color: #fff;
+  font-size: 1.75rem;
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+
+  @media (min-width: t.$bp-md) {
+    font-size: 2.25rem;
+  }
+}
+
+.hero__lede {
+  max-width: 34rem;
+  margin: var(--s-2) 0 0;
+  color: rgb(255 255 255 / 85%);
+  font-size: var(--t-md);
+  line-height: var(--lh-snug);
+}
+
+.hero__finder {
+  min-width: 0;
+}
+
+// ---- sections ---------------------------------------------------------------
+
+.neuf__empty {
+  margin: var(--s-6) 0 0;
+  color: var(--c-ink-soft);
+}
+
+.neuf-section {
+  margin-top: var(--s-7);
+}
+
+.neuf-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.neuf-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+
+  &::before {
+    content: '';
+    flex: none;
+    width: 4px;
+    height: 1.1em;
+    border-radius: var(--r-sm);
+    background: var(--c-accent);
+  }
+}
+
+.neuf-section__all {
+  color: var(--c-ink);
+  font-size: var(--t-sm);
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+
+  @include t.touch {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  &:hover {
+    color: var(--c-accent);
+  }
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: t.$bp-md) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (min-width: t.$bp-lg) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+// The results page's grid and, on a phone, its rows.
+.neuf__grid {
+  @include results.grid;
+}
+
+.neuf__list {
+  @include results.list;
+}
+
+.neuf__item {
+  @include results.surface;
+}

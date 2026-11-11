@@ -84,6 +84,8 @@ export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = {
   [ErrorCode.ACTIVE_LISTING_LIMIT_REACHED]:
     'Vous avez atteint le nombre maximum d’annonces en ligne. Mettez-en une en pause ou supprimez-la.',
   [ErrorCode.LEASING_PROFESSIONAL_ONLY]: 'Les offres de location sont réservées aux comptes professionnels.',
+  [ErrorCode.NEW_CAR_PROFESSIONAL_ONLY]:
+    'Seul un professionnel peut vendre un véhicule neuf. Choisissez l’état « Occasion ».',
   [ErrorCode.CONCURRENT_MODIFICATION]:
     'Cette annonce a été modifiée entre-temps. Rechargez la page et réessayez.',
 

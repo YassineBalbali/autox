@@ -95,6 +95,9 @@ class DemoData {
     /** And of {@link DemoCatalogue#LEASED}. */
     private final int leasedLimit;
 
+    /** And of {@link DemoCatalogue#NEW_CARS}. */
+    private final int newLimit;
+
     DemoData(DemoLedger ledger, AppUserRepository users, ProProfileRepository proProfiles,
              CountryRepository countries, VehicleMakeRepository makes, VehicleModelRepository models,
              ListingService listings, ListingImageService imageService, ListingImageRepository images,
@@ -104,7 +107,8 @@ class DemoData {
              @Value("${autox.demo.photo-dir:}") String photoDirectory,
              @Value("${autox.demo.listings:" + DemoCatalogue.SIZE + "}") int limit,
              @Value("${autox.demo.damaged-listings:8}") int damagedLimit,
-             @Value("${autox.demo.leasing-listings:12}") int leasedLimit) {
+             @Value("${autox.demo.leasing-listings:12}") int leasedLimit,
+             @Value("${autox.demo.new-listings:15}") int newLimit) {
         this.ledger = ledger;
         this.users = users;
         this.proProfiles = proProfiles;
@@ -123,6 +127,7 @@ class DemoData {
         this.limit = limit;
         this.damagedLimit = Math.min(damagedLimit, DemoCatalogue.DAMAGED.size());
         this.leasedLimit = Math.min(leasedLimit, DemoCatalogue.LEASED.size());
+        this.newLimit = Math.min(newLimit, DemoCatalogue.NEW_CARS.size());
         this.transactions = new TransactionTemplate(transactionManager);
     }
 
@@ -153,6 +158,7 @@ class DemoData {
             if (recorded >= target) {
                 addMissingDamaged();
                 addMissingLeased();
+                addMissingNew();
                 log.info("Demo data is already present ({} listings); nothing seeded.",
                         ledger.ids(DemoLedger.LISTING).size());
             } else {
@@ -185,6 +191,7 @@ class DemoData {
         }
         created += addMissingDamaged();
         created += addMissingLeased();
+        created += addMissingNew();
         completeDealerPages();
 
         log.warn("Seeded {} demo listings, {} demo accounts and {} demo makes. This is invented data "
@@ -330,6 +337,34 @@ class DemoData {
                             leased.optionEuros() == null ? null : leased.optionEuros() * 100));
         }
         log.warn("Demo leasing offers: added {} of {}; other listings untouched.", missing.size(), leasedLimit);
+        return missing.size();
+    }
+
+    /**
+     * The new cars of {@link DemoCatalogue#NEW_CARS} a seeded database lacks, by title, as for the
+     * leasing offers: the same procedure, through the API, recorded in the ledger. A second run
+     * adds nothing.
+     *
+     * @return how many were added
+     */
+    int addMissingNew() {
+        java.util.Set<String> present = titlesInTheLedger();
+        List<DemoCatalogue.NewVehicle> missing = DemoCatalogue.NEW_CARS.subList(0, newLimit).stream()
+                .filter(car -> !present.contains(car.vehicle().title()))
+                .toList();
+        if (missing.isEmpty()) {
+            log.info("Demo new cars: complete, nothing added ({} cars).", newLimit);
+            return 0;
+        }
+
+        storage.ensureReady();
+        Map<String, UUID[]> catalogue = seedCatalogue().ids();
+        for (DemoCatalogue.NewVehicle car : missing) {
+            DemoCatalogue.Vehicle vehicle = car.vehicle();
+            seedListing(vehicle, demoSeller(vehicle), catalogue.get(vehicle.makeSlug() + "/" + vehicle.modelSlug()),
+                    DemoDetails.newDescription(car), null, null);
+        }
+        log.warn("Demo new cars: added {} of {}; other listings untouched.", missing.size(), newLimit);
         return missing.size();
     }
 

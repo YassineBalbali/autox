@@ -162,7 +162,10 @@ export class KeyFacts {
     if (registered) {
       facts.push({ icon: 'calendar', label: 'Année', value: registered });
     }
-    if (listing.mileageKm != null) {
+    if (listing.soldNew) {
+      // Not a used car's mileage: its few kilometres are in the specification below.
+      facts.push({ icon: 'sparkles', label: 'État', value: 'Neuf' });
+    } else if (listing.mileageKm != null) {
       facts.push({ icon: 'gauge', label: 'Kilométrage', value: `${formatIntegerFr(listing.mileageKm)}${NBSP}km` });
     }
     if (this.fuel()) {

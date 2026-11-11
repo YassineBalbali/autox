@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, debounceTime, map, merge, of, skip, startWith, switchMap, take } from 'rxjs';
@@ -35,6 +35,9 @@ const MONTHLY_MAX_OPTIONS = [200, 300, 400, 500, 700] as const;
  * it goes to `/recherche` with the same query string a hand-typed link would have. The
  * count on the button follows the draft, so the visitor sees "Rechercher (9)" before
  * committing — and a form that would find nothing says so before the click.
+ *
+ * <p>The "Neuf" page uses the same card with a {@link preset}: `condition` new, so the count,
+ * the button and "Plus de critères" all name the new-car search, and without the offer tabs.
  */
 @Component({
   selector: 'app-home-finder',
@@ -54,6 +57,11 @@ export class HomeFinder {
   protected readonly saleOffer = OfferType.SALE;
   protected readonly leasingOffer = OfferType.LEASING;
   protected readonly leasing = computed(() => this.draft().offer === OfferType.LEASING);
+
+  /** Filters the form does not show and every search it makes carries, such as "neuf". */
+  readonly preset = input<Partial<SearchQuery>>({});
+  /** Acheter, Louer, Vendre above the fields. Off where the page already says which. */
+  readonly offerTabs = input(true);
 
   protected readonly draft = signal<Draft>(EMPTY_DRAFT);
 
@@ -91,6 +99,7 @@ export class HomeFinder {
     const make = draft.make || null;
     return {
       ...EMPTY_QUERY,
+      ...this.preset(),
       make,
       model: make ? draft.model || null : null,
       offer: draft.offer,

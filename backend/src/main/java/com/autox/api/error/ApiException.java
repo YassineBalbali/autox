@@ -209,6 +209,11 @@ public class ApiException extends RuntimeException {
                 "Leasing offers are for professional accounts only.");
     }
 
+    public static ApiException newCarProfessionalOnly() {
+        return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NEW_CAR_PROFESSIONAL_ONLY,
+                "Only a professional account can sell a car as new.");
+    }
+
     public static ApiException adminSelfAction() {
         return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.ADMIN_SELF_ACTION,
                 "An administrator cannot perform this action on their own account.");

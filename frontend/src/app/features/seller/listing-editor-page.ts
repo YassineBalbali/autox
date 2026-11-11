@@ -302,8 +302,11 @@ export class ListingEditorPage {
   protected readonly fuelOptions = computed(() => options(this.enums()['FuelType'], FuelType, FUEL_LABELS));
   protected readonly gearboxOptions = computed(() => options(this.enums()['Gearbox'], Gearbox, GEARBOX_LABELS));
   protected readonly bodyOptions = computed(() => options(this.enums()['BodyType'], BodyType, BODY_LABELS));
+  /** "Neuf" for a dealer only: the API refuses a private seller's new car, and this spares the refusal. */
   protected readonly conditionOptions = computed(() =>
-    options(this.enums()['VehicleCondition'], VehicleCondition, CONDITION_LABELS),
+    options(this.enums()['VehicleCondition'], VehicleCondition, CONDITION_LABELS).filter(
+      (option) => this.isDealer() || option.value !== VehicleCondition.NEW,
+    ),
   );
 
   /**

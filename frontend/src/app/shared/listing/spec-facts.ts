@@ -96,6 +96,11 @@ export class SpecFacts {
   readonly gearbox = input<string | null | undefined>();
   readonly powerHp = input<number | null | undefined>();
   readonly layout = input<SpecFactsLayout>('line');
+  /**
+   * Sold new by a professional: "Neuf" in the mileage's place. A new car's few kilometres are
+   * not a used car's mileage, and are on its page.
+   */
+  readonly isNew = input(false);
 
   protected readonly facts = computed(() => {
     const facts: Fact[] = [];
@@ -109,7 +114,9 @@ export class SpecFacts {
       // Not grouped: a year is a label, and "2 019" is wrong.
       facts.push({ icon: 'calendar', label: 'Année', text: String(year) });
     }
-    if (mileage != null) {
+    if (this.isNew()) {
+      facts.push({ icon: 'sparkles', label: 'État', text: 'Neuf' });
+    } else if (mileage != null) {
       facts.push({
         icon: 'gauge',
         label: 'Kilométrage',

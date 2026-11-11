@@ -14,11 +14,12 @@ export interface NavItem {
  * The marketplace's primary navigation, declared in one place.
  *
  * <p>The two destinations a vehicle marketplace is built around, buying (the search) and
- * selling, then La Cote, what a car is worth: the question a seller asks before selling and
- * a buyer before making an offer. Then the professionals: the garages and dealers, and theirs.
+ * selling, with new cars from dealers between them, then La Cote, what a car is worth: the
+ * question a seller asks before selling and a buyer before making an offer. Then the professionals: the garages and dealers, and theirs.
  */
 export const PRIMARY_NAV: readonly NavItem[] = [
   { label: 'Acheter', path: 'recherche' },
+  { label: 'Neuf', path: 'neuf' },
   { label: 'Vendre', path: 'vendre' },
   { label: 'La Cote', path: 'la-cote' },
   { label: 'Professionnels', path: 'professionnels' },

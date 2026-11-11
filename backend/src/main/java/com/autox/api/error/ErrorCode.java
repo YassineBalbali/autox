@@ -84,6 +84,8 @@ public enum ErrorCode {
 
     /** A leasing offer is for a dealer's account. */
     LEASING_PROFESSIONAL_ONLY,
+    /** A car sold as new is a dealer's: a private seller's car is used, however few its kilometres. */
+    NEW_CAR_PROFESSIONAL_ONLY,
 
     /** Someone else changed the record first; the client should reload and retry. */
     CONCURRENT_MODIFICATION,

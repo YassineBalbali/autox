@@ -45,6 +45,14 @@ describe('KeyFacts', () => {
     expect(root.textContent).not.toContain('undefined');
   });
 
+  it('says "Neuf" instead of a mileage for a car sold new by a professional', async () => {
+    const root = await render({ vehicle: { firstRegistrationYear: 2026 }, mileageKm: 12, soldNew: true }, null);
+
+    expect(values(root)).toEqual(['2026', 'Neuf', 'Automatique']);
+    expect(root.textContent).toContain('État');
+    expect(root.textContent).not.toContain('Kilométrage');
+  });
+
   it('keeps a mileage of zero: a new car has one', async () => {
     expect(values(await render({ mileageKm: 0 }, null))).toContain(`0${NBSP}km`);
   });

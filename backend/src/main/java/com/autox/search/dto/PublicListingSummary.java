@@ -36,6 +36,11 @@ public record PublicListingSummary(
         String drivetrain,
         Integer powerHp,
         String condition,
+        /**
+         * "Neuf": condition new and a professional seller. A private seller's car is never
+         * new, whatever its condition says. Show this, not {@code condition}, as the badge.
+         */
+        boolean soldNew,
 
         String countryCode,
         String city,

@@ -1,4 +1,5 @@
 <form class="finder" (submit)="submit($event)" aria-label="Rechercher une voiture" i18n-aria-label="@@homeFinderLabel">
+  @if (offerTabs()) {
   <nav class="finder__tabs" aria-label="Acheter, louer ou vendre" i18n-aria-label="@@homeFinderTabs">
     <button class="finder__tab" type="button" data-offer="SALE" [class.finder__tab--active]="!leasing()"
       [attr.aria-pressed]="!leasing()" (click)="setOffer(saleOffer)" i18n="@@homeTabBuy">Acheter</button>
@@ -6,6 +7,7 @@
       [attr.aria-pressed]="leasing()" (click)="setOffer(leasingOffer)" i18n="@@homeTabLease">Louer</button>
     <a class="finder__tab" routerLink="/vendre" i18n="@@homeTabSell">Vendre</a>
   </nav>
+  }
 
   <div class="finder__fields">
     <label class="finder__field">

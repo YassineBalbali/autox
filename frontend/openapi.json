@@ -4224,6 +4224,51 @@
           }
         }
       }
+    },
+    "/api/v1/listings/makes": {
+      "get": {
+        "tags": [
+          "Listings (public)"
+        ],
+        "summary": "The catalogue makes among the listings these filters match, each with how many: the count\n <code>GET /api/v1/listings/count</code> gives for the same filters plus that make.",
+        "description": "The catalogue makes among the listings these filters match, each with how many: the count\n <code>GET /api/v1/listings/count</code> gives for the same filters plus that make. Most listings\n first. The \"Neuf\" page lists the makes with new stock this way (<code>condition=NEW</code>).\n Makes typed as free text are not listed.",
+        "operationId": "makeCounts",
+        "parameters": [
+          {
+            "name": "criteria",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ListingSearchCriteria"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MakeMatchCount"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7350,6 +7395,9 @@
           },
           "leasing": {
             "$ref": "#/components/schemas/LeasingView"
+          },
+          "soldNew": {
+            "type": "boolean"
           }
         }
       },
@@ -7486,6 +7534,9 @@
           },
           "critAir": {
             "$ref": "#/components/schemas/CritAir"
+          },
+          "soldNew": {
+            "type": "boolean"
           }
         }
       },
@@ -8725,6 +8776,7 @@
           "SAVED_SEARCH_LIMIT_REACHED",
           "INVALID_UNSUBSCRIBE_TOKEN",
           "LEASING_PROFESSIONAL_ONLY",
+          "NEW_CAR_PROFESSIONAL_ONLY",
           "CONCURRENT_MODIFICATION",
           "UNSUPPORTED_IMAGE_TYPE",
           "IMAGE_TOO_LARGE",
@@ -8997,6 +9049,30 @@
           "FOUR",
           "FIVE",
           "UNCLASSIFIED"
+        ]
+      },
+      "MakeMatchCount": {
+        "type": "object",
+        "description": "A make and how many listings of it match the filters.",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "the catalogue slug, which the search's <code>marque</code> takes"
+          },
+          "name": {
+            "type": "string",
+            "description": "the make's name"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "matching listings"
+          }
+        },
+        "required": [
+          "count",
+          "name",
+          "slug"
         ]
       }
     },

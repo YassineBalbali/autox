@@ -257,6 +257,22 @@ describe('ListingPage', () => {
       expect(root.querySelector('[data-section="financing"]')).toBeNull();
     });
 
+    it('marks a car sold new: the "Neuf" badge, no mileage tile, no market verdict, the simulator kept', async () => {
+      // The API judges no new car against the market, so a new car comes without a verdict.
+      await load({ ...LISTING, condition: 'NEW', soldNew: true, mileageKm: 12, priceIndicator: undefined });
+
+      expect(root.querySelector('[data-badge="new"]')?.textContent?.trim()).toBe('Neuf');
+      const facts = Array.from(root.querySelectorAll('app-key-facts dt')).map((label) => label.textContent?.trim());
+      expect(facts).toContain('État');
+      expect(facts).not.toContain('Kilométrage');
+      expect(root.querySelector('.summary__market')).toBeNull();
+      expect(root.querySelector('[data-section="financing"] app-financing-simulator')).not.toBeNull();
+
+      // A used car, or a private seller's whatever its condition says: no badge.
+      await load({ ...LISTING, condition: 'NEW', soldNew: false });
+      expect(root.querySelector('[data-badge="new"]')).toBeNull();
+    });
+
     it('leads from a professional seller’s name to their page, with all their listings', async () => {
       await load({ ...LISTING, seller: { ...LISTING.seller, dealerSlug: 'garage-bellevue' } });
 

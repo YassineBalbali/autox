@@ -44,6 +44,7 @@ import org.springframework.test.context.TestPropertySource;
 // than what a demo dealer owns, so every seed in this class runs into them.
 @TestPropertySource(properties = {
         "autox.demo.action=none",
+        "autox.demo.new-listings=0",
         "autox.demo.listings=" + DemoDataIntegrationTest.SEEDED,
         // They have their own class: DemoDamagedListingsIntegrationTest.
         "autox.demo.damaged-listings=0",

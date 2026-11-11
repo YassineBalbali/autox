@@ -44,6 +44,13 @@ export const routes: Routes = [
   },
 
   {
+    // New and zero-kilometre cars from professionals: the search, preset to "neuf".
+    path: 'neuf',
+    title: 'Voitures neuves · AutoX',
+    loadComponent: () => import('./features/new-cars/new-cars-page').then((m) => m.NewCarsPage),
+  },
+
+  {
     // La Cote: a car's value against live listings. Public, like the listings it is made
     // from. The described car lives in the query string — see features/la-cote/la-cote.ts.
     path: 'la-cote',

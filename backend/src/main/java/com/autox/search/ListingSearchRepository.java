@@ -60,6 +60,21 @@ public class ListingSearchRepository {
                 """.formatted(alias);
     }
 
+    /**
+     * "Neuf": condition new, sold by a professional. The one definition the search, the /neuf
+     * page's counts and the "Neuf / Occasion" filter share; {@code Listing.isSoldNew} is its
+     * mirror for a single listing. A subquery rather than the seller join, so the count, which
+     * leaves that join out, can use it too. A private seller's "new" car, from before the rule
+     * was enforced, is used here.
+     */
+    public static String soldNew(String alias) {
+        return """
+                (%1$s.vehicle_condition = 'NEW'
+                 AND EXISTS (SELECT 1 FROM app_user new_car_seller
+                              WHERE new_car_seller.id = %1$s.seller_id
+                                AND new_car_seller.role = 'PROFESSIONNEL'))""".formatted(alias);
+    }
+
     static final String SELECT = """
             SELECT l.id,
                    l.title,
@@ -146,6 +161,28 @@ public class ListingSearchRepository {
 
         Integer count = jdbc.queryForObject(sql.toString(), parameters, Integer.class);
         return count == null ? 0 : count;
+    }
+
+    /**
+     * The catalogue makes among the listings these filters match, with how many each: by
+     * {@link #appendFilters} and {@link #VISIBLE}, as the search, so a make's count is what the
+     * search lists once that make is added. Makes typed as free text are left out: the search
+     * finds them by name, which a catalogue make of the same name would also match, and a count
+     * is only shown where it is exact.
+     */
+    public List<com.autox.search.dto.MakeMatchCount> makeCounts(ListingSearchCriteria criteria) {
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        StringBuilder sql = new StringBuilder("""
+                SELECT mk.slug, mk.name, count(*) AS listings
+                  FROM listing l
+                  JOIN vehicle_make mk       ON mk.id = l.make_id
+                  LEFT JOIN vehicle_model mo ON mo.id = l.model_id
+                  LEFT JOIN geo_place gp     ON gp.id = l.geo_place_id
+                """).append(marketJoin(criteria)).append(" WHERE ").append(VISIBLE);
+        appendFilters(criteria, sql, parameters);
+        sql.append(" GROUP BY mk.slug, mk.name ORDER BY listings DESC, mk.name");
+        return jdbc.query(sql.toString(), parameters, (rs, index) -> new com.autox.search.dto.MakeMatchCount(
+                rs.getString("slug"), rs.getString("name"), rs.getLong("listings")));
     }
 
     private StringBuilder countableMatches(ListingSearchCriteria criteria, MapSqlParameterSource parameters) {
@@ -310,7 +347,7 @@ public class ListingSearchRepository {
         appendEnumFilter(sql, parameters, "gearbox", "gearbox", criteria.gearbox());
         appendEnumFilter(sql, parameters, "body_type", "bodyType", criteria.bodyType());
         appendEnumFilter(sql, parameters, "drivetrain", "drivetrain", criteria.drivetrain());
-        appendEnumFilter(sql, parameters, "vehicle_condition", "condition", criteria.condition());
+        appendConditionFilter(sql, criteria.condition());
 
         // A search is for sales or for leasing offers, never both, and leaving it out means sales.
         if (criteria.offer() == com.autox.listing.OfferType.LEASING) {
@@ -397,6 +434,20 @@ public class ListingSearchRepository {
     /** Makes {@code %}, {@code _} and the escape character itself match literally. */
     static String escapeLike(String value) {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
+    /** Neuf, occasion, or both, which is no filter: by {@link #soldNew}, not the bare column. */
+    private static void appendConditionFilter(StringBuilder sql, List<com.autox.listing.VehicleCondition> values) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        boolean wantsNew = values.contains(com.autox.listing.VehicleCondition.NEW);
+        boolean wantsUsed = values.contains(com.autox.listing.VehicleCondition.USED);
+        if (wantsNew && !wantsUsed) {
+            sql.append(" AND ").append(soldNew("l"));
+        } else if (wantsUsed && !wantsNew) {
+            sql.append(" AND NOT ").append(soldNew("l"));
+        }
     }
 
     private static <E extends Enum<E>> void appendEnumFilter(StringBuilder sql, MapSqlParameterSource parameters,

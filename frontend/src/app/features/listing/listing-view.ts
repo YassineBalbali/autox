@@ -1,4 +1,4 @@
-import { Feature, FeatureCategory, PublicListingDetail } from '../../core/api';
+import { Feature, FeatureCategory, PublicListingDetail, VehicleCondition } from '../../core/api';
 import { formatIntegerFr, NBSP } from '../../shared/format/number';
 import {
   BODY_LABELS,
@@ -48,7 +48,12 @@ export function specificationRows(listing: PublicListingDetail): SpecRow[] {
   add('Année', vehicle.firstRegistrationYear ? String(vehicle.firstRegistrationYear) : null);
   add('Mise en circulation', firstRegistration(vehicle.firstRegistrationMonth, vehicle.firstRegistrationYear));
   // Zero is a mileage — a new car — so the test is for a number, not for truthiness.
-  add('Kilométrage', typeof listing.mileageKm === 'number' ? `${formatIntegerFr(listing.mileageKm)}${NBSP}km` : null);
+  add(
+    'Kilométrage',
+    typeof listing.mileageKm === 'number'
+      ? `${formatIntegerFr(listing.mileageKm)}${NBSP}km${listing.soldNew ? ' (véhicule neuf)' : ''}`
+      : null,
+  );
   add('Carburant', labelOf(FUEL_LABELS, vehicle.fuelType));
   add('Boîte de vitesses', labelOf(GEARBOX_LABELS, vehicle.gearbox));
   add('Puissance', power(vehicle.powerHp, vehicle.powerKw));
@@ -56,7 +61,8 @@ export function specificationRows(listing: PublicListingDetail): SpecRow[] {
   add('Portes', vehicle.doors ? String(vehicle.doors) : null);
   add('Places', vehicle.seats ? String(vehicle.seats) : null);
   add('Couleur', colour(listing));
-  add('État', labelOf(CONDITION_LABELS, listing.condition));
+  // By the API's rule, not the stored condition: a private seller's car is never "Neuf".
+  add('État', listing.condition ? labelOf(CONDITION_LABELS, listing.soldNew ? VehicleCondition.NEW : VehicleCondition.USED) : null);
   // Zero grams is a real figure for an electric car, and worth stating.
   add(
     'Émissions de CO₂',

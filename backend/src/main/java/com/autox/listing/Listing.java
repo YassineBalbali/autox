@@ -365,6 +365,21 @@ public class Listing extends BaseEntity {
         return offerType == OfferType.LEASING;
     }
 
+    /**
+     * "Neuf": condition new, and a professional seller. The same rule as the search's
+     * {@code ListingSearchRepository.soldNew}; a private seller's car is used, whatever it says.
+     */
+    public boolean isSoldNew() {
+        return seller != null && soldNew(vehicleCondition == null ? null : vehicleCondition.name(),
+                seller.getRole() == null ? null : seller.getRole().name());
+    }
+
+    /** {@link #isSoldNew} from the stored codes, for a search row. */
+    public static boolean soldNew(String condition, String sellerRole) {
+        return VehicleCondition.NEW.name().equals(condition)
+                && com.autox.user.UserRole.PROFESSIONNEL.name().equals(sellerRole);
+    }
+
     public OfferType getOfferType() {
         return offerType;
     }

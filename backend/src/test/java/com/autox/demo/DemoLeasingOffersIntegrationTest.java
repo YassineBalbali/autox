@@ -23,6 +23,7 @@ import org.springframework.test.context.TestPropertySource;
 @ActiveProfiles({"test", "demo"})
 @TestPropertySource(properties = {
         "autox.demo.action=none",
+        "autox.demo.new-listings=0",
         "autox.demo.listings=" + DemoLeasingOffersIntegrationTest.SEEDED,
         "autox.demo.damaged-listings=0",
         "autox.demo.leasing-listings=" + DemoLeasingOffersIntegrationTest.LEASED})

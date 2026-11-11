@@ -393,6 +393,7 @@ public class ListingService {
         requireVerifiedAddress(callerId, admin);
         requirePhoto(listing);
         requireLeasingAllowed(listing);
+        requireNewCarAllowed(listing);
         requireQuotaAvailable(listing);
 
         Instant now = Instant.now();
@@ -464,6 +465,7 @@ public class ListingService {
 
         requireVerifiedAddress(callerId, admin);
         requireLeasingAllowed(listing);
+        requireNewCarAllowed(listing);
         if (listing.getStatus() == ListingStatus.EXPIRED) {
             requireTransition(listing, ListingStatus.ACTIVE);
             requireQuotaAvailable(listing);
@@ -567,6 +569,7 @@ public class ListingService {
             }
         }
         requireLeasingAllowed(listing);
+        requireNewCarAllowed(listing);
         if (listing.isLeasing() && listing.isDamaged()) {
             throw ApiException.validationFailed("A damaged vehicle cannot be a leasing offer.");
         }
@@ -580,6 +583,17 @@ public class ListingService {
     private void requireVerifiedAddress(UUID callerId, boolean admin) {
         if (!admin) {
             emailVerification.requireVerified(callerId);
+        }
+    }
+
+    /**
+     * A car sold as new is a dealer's. On the seller's role, like leasing, at the same moments:
+     * creating, editing, publishing and renewing.
+     */
+    private static void requireNewCarAllowed(Listing listing) {
+        if (listing.getVehicleCondition() == VehicleCondition.NEW
+                && listing.getSeller().getRole() != UserRole.PROFESSIONNEL) {
+            throw ApiException.newCarProfessionalOnly();
         }
     }
 

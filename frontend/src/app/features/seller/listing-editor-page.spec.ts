@@ -15,6 +15,7 @@ import {
   ListingQuota,
   ListingResponse,
   ListingStatus,
+  UserRole,
   VehicleCondition,
 } from '../../core/api';
 import { AuthService } from '../../core/auth/auth.service';
@@ -220,6 +221,19 @@ describe('ListingEditorPage', () => {
   }
 
   describe('creating: the vehicle', () => {
+    it('offers "Neuf" to a dealer only: the API refuses a private seller’s new car', async () => {
+      const conditions = () =>
+        Array.from((control('État') as HTMLSelectElement).options).map((option) => option.textContent?.trim());
+
+      await visit('/vendre');
+      expect(conditions()).not.toContain('Neuf');
+      expect(conditions()).toContain('Occasion');
+
+      TestBed.inject(AuthService).setUser({ role: UserRole.PROFESSIONNEL });
+      await settle();
+      expect(conditions()).toContain('Neuf');
+    });
+
     it('opens on the first of four steps, having sent nothing but reference lookups', async () => {
       await visit('/vendre');
 

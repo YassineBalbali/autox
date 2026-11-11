@@ -735,6 +735,7 @@ docs/            why things are the way they are — read these before changing 
 | `docs/crit-air.md` | Crit'Air on listings: the official table and its source, where it is computed, when nothing is shown, the filter |
 | `docs/financing-simulator.md` | The listing page's credit simulation: the formula, rounding, the mandatory mention, and what it is not |
 | `docs/leasing.md` | LOA and LLD offers: the rules, what the page says and on what basis, what it does not cover, and that none of it is legal advice |
+| `docs/new-cars.md` | "Neuf": the rule (new, from a professional) and where it is enforced, the /neuf page and its counts, the demo's new cars |
 | `docs/similar-listings.md` | "Annonces similaires": which listings, in what order, and when none are shown |
 | `docs/dealer-pages.md` | The directory of professionals and dealer pages: who is listed, the slug, the listings as the search with `sellerId`, contact, the phone and e-mail rules, hiding a page |
 | `docs/ai-search.md` | Natural-language search: the prompt, the server-side validation, the evaluation set and its results, the limits |
