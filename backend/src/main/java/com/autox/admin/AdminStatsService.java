@@ -40,11 +40,14 @@ public class AdminStatsService {
 
     @Transactional(readOnly = true)
     public synchronized AdminStats stats(DashboardPeriod period) {
-        Instant now = clock.instant();
+        // The application's clock only times the cache. The period is the database's: see
+        // AdminStatsRepository.databaseNow.
+        Instant computedAt = clock.instant();
         Cached cached = cache.get(period);
-        if (cached != null && now.isBefore(cached.computedAt().plus(ttl))) {
+        if (cached != null && computedAt.isBefore(cached.computedAt().plus(ttl))) {
             return cached.stats();
         }
+        Instant now = repository.databaseNow();
         DashboardPeriod.Window window = period.window(ZonedDateTime.ofInstant(now, DashboardPeriod.PARIS));
         boolean ledger = repository.demoLedgerExists();
         AdminStats stats = new AdminStats(
@@ -60,7 +63,7 @@ public class AdminStatsService {
                 repository.priceVerdicts(ledger),
                 repository.search(window),
                 repository.emails(window));
-        cache.put(period, new Cached(stats, now));
+        cache.put(period, new Cached(stats, computedAt));
         return stats;
     }
 }

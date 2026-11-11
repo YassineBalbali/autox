@@ -9,6 +9,8 @@ import com.autox.support.AbstractIntegrationTest;
 import com.autox.user.UserRole;
 import com.autox.user.UserStatus;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -20,6 +22,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 
 /**
@@ -31,6 +36,8 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
 
     private static final String STATS = "/api/v1/admin/stats";
     private static final String ONLINE = "now() + interval '60 days'";
+
+    @Autowired AdminStatsRepository repository;
 
     private final List<UUID> makes = new ArrayList<>();
     private UUID seller;
@@ -190,6 +197,31 @@ class AdminStatsIntegrationTest extends AbstractIntegrationTest {
         assertThat(series.get(series.size() - 1).path("start").asText()).isEqualTo(thisHour.toString().length() == 16
                 ? thisHour + ":00" : thisHour.toString());
         assertSplit(series.get(series.size() - 1).path("newListings"), 1, 0);
+    }
+
+    // ---- whose clock ---------------------------------------------------------------------
+
+    /**
+     * Every row the dashboard counts is stamped by the database's clock ({@code now()}, a column
+     * default or the outbox's {@code sent_at = now()}), so the period must end at the database's
+     * now, not the application's. When the two drift apart (Docker's VM clock against Windows' in
+     * a test run, Neon's against Render's in production) and the period ended at the application's
+     * clock, a row written a moment before the request could fall after the end of the period and
+     * not be counted: what SavedSearchIntegrationTest.dashboard once saw, "expected 2, was 1".
+     */
+    @ParameterizedTest(name = "application clock {0} s off the database's")
+    @ValueSource(longs = {-5, 5, -3600, 3600})
+    @DisplayName("the period ends at the database's now, whatever the application's clock says")
+    void databaseClock(long skewSeconds) {
+        Clock skewed = Clock.offset(Clock.systemUTC(), Duration.ofSeconds(skewSeconds));
+        AdminStatsService service = new AdminStatsService(repository, Duration.ZERO, skewed);
+        outboxEmail("SENT", "now()");
+        outboxEmail("SENT", "now() - interval '10 days'", "now() - interval '10 days'");
+        // Just in the database's future: not sent yet as far as the period is concerned.
+        outboxEmail("SENT", "now() + interval '2 seconds'", "now() + interval '2 seconds'");
+
+        assertThat(service.stats(DashboardPeriod.TODAY).emails().sent().current()).isOne();
+        assertThat(service.stats(DashboardPeriod.MONTH).emails().sent().current()).isEqualTo(2);
     }
 
     // ---- series --------------------------------------------------------------------------

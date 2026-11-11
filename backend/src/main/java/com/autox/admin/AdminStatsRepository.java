@@ -63,6 +63,15 @@ class AdminStatsRepository {
         this.named = named;
     }
 
+    /**
+     * Now, by the database's clock: the one that stamps every row counted here ({@code now()} in a
+     * column default or an update). A period ending at the application's clock instead would miss
+     * a row written a moment ago whenever the database's clock runs ahead of the application's.
+     */
+    Instant databaseNow() {
+        return jdbc.queryForObject("SELECT now()", Timestamp.class).toInstant();
+    }
+
     boolean demoLedgerExists() {
         return Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT to_regclass('public.demo_seed_ledger') IS NOT NULL", Boolean.class));

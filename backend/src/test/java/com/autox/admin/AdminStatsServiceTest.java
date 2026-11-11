@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -38,6 +39,7 @@ class AdminStatsServiceTest {
     @DisplayName("figures are counted once a minute per period, however many requests ask")
     void cachedForTheTtl() {
         AdminStatsRepository repository = mock(AdminStatsRepository.class);
+        when(repository.databaseNow()).thenAnswer(call -> now);
         AdminStatsService service = new AdminStatsService(repository, Duration.ofMinutes(1), clock);
 
         AdminStats first = service.stats(DashboardPeriod.WEEK);
@@ -59,9 +61,12 @@ class AdminStatsServiceTest {
     }
 
     @Test
-    @DisplayName("the window is worked out in Paris time, from the clock")
-    void windowFromTheClock() {
-        AdminStatsService service = new AdminStatsService(mock(AdminStatsRepository.class), Duration.ofMinutes(1), clock);
+    @DisplayName("the window is worked out in Paris time, from the database's clock, not the application's")
+    void windowFromTheDatabaseClock() {
+        AdminStatsRepository repository = mock(AdminStatsRepository.class);
+        when(repository.databaseNow()).thenReturn(now);
+        AdminStatsService service = new AdminStatsService(repository, Duration.ofMinutes(1),
+                Clock.offset(clock, Duration.ofMinutes(-7)));
 
         AdminStats.PeriodWindow window = service.stats(DashboardPeriod.TODAY).period();
 
