@@ -501,7 +501,7 @@
           "Listings (public)"
         ],
         "summary": "Search the live listings",
-        "description": "Search the live listings. Every filter is optional; no filters means everything visible.\n\n <p>Paginated by cursor, not by page number: <code>nextCursor</code> from one response is\n <code>cursor</code> in the next. There is no page number, because offset paging over a table\n being written to skips and repeats rows. The number of matches is a separate call,\n <code>GET /api/v1/listings/count</code>, so that no page pays for it.",
+        "description": "Search the live listings. Every filter is optional; no filters means everything visible.\n\n <p>Paginated by cursor, not by page number: <code>nextCursor</code> from one response is\n <code>cursor</code> in the next. There is no page number, because offset paging over a table\n being written to skips and repeats rows. The number of matches is a separate call,\n <code>GET /api/v1/listings/count</code>, so that no page pays for it.\n\n <p><code>browse=true</code> is for a page that shows listings no one searched for, such as the\n latest new cars on /neuf: the results are the same, but they are not counted as a search in\n the dashboard's search usage. A visitor's own search, or a change of filter, leaves it out.",
         "operationId": "search",
         "parameters": [
           {
@@ -539,6 +539,15 @@
               "default": 24,
               "maximum": 60,
               "minimum": 1
+            }
+          },
+          {
+            "name": "browse",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],

@@ -24,6 +24,11 @@
   @media (min-width: t.$bp-md) {
     gap: var(--s-5);
   }
+
+  // A tablet, signed in: the logo, five entries, the messages and the account in 720px.
+  @media (min-width: t.$bp-md) and (max-width: calc(t.$bp-lg - 0.02px)) {
+    gap: var(--s-3);
+  }
 }
 
 // The logo's slot. The box is sized by app-logo from --logo-h and the artwork's ratio, so
@@ -53,6 +58,12 @@
   @media (min-width: t.$bp-md) {
     display: flex;
   }
+
+  // A tablet: five entries, the messages and the account share 768px. Tighter here only;
+  // from the large breakpoint on, the desktop bar as designed.
+  @media (min-width: t.$bp-md) and (max-width: calc(t.$bp-lg - 0.02px)) {
+    gap: var(--s-3);
+  }
 }
 
 // Full-height links with the active state as a bar on the bottom edge, sitting on the
@@ -70,6 +81,17 @@
   text-decoration: none;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+
+  @media (min-width: t.$bp-md) and (max-width: calc(t.$bp-lg - 0.02px)) {
+    font-size: var(--t-sm);
+    white-space: nowrap;
+  }
+
+  // A finger on a tablet: a short label such as "Neuf" is still 44px wide.
+  @include t.touch {
+    justify-content: center;
+    min-width: 44px;
+  }
 
   &:hover {
     color: var(--c-accent);
@@ -163,6 +185,15 @@
   background: var(--c-surface);
   font-size: var(--t-sm);
   font-weight: var(--fw-semibold);
+
+  // A tablet: a long name gives way to the navigation, ellipsised.
+  @media (min-width: t.$bp-md) and (max-width: calc(t.$bp-lg - 0.02px)) {
+    max-width: 8rem;
+  }
+
+  @include t.touch {
+    height: 44px;
+  }
 
   &:hover {
     border-color: var(--c-ink-faint);

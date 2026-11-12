@@ -119,6 +119,30 @@ class NewCarIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Nested
+    @DisplayName("search usage, which the dashboard counts")
+    class Usage {
+
+        private Long recorded(String filter) {
+            return jdbcTemplate.queryForObject(
+                    "SELECT COALESCE(sum(searches), 0) FROM search_filter_usage WHERE filter = ?", Long.class, filter);
+        }
+
+        @Test
+        @DisplayName("the latest new cars on /neuf (browse=true) are no search; a visitor's own search is one")
+        void browsingIsNotSearching() throws Exception {
+            published(dealer, Map.of("condition", "NEW", "mileageKm", 10));
+
+            mockMvc.perform(get("/api/v1/listings?condition=NEW&sort=NEWEST&size=6&browse=true"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items.length()").value(1));
+            assertThat(recorded("condition")).isZero();
+
+            mockMvc.perform(get("/api/v1/listings?condition=NEW")).andExpect(status().isOk());
+            assertThat(recorded("condition")).isOne();
+        }
+    }
+
+    @Nested
     @DisplayName("the makes with new stock, as /neuf lists them")
     class Makes {
 

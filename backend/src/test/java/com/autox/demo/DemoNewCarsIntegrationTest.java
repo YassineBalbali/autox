@@ -132,6 +132,56 @@ class DemoNewCarsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    @DisplayName("a seeded database's former titles are renamed in place, descriptions follow, nothing else moves, once")
+    void formerTitlesRenamed(CapturedOutput output) {
+        demoData.seed();
+        // As a database seeded before the rename has them.
+        DemoCatalogue.FORMER_TITLES.forEach((former, current) ->
+                jdbcTemplate.update("UPDATE listing SET title = ?, description = ? || substr(description, length(?) + 1)"
+                        + " WHERE title = ?", former, former, current, current));
+        List<Map<String, Object>> before = jdbcTemplate.queryForList("""
+                SELECT id, status, moderation_status, price_amount, published_at, updated_at FROM listing ORDER BY id""");
+        int listings = before.size();
+
+        assertThat(demoData.seed()).isZero();
+
+        assertThat(jdbcTemplate.queryForList("SELECT title FROM listing", String.class))
+                .doesNotContainAnyElementsOf(DemoCatalogue.FORMER_TITLES.keySet())
+                .noneMatch(title -> title.matches(".*\\b(neuf|neuve|0 km)\\b.*"));
+        assertThat(jdbcTemplate.queryForList("SELECT title || ' | ' || description FROM listing WHERE id = ANY(?)",
+                String.class, (Object) newIds().toArray(UUID[]::new)))
+                .hasSize(NEW)
+                .allSatisfy(row -> assertThat(row.substring(row.indexOf(" | ") + 3))
+                        .startsWith(row.substring(0, row.indexOf(" | ")) + "."));
+        assertThat(jdbcTemplate.queryForList("""
+                SELECT id, status, moderation_status, price_amount, published_at, updated_at FROM listing ORDER BY id"""))
+                .hasSize(listings).isEqualTo(before);
+        assertThat(output).contains("Demo listings renamed in place: " + NEW + " titles");
+
+        demoData.seed();
+        assertThat(output).contains("Demo listings: no former title left, nothing renamed.");
+    }
+
+    @Test
+    @DisplayName("a new title is no other demo car's: titles are how the seed matches its cars")
+    void renamedTitlesAreUnique() {
+        Map<String, java.util.Set<String>> carsByTitle = new java.util.HashMap<>();
+        java.util.function.BiConsumer<String, DemoCatalogue.Vehicle> add = (title, vehicle) ->
+                carsByTitle.computeIfAbsent(title, key -> new HashSet<>()).add(vehicle.makeSlug() + "/"
+                        + vehicle.modelSlug() + "/" + vehicle.version() + "/" + vehicle.condition());
+        DemoCatalogue.vehicles().forEach(vehicle -> add.accept(vehicle.title(), vehicle));
+        DemoCatalogue.LEASED.forEach(leased -> add.accept(leased.vehicle().title(), leased.vehicle()));
+        DemoCatalogue.DAMAGED.forEach(damaged -> add.accept(damaged.vehicle().title(), damaged.vehicle()));
+        DemoCatalogue.NEW_CARS.forEach(car -> add.accept(car.vehicle().title(), car.vehicle()));
+
+        // The same title is the same car (the generated set repeats a car in other towns), never two.
+        assertThat(DemoCatalogue.FORMER_TITLES.values())
+                .allSatisfy(title -> assertThat(carsByTitle.get(title)).as(title).hasSize(1));
+        assertThat(DemoCatalogue.FORMER_TITLES.keySet()).noneMatch(carsByTitle::containsKey);
+    }
+
+    @Test
     @DisplayName("removal takes them with the rest")
     void removal() {
         demoData.seed();

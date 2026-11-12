@@ -61,10 +61,58 @@ describe('touch targets', () => {
     );
   });
 
-  it('sets text fields in 16px below the medium breakpoint, so iOS does not zoom', () => {
+  it('sets text fields in 16px on a phone and on any touch screen, so iOS does not zoom', () => {
+    // A tablet is 768px wide and still a finger: the desktop size is for a mouse only.
     const input = controls.slice(controls.indexOf('.input {'));
     expect(input.slice(0, input.indexOf('\n}'))).toMatch(
-      /font-size: 1rem;\s*@media \(min-width: t\.\$bp-md\) \{\s*font-size: var\(--t-body\);/,
+      /font-size: 1rem;\s*@media \(min-width: t\.\$bp-md\) and \(pointer: fine\) \{\s*font-size: var\(--t-body\);/,
+    );
+  });
+
+  it('gives the pages added since the last mobile pass 44px targets on a touch screen', () => {
+    // The gallery's arrows, after the width they override; the seller's name; the dealer
+    // page's way back; the estimate's link; the admin dashboard and the moderation queue.
+    const gallery = read('src/app/shared/listing/photo-gallery.scss');
+    const arrows = gallery.slice(gallery.indexOf('.gallery__arrow,'));
+    expect(arrows.slice(0, arrows.indexOf('\n}'))).toMatch(/width: 2\.5rem;[\s\S]*@include t\.touch \{\s*width: 44px;/);
+    expect(read('src/app/features/listing/listing-summary.scss')).toMatch(
+      /\.seller__name--link \{[^}]*@include t\.touch \{\s*display: inline-flex;\s*align-items: center;\s*min-height: 44px;/,
+    );
+    expect(read('src/app/features/dealers/dealer-page.scss')).toMatch(
+      /\.dealer__crumbs \{[\s\S]*?a \{\s*@include t\.touch \{\s*display: inline-flex;\s*align-items: center;\s*min-height: 44px;/,
+    );
+    expect(read('src/app/features/seller/price-estimate.ts')).toMatch(
+      /\.estimate__more \{[^}]*@include t\.touch \{[^}]*min-height: 44px;/,
+    );
+    const dashboard = read('src/app/features/admin/admin-dashboard-page.scss');
+    for (const selector of ['dash__period', 'dash__tab', 'dash__link']) {
+      expect(dashboard).toMatch(new RegExp(`\\.${selector} \\{[^}]*@include t\\.touch \\{[^}]*min-height: 44px;`));
+    }
+    expect(read('src/app/features/admin/dashboard/demo-switch.ts')).toMatch(/@include t\.touch \{\s*min-height: 44px;/);
+    expect(read('src/app/features/admin/moderation-page.scss')).toMatch(
+      /\.moderation__view \{[^}]*@include t\.touch \{[^}]*min-width: 44px;\s*min-height: 44px;/,
+    );
+    expect(read('src/app/features/admin/moderation-filters.scss')).toMatch(/@include t\.touch \{\s*min-height: 44px;/);
+  });
+
+  it('keeps the footer’s 44px rows on a tablet: the compact links are for a mouse', () => {
+    expect(read('src/app/layout/site-footer.ts')).toMatch(
+      /@media \(min-width: t\.\$bp-md\) and \(pointer: fine\) \{\s*display: inline;\s*min-height: 0;/,
+    );
+  });
+
+  it('fits the header in a tablet’s width, signed in, without a sideways scroll', () => {
+    // Between 768 and 1024px only: tighter gaps, single-line labels, the account name capped,
+    // the messages link an icon. From 1024px on, the desktop bar as designed.
+    const header = read('src/app/layout/site-header.scss');
+    const tablet = '@media (min-width: t.$bp-md) and (max-width: calc(t.$bp-lg - 0.02px))';
+    expect(header.split(tablet).length - 1).toBeGreaterThanOrEqual(4);
+    expect(header).toMatch(/font-size: var\(--t-sm\);\s*white-space: nowrap;/);
+    expect(header).toMatch(/max-width: 8rem;/);
+    expect(header).toMatch(/\.header__nav-link \{[\s\S]*?@include t\.touch \{\s*justify-content: center;\s*min-width: 44px;/);
+    expect(header).toMatch(/\.account-menu__button \{[\s\S]*?@include t\.touch \{\s*height: 44px;/);
+    expect(read('src/app/layout/messages-link.ts')).toContain(
+      '(max-width: calc(t.$bp-sm - 1px)), (min-width: t.$bp-md) and (max-width: calc(t.$bp-lg - 0.02px))',
     );
   });
 });

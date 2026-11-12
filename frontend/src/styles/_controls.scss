@@ -79,11 +79,11 @@
   background: var(--c-surface);
   border: var(--border);
   border-radius: var(--r-md);
-  // 16px below the medium breakpoint: iOS Safari zooms the viewport when a smaller field
-  // takes focus. A phone only has to not break for now, and this is the difference.
+  // 16px on a phone and on any touch screen, a tablet included: iOS Safari zooms the
+  // viewport when a smaller field takes focus. The desktop size only with a mouse.
   font-size: 1rem;
 
-  @media (min-width: t.$bp-md) {
+  @media (min-width: t.$bp-md) and (pointer: fine) {
     font-size: var(--t-body);
   }
 

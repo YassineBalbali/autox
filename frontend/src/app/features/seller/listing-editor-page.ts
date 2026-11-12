@@ -342,6 +342,7 @@ export class ListingEditorPage {
   });
   protected readonly leasing = computed(() => this.offerType() === OfferType.LEASING);
   protected readonly loa = computed(() => this.leasingKind() === LeasingType.LOA);
+  protected readonly newCondition = VehicleCondition.NEW;
   protected readonly saleOffer = OfferType.SALE;
   protected readonly leasingOffer = OfferType.LEASING;
   protected readonly loaType = LeasingType.LOA;

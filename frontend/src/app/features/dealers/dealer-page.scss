@@ -16,7 +16,16 @@
 .dealer__crumbs {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--s-2);
+
+  a {
+    @include t.touch {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+    }
+  }
 }
 
 .dealer__top {

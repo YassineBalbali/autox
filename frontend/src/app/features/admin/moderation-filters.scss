@@ -64,6 +64,10 @@
   gap: var(--s-1);
   min-height: calc(var(--h-control) - 6px);
   padding: 0 var(--s-2);
+
+  @include t.touch {
+    min-height: 44px;
+  }
   border: 0;
   border-radius: var(--r-sm);
   background: none;

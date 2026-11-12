@@ -49,7 +49,7 @@
 
     <!-- Phones: two short lines instead of the icon run, which wraps to three there. -->
     <div class="listing__phone listing__phone-lines">
-      <app-spec-line [year]="listing().firstRegistrationYear" [mileage]="listing().mileageKm" />
+      <app-spec-line [year]="listing().firstRegistrationYear" [mileage]="listing().mileageKm" [isNew]="!!listing().soldNew" />
       <app-spec-line [fuel]="fuelLabel()" [gearbox]="gearboxLabel()" />
     </div>
 

@@ -112,6 +112,8 @@ describe('NewCarsPage', () => {
     expect(requests.map(conditionOf)).toEqual(requests.map(() => ['NEW']));
     // The latest first.
     expect(requests.find((request) => request.request.url === LISTINGS)?.request.params.get('sort')).toBe('NEWEST');
+    // Showing the latest is not a visitor's search: the dashboard does not count it as one.
+    expect(requests.find((request) => request.request.url === LISTINGS)?.request.params.get('browse')).toBe('true');
   });
 
   it('lists the makes with new stock, each with the API’s count, leading to that search', async () => {

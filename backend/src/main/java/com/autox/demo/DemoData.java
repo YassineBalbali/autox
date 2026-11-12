@@ -149,6 +149,7 @@ class DemoData {
             // DemoCatalogue since the seed ran are inserted, and nothing else is written.
             topUpCatalogue();
             approvePending();
+            retitleNewCars();
             correctListings();
             completeDealerPages();
             // Only what an earlier seed recorded counts. Removal drops the whole ledger, so a
@@ -443,6 +444,33 @@ class DemoData {
         return approved;
     }
 
+    /**
+     * Gives the seed's listings written under a former title ({@link DemoCatalogue#FORMER_TITLES})
+     * their title as it is now, in place: the title only, through the ledger, without touching the
+     * status, the verdict or {@code updated_at}. Before {@link #correctListings}, which then matches
+     * them by their new title and brings their descriptions, which begin with it, into line; and
+     * before {@link #addMissingNew}, which would otherwise take a renamed car for a missing one. A
+     * second run finds nothing to rename.
+     *
+     * @return how many listings were renamed
+     */
+    int retitleNewCars() {
+        int renamed = 0;
+        for (Map.Entry<String, String> title : DemoCatalogue.FORMER_TITLES.entrySet()) {
+            renamed += jdbc.update("""
+                    UPDATE listing SET title = ?
+                     WHERE title = ?
+                       AND id IN (SELECT entity_id FROM demo_seed_ledger WHERE entity_type = ?)""",
+                    title.getValue(), title.getKey(), DemoLedger.LISTING);
+        }
+        if (renamed == 0) {
+            log.info("Demo listings: no former title left, nothing renamed.");
+        } else {
+            log.warn("Demo listings renamed in place: {} titles; status, verdict and dates untouched.", renamed);
+        }
+        return renamed;
+    }
+
     /** What {@link #correctListings} did. */
     record Corrections(int descriptions, int fields, int redrawn, int photos, int unmatched) {
         boolean none() {
@@ -541,6 +569,9 @@ class DemoData {
         for (DemoCatalogue.LeasedVehicle leased : DemoCatalogue.LEASED) {
             byTitle.put(leased.vehicle().title(),
                     new Expected(leased.vehicle(), city -> DemoDetails.leasedDescription(leased)));
+        }
+        for (DemoCatalogue.NewVehicle car : DemoCatalogue.NEW_CARS) {
+            byTitle.put(car.vehicle().title(), new Expected(car.vehicle(), city -> DemoDetails.newDescription(car)));
         }
         return byTitle;
     }

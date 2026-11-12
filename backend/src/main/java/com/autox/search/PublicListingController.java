@@ -45,17 +45,22 @@ public class PublicListingController {
      * {@code cursor} in the next. There is no page number, because offset paging over a table
      * being written to skips and repeats rows. The number of matches is a separate call,
      * {@code GET /api/v1/listings/count}, so that no page pays for it.
+     *
+     * <p>{@code browse=true} is for a page that shows listings no one searched for, such as the
+     * latest new cars on /neuf: the results are the same, but they are not counted as a search in
+     * the dashboard's search usage. A visitor's own search, or a change of filter, leaves it out.
      */
     @GetMapping
     public CursorPage<PublicListingSummary> search(
             @Valid ListingSearchCriteria criteria,
             @RequestParam(defaultValue = "NEWEST") SearchSort sort,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "24") @Min(1) @Max(MAX_PAGE_SIZE) int size) {
+            @RequestParam(defaultValue = "24") @Min(1) @Max(MAX_PAGE_SIZE) int size,
+            @RequestParam(defaultValue = "false") boolean browse) {
 
         CursorPage<PublicListingSummary> page = searchService.search(criteria, sort, cursor, size);
         // A first page is a search; the next ones are the same search, read further.
-        if (cursor == null || cursor.isBlank()) {
+        if (!browse && (cursor == null || cursor.isBlank())) {
             filterUsage.record(criteria);
         }
         return page;

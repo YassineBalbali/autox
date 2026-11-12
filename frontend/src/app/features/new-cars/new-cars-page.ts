@@ -67,7 +67,7 @@ export class NewCarsPage {
   /** The newest first page of the new-car search; `undefined` while it loads. */
   protected readonly latest = toSignal(
     this.resolver.criteria(NEW_QUERY).pipe(
-      switchMap((criteria) => this.api.search({ criteria, sort: SearchSort.NEWEST, size: LATEST })),
+      switchMap((criteria) => this.api.search({ criteria, sort: SearchSort.NEWEST, size: LATEST, browse: true })),
       map((page) => page.items ?? []),
       catchError(() => of([] as PublicListingSummary[])),
     ),

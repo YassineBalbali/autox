@@ -257,6 +257,17 @@ Three decisions worth knowing:
 - **Every interactive element is at least 44px**, declared once in the base rather than per
   component, because the one that gets missed is always the small icon button.
 - **The focus ring is never removed**, and `prefers-reduced-motion` is respected.
+- **A tablet is a touch screen.** "Touch" is the tokens' `touch` mixin: a coarse pointer, or a
+  phone width. A 768px tablet keeps the 44px targets, the 16px fields and the footer's full rows;
+  the desktop sizes apply only with a mouse (`pointer: fine`), so a desktop is unchanged.
+  - **The header between 768 and 1024px:** it holds the logo, five entries, the messages and the
+    account in 720px. To fit, the gaps are tighter, the labels stay on one line, the account name
+    is capped and ellipsised, and the messages link is an icon (its word is still read out).
+
+The mobile pass of 12 November 2026 checked every page added since the previous one at 360, 390,
+430 and 768px, with a script in a real browser: no sideways scroll, nothing past the edge, no
+clipped text, 44px targets, 16px fields. `touch-targets.spec.ts` holds the rules in place, since
+jsdom lays nothing out.
 
 The scales are deliberately small — seven spacing steps, six text sizes. Twenty of each
 guarantees two screens built a month apart will not line up.

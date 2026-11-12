@@ -122,12 +122,25 @@ type Answer = { state: 'loading' } | { state: 'ready'; valuation: Valuation } | 
             Le prix reste le vôtre : l’estimation ne l’impose pas. Elle repose sur les prix demandés sur AutoX,
             pas sur des ventes conclues.
           </p>
-          <a class="meta" routerLink="/la-cote" i18n="@@estimateMore">Comment La Cote estime</a>
+          <a class="meta estimate__more" routerLink="/la-cote" i18n="@@estimateMore">Comment La Cote estime</a>
         </section>
       }
     }
   `,
   styles: `
+    @use '../../../styles/tokens' as t;
+
+    // A link on its own line: on a touch screen, the whole 44px row.
+    .estimate__more {
+      align-self: flex-start;
+
+      @include t.touch {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+      }
+    }
+
     .estimate {
       display: flex;
       flex-direction: column;

@@ -1,3 +1,5 @@
+@use '../../../styles/tokens' as t;
+
 :host {
   display: block;
 }
@@ -22,6 +24,15 @@
 
 .moderation__view {
   padding: var(--s-2) 0;
+
+  @include t.touch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   border-bottom: 2px solid transparent;
   color: var(--c-ink-soft);
   font-weight: var(--fw-semibold);

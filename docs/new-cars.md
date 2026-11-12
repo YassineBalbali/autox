@@ -33,7 +33,9 @@ again until its seller changes the condition. The listing form offers "Neuf" to 
   `/recherche?etat=new&marque=…` then lists.
   - Only catalogue makes are listed. A make typed as free text is found by name in the search, which a
     catalogue make of the same name would also match, so its count could not be exact.
-- **The latest arrivals:** the first page of the new-car search, newest first.
+- **The latest arrivals:** the first page of the new-car search, newest first. Asked with
+  `browse=true`, so opening /neuf is not counted as a search in the admin dashboard's search
+  usage. A visitor's own search, from the card or a link, is counted as usual.
 
 Every link leads to `/recherche?etat=new`, where all the other filters are.
 
@@ -59,3 +61,9 @@ price, 5 to 30 km) to the four demo dealers.
   and known by title, so a second start adds nothing.
 - **Setting:** `autox.demo.new-listings` (default 15) caps it.
 - **Descriptions:** each car carries its own sentence, so no two read the same.
+- **Titles:** no "neuf", "neuve" or "0 km": the badge says new, and the cars have a few kilometres.
+  On a database seeded before, `retitleNewCars` renames them in place, through the ledger and
+  without touching status, verdict or dates, before anything is matched by title.
+  `DemoCatalogue.FORMER_TITLES` maps each old title to its new one. A new title is never another
+  demo car's: a test holds that, and caught "Tesla Model Y Propulsion", which a used demo car
+  already had.

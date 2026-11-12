@@ -55,8 +55,10 @@ import { Icon } from '../shared/ui/icon';
       color: var(--c-accent);
     }
 
+    // The word on a phone and a tablet is for screen readers: the icon says it, and the
+    // header has no room for it below the large breakpoint.
     .link__label {
-      @media (max-width: calc(t.$bp-sm - 1px)) {
+      @media (max-width: calc(t.$bp-sm - 1px)), (min-width: t.$bp-md) and (max-width: calc(t.$bp-lg - 0.02px)) {
         position: absolute;
         width: 1px;
         height: 1px;

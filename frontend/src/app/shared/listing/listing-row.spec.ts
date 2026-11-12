@@ -85,6 +85,14 @@ describe('ListingRow', () => {
     expect(row.textContent).toContain('Publiée le 11 octobre 2026');
   });
 
+  it('says "Neuf" for a car sold new, in the phone’s lines and in the facts, where the mileage would be', async () => {
+    const row = await render({ ...LISTING, condition: 'NEW', soldNew: true, mileageKm: 8 });
+
+    expect(row.querySelector('.listing__phone-lines app-spec-line li:nth-child(2)')?.textContent?.trim()).toBe('Neuf');
+    expect(Array.from(row.querySelectorAll('app-spec-facts .facts__text')).map((item) => item.textContent)).toContain('Neuf');
+    expect(row.textContent).not.toMatch(/8\s*km/);
+  });
+
   it('says who is selling: the kind of seller and the name', async () => {
     const row = await render();
 

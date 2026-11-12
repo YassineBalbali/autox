@@ -71,6 +71,11 @@
 
 .dash__period {
   min-height: 32px;
+
+  @include t.touch {
+    min-height: 44px;
+  }
+
   padding: 0 var(--s-3);
   border: 0;
   border-radius: 6px;
@@ -208,6 +213,11 @@
 
 .dash__tab {
   min-height: 30px;
+
+  @include t.touch {
+    min-height: 44px;
+  }
+
   padding: 0 var(--s-2);
   border: 1px solid var(--c-line);
   border-radius: 999px;
@@ -221,6 +231,14 @@
   &:hover {
     border-color: var(--c-line-strong);
     color: var(--c-ink);
+  }
+}
+
+.dash__link {
+  @include t.touch {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }
 

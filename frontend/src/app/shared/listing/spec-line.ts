@@ -61,6 +61,8 @@ export class SpecLine {
   readonly fuel = input<string | null | undefined>();
   readonly gearbox = input<string | null | undefined>();
   readonly powerHp = input<number | null | undefined>();
+  /** Sold new by a professional: "Neuf" in the mileage's place, as {@link SpecFacts} does. */
+  readonly isNew = input(false);
 
   protected readonly items = computed(() => {
     const items: string[] = [];
@@ -72,7 +74,9 @@ export class SpecLine {
       // Not grouped: a year is a label, and "2 019" is wrong.
       items.push(String(year));
     }
-    if (mileage != null) {
+    if (this.isNew()) {
+      items.push('Neuf');
+    } else if (mileage != null) {
       items.push(`${formatIntegerFr(mileage)}${NBSP}${this.distanceUnit()}`);
     }
     if (this.fuel()) {

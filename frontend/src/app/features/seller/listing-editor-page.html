@@ -480,6 +480,7 @@
                   <app-spec-line
                     [year]="item.vehicle?.firstRegistrationYear"
                     [mileage]="item.mileageKm"
+                    [isNew]="isDealer() && item.condition === newCondition"
                     [fuel]="previewFuel()"
                     [gearbox]="previewGearbox()"
                     [powerHp]="item.vehicle?.powerHp"

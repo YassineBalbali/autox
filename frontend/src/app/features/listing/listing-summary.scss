@@ -1,3 +1,5 @@
+@use '../../../styles/tokens' as t;
+
 .summary {
   display: flex;
   flex-direction: column;
@@ -109,6 +111,12 @@
 .seller__name--link {
   color: var(--c-ink);
   text-decoration: none;
+
+  @include t.touch {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 
   &:hover {
     color: var(--c-accent);

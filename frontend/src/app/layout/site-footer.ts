@@ -288,7 +288,8 @@ export function resolveFooter(
       color: var(--c-ink-soft);
       text-decoration: none;
 
-      @media (min-width: t.$bp-md) {
+      // The desktop's compact links with a mouse only; a tablet keeps the 44px rows.
+      @media (min-width: t.$bp-md) and (pointer: fine) {
         display: inline;
         min-height: 0;
         font-size: var(--t-sm);

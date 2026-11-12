@@ -24,12 +24,18 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
     </button>
   `,
   styles: `
+    @use '../../../../styles/tokens' as t;
+
     .switch {
       display: inline-flex;
       align-items: center;
       gap: var(--s-2);
       min-height: 36px;
       padding: 0 var(--s-1);
+
+      @include t.touch {
+        min-height: 44px;
+      }
       border: 0;
       background: none;
       color: var(--c-ink);
