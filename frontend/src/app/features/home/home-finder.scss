@@ -24,9 +24,15 @@
 }
 
 .finder__tab {
+  // Two of these are buttons, the third a link: a button centres its text in its height and
+  // a link does not, so on a phone, at 48px, "Vendre" sat higher than the other two. As flex
+  // boxes, all three centre theirs the same way.
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--s-2) 0;
   text-align: center;
-  // Two of these are buttons, the third a link: they read as one row.
+  // They read as one row.
   background: none;
   border: 0;
   cursor: pointer;

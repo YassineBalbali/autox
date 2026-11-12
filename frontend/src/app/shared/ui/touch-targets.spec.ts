@@ -95,6 +95,12 @@ describe('touch targets', () => {
     expect(read('src/app/features/admin/moderation-filters.scss')).toMatch(/@include t\.touch \{\s*min-height: 44px;/);
   });
 
+  it('centres the home card’s three tabs alike, the "Vendre" link with the two buttons', () => {
+    const finder = read('src/app/features/home/home-finder.scss');
+    const tab = finder.slice(finder.indexOf('.finder__tab {'));
+    expect(tab.slice(0, tab.indexOf('\n}'))).toMatch(/display: flex;\s*align-items: center;\s*justify-content: center;/);
+  });
+
   it('keeps the footer’s 44px rows on a tablet: the compact links are for a mouse', () => {
     expect(read('src/app/layout/site-footer.ts')).toMatch(
       /@media \(min-width: t\.\$bp-md\) and \(pointer: fine\) \{\s*display: inline;\s*min-height: 0;/,
