@@ -28,7 +28,7 @@ RUN mvn -B --no-transfer-progress -Dmaven.test.skip=true package \
 # ---- run ------------------------------------------------------------------------------
 # Alpine's Temurin JRE: no compiler, no Maven, no JDK tools, and it ships the fonts the
 # demo photo painter needs. Java 21; moving to 25 is a migration, not a digest refresh.
-FROM eclipse-temurin:21-jre-alpine@sha256:b48e02e0ea88d7bfb305335df94923bdef394905f4147dccd52e873cf17b1088
+FROM eclipse-temurin:21-jre-alpine@sha256:ac05c3c42b7c2f1a52c9bd52f01041fa1958231b15ebeae7420429cbc5baf474
 
 # Alpine's own security fixes, applied at build time rather than waiting for Temurin to
 # rebuild its image. Alpine publishes a fixed package in the stable branch days before the
