@@ -1,4 +1,5 @@
 import { ErrorCode } from '../api';
+import LABELS from '../../../../labels.fr.json';
 
 /**
  * French text for every error the API can return.
@@ -22,93 +23,22 @@ import { ErrorCode } from '../api';
  * locale arrives, this becomes one file per locale selected by `LOCALE_ID` — the shape does
  * not change.
  */
-export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = {
-  // --- request shape ----------------------------------------------------
-  [ErrorCode.VALIDATION_FAILED]: 'Certaines informations sont incorrectes. Vérifiez les champs signalés.',
-  [ErrorCode.MALFORMED_REQUEST]: 'La demande n’a pas pu être traitée. Réessayez.',
-
-  // --- registration and sign-in -----------------------------------------
-  [ErrorCode.EMAIL_ALREADY_REGISTERED]: 'Un compte existe déjà avec cette adresse e-mail.',
-  // Deliberately says nothing about which of the two was wrong — the API does not tell us,
-  // by design, and guessing in the interface would undo that.
-  [ErrorCode.INVALID_CREDENTIALS]: 'Adresse e-mail ou mot de passe incorrect.',
-  [ErrorCode.ACCOUNT_SUSPENDED]: 'Ce compte est suspendu. Contactez le support.',
-  [ErrorCode.ACCOUNT_CLOSED]: 'Ce compte a été fermé.',
-
-  // --- tokens -----------------------------------------------------------
-  // The user should never see these two: the interceptor renews the session on a 401, and
-  // only shows an error if the renewal itself fails. If one does appear, it means the
-  // session is genuinely over.
-  [ErrorCode.INVALID_TOKEN]: 'Votre session a expiré. Reconnectez-vous.',
-  [ErrorCode.INVALID_REFRESH_TOKEN]: 'Votre session a expiré. Reconnectez-vous.',
-
-  // --- passwords --------------------------------------------------------
-  [ErrorCode.CURRENT_PASSWORD_INCORRECT]: 'Le mot de passe actuel est incorrect.',
-  [ErrorCode.INVALID_RESET_TOKEN]:
-    'Ce lien de réinitialisation n’est plus valable. Demandez-en un nouveau.',
-
-  // --- saved searches ---------------------------------------------------
-  [ErrorCode.SAVED_SEARCH_LIMIT_REACHED]:
-    'Vous avez déjà 10 recherches enregistrées, le maximum. Supprimez-en une dans « Mes recherches » pour en créer une autre.',
-  [ErrorCode.INVALID_UNSUBSCRIBE_TOKEN]: 'Ce lien de désabonnement n’est pas valable.',
-
-  // --- verifying an address ---------------------------------------------
-  [ErrorCode.INVALID_VERIFICATION_TOKEN]:
-    'Ce lien de vérification n’est plus valable. Demandez-en un nouveau.',
-  [ErrorCode.EMAIL_NOT_VERIFIED]:
-    'Vérifiez d’abord votre adresse e-mail, avec le lien que nous vous avons envoyé.',
-
-  // --- throttling -------------------------------------------------------
-  // Both carry retryAfterSeconds; ErrorMessageService appends the wait when it is known,
-  // which is why neither sentence names a duration itself.
-  [ErrorCode.TOO_MANY_ATTEMPTS]: 'Trop de tentatives de connexion.',
-  [ErrorCode.RATE_LIMITED]: 'Trop de requêtes.',
-
-  // --- authorisation and routing ----------------------------------------
-  [ErrorCode.FORBIDDEN]: 'Vous n’avez pas accès à cette ressource.',
-  [ErrorCode.NOT_FOUND]: 'Cette page ou cette annonce n’existe pas, ou n’est plus disponible.',
-  [ErrorCode.METHOD_NOT_ALLOWED]: 'La demande n’a pas pu être traitée. Réessayez.',
-  [ErrorCode.UNSUPPORTED_MEDIA_TYPE]: 'Ce format de fichier n’est pas accepté.',
-  [ErrorCode.CONFLICT]: 'Cette action n’est pas possible dans l’état actuel.',
-
-  // --- administration ---------------------------------------------------
-  [ErrorCode.ADMIN_SELF_ACTION]: 'Un administrateur ne peut pas effectuer cette action sur son propre compte.',
-  [ErrorCode.LAST_ADMIN]: 'C’est le dernier administrateur en mesure de se connecter : cette action est refusée.',
-  [ErrorCode.DEMO_ACCOUNT_CANNOT_BE_ADMIN]:
-    'Personne ne peut se connecter à un compte de démonstration : il ne peut pas devenir administrateur.',
-  [ErrorCode.DEMO_ACCOUNT_CANNOT_BE_DELETED]:
-    'Un compte de démonstration ne se supprime pas ainsi : il disparaît avec les données de démonstration.',
-  [ErrorCode.LISTING_ALREADY_REPORTED]: 'Vous avez déjà signalé cette annonce.',
-
-  // --- listings ---------------------------------------------------------
-  [ErrorCode.ACTIVE_LISTING_LIMIT_REACHED]:
-    'Vous avez atteint le nombre maximum d’annonces en ligne. Mettez-en une en pause ou supprimez-la.',
-  [ErrorCode.LEASING_PROFESSIONAL_ONLY]: 'Les offres de location sont réservées aux comptes professionnels.',
-  [ErrorCode.NEW_CAR_PROFESSIONAL_ONLY]:
-    'Seul un professionnel peut vendre un véhicule neuf. Choisissez l’état « Occasion ».',
-  [ErrorCode.CONCURRENT_MODIFICATION]:
-    'Cette annonce a été modifiée entre-temps. Rechargez la page et réessayez.',
-
-  // --- photos -----------------------------------------------------------
-  [ErrorCode.UNSUPPORTED_IMAGE_TYPE]: 'Ce format d’image n’est pas accepté. Utilisez un JPEG ou un PNG.',
-  [ErrorCode.IMAGE_TOO_LARGE]: 'Cette image est trop volumineuse.',
-  [ErrorCode.IMAGE_TOO_SMALL]: 'Cette image est trop petite. Choisissez une photo plus grande.',
-  [ErrorCode.TOO_MANY_IMAGES]: 'Cette annonce contient déjà le nombre maximum de photos.',
-  [ErrorCode.UPLOAD_NOT_FOUND]: 'L’envoi de cette photo n’a pas abouti. Réessayez.',
-  [ErrorCode.PHOTO_REQUIRED]: 'Ajoutez au moins une photo avant de publier.',
-
-  // --- pagination -------------------------------------------------------
-  // Only reachable by editing a URL by hand, or by holding a cursor across a sort change.
-  [ErrorCode.INVALID_CURSOR]: 'Cette page de résultats n’est plus valable. Relancez la recherche.',
-
-  // --- natural-language search -----------------------------------------
-  // The page offers the ordinary search beside this message, so it need not say how.
-  [ErrorCode.INTERPRETER_UNAVAILABLE]: 'La recherche intelligente est indisponible pour le moment.',
-
-  // --- the catch-all ----------------------------------------------------
-  [ErrorCode.INTERNAL_ERROR]:
-    'Une erreur inattendue s’est produite. Réessayez dans un instant.',
-};
+//
+// The sentences are in frontend/labels.fr.json (`enums.ErrorCode`), shared with the Android
+// app. A JSON file holds no comments, so the reasons behind a few of them are here:
+//
+// - INVALID_CREDENTIALS says nothing about which of the two was wrong. The API does not tell
+//   us, by design, and guessing in the interface would undo that.
+// - INVALID_TOKEN and INVALID_REFRESH_TOKEN should never be seen: the interceptor renews the
+//   session on a 401, and only shows an error if the renewal itself fails. If one does appear,
+//   the session is genuinely over.
+// - TOO_MANY_ATTEMPTS and RATE_LIMITED both carry retryAfterSeconds; ErrorMessageService
+//   appends the wait when it is known, which is why neither sentence names a duration.
+// - INVALID_CURSOR is only reachable by editing a URL by hand, or by holding a cursor across
+//   a sort change.
+// - INTERPRETER_UNAVAILABLE: the page offers the ordinary search beside this message, so it
+//   need not say how.
+export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = LABELS.enums.ErrorCode;
 
 /**
  * French labels for the request fields the API names in a validation failure.
@@ -119,76 +49,7 @@ export const ERROR_MESSAGES_FR: Record<ErrorCode, string> = {
  * rather than a compile error. {@link fieldLabelFr} falls back to the raw name, which is
  * ugly in the interface and therefore noticed.
  */
-export const FIELD_LABELS_FR: Readonly<Record<string, string>> = {
-  // account
-  email: 'Adresse e-mail',
-  password: 'Mot de passe',
-  currentPassword: 'Mot de passe actuel',
-  newPassword: 'Nouveau mot de passe',
-  role: 'Type de compte',
-  displayName: 'Nom affiché',
-  firstName: 'Prénom',
-  lastName: 'Nom',
-  phone: 'Téléphone',
-  countryCode: 'Pays',
-  locale: 'Langue',
-  companyName: 'Raison sociale',
-  deviceLabel: 'Appareil',
-  token: 'Jeton',
-
-  // professional profile
-  'professional.companyName': 'Raison sociale',
-  'professional.legalForm': 'Forme juridique',
-  'professional.registrationNumber': 'SIRET',
-  'professional.vatNumber': 'Numéro de TVA',
-  'professional.websiteUrl': 'Site web',
-  'professional.description': 'Description',
-  'professional.addressLine1': 'Adresse',
-  'professional.addressLine2': 'Complément d’adresse',
-  'professional.contactPhone': 'Téléphone de contact',
-
-  // listing
-  title: 'Titre',
-  description: 'Description',
-  priceAmount: 'Prix',
-  currencyCode: 'Devise',
-  postalCode: 'Code postal',
-  city: 'Ville',
-  makeText: 'Marque',
-  modelText: 'Modèle',
-  versionText: 'Version',
-  makeId: 'Marque',
-  modelId: 'Modèle',
-  trimId: 'Finition',
-  firstRegistrationYear: 'Année de première immatriculation',
-  firstRegistrationMonth: 'Mois de première immatriculation',
-  mileageKm: 'Kilométrage',
-  fuelType: 'Carburant',
-  gearbox: 'Boîte de vitesses',
-  bodyType: 'Carrosserie',
-  drivetrain: 'Transmission',
-  powerHp: 'Puissance (ch)',
-  powerKw: 'Puissance (kW)',
-  engineDisplacementCc: 'Cylindrée',
-  doors: 'Nombre de portes',
-  seats: 'Nombre de places',
-  condition: 'État',
-  exteriorColor: 'Couleur extérieure',
-  colorText: 'Couleur',
-  interiorMaterial: 'Intérieur',
-  ownerCount: 'Nombre de propriétaires',
-  warrantyMonths: 'Garantie (mois)',
-  technicalInspectionValidUntil: 'Contrôle technique valable jusqu’au',
-  co2EmissionsGKm: 'Émissions de CO₂',
-  emissionClass: 'Norme d’émission',
-  vin: 'Numéro de série (VIN)',
-  featureCodes: 'Équipements',
-
-  // photos
-  contentType: 'Type de fichier',
-  byteSize: 'Taille du fichier',
-  filename: 'Nom du fichier',
-};
+export const FIELD_LABELS_FR: Readonly<Record<string, string>> = LABELS.fields;
 
 /**
  * What to say about a field whose value the API rejected.

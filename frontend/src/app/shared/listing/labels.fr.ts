@@ -12,102 +12,40 @@ import {
   UserRole,
   VehicleCondition,
 } from '../../core/api';
+import LABELS from '../../../../labels.fr.json';
 
 /**
  * French words for the vehicle enums the search and listing screens show.
  *
  * <p>The <em>values</em> come from the API — the filter lists are built from
  * `GET /reference/enums`, so a fuel type added on the backend appears in the sidebar
- * without a frontend change. The <em>words</em> are here, which is the agreed split:
- * values server-side, labels in Angular.
+ * without a frontend change. The <em>words</em> are in `frontend/labels.fr.json`, which is the
+ * agreed split: values server-side, labels in the clients. That file is shared with the Android
+ * app, so the site and the app cannot word the same value differently.
  *
- * <p>Each map is a `Record` over the generated enum, so the day the API gains a value the
- * client is regenerated and this file stops compiling until someone writes the French.
- * Between a backend release and that regeneration the value is still shown —
- * {@link labelOf} falls back to the raw name, which is ugly and therefore noticed —
- * rather than silently missing from the filters.
+ * <p>Each map is still typed as a `Record` over the generated enum, and the JSON's own type is
+ * checked against it: the day the API gains a value the client is regenerated and this file
+ * stops compiling until someone writes the French in the JSON. Between a backend release and
+ * that regeneration the value is still shown — {@link labelOf} falls back to the raw name, which
+ * is ugly and therefore noticed — rather than silently missing from the filters. A value the API
+ * no longer has is caught by `labels.fr.json.spec.ts`.
  */
-export const FUEL_LABELS: Record<FuelType, string> = {
-  [FuelType.PETROL]: 'Essence',
-  [FuelType.DIESEL]: 'Diesel',
-  [FuelType.HYBRID_PETROL]: 'Hybride essence',
-  [FuelType.HYBRID_DIESEL]: 'Hybride diesel',
-  [FuelType.PLUGIN_HYBRID]: 'Hybride rechargeable',
-  [FuelType.ELECTRIC]: 'Électrique',
-  [FuelType.LPG]: 'GPL',
-  [FuelType.CNG]: 'GNV',
-  [FuelType.HYDROGEN]: 'Hydrogène',
-  [FuelType.ETHANOL]: 'Éthanol (E85)',
-  [FuelType.OTHER]: 'Autre',
-};
+export const FUEL_LABELS: Record<FuelType, string> = LABELS.enums.FuelType;
 
-export const GEARBOX_LABELS: Record<Gearbox, string> = {
-  [Gearbox.MANUAL]: 'Manuelle',
-  [Gearbox.AUTOMATIC]: 'Automatique',
-  [Gearbox.SEMI_AUTOMATIC]: 'Semi-automatique',
-};
+export const GEARBOX_LABELS: Record<Gearbox, string> = LABELS.enums.Gearbox;
 
-export const BODY_LABELS: Record<BodyType, string> = {
-  [BodyType.HATCHBACK]: 'Citadine / compacte',
-  [BodyType.SEDAN]: 'Berline',
-  [BodyType.ESTATE]: 'Break',
-  [BodyType.SUV]: 'SUV / 4x4',
-  [BodyType.COUPE]: 'Coupé',
-  [BodyType.CONVERTIBLE]: 'Cabriolet',
-  [BodyType.MPV]: 'Monospace',
-  [BodyType.PICKUP]: 'Pick-up',
-  [BodyType.VAN]: 'Utilitaire',
-  [BodyType.OTHER]: 'Autre',
-};
+export const BODY_LABELS: Record<BodyType, string> = LABELS.enums.BodyType;
 
-export const CONDITION_LABELS: Record<VehicleCondition, string> = {
-  [VehicleCondition.NEW]: 'Neuf',
-  [VehicleCondition.USED]: 'Occasion',
-};
+export const CONDITION_LABELS: Record<VehicleCondition, string> = LABELS.enums.VehicleCondition;
 
-export const DAMAGE_TYPE_LABELS: Record<DamageType, string> = {
-  [DamageType.BODYWORK]: 'Carrosserie',
-  [DamageType.MECHANICAL]: 'Mécanique',
-  [DamageType.HAIL]: 'Grêle',
-  [DamageType.FLOOD]: 'Inondation',
-  [DamageType.OTHER]: 'Autre',
-};
+export const DAMAGE_TYPE_LABELS: Record<DamageType, string> = LABELS.enums.DamageType;
 
 /** "État du véhicule", in the order the filter offers them: the default first. */
-export const DAMAGE_FILTER_LABELS: Record<DamageFilter, string> = {
-  [DamageFilter.UNDAMAGED]: 'Non endommagés',
-  [DamageFilter.DAMAGED_ONLY]: 'Endommagés uniquement',
-  [DamageFilter.ALL]: 'Tous',
-};
+export const DAMAGE_FILTER_LABELS: Record<DamageFilter, string> = LABELS.enums.DamageFilter;
 
-export const COLOR_LABELS: Record<ExteriorColor, string> = {
-  [ExteriorColor.BLACK]: 'Noir',
-  [ExteriorColor.WHITE]: 'Blanc',
-  [ExteriorColor.GREY]: 'Gris',
-  [ExteriorColor.SILVER]: 'Argent',
-  [ExteriorColor.BLUE]: 'Bleu',
-  [ExteriorColor.RED]: 'Rouge',
-  [ExteriorColor.GREEN]: 'Vert',
-  [ExteriorColor.BROWN]: 'Marron',
-  [ExteriorColor.BEIGE]: 'Beige',
-  [ExteriorColor.YELLOW]: 'Jaune',
-  [ExteriorColor.ORANGE]: 'Orange',
-  [ExteriorColor.PURPLE]: 'Violet',
-  [ExteriorColor.GOLD]: 'Or',
-  [ExteriorColor.OTHER]: 'Autre',
-};
+export const COLOR_LABELS: Record<ExteriorColor, string> = LABELS.enums.ExteriorColor;
 
-export const EMISSION_LABELS: Record<EmissionClass, string> = {
-  [EmissionClass.EURO_1]: 'Euro 1',
-  [EmissionClass.EURO_2]: 'Euro 2',
-  [EmissionClass.EURO_3]: 'Euro 3',
-  [EmissionClass.EURO_4]: 'Euro 4',
-  [EmissionClass.EURO_5]: 'Euro 5',
-  [EmissionClass.EURO_6]: 'Euro 6',
-  [EmissionClass.EURO_6D]: 'Euro 6d',
-  [EmissionClass.EURO_7]: 'Euro 7',
-  [EmissionClass.OTHER]: 'Autre',
-};
+export const EMISSION_LABELS: Record<EmissionClass, string> = LABELS.enums.EmissionClass;
 
 /**
  * Equipment categories, and — by the order of the keys — the order they are listed in.
@@ -115,45 +53,33 @@ export const EMISSION_LABELS: Record<EmissionClass, string> = {
  * <p>Safety first: on a used car it is what a buyer checks before anything else, and it
  * is the category where a missing item matters.
  */
-export const FEATURE_CATEGORY_LABELS: Record<FeatureCategory, string> = {
-  [FeatureCategory.SAFETY]: 'Sécurité',
-  [FeatureCategory.ASSISTANCE]: 'Aides à la conduite',
-  [FeatureCategory.COMFORT]: 'Confort',
-  [FeatureCategory.MULTIMEDIA]: 'Multimédia',
-  [FeatureCategory.INTERIOR]: 'Intérieur',
-  [FeatureCategory.EXTERIOR]: 'Extérieur',
-  [FeatureCategory.OTHER]: 'Autres équipements',
-};
+export const FEATURE_CATEGORY_LABELS: Record<FeatureCategory, string> =
+  LABELS.enums.FeatureCategory;
 
-export const SELLER_ROLE_LABELS: Record<UserRole, string> = {
-  [UserRole.PARTICULIER]: 'Particulier',
-  [UserRole.PROFESSIONNEL]: 'Professionnel',
-  [UserRole.ADMIN]: 'AutoX',
-};
+export const SELLER_ROLE_LABELS: Record<UserRole, string> = LABELS.enums.UserRole;
 
 /** The price indicator's verdicts. The rule is `MarketPrice`, on the backend. */
-export const PRICE_LEVEL_LABELS: Record<PriceLevel, string> = {
-  [PriceLevel.GOOD_DEAL]: 'Bonne affaire',
-  [PriceLevel.MARKET]: 'Prix du marché',
-  [PriceLevel.ABOVE_MARKET]: 'Au-dessus du marché',
-};
+export const PRICE_LEVEL_LABELS: Record<PriceLevel, string> = LABELS.enums.PriceLevel;
+
+/**
+ * A sort menu from the JSON. Its values are plain strings there; `labels.fr.json.spec.ts`
+ * checks that each is a `SearchSort`, which is what makes the cast below honest.
+ */
+function sortOptions(
+  options: readonly { value: string; label: string }[],
+): readonly { value: SearchSort; label: string }[] {
+  return options.map(({ value, label }) => ({ value: value as SearchSort, label }));
+}
 
 /** In the order the sort menu lists them. */
-export const SORT_OPTIONS: readonly { value: SearchSort; label: string }[] = [
-  { value: SearchSort.NEWEST, label: 'Plus récentes' },
-  { value: SearchSort.PRICE_ASC, label: 'Prix croissant' },
-  { value: SearchSort.PRICE_DESC, label: 'Prix décroissant' },
-  { value: SearchSort.MILEAGE_ASC, label: 'Kilométrage croissant' },
-];
+export const SORT_OPTIONS: readonly { value: SearchSort; label: string }[] = sortOptions(
+  LABELS.sortOptions.sale,
+);
 
 /** The same for leasing offers, which are sorted by their terms. */
-export const LEASING_SORT_OPTIONS: readonly { value: SearchSort; label: string }[] = [
-  { value: SearchSort.NEWEST, label: 'Plus récentes' },
-  { value: SearchSort.MONTHLY_ASC, label: 'Mensualité croissante' },
-  { value: SearchSort.MONTHLY_DESC, label: 'Mensualité décroissante' },
-  { value: SearchSort.DURATION_ASC, label: 'Durée croissante' },
-  { value: SearchSort.MILEAGE_ALLOWANCE_DESC, label: 'Kilométrage annuel décroissant' },
-];
+export const LEASING_SORT_OPTIONS: readonly { value: SearchSort; label: string }[] = sortOptions(
+  LABELS.sortOptions.leasing,
+);
 
 /**
  * The label for a value, or the value itself when there is none.

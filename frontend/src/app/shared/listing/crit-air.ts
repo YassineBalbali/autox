@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { CritAir } from '../../core/api';
+import LABELS from '../../../../labels.fr.json';
 
 /**
  * The Crit'Air classes as the vignettes print them. The class itself is computed by the API from
@@ -18,25 +19,11 @@ export const CRIT_AIR_NUMBER: Record<CritAir, number | null> = {
 };
 
 /** In words, for the label beside the vignette and for a screen reader. */
-export const CRIT_AIR_LABELS: Record<CritAir, string> = {
-  [CritAir.ZERO]: 'Crit’Air 0 (électrique)',
-  [CritAir.ONE]: 'Crit’Air 1',
-  [CritAir.TWO]: 'Crit’Air 2',
-  [CritAir.THREE]: 'Crit’Air 3',
-  [CritAir.FOUR]: 'Crit’Air 4',
-  [CritAir.FIVE]: 'Crit’Air 5',
-  [CritAir.UNCLASSIFIED]: 'Non classé',
-};
+export const CRIT_AIR_LABELS: Record<CritAir, string> = LABELS.enums.CritAir;
 
 /** The filter's choices: "Crit'Air n ou mieux", 0 to 5. */
-export const CRIT_AIR_MAX_OPTIONS: readonly { value: number; label: string }[] = [
-  { value: 0, label: '0 (électrique)' },
-  { value: 1, label: '1 ou mieux' },
-  { value: 2, label: '2 ou mieux' },
-  { value: 3, label: '3 ou mieux' },
-  { value: 4, label: '4 ou mieux' },
-  { value: 5, label: '5 ou mieux' },
-];
+export const CRIT_AIR_MAX_OPTIONS: readonly { value: number; label: string }[] =
+  LABELS.critAirMaxOptions;
 
 /**
  * A listing's estimated Crit'Air: the vignette in its colour, what it is based on, and one line on
@@ -59,10 +46,12 @@ export const CRIT_AIR_MAX_OPTIONS: readonly { value: number; label: string }[] =
         </span>
         <div class="crit-air__text">
           <p class="crit-air__label">{{ label() }}</p>
-          <p class="meta" i18n="@@critAirEstimated">Crit’Air estimée d’après l’énergie et la date de 1re immatriculation</p>
+          <p class="meta" i18n="@@critAirEstimated">
+            Crit’Air estimée d’après l’énergie et la date de 1re immatriculation
+          </p>
           <p class="meta" data-zfe i18n="@@critAirZfe">
-            Dans les zones à faibles émissions (ZFE), chaque agglomération fixe les vignettes autorisées et les horaires :
-            vérifiez les règles de la ville où vous roulez.
+            Dans les zones à faibles émissions (ZFE), chaque agglomération fixe les vignettes
+            autorisées et les horaires : vérifiez les règles de la ville où vous roulez.
           </p>
         </div>
       </div>
@@ -99,11 +88,23 @@ export const CRIT_AIR_MAX_OPTIONS: readonly { value: number; label: string }[] =
       color: var(--vignette-ink);
       line-height: 1;
 
-      &[data-class='1'] { --vignette: #7d4e9d; }
-      &[data-class='2'] { --vignette: #fcd800; --vignette-ink: #0b1f3a; }
-      &[data-class='3'] { --vignette: #f08a00; --vignette-ink: #0b1f3a; }
-      &[data-class='4'] { --vignette: #8b1d2c; }
-      &[data-class='5'] { --vignette: #6e6e6e; }
+      &[data-class='1'] {
+        --vignette: #7d4e9d;
+      }
+      &[data-class='2'] {
+        --vignette: #fcd800;
+        --vignette-ink: #0b1f3a;
+      }
+      &[data-class='3'] {
+        --vignette: #f08a00;
+        --vignette-ink: #0b1f3a;
+      }
+      &[data-class='4'] {
+        --vignette: #8b1d2c;
+      }
+      &[data-class='5'] {
+        --vignette: #6e6e6e;
+      }
       &[data-class='NC'] {
         --vignette: var(--c-surface-sunk);
         --vignette-ink: var(--c-ink-soft);

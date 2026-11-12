@@ -1,0 +1,290 @@
+{
+  "$comment": [
+    "French words for the API codes, shared by the web (src/app/shared/listing/labels.fr.ts and its",
+    "neighbours) and the Android app (mobile/, which generates Dart from this file).",
+    "",
+    "enums: one object per generated enum, named as in openapi.json, every value once. Both clients",
+    "fail to compile when a value is missing, and their tests fail on a value that no longer exists.",
+    "Key order is display order where one matters (FeatureCategory, DamageFilter).",
+    "Values come from the API, words from here: the agreed split, docs/mobile-plan.md section 2."
+  ],
+  "enums": {
+    "FuelType": {
+      "PETROL": "Essence",
+      "DIESEL": "Diesel",
+      "HYBRID_PETROL": "Hybride essence",
+      "HYBRID_DIESEL": "Hybride diesel",
+      "PLUGIN_HYBRID": "Hybride rechargeable",
+      "ELECTRIC": "Électrique",
+      "LPG": "GPL",
+      "CNG": "GNV",
+      "HYDROGEN": "Hydrogène",
+      "ETHANOL": "Éthanol (E85)",
+      "OTHER": "Autre"
+    },
+    "Gearbox": {
+      "MANUAL": "Manuelle",
+      "AUTOMATIC": "Automatique",
+      "SEMI_AUTOMATIC": "Semi-automatique"
+    },
+    "BodyType": {
+      "HATCHBACK": "Citadine / compacte",
+      "SEDAN": "Berline",
+      "ESTATE": "Break",
+      "SUV": "SUV / 4x4",
+      "COUPE": "Coupé",
+      "CONVERTIBLE": "Cabriolet",
+      "MPV": "Monospace",
+      "PICKUP": "Pick-up",
+      "VAN": "Utilitaire",
+      "OTHER": "Autre"
+    },
+    "VehicleCondition": {
+      "NEW": "Neuf",
+      "USED": "Occasion"
+    },
+    "DamageType": {
+      "BODYWORK": "Carrosserie",
+      "MECHANICAL": "Mécanique",
+      "HAIL": "Grêle",
+      "FLOOD": "Inondation",
+      "OTHER": "Autre"
+    },
+    "DamageFilter": {
+      "UNDAMAGED": "Non endommagés",
+      "DAMAGED_ONLY": "Endommagés uniquement",
+      "ALL": "Tous"
+    },
+    "ExteriorColor": {
+      "BLACK": "Noir",
+      "WHITE": "Blanc",
+      "GREY": "Gris",
+      "SILVER": "Argent",
+      "BLUE": "Bleu",
+      "RED": "Rouge",
+      "GREEN": "Vert",
+      "BROWN": "Marron",
+      "BEIGE": "Beige",
+      "YELLOW": "Jaune",
+      "ORANGE": "Orange",
+      "PURPLE": "Violet",
+      "GOLD": "Or",
+      "OTHER": "Autre"
+    },
+    "EmissionClass": {
+      "EURO_1": "Euro 1",
+      "EURO_2": "Euro 2",
+      "EURO_3": "Euro 3",
+      "EURO_4": "Euro 4",
+      "EURO_5": "Euro 5",
+      "EURO_6": "Euro 6",
+      "EURO_6D": "Euro 6d",
+      "EURO_7": "Euro 7",
+      "OTHER": "Autre"
+    },
+    "FeatureCategory": {
+      "SAFETY": "Sécurité",
+      "ASSISTANCE": "Aides à la conduite",
+      "COMFORT": "Confort",
+      "MULTIMEDIA": "Multimédia",
+      "INTERIOR": "Intérieur",
+      "EXTERIOR": "Extérieur",
+      "OTHER": "Autres équipements"
+    },
+    "UserRole": {
+      "PARTICULIER": "Particulier",
+      "PROFESSIONNEL": "Professionnel",
+      "ADMIN": "AutoX"
+    },
+    "PriceLevel": {
+      "GOOD_DEAL": "Bonne affaire",
+      "MARKET": "Prix du marché",
+      "ABOVE_MARKET": "Au-dessus du marché"
+    },
+    "LeasingType": {
+      "LOA": "LOA",
+      "LLD": "LLD"
+    },
+    "CritAir": {
+      "ZERO": "Crit’Air 0 (électrique)",
+      "ONE": "Crit’Air 1",
+      "TWO": "Crit’Air 2",
+      "THREE": "Crit’Air 3",
+      "FOUR": "Crit’Air 4",
+      "FIVE": "Crit’Air 5",
+      "UNCLASSIFIED": "Non classé"
+    },
+    "ErrorCode": {
+      "VALIDATION_FAILED": "Certaines informations sont incorrectes. Vérifiez les champs signalés.",
+      "MALFORMED_REQUEST": "La demande n’a pas pu être traitée. Réessayez.",
+      "EMAIL_ALREADY_REGISTERED": "Un compte existe déjà avec cette adresse e-mail.",
+      "INVALID_CREDENTIALS": "Adresse e-mail ou mot de passe incorrect.",
+      "ACCOUNT_SUSPENDED": "Ce compte est suspendu. Contactez le support.",
+      "ACCOUNT_CLOSED": "Ce compte a été fermé.",
+      "INVALID_TOKEN": "Votre session a expiré. Reconnectez-vous.",
+      "INVALID_REFRESH_TOKEN": "Votre session a expiré. Reconnectez-vous.",
+      "CURRENT_PASSWORD_INCORRECT": "Le mot de passe actuel est incorrect.",
+      "INVALID_RESET_TOKEN": "Ce lien de réinitialisation n’est plus valable. Demandez-en un nouveau.",
+      "SAVED_SEARCH_LIMIT_REACHED": "Vous avez déjà 10 recherches enregistrées, le maximum. Supprimez-en une dans « Mes recherches » pour en créer une autre.",
+      "INVALID_UNSUBSCRIBE_TOKEN": "Ce lien de désabonnement n’est pas valable.",
+      "INVALID_VERIFICATION_TOKEN": "Ce lien de vérification n’est plus valable. Demandez-en un nouveau.",
+      "EMAIL_NOT_VERIFIED": "Vérifiez d’abord votre adresse e-mail, avec le lien que nous vous avons envoyé.",
+      "TOO_MANY_ATTEMPTS": "Trop de tentatives de connexion.",
+      "RATE_LIMITED": "Trop de requêtes.",
+      "FORBIDDEN": "Vous n’avez pas accès à cette ressource.",
+      "NOT_FOUND": "Cette page ou cette annonce n’existe pas, ou n’est plus disponible.",
+      "METHOD_NOT_ALLOWED": "La demande n’a pas pu être traitée. Réessayez.",
+      "UNSUPPORTED_MEDIA_TYPE": "Ce format de fichier n’est pas accepté.",
+      "CONFLICT": "Cette action n’est pas possible dans l’état actuel.",
+      "ADMIN_SELF_ACTION": "Un administrateur ne peut pas effectuer cette action sur son propre compte.",
+      "LAST_ADMIN": "C’est le dernier administrateur en mesure de se connecter : cette action est refusée.",
+      "DEMO_ACCOUNT_CANNOT_BE_ADMIN": "Personne ne peut se connecter à un compte de démonstration : il ne peut pas devenir administrateur.",
+      "DEMO_ACCOUNT_CANNOT_BE_DELETED": "Un compte de démonstration ne se supprime pas ainsi : il disparaît avec les données de démonstration.",
+      "LISTING_ALREADY_REPORTED": "Vous avez déjà signalé cette annonce.",
+      "ACTIVE_LISTING_LIMIT_REACHED": "Vous avez atteint le nombre maximum d’annonces en ligne. Mettez-en une en pause ou supprimez-la.",
+      "LEASING_PROFESSIONAL_ONLY": "Les offres de location sont réservées aux comptes professionnels.",
+      "NEW_CAR_PROFESSIONAL_ONLY": "Seul un professionnel peut vendre un véhicule neuf. Choisissez l’état « Occasion ».",
+      "CONCURRENT_MODIFICATION": "Cette annonce a été modifiée entre-temps. Rechargez la page et réessayez.",
+      "UNSUPPORTED_IMAGE_TYPE": "Ce format d’image n’est pas accepté. Utilisez un JPEG ou un PNG.",
+      "IMAGE_TOO_LARGE": "Cette image est trop volumineuse.",
+      "IMAGE_TOO_SMALL": "Cette image est trop petite. Choisissez une photo plus grande.",
+      "TOO_MANY_IMAGES": "Cette annonce contient déjà le nombre maximum de photos.",
+      "UPLOAD_NOT_FOUND": "L’envoi de cette photo n’a pas abouti. Réessayez.",
+      "PHOTO_REQUIRED": "Ajoutez au moins une photo avant de publier.",
+      "INVALID_CURSOR": "Cette page de résultats n’est plus valable. Relancez la recherche.",
+      "INTERPRETER_UNAVAILABLE": "La recherche intelligente est indisponible pour le moment.",
+      "INTERNAL_ERROR": "Une erreur inattendue s’est produite. Réessayez dans un instant."
+    }
+  },
+  "sortOptions": {
+    "sale": [
+      {
+        "value": "NEWEST",
+        "label": "Plus récentes"
+      },
+      {
+        "value": "PRICE_ASC",
+        "label": "Prix croissant"
+      },
+      {
+        "value": "PRICE_DESC",
+        "label": "Prix décroissant"
+      },
+      {
+        "value": "MILEAGE_ASC",
+        "label": "Kilométrage croissant"
+      }
+    ],
+    "leasing": [
+      {
+        "value": "NEWEST",
+        "label": "Plus récentes"
+      },
+      {
+        "value": "MONTHLY_ASC",
+        "label": "Mensualité croissante"
+      },
+      {
+        "value": "MONTHLY_DESC",
+        "label": "Mensualité décroissante"
+      },
+      {
+        "value": "DURATION_ASC",
+        "label": "Durée croissante"
+      },
+      {
+        "value": "MILEAGE_ALLOWANCE_DESC",
+        "label": "Kilométrage annuel décroissant"
+      }
+    ]
+  },
+  "critAirMaxOptions": [
+    {
+      "value": 0,
+      "label": "0 (électrique)"
+    },
+    {
+      "value": 1,
+      "label": "1 ou mieux"
+    },
+    {
+      "value": 2,
+      "label": "2 ou mieux"
+    },
+    {
+      "value": 3,
+      "label": "3 ou mieux"
+    },
+    {
+      "value": 4,
+      "label": "4 ou mieux"
+    },
+    {
+      "value": 5,
+      "label": "5 ou mieux"
+    }
+  ],
+  "fields": {
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "role": "Type de compte",
+    "displayName": "Nom affiché",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "phone": "Téléphone",
+    "countryCode": "Pays",
+    "locale": "Langue",
+    "companyName": "Raison sociale",
+    "deviceLabel": "Appareil",
+    "token": "Jeton",
+    "professional.companyName": "Raison sociale",
+    "professional.legalForm": "Forme juridique",
+    "professional.registrationNumber": "SIRET",
+    "professional.vatNumber": "Numéro de TVA",
+    "professional.websiteUrl": "Site web",
+    "professional.description": "Description",
+    "professional.addressLine1": "Adresse",
+    "professional.addressLine2": "Complément d’adresse",
+    "professional.contactPhone": "Téléphone de contact",
+    "title": "Titre",
+    "description": "Description",
+    "priceAmount": "Prix",
+    "currencyCode": "Devise",
+    "postalCode": "Code postal",
+    "city": "Ville",
+    "makeText": "Marque",
+    "modelText": "Modèle",
+    "versionText": "Version",
+    "makeId": "Marque",
+    "modelId": "Modèle",
+    "trimId": "Finition",
+    "firstRegistrationYear": "Année de première immatriculation",
+    "firstRegistrationMonth": "Mois de première immatriculation",
+    "mileageKm": "Kilométrage",
+    "fuelType": "Carburant",
+    "gearbox": "Boîte de vitesses",
+    "bodyType": "Carrosserie",
+    "drivetrain": "Transmission",
+    "powerHp": "Puissance (ch)",
+    "powerKw": "Puissance (kW)",
+    "engineDisplacementCc": "Cylindrée",
+    "doors": "Nombre de portes",
+    "seats": "Nombre de places",
+    "condition": "État",
+    "exteriorColor": "Couleur extérieure",
+    "colorText": "Couleur",
+    "interiorMaterial": "Intérieur",
+    "ownerCount": "Nombre de propriétaires",
+    "warrantyMonths": "Garantie (mois)",
+    "technicalInspectionValidUntil": "Contrôle technique valable jusqu’au",
+    "co2EmissionsGKm": "Émissions de CO₂",
+    "emissionClass": "Norme d’émission",
+    "vin": "Numéro de série (VIN)",
+    "featureCodes": "Équipements",
+    "contentType": "Type de fichier",
+    "byteSize": "Taille du fichier",
+    "filename": "Nom du fichier"
+  }
+}
