@@ -263,6 +263,40 @@ actions pinned the same way).
 | M6 Release | Signing, `release` job, first GitHub Release, README link, app icon, cold-start and offline states, accessibility pass (TalkBack labels, 48 dp targets, text scaling) |
 | Later | App Links for e-mail links, push notifications (FCM + backend), synced favourites, `required` in the spec, iOS, Play Store |
 
+## 9a. Milestone 1 — done (2026-11-12)
+
+Built as planned, with these differences, all found while building:
+
+- **Material is a package now.** Flutter 3.47 deprecated `package:flutter/material.dart` in
+  favour of `material_ui`; the app imports that. Its `GlobalMaterialLocalizations.delegates`
+  supplies the French framework strings, so `flutter_localizations` is not a direct dependency.
+- **The generated client needed three fixes**, all applied by `tool/generate_api.mjs` on each
+  run, none by hand:
+  - `skipCopyWith=true`: the generator's `copy_with_extension_gen` does not support the `build`
+    5 that the pinned `build_runner` requires. The app does not copy API objects.
+  - `disallow_unrecognized_keys` switched **off** in the generated `build.yaml`. On, any field
+    the backend adds would make every installed app fail to parse that response. With
+    `enumUnknownDefaultCase`, an unknown enum value parses as `unknownDefaultOpenApi`. Both
+    are tested.
+  - Enum parameter defaults qualified (`= NEWEST` → `= SearchSort.NEWEST`): dart-dio emits
+    code that does not compile there.
+- **One lock file through a pub workspace.** The generated package joins the app's workspace
+  with `any` constraints, so the committed `pubspec.lock` decides its versions too.
+- **Repeated-key encoding checked against the real backend**: `fuelType=DIESEL` (49) +
+  `fuelType=PETROL` (67) = `fuelType=DIESEL&fuelType=PETROL` (116), on the local demo data.
+- **The theme's colours are tested against `_tokens.scss`**: the test reads the site's file,
+  so the two cannot drift silently. The mobile workflow runs when that file changes.
+- **CI also builds a debug APK**, to catch Android-side breakage (manifests, Gradle, plugins)
+  before milestone 6 adds the signed release.
+
+### Dependency updates
+
+Dependabot's `pub` updater is **not** enabled for `mobile/`: the workspace lists the generated
+package, which is not in the repository, so Dependabot cannot resolve it. Until that is solved
+(by committing the generated client, or by a scheduled job that regenerates and runs
+`flutter pub outdated`), updates are by hand: `flutter pub outdated`, edit the pins, `flutter
+pub get`. All direct dependencies were the latest stable on 2026-11-12.
+
 ## 10. Decisions (settled 2026-11-12)
 
 1. **Application id: `io.github.yassinebalbali.autox`.** Dart package name `autox`. Fixed for

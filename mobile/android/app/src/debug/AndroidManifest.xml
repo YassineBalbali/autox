@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Development builds only: the API on this PC, over plain HTTP, as the emulator sees
+         it. The release manifest has no such configuration, so a release speaks HTTPS only
+         (Android's default since API 28). -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

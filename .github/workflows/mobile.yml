@@ -1,0 +1,90 @@
+name: mobile
+
+# The Flutter app in mobile/. Same shape as the backend and frontend workflows: every push,
+# pull requests into main, filtered to what can change the result. frontend/openapi.json is in
+# the list because the Dart client is generated from it, and frontend/src/styles/_tokens.scss
+# because the app's colours are checked against it.
+#
+# Release builds (signed APK on a GitHub Release, on `mobile-v*` tags) are milestone 6; this
+# workflow checks and tests only.
+on:
+  push:
+    paths:
+      - 'mobile/**'
+      - 'frontend/openapi.json'
+      - 'frontend/src/styles/_tokens.scss'
+      - '.github/workflows/mobile.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'mobile/**'
+      - 'frontend/openapi.json'
+      - 'frontend/src/styles/_tokens.scss'
+      - '.github/workflows/mobile.yml'
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: generate, format, analyze, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Exactly the version in C:\src\flutter, the development machine's only install, and in
+      # pubspec.yaml's `environment.flutter`. The three move together.
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: true
+
+      # openapi-generator is a Java program; the same version as the web's client.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: Cache the generator jar
+        uses: actions/cache@v4
+        with:
+          path: mobile/.dart_tool/openapi-generator
+          key: openapi-generator-${{ hashFiles('mobile/tool/generate_api.mjs') }}
+
+      # Also runs `flutter pub get`, which fails if pubspec.yaml and the committed
+      # pubspec.lock disagree (--enforce-lockfile below makes that explicit).
+      - name: Generate the API client
+        run: node tool/generate_api.mjs
+
+      - name: Dependencies match the lock file
+        run: flutter pub get --enforce-lockfile
+
+      - name: Format
+        run: dart format --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Test
+        run: flutter test
+
+      # A debug build proves the Android side (manifests, Gradle, plugins) still assembles.
+      # Unsigned and thrown away; the release build is the tag-only job of milestone 6.
+      - name: Build a debug APK
+        run: flutter build apk --debug

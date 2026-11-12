@@ -1,0 +1,61 @@
+name: autox
+description: "AutoX — application Android pour les acheteurs."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.14.0
+  # The version in C:\src\flutter and in CI (.github/workflows/mobile.yml). Moved together.
+  flutter: 3.50.0
+
+# packages/autox_api is the generated API client (tool/generate_api.mjs). A workspace member,
+# so this pubspec and the one pubspec.lock beside it decide every version, its included.
+workspace:
+  - packages/autox_api
+
+# Exact versions, no carets: a version changes when someone changes it here (or Dependabot
+# proposes it), never because a fresh resolve found something newer.
+dependencies:
+  flutter:
+    sdk: flutter
+  autox_api:
+    path: packages/autox_api
+
+  # Material, decoupled from the framework in Flutter 3.47 (package:flutter/material.dart is
+  # deprecated).
+  material_ui: 1.11.0
+
+  flutter_riverpod: 3.5.0
+  go_router: 18.1.4
+  dio: 5.11.1
+  flutter_secure_storage: 11.2.0
+  shared_preferences: 2.5.6
+  cached_network_image: 4.0.7
+  intl: 0.20.3
+  url_launcher: 6.3.3
+  lucide_icons_flutter: 4.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0
+  mocktail: 1.0.5
+  # Used by the generated client's build (its *.g.dart files), pinned here for the workspace.
+  build_runner: 2.17.1
+  json_serializable: 6.15.2
+
+flutter:
+  uses-material-design: true
+  fonts:
+    # Barlow Semi Condensed, the web's face, the four weights the web loads. SIL OFL 1.1;
+    # licence beside the files, listed in docs/third-party-assets.md.
+    - family: Barlow Semi Condensed
+      fonts:
+        - asset: assets/fonts/BarlowSemiCondensed-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/BarlowSemiCondensed-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BarlowSemiCondensed-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/BarlowSemiCondensed-ExtraBold.ttf
+          weight: 800

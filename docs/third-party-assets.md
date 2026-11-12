@@ -110,6 +110,26 @@ another icon set, so none resembles an identifiable model. They follow Lucide's 
 (2-unit round strokes, no fill) so that they sit with the icons above, on their own wider
 64 x 32 grid.
 
+## Mobile app — Barlow Semi Condensed
+
+| | |
+|---|---|
+| Files | `mobile/assets/fonts/BarlowSemiCondensed-{Regular,SemiBold,Bold,ExtraBold}.ttf` — the four weights the site loads (400, 600, 700, 800) |
+| Source | Google Fonts repository, `ofl/barlowsemicondensed/` (https://github.com/google/fonts) |
+| Author | The Barlow Project Authors (https://github.com/jpt/barlow), 2017 |
+| Licence | **SIL Open Font License 1.1**, full text beside the files in `mobile/assets/fonts/OFL.txt` |
+
+The site gets the same face from the `@fontsource/barlow-semi-condensed` npm package, a code
+dependency. Flutter needs TrueType files rather than the web's WOFF2, so the app carries its
+own copy; the OFL permits bundling it in an application, unmodified, with the licence.
+
+## Mobile app — Lucide icons
+
+The app draws Lucide's icons from the `lucide_icons_flutter` package (4.0.3, MIT,
+Copyright (c) 2024 vqhapp), an icon font built from the same Lucide set as the site's (ISC,
+with the Feather-derived icons under MIT; notices in the Lucide section above). A code
+dependency, pinned in `mobile/pubspec.yaml`; nothing is copied into the repository.
+
 ## What is deliberately not here
 
 - **Manufacturers' logos.** They are trademarks. The home page names makes in text only.

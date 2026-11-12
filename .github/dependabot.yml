@@ -36,6 +36,10 @@ updates:
       frontend:
         patterns: ['*']
 
+  # Not mobile/ (pub) yet: its pubspec lists the generated API client as a workspace member,
+  # which is not in the repository, so Dependabot could not resolve it. See docs/mobile-plan.md,
+  # "Dependency updates".
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
