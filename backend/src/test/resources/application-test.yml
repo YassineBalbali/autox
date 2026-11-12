@@ -33,6 +33,14 @@ spring:
     # So a test can reset the schema if it ever needs to. Never enabled in production.
     clean-disabled: false
 
+# On for the tests that read the API description (the OpenAPI snapshot, the document checks).
+# ApiDocsDisabledIntegrationTest turns them off, as production has them.
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 autox:
   auth:
     # Required: production has no default for this, deliberately. Test-only key, and never

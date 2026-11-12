@@ -231,6 +231,16 @@ hand (New → Web Service → the repository), these are all of them:
 `AUTOX_SCHEDULE_STORAGE_CHECK` is not set, so its default applies: twelve hours (see step 2).
 `PORT` is set by Render, and the image listens on it. Do not set `AUTOX_PORT`.
 
+**The API description and Swagger UI are off in production.**
+- **The default:** `AUTOX_API_DOCS_ENABLED` is not set, so `/v3/api-docs` and `/swagger-ui.html`
+  answer 404, as any path that does not exist. The application turns both off unless the
+  variable is `true`. `ApiDocsDisabledIntegrationTest` holds that default.
+- **Locally:** `.env` sets it, and `.env.example` has it on.
+- **To open them on the deployed API for a while:** set it to `true` in Render, redeploy, and
+  remove it afterwards.
+- **The site does not need them:** its client is generated from the committed
+  `frontend/openapi.json`.
+
 There is no `.env` in the image. If a required variable is missing, the API stops at
 startup and the log names the variable.
 
@@ -545,6 +555,8 @@ There is no endpoint that makes an administrator, on purpose:
 
 ## Step 10 — Check from outside
 
+- `curl -s -o /dev/null -w '%{http_code}' API/v3/api-docs`, and the same for
+  `API/swagger-ui.html`: expect `404` for both.
 - `https://securityheaders.com/?q=SITE` — expect an A, with a Content-Security-Policy.
 - Open a listing link directly in a new tab, and paste one into a messaging app. It should
   load, and the preview should show the AutoX card.
@@ -634,7 +646,8 @@ variables above):
   paused, photos are missing until it is resumed.
 - **No preview deployments.** Vercel deploys `main` only. A preview's URL would not be in `AUTOX_CORS_ALLOWED_ORIGINS` anyway, so it could not reach
   the API.
-- **Swagger UI** is public at `API/swagger-ui.html`, which for a portfolio is arguably the
-  point.
+- **No Swagger UI on the deployed API.** It is off unless `AUTOX_API_DOCS_ENABLED=true` (see
+  step 3). The API is described in the repository, in `frontend/openapi.json`, and Swagger UI
+  runs locally.
 
 See `docs/weaknesses.md` for the rest, most of which matters only with real users.

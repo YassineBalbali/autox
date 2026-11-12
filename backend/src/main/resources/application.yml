@@ -96,6 +96,16 @@ server:
     remoteip:
       remote-ip-header: ${AUTOX_CLIENT_IP_HEADER:X-Forwarded-For}
 
+# The API description (/v3/api-docs) and Swagger UI (/swagger-ui.html): OFF unless switched on.
+# Production sets nothing and serves neither, both answering 404; a local machine turns them on
+# in .env (see .env.example). Off by default rather than on, so that forgetting the variable
+# leaves a server closed, not open. See docs/deployment.md.
+springdoc:
+  api-docs:
+    enabled: ${AUTOX_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${AUTOX_API_DOCS_ENABLED:false}
+
 autox:
   auth:
     # HS256 signing key, base64 or raw text, minimum 32 bytes. No default on purpose.
