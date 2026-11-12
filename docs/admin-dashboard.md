@@ -24,6 +24,23 @@ no placeholder numbers.
 - **Smart-search counts:** natural-language search is only stored per day, so on "Aujourd'hui" its
   count is compared with all of yesterday.
 
+### Whose clock: the database's
+
+"Now", the end of every period, is the database's `now()` (`AdminStatsRepository.databaseNow`),
+not the application's clock. Every row counted here was stamped by the database: a column default,
+or the outbox's `sent_at = now()`.
+
+**The bug:** with the period ending at the JVM's `Instant.now()`, two clocks met in one comparison.
+When the database's ran a few milliseconds ahead, a row written just before the request fell
+after the end of the period and was not counted.
+- **How it showed:** a test that failed once in a full run ("expected 2, was 1") and passed alone.
+  Docker's VM clock ran ahead of Windows'.
+- **In production:** Neon's clock and Render's can drift the same way.
+
+**Reproduced, then fixed:** `AdminStatsIntegrationTest.databaseClock` runs the service with its
+clock 5 seconds and 1 hour behind and ahead of the database's. All four cases failed before the
+change and pass after it. The application's clock now only times the cache.
+
 ## The demo switch
 
 The API sends real activity and the demo seed apart, always. The switch only decides what the page

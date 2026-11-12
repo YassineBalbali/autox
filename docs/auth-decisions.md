@@ -13,7 +13,7 @@ rotation, unverified emails may sign in, logout ends one device's session.
 | POST | `/api/v1/auth/logout` | refresh token in body | 204 |
 | GET | `/api/v1/me` | Bearer | own profile |
 | PATCH | `/api/v1/me` | Bearer | updated profile |
-| GET | `/api/v1/admin/users` | Bearer, ADMIN | paginated user list; the rest of user management is in the README, "Accounts" |
+| GET | `/api/v1/admin/users` | Bearer, ADMIN | paginated user list; the rest of user management is in docs/development.md, "Accounts" |
 
 Error shape is RFC 9457 `application/problem+json` with a stable `code` member and,
 for validation failures, a flat `errors` array.

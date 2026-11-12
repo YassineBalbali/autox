@@ -49,7 +49,7 @@ closed.
 ### `server.forward-headers-strategy: framework` — a whole behaviour was unreachable
 
 This is the setting that makes Spring treat `X-Forwarded-For` as the client address. Both
-throttles key on that address; the README has a deployment warning entirely about it; the
+throttles key on that address; docs/development.md has a deployment warning entirely about it; the
 IPv6 `/64` masking exists because of it. **No test could reach any of it**, because the
 setting lived in a file the suite never read.
 

@@ -165,7 +165,7 @@ throughput.
   throttle. Only safe behind a proxy that overwrites it. Same caveat as the login throttle, now
   on an endpoint anyone can reach. *Since fixed: `native`, Tomcat's RemoteIpValve, which reads
   the header from the right and only from an internal proxy; `True-Client-IP` on Render. See
-  the README, "Deploying behind a proxy".*
+  docs/development.md, "Deploying behind a proxy".*
 - **Authenticated callers are counted too** on the public paths. The limit is generous enough
   that it does not matter, and exempting them would mean a signed-in scraper is unlimited.
 
