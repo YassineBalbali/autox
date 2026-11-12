@@ -197,7 +197,7 @@ import { ContactAddress, InfoPage } from './info-page';
           </thead>
           <tbody>
             <tr>
-              <td>Render Services, Inc.</td>
+              <td>Render, Inc.</td>
               <td>Fait tourner le serveur d’AutoX ; conserve ses journaux techniques.</td>
               <td>Serveurs à Francfort (Allemagne) ; société américaine.</td>
             </tr>

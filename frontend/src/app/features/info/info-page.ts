@@ -9,7 +9,7 @@ import { RouterLink } from '@angular/router';
 export const CONTACT_EMAIL: string | null = null;
 
 /** When the texts of the legal pages were last revised. */
-export const LAST_REVISED = '8 novembre 2026';
+export const LAST_REVISED = '12 novembre 2026';
 
 /** The contact address as a link, or the visible placeholder while there is none. */
 @Component({

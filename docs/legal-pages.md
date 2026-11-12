@@ -26,9 +26,6 @@ press.
 - **The contact address**: `CONTACT_EMAIL` in `features/info/info-page.ts`. While it is `null`,
   every page shows a highlighted `[adresse de contact à compléter]`. The spec asserts that it is
   `null`; change both together.
-- **Render's postal address** in the mentions légales, marked `[adresse postale à confirmer]`.
-  Render's own legal pages name "Render Services, Inc." but give no address, and the directories
-  that do disagree (655 5th Street or 525 Brannan Street, San Francisco).
 - **`LAST_REVISED`** in the same file, whenever a legal text changes.
 
 ## Where the facts come from

@@ -108,7 +108,7 @@ describe('Mentions légales', () => {
 
     expect(page).toContain('Yassine Balbali');
     expect(page).toContain('non commercial');
-    for (const host of ['Vercel Inc.', 'Render Services, Inc.', 'Neon, LLC', 'Supabase Pte. Ltd.']) {
+    for (const host of ['Vercel Inc.', 'Render, Inc., 525 Brannan St #300, San Francisco, CA 94107', 'Neon, LLC', 'Supabase Pte. Ltd.']) {
       expect(page).toContain(host);
     }
   });

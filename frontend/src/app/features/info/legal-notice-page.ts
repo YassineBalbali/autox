@@ -41,8 +41,7 @@ import { ContactAddress, InfoPage } from './info-page';
         </dd>
         <dt>Le serveur d’API</dt>
         <dd>
-          Render Services, Inc., San Francisco, Californie, États-Unis
-          (<mark class="info__placeholder" data-placeholder="render-address">[adresse postale à confirmer]</mark>) —
+          Render, Inc., 525 Brannan St #300, San Francisco, CA 94107, États-Unis —
           <a href="https://render.com" rel="noopener">render.com</a>. Serveurs à Francfort (Allemagne).
         </dd>
         <dt>La base de données</dt>
