@@ -2,7 +2,12 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../features/search/new_cars_screen.dart';
+import '../../features/search/results_screen.dart';
+import '../../features/search/search_entry_screen.dart';
 import '../../features/search/search_home_screen.dart';
+import '../../features/search/search_query.dart';
+import '../../features/search/smart_search.dart';
 import '../widgets/states.dart';
 
 /// The app's paths: French, like the site's (`/recherche`), so a link shared from one can be
@@ -40,7 +45,35 @@ GoRouter buildRouter({String initialLocation = AppRoutes.search}) => GoRouter(
       builder: (context, state, shell) => AppShell(shell: shell),
       branches: [
         StatefulShellBranch(
-          routes: [GoRoute(path: AppRoutes.search, builder: (_, _) => const SearchHomeScreen())],
+          routes: [
+            GoRoute(
+              path: AppRoutes.search,
+              builder: (_, _) => const SearchHomeScreen(),
+              routes: [
+                // The search is in the location, in the site's own parameters
+                // (/recherche/resultats?marque=peugeot&carburant=diesel): parsed like a link.
+                GoRoute(
+                  path: 'resultats',
+                  builder: (_, state) {
+                    final query = parseQuery(state.uri.queryParameters);
+                    return ResultsScreen(
+                      // A new search is a new screen: its own results, scroll and note.
+                      key: ValueKey(state.uri.toString()),
+                      query: query,
+                      interpretation: state.extra is Interpretation ? state.extra! as Interpretation : null,
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'saisie',
+                  builder: (_, state) => SearchEntryScreen(
+                    base: state.extra is SearchQuery ? state.extra! as SearchQuery : SearchQuery.empty,
+                  ),
+                ),
+                GoRoute(path: 'neuf', builder: (_, _) => const NewCarsScreen()),
+              ],
+            ),
+          ],
         ),
         StatefulShellBranch(
           routes: [

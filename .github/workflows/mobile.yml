@@ -1,9 +1,10 @@
 name: mobile
 
 # The Flutter app in mobile/. Same shape as the backend and frontend workflows: every push,
-# pull requests into main, filtered to what can change the result. frontend/openapi.json is in
-# the list because the Dart client is generated from it, and frontend/src/styles/_tokens.scss
-# because the app's colours are checked against it.
+# pull requests into main, filtered to what can change the result. The frontend files in the list
+# are the ones the app is built or tested from: openapi.json (the Dart client is generated from
+# it), openapitools.json (the generator version, which must match), labels.fr.json (the French
+# words), fixtures/ (the test vectors both clients must reproduce) and _tokens.scss (the colours).
 #
 # Release builds (signed APK on a GitHub Release, on `mobile-v*` tags) are milestone 6; this
 # workflow checks and tests only.
@@ -12,6 +13,9 @@ on:
     paths:
       - 'mobile/**'
       - 'frontend/openapi.json'
+      - 'frontend/openapitools.json'
+      - 'frontend/labels.fr.json'
+      - 'frontend/fixtures/**'
       - 'frontend/src/styles/_tokens.scss'
       - '.github/workflows/mobile.yml'
   pull_request:
@@ -19,6 +23,9 @@ on:
     paths:
       - 'mobile/**'
       - 'frontend/openapi.json'
+      - 'frontend/openapitools.json'
+      - 'frontend/labels.fr.json'
+      - 'frontend/fixtures/**'
       - 'frontend/src/styles/_tokens.scss'
       - '.github/workflows/mobile.yml'
   schedule:
@@ -67,9 +74,12 @@ jobs:
           path: mobile/.dart_tool/openapi-generator
           key: openapi-generator-${{ hashFiles('mobile/tool/generate_api.mjs') }}
 
-      # Also runs `flutter pub get`, which fails if pubspec.yaml and the committed
-      # pubspec.lock disagree (--enforce-lockfile below makes that explicit).
-      - name: Generate the API client
+      # Before anything that compiles: analyze and test run against what this generates from the
+      # committed spec and labels, never against a stale copy. The step fails — and the job with
+      # it — when the generator version differs from the web's, the spec does not validate, the
+      # generator reports anything about the spec not on the script's known list, one of its
+      # fixes no longer applies, or the generated client does not compile. See the script.
+      - name: Generate the API client and the labels
         run: node tool/generate_api.mjs
 
       - name: Dependencies match the lock file

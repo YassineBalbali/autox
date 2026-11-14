@@ -92,12 +92,12 @@ feature (table + 3 endpoints), later if ever.
 The agreed split (`labels.fr.ts`) is "values from the API, words in the client". Keeping it, the
 proposal for one source of truth:
 
-1. **Words → one JSON file**, `shared/fr/labels.json` (enum labels + error messages). Angular
+1. **Words → one JSON file**, `frontend/labels.fr.json` (enum labels + error messages; see 9b for why not `shared/`). Angular
    imports it; Dart gets a generated `labels.g.dart` from it. Both sides keep today's guarantee
    that a new enum value cannot ship without French, as a **test** on each side ("every value of
    every generated enum has a label") instead of a `Record` type. This touches the web, once, in
    milestone 2.
-2. **Formulas → duplicated, pinned by shared test vectors.** `shared/fixtures/financing.json`
+2. **Formulas → duplicated, pinned by shared test vectors.** `frontend/fixtures/financing.json`
    (inputs → expected cents, including the published 10 000 € / 5 % / 48 months = 230,29 € case
    and the invalid inputs) and the same for price formatting and vehicle names. Vitest and
    `flutter test` both read the file; a change to one implementation without the other fails CI.
@@ -202,7 +202,7 @@ mobile/
       config/    api/ (dio, auth interceptor, SearchApi, errors)
       auth/      (session notifier, token store)
       theme/     (tokens, theme, fonts)   format/ (price, km, dates)
-      labels/    (labels.g.dart from shared/fr/labels.json)
+      labels/    (labels.g.dart from frontend/labels.fr.json)
       widgets/   (buttons, badges, skeletons, empty and error states)
     features/
       home/ search/ listing/ neuf/ dealers/ auth/ favourites/ saved_searches/ messages/ account/
@@ -226,7 +226,7 @@ tests (per CLAUDE.md, no screenshots unless asked).
 Same conventions as `frontend.yml`/`backend.yml` (path filters, concurrency, `contents: read`,
 actions pinned the same way).
 
-- **Triggers:** push and PR on `mobile/**`, `shared/**`, `frontend/openapi.json`, the workflow;
+- **Triggers:** push and PR on `mobile/**`, the frontend files the app is built from (`openapi.json`, `openapitools.json`, `labels.fr.json`, `fixtures/`, `_tokens.scss`), the workflow;
   weekly schedule; and tags `mobile-v*`.
 - **Job `check`** (every trigger): Flutter 3.50.0 pinned, Java for the generator, generate the
   client, `dart format --set-exit-if-changed`, `flutter analyze`, `flutter test`.
@@ -234,8 +234,8 @@ actions pinned the same way).
   `contents: write`): decode the keystore from a secret into the runner's temp dir, `flutter
   build apk --release` with the production API URL, SHA-256 the APK, create the GitHub Release
   with the APK and its checksum attached. The keystore file is deleted at the end of the job.
-- The frontend workflow gains `shared/**` in its paths, since the web will read the labels and
-  fixtures too.
+- The frontend workflow needs no change: the labels and fixtures are under `frontend/`, which it
+  already watches.
 
 ## 8. Distribution
 
@@ -256,7 +256,7 @@ actions pinned the same way).
 | # | Delivers |
 |---|---|
 | M1 Skeleton | `mobile/` project, pinned packages, lint, theme and fonts, bottom navigation (Rechercher · Favoris · Messages · Compte), config, generated client + `SearchApi`, CI `check` job. Runs on the emulator against the local backend and shows reference data |
-| M2 Search | Search screen, full filter sheet, sort, cursor infinite scroll, live count, typeahead, natural-language search with its summary, /neuf, recent searches. `shared/fr/labels.json` created and the web switched to it |
+| M2 Search | Search screen, full filter sheet, sort, cursor infinite scroll, live count, typeahead, natural-language search with its summary, /neuf, recent searches. `frontend/labels.fr.json` created and the web switched to it |
 | M3 Listing and dealers | Listing page with gallery, facts, Crit'Air, price badge, leasing, damage notice, financing simulator (shared vectors), similar listings; dealers directory and dealer pages |
 | M4 Account | Sign-in, registration, forgotten password, verification notice and resend, secure storage, refresh interceptor, sessions, sign-out, French error messages |
 | M5 Buyer features | Favourites on the device, saved searches and alerts, messages with foreground polling and unread badge, contact a seller or a dealer |
@@ -296,6 +296,41 @@ package, which is not in the repository, so Dependabot cannot resolve it. Until 
 (by committing the generated client, or by a scheduled job that regenerates and runs
 `flutter pub outdated`), updates are by hand: `flutter pub outdated`, edit the pins, `flutter
 pub get`. All direct dependencies were the latest stable on 2026-11-12.
+
+## 9b. Milestone 2 — done (2026-11-14)
+
+**The French words moved first, in a commit of their own.** `frontend/labels.fr.json` holds the
+words for every enum the site shows, both sort menus, the Crit'Air choices, the error messages
+and the field names. The web's modules read it under the same export names and types; a dump of
+every map before and after was byte-identical, and all 1 518 web tests passed. Both clients refuse
+to compile when a value is missing (a `Record` on the web, an exhaustive `switch` in the Dart that
+`tool/generate_api.mjs` writes), and a stale value fails a test on the web and the compile here.
+**It lives in `frontend/`, not a top-level `shared/`** as section 2 planned: Vercel builds from
+the `frontend` directory and would not see a file outside it.
+
+**The rules are the web's, pinned by shared vectors.** `frontend/fixtures/search-query.json`
+(criteria, URL parameters, parsing of hostile links, the chips' words, the filter count) and
+`frontend/fixtures/display.json` (prices, numbers, names, places, leasing terms) were produced by
+running the web's own functions, then checked by `src/app/shared/fixtures.spec.ts` on the web and
+`test/shared_fixtures_test.dart` here. The Dart port passed all of them on its first run. To change
+a rule: change the web, regenerate the vectors, make the app agree.
+
+**What the app does now:** the search field with the catalogue's suggestions; "Recherche
+intelligente" when the server offers it, with the "Non pris en compte" note; Acheter / Louer /
+Neuf; every filter of the site's sidebar, in its order, offering only the values the API lists;
+the four sale and five leasing sort orders; cursor-paged results with a live count and removable
+chips; /neuf (makes in new stock, latest arrivals, not counted as searches); the last three
+searches, stored as the site's URL parameters and read back through the same validation. The
+search is in the route (`/recherche/resultats?marque=…`, the site's parameters), which is what
+App Links will map onto later.
+
+**The generator now fails rather than half-works** (`tool/generate_api.mjs`, run by CI before
+analyze and test): a generator version different from the web's, a spec that does not validate,
+any generator warning not on its known list (two today, both read and harmless), a fix that no
+longer applies, or a generated client that does not compile.
+
+**Not in this milestone:** tapping a result (the listing page is milestone 3), the photo gallery,
+and favourites.
 
 ## 10. Decisions (settled 2026-11-12)
 

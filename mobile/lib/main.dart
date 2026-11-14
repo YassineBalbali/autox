@@ -2,10 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/api/api_providers.dart';
 import 'core/config/app_config.dart';
+import 'features/search/recent_searches.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,10 +17,14 @@ Future<void> main() async {
   // Fails a release build that was not given its API address, at once and in plain words,
   // rather than with a network error on the first screen.
   final config = AppConfig.fromEnvironment();
+  final preferences = await SharedPreferences.getInstance();
 
   runApp(
     ProviderScope(
-      overrides: [appConfigProvider.overrideWithValue(config)],
+      overrides: [
+        appConfigProvider.overrideWithValue(config),
+        sharedPreferencesProvider.overrideWithValue(preferences),
+      ],
       // No automatic retries. Riverpod 3 retries a failed provider by default, which would turn
       // a 404 into ten requests and hide "le serveur démarre" behind a spinner; each screen
       // offers "Réessayer" instead.

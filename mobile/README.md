@@ -4,8 +4,11 @@ The buyer side of AutoX as a Flutter app: search, listings, dealers, favourites,
 searches and messages, in French, with the site's look. Plan, decisions and milestones:
 [docs/mobile-plan.md](../docs/mobile-plan.md).
 
-**Status: milestone 1 (skeleton).** The four tabs exist; "Rechercher" shows the number of
-listings and the catalogue's makes from the API. Everything else is milestones 2 to 6.
+**Status: milestone 2 (search).** The Rechercher tab searches as the site does: the search
+field with suggestions, "Recherche intelligente", every filter of the site's sidebar, the sort
+orders, cursor-paged results with a live count, /neuf, and the last three searches. Tapping a
+result opens nothing yet: the listing page is milestone 3. Favoris, Messages and Compte are
+milestones 4 and 5.
 
 ## Requirements
 
@@ -25,9 +28,19 @@ cd backend && mvn spring-boot:run        # API on http://localhost:8081
 emulator -avd Pixel_9                    # comes up as emulator-5554
 
 # 3. The app, from mobile/:
-node tool/generate_api.mjs               # once, and whenever frontend/openapi.json changes
+node tool/generate_api.mjs               # once, and whenever frontend/openapi.json or labels.fr.json changes
 flutter run -d emulator-5554
 ```
+
+**Photos, locally:** the local backend hands out image URLs on `http://localhost:9000` (MinIO),
+and on the emulator `localhost` is the emulator itself. Forward the port once per emulator boot,
+or the rows show their placeholder:
+
+```bash
+adb -s emulator-5554 reverse tcp:9000 tcp:9000
+```
+
+Production URLs point at the real storage host and need nothing of the kind.
 
 A debug build talks to `http://10.0.2.2:8081`, which is this PC as the emulator sees it.
 Another address: `flutter run --dart-define=AUTOX_API_BASE_URL=https://…`. On a physical
@@ -50,7 +63,8 @@ flutter test
 ## Layout
 
 ```
-tool/generate_api.mjs   generates packages/autox_api from ../frontend/openapi.json
+tool/generate_api.mjs   generates packages/autox_api from ../frontend/openapi.json, and
+                        lib/core/labels/labels.g.dart from ../frontend/labels.fr.json
 packages/autox_api/     the generated client (git-ignored, never edited)
 lib/
   app.dart main.dart
@@ -58,9 +72,14 @@ lib/
   core/config/          AUTOX_API_BASE_URL
   core/theme/           the site's tokens (checked against _tokens.scss) and the theme
   core/routing/         go_router, the four tabs
-  core/widgets/ core/format/
-  features/<feature>/   one folder per screen family
-test/                   mirrors lib/; test/support/fake_http.dart fakes the API
+  core/format/          prices, numbers, listing facts (checked against the web's vectors)
+  core/labels/          the French words, generated (git-ignored)
+  core/reference/       the catalogue and the API's vocabularies
+  core/widgets/
+  features/search/      the search: its rules (search_query.dart), state, screens
+  features/listing/     the result row; the listing page in milestone 3
+test/                   mirrors lib/; test/support/fake_http.dart fakes the API;
+                        test/shared_fixtures_test.dart runs ../frontend/fixtures/
 ```
 
 ## Things worth knowing
@@ -68,9 +87,18 @@ test/                   mirrors lib/; test/support/fake_http.dart fakes the API
 - **One lock file.** `pubspec.yaml` pins every package exactly and lists the generated client
   as a pub workspace member; `pubspec.lock` is committed and decides all versions, the
   client's included. Hence the generator must run before `flutter pub get` on a fresh clone.
+- **The site's rules, the web's test vectors.** How a search becomes API criteria and URL
+  parameters, how filters read as chips, how a price or a place is written: ported from the web,
+  and checked against `frontend/fixtures/*.json`, which the web's own tests run too. Change a
+  rule on the web, regenerate the expected values there, then make the app agree.
+- **The French words are the web's.** `frontend/labels.fr.json` is read by the site and
+  generated into Dart here; a value missing from it, or one the API no longer has, does not
+  compile on either side.
 - **Search criteria are encoded by hand** (`lib/core/api/search_api.dart`). The generated
   Dart client cannot send the spec's exploded query object; every other call is generated.
 - **Tolerant parsing.** An unknown field is ignored and an unknown enum value parses as
   `unknownDefaultOpenApi`, so a backend release never breaks installed apps.
 - **No backups.** `allowBackup` is off: the refresh token (milestone 4) must not be restored
   onto another device.
+- **Dependencies are updated by hand** (Dependabot cannot resolve the workspace). **Before each
+  release, run `flutter pub outdated`** and move the pins in `pubspec.yaml` that need it.

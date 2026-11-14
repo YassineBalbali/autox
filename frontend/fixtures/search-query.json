@@ -1,0 +1,510 @@
+{
+  "$comment": [
+    "The search rules, as test vectors both clients must reproduce: the web (search-query.ts, active-filters.ts)",
+    "and the Android app (mobile/lib/features/search/search_query.dart). Checked by src/app/shared/fixtures.spec.ts",
+    "and mobile/test/shared_fixtures_test.dart. A query is given as what differs from the empty search;",
+    "criteria are for currency EUR with 2 decimal places. The web is the reference: to change a rule, change it",
+    "there, regenerate the expected values, and make the app agree."
+  ],
+  "toCriteria": [
+    {
+      "name": "empty",
+      "query": {},
+      "vehicle": {},
+      "criteria": {}
+    },
+    {
+      "name": "sale price range in whole euros",
+      "query": {
+        "priceMin": 5000,
+        "priceMax": 15000
+      },
+      "vehicle": {},
+      "criteria": {
+        "priceMin": 500000,
+        "priceMax": 1500000,
+        "currency": "EUR"
+      }
+    },
+    {
+      "name": "only a maximum price still carries the currency",
+      "query": {
+        "priceMax": 9000
+      },
+      "vehicle": {},
+      "criteria": {
+        "priceMax": 900000,
+        "currency": "EUR"
+      }
+    },
+    {
+      "name": "every list, text, years, mileage, location, Crit'Air",
+      "query": {
+        "text": "toit ouvrant",
+        "yearMin": 2016,
+        "yearMax": 2021,
+        "mileageMax": 80000,
+        "fuel": ["DIESEL", "PETROL"],
+        "gearbox": ["AUTOMATIC"],
+        "body": ["SUV"],
+        "condition": ["USED"],
+        "location": "Lyon",
+        "critAirMax": 2
+      },
+      "vehicle": {},
+      "criteria": {
+        "q": "toit ouvrant",
+        "yearFrom": 2016,
+        "yearTo": 2021,
+        "mileageMax": 80000,
+        "fuelType": ["DIESEL", "PETROL"],
+        "gearbox": ["AUTOMATIC"],
+        "bodyType": ["SUV"],
+        "condition": ["USED"],
+        "location": "Lyon",
+        "critAirMax": 2
+      }
+    },
+    {
+      "name": "good deals",
+      "query": {
+        "goodDeals": true
+      },
+      "vehicle": {},
+      "criteria": {
+        "priceLevel": ["GOOD_DEAL"]
+      }
+    },
+    {
+      "name": "damaged included",
+      "query": {
+        "damage": "ALL"
+      },
+      "vehicle": {},
+      "criteria": {
+        "damage": "ALL"
+      }
+    },
+    {
+      "name": "damaged only",
+      "query": {
+        "damage": "DAMAGED_ONLY"
+      },
+      "vehicle": {},
+      "criteria": {
+        "damage": "DAMAGED_ONLY"
+      }
+    },
+    {
+      "name": "leasing: monthly in whole euros, terms, types; a sale price is ignored",
+      "query": {
+        "offer": "LEASING",
+        "priceMin": 1000,
+        "monthlyMin": 200,
+        "monthlyMax": 400,
+        "durationMin": 24,
+        "durationMax": 48,
+        "allowanceMin": 15000,
+        "leasingType": ["LLD", "LOA"],
+        "damage": "DAMAGED_ONLY"
+      },
+      "vehicle": {},
+      "criteria": {
+        "currency": "EUR",
+        "offer": "LEASING",
+        "leasingType": ["LLD", "LOA"],
+        "monthlyMin": 20000,
+        "monthlyMax": 40000,
+        "durationMin": 24,
+        "durationMax": 48,
+        "mileageAllowanceMin": 15000
+      }
+    },
+    {
+      "name": "leasing without terms",
+      "query": {
+        "offer": "LEASING"
+      },
+      "vehicle": {},
+      "criteria": {
+        "offer": "LEASING"
+      }
+    },
+    {
+      "name": "resolved make and model ids",
+      "query": {
+        "make": "peugeot",
+        "model": "208"
+      },
+      "vehicle": {
+        "makeId": "make-1",
+        "modelId": "model-1"
+      },
+      "criteria": {
+        "makeId": "make-1",
+        "modelId": "model-1"
+      }
+    },
+    {
+      "name": "make and model not in the catalogue, as text",
+      "query": {
+        "make": "lada",
+        "model": "niva"
+      },
+      "vehicle": {
+        "makeText": "lada",
+        "modelText": "niva"
+      },
+      "criteria": {
+        "make": "lada",
+        "model": "niva"
+      }
+    }
+  ],
+  "toQueryParams": [
+    {
+      "name": "empty",
+      "query": {},
+      "params": {}
+    },
+    {
+      "name": "lists sorted and slugged, defaults left out",
+      "query": {
+        "fuel": ["PLUGIN_HYBRID", "DIESEL"],
+        "body": ["SUV", "ESTATE"],
+        "condition": ["NEW"],
+        "damage": "UNDAMAGED"
+      },
+      "params": {
+        "carburant": "diesel,plugin-hybrid",
+        "carrosserie": "estate,suv",
+        "etat": "new"
+      }
+    },
+    {
+      "name": "a model without its make is dropped",
+      "query": {
+        "model": "208"
+      },
+      "params": {}
+    },
+    {
+      "name": "make and model",
+      "query": {
+        "make": "peugeot",
+        "model": "208",
+        "yearMin": 2018
+      },
+      "params": {
+        "marque": "peugeot",
+        "modele": "208",
+        "annee_min": "2018"
+      }
+    },
+    {
+      "name": "sale sort",
+      "query": {
+        "sort": "PRICE_ASC"
+      },
+      "params": {
+        "tri": "prix-croissant"
+      }
+    },
+    {
+      "name": "a leasing sort on a sale is the default, so absent",
+      "query": {
+        "sort": "MONTHLY_ASC"
+      },
+      "params": {}
+    },
+    {
+      "name": "damage slugs",
+      "query": {
+        "damage": "DAMAGED_ONLY",
+        "goodDeals": true
+      },
+      "params": {
+        "etat_vehicule": "endommages"
+      }
+    },
+    {
+      "name": "good deals",
+      "query": {
+        "goodDeals": true,
+        "priceMax": 20000
+      },
+      "params": {
+        "prix_max": "20000",
+        "bonnes_affaires": "1"
+      }
+    },
+    {
+      "name": "leasing",
+      "query": {
+        "offer": "LEASING",
+        "priceMax": 20000,
+        "leasingType": ["LOA"],
+        "monthlyMax": 350,
+        "durationMin": 36,
+        "allowanceMin": 10000,
+        "sort": "MONTHLY_ASC",
+        "goodDeals": true
+      },
+      "params": {
+        "offre": "location",
+        "type_location": "loa",
+        "mensualite_max": "350",
+        "duree_min": "36",
+        "km_an_min": "10000",
+        "tri": "mensualite-croissante"
+      }
+    },
+    {
+      "name": "text, location, Crit'Air",
+      "query": {
+        "text": "golf tdi",
+        "location": "Nantes",
+        "critAirMax": 0
+      },
+      "params": {
+        "q": "golf tdi",
+        "lieu": "Nantes",
+        "critair_max": "0"
+      }
+    }
+  ],
+  "parseQuery": [
+    {
+      "name": "empty",
+      "params": {},
+      "query": {}
+    },
+    {
+      "name": "numbers are digits only and bounded",
+      "params": {
+        "prix_min": "abc",
+        "prix_max": "1e9",
+        "km_max": " 120000 ",
+        "annee_min": "1800",
+        "annee_max": "2020"
+      },
+      "query": {
+        "yearMax": 2020,
+        "mileageMax": 120000
+      }
+    },
+    {
+      "name": "a reversed range is put right",
+      "params": {
+        "prix_min": "20000",
+        "prix_max": "5000",
+        "annee_min": "2022",
+        "annee_max": "2015"
+      },
+      "query": {
+        "yearMin": 2015,
+        "yearMax": 2022,
+        "priceMin": 5000,
+        "priceMax": 20000
+      }
+    },
+    {
+      "name": "known enum values only, once each, sorted",
+      "params": {
+        "carburant": "diesel,plugin-hybrid,plutonium,diesel",
+        "boite": "AUTOMATIC",
+        "carrosserie": "suv,break"
+      },
+      "query": {
+        "fuel": ["DIESEL", "PLUGIN_HYBRID"],
+        "gearbox": ["AUTOMATIC"],
+        "body": ["SUV"]
+      }
+    },
+    {
+      "name": "legacy damaged condition",
+      "params": {
+        "etat": "used,damaged"
+      },
+      "query": {
+        "condition": ["USED"],
+        "damage": "DAMAGED_ONLY"
+      }
+    },
+    {
+      "name": "damage slugs",
+      "params": {
+        "etat_vehicule": "tous"
+      },
+      "query": {
+        "damage": "ALL"
+      }
+    },
+    {
+      "name": "leasing drops sale-only filters",
+      "params": {
+        "offre": "location",
+        "prix_max": "20000",
+        "etat_vehicule": "endommages",
+        "bonnes_affaires": "1",
+        "mensualite_max": "300",
+        "type_location": "lld",
+        "tri": "mensualite-croissante"
+      },
+      "query": {
+        "offer": "LEASING",
+        "leasingType": ["LLD"],
+        "monthlyMax": 300,
+        "sort": "MONTHLY_ASC"
+      }
+    },
+    {
+      "name": "a sale with a leasing-only filter ignores it",
+      "params": {
+        "mensualite_max": "300",
+        "duree_min": "24",
+        "tri": "duree-croissante"
+      },
+      "query": {}
+    },
+    {
+      "name": "a model without a make is dropped",
+      "params": {
+        "modele": "208"
+      },
+      "query": {}
+    },
+    {
+      "name": "text collapsed and trimmed",
+      "params": {
+        "q": "  golf    tdi  ",
+        "marque": "volkswagen",
+        "modele": "golf",
+        "lieu": " Lyon "
+      },
+      "query": {
+        "text": "golf tdi",
+        "make": "volkswagen",
+        "model": "golf",
+        "location": "Lyon"
+      }
+    },
+    {
+      "name": "good deals only for '1', never among damaged",
+      "params": {
+        "bonnes_affaires": "true"
+      },
+      "query": {}
+    },
+    {
+      "name": "good deals with damaged only",
+      "params": {
+        "bonnes_affaires": "1",
+        "etat_vehicule": "endommages"
+      },
+      "query": {
+        "damage": "DAMAGED_ONLY"
+      }
+    },
+    {
+      "name": "Crit'Air bounded 0 to 5",
+      "params": {
+        "critair_max": "7"
+      },
+      "query": {}
+    },
+    {
+      "name": "Crit'Air zero",
+      "params": {
+        "critair_max": "0",
+        "tri": "prix-decroissant"
+      },
+      "query": {
+        "critAirMax": 0,
+        "sort": "PRICE_DESC"
+      }
+    }
+  ],
+  "describeFilters": [
+    {
+      "name": "empty",
+      "query": {},
+      "names": {},
+      "labels": [],
+      "activeFilterCount": 0
+    },
+    {
+      "name": "everything a sale can carry",
+      "query": {
+        "text": "toit ouvrant",
+        "make": "peugeot",
+        "model": "3008",
+        "yearMin": 2018,
+        "priceMax": 25000,
+        "mileageMin": 10000,
+        "mileageMax": 90000,
+        "fuel": ["DIESEL"],
+        "gearbox": ["AUTOMATIC"],
+        "body": ["SUV"],
+        "condition": ["USED"],
+        "damage": "ALL",
+        "critAirMax": 1,
+        "location": "Lyon",
+        "goodDeals": true
+      },
+      "names": {
+        "make": "Peugeot",
+        "model": "3008"
+      },
+      "labels": [
+        "« toit ouvrant »",
+        "Peugeot",
+        "3008",
+        "À partir de 2018",
+        "Jusqu’à 25 000 €",
+        "10 000 – 90 000 km",
+        "Diesel",
+        "Boîte automatique",
+        "SUV / 4x4",
+        "Occasion",
+        "Endommagés inclus",
+        "Crit’Air 1 ou mieux",
+        "Lyon",
+        "Bonnes affaires"
+      ],
+      "activeFilterCount": 14
+    },
+    {
+      "name": "leasing terms",
+      "query": {
+        "offer": "LEASING",
+        "leasingType": ["LOA"],
+        "monthlyMin": 150,
+        "monthlyMax": 300,
+        "durationMax": 48,
+        "allowanceMin": 12000,
+        "critAirMax": 0,
+        "damage": "DAMAGED_ONLY"
+      },
+      "names": {},
+      "labels": [
+        "Endommagés uniquement",
+        "Crit’Air 0",
+        "LOA",
+        "150 – 300 €/mois",
+        "Jusqu’à 48 mois",
+        "À partir de 12 000 km/an"
+      ],
+      "activeFilterCount": 6
+    },
+    {
+      "name": "names unknown: the slug is shown",
+      "query": {
+        "make": "lada"
+      },
+      "names": {},
+      "labels": ["lada"],
+      "activeFilterCount": 1
+    }
+  ]
+}

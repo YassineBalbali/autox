@@ -1,22 +1,25 @@
-// Generates the Dart API client, packages/autox_api, from the committed OpenAPI snapshot.
+// Generates what the app compiles against, from the files the web compiles against:
 //
 //   node tool/generate_api.mjs
 //
-// The input is frontend/openapi.json, the snapshot the web client is generated from and that
-// the backend's OpenApiSnapshotTest keeps current, so both apps compile against one contract.
-// The output is never edited and never committed; CI runs this before anything else.
+//   - packages/autox_api, the Dart API client, from frontend/openapi.json (the snapshot the web
+//     client is generated from and that the backend's OpenApiSnapshotTest keeps current);
+//   - lib/core/labels/labels.g.dart, the French words, from frontend/labels.fr.json.
+//
+// Neither output is edited or committed; CI runs this before anything else. It FAILS, rather
+// than producing something that half works, when:
+//   - the generator version differs from the web's (frontend/openapitools.json);
+//   - the spec does not validate;
+//   - the generator warns about anything not on the known list below (a construct it does not
+//     support, a name it had to change): that is the spec and the generator disagreeing;
+//   - one of the fixes applied to its output no longer applies;
+//   - the generated package does not compile on its own.
 //
 // Node rather than Dart because it runs before `flutter pub get` can: the root pubspec lists
 // the generated package as a workspace member, so pub cannot resolve until it exists.
-//
-// Steps:
-//   1. the generator jar, the version the web uses, from Maven Central, checked by SHA-256;
-//   2. dart-dio with json_serializable into packages/autox_api;
-//   3. that package's pubspec, build.yaml and enum defaults fixed (see below);
-//   4. `flutter pub get`, then build_runner in the package for the *.g.dart files.
 
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,11 +27,14 @@ import { fileURLToPath } from 'node:url';
 const MOBILE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = resolve(MOBILE, '..');
 const SPEC = join(REPO, 'frontend', 'openapi.json');
+const WEB_GENERATOR_CONFIG = join(REPO, 'frontend', 'openapitools.json');
+const LABELS = join(REPO, 'frontend', 'labels.fr.json');
 const OUT = join(MOBILE, 'packages', 'autox_api');
+const LABELS_OUT = join(MOBILE, 'lib', 'core', 'labels', 'labels.g.dart');
 
-// The web's generator version (frontend/openapitools.json). Keep the two in step: one
-// generator version, one reading of the spec. The SHA-256 is of the jar on Maven Central,
-// whose published SHA-1 (b96b148f…) it was cross-checked against.
+// The web's generator version, checked below against frontend/openapitools.json: one generator
+// version, one reading of the spec. The SHA-256 is of the jar on Maven Central, whose published
+// SHA-1 (b96b148f…) it was cross-checked against. Moving the version means a new checksum.
 const GENERATOR_VERSION = '7.26.0';
 const GENERATOR_SHA256 = '1760050094997b9cc790cc1350be095f15da8c08a996b184d3eadc4ccda5e35e';
 const GENERATOR_URL =
@@ -36,20 +42,58 @@ const GENERATOR_URL =
   `${GENERATOR_VERSION}/openapi-generator-cli-${GENERATOR_VERSION}.jar`;
 const JAR = join(MOBILE, '.dart_tool', 'openapi-generator', `${GENERATOR_VERSION}.jar`);
 
+// Generator warnings that are understood and harmless. Anything else fails the run: add a line
+// here only once the warning has been read and the generated code checked.
+const KNOWN_WARNINGS = [
+  // The spec is OpenAPI 3.1; the generator reads it correctly for everything this API uses.
+  /OpenAPI 3\.1 support is still in beta/,
+  // An admin endpoint named "hide" becomes callHide in Dart. The app never calls it.
+  /hide \(reserved word\) cannot be used as method name\. Renamed to callHide/,
+];
+
 const isWindows = process.platform === 'win32';
+
+function fail(message) {
+  console.error(`\ngenerate_api: ${message}`);
+  process.exit(1);
+}
 
 function run(command, args, cwd = MOBILE) {
   // On Windows flutter and dart are .bat files, which only cmd.exe can start. The arguments
   // are this script's own constants, never input.
-  if (isWindows && command !== 'java') {
+  if (isWindows) {
     execFileSync('cmd.exe', ['/d', '/c', command, ...args], { cwd, stdio: 'inherit' });
   } else {
     execFileSync(command, args, { cwd, stdio: 'inherit' });
   }
 }
 
+/** Runs the generator jar, prints its output, and returns it without colour codes. */
+function java(args) {
+  const result = spawnSync('java', ['-jar', JAR, ...args], { cwd: MOBILE, encoding: 'utf8' });
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.replace(/\x1b\[[0-9;]*m/g, '');
+  process.stdout.write(output);
+  if (result.error) {
+    fail(`could not start java: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    fail(`openapi-generator ${args[0]} exited with ${result.status}`);
+  }
+  return output;
+}
+
 function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+function checkGeneratorVersion() {
+  const web = JSON.parse(readFileSync(WEB_GENERATOR_CONFIG, 'utf8'))['generator-cli']?.version;
+  if (web !== GENERATOR_VERSION) {
+    fail(
+      `the web generates with openapi-generator ${web} (frontend/openapitools.json), this script with ` +
+        `${GENERATOR_VERSION}. Move both together: GENERATOR_VERSION and GENERATOR_SHA256 here.`,
+    );
+  }
 }
 
 async function ensureJar() {
@@ -59,22 +103,24 @@ async function ensureJar() {
   console.log(`Downloading openapi-generator ${GENERATOR_VERSION}…`);
   const response = await fetch(GENERATOR_URL);
   if (!response.ok) {
-    throw new Error(`Download failed: ${response.status} ${GENERATOR_URL}`);
+    fail(`download failed: ${response.status} ${GENERATOR_URL}`);
   }
   const bytes = Buffer.from(await response.arrayBuffer());
   const actual = createHash('sha256').update(bytes).digest('hex');
   if (actual !== GENERATOR_SHA256) {
-    throw new Error(`openapi-generator checksum mismatch: expected ${GENERATOR_SHA256}, got ${actual}`);
+    fail(`openapi-generator checksum mismatch: expected ${GENERATOR_SHA256}, got ${actual}`);
   }
   mkdirSync(dirname(JAR), { recursive: true });
   writeFileSync(JAR, bytes);
 }
 
 function generate() {
+  java(['validate', '-i', SPEC]);
+
   // Retries: on Windows an editor or file watcher holding the folder briefly is common.
   rmSync(OUT, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
-  run('java', [
-    '-jar', JAR, 'generate',
+  const output = java([
+    'generate',
     '-i', SPEC,
     '-g', 'dart-dio',
     '-o', OUT,
@@ -94,6 +140,18 @@ function generate() {
     // Docs and stub tests for 157 schemas, none of which anybody would read or keep.
     '--global-property', 'apiTests=false,modelTests=false,apiDocs=false,modelDocs=false',
   ]);
+
+  const unknown = output
+    .split(/\r?\n/)
+    .filter((line) => /\b(WARN|ERROR)\b/.test(line))
+    .filter((line) => !KNOWN_WARNINGS.some((known) => known.test(line)));
+  if (unknown.length > 0) {
+    fail(
+      'the generator reported something new about the spec. Read it, check the generated code, ' +
+        'then fix the spec or add the line to KNOWN_WARNINGS:\n  ' +
+        unknown.join('\n  '),
+    );
+  }
 }
 
 // The generated pubspec pins nothing useful and declares a standalone package. Replaced by
@@ -135,14 +193,14 @@ function relaxBuildYaml() {
   const original = readFileSync(path, 'utf8');
   const relaxed = original.replace('disallow_unrecognized_keys: true', 'disallow_unrecognized_keys: false');
   if (!/disallow_unrecognized_keys: false/.test(relaxed)) {
-    throw new Error('build.yaml: could not switch off disallow_unrecognized_keys');
+    fail('build.yaml: could not switch off disallow_unrecognized_keys');
   }
   writeFileSync(path, relaxed);
 }
 
 // dart-dio writes an enum parameter's default unqualified — `SearchSort? sort = NEWEST,` —
 // which does not compile. Qualified here with the parameter's own type. A later generator that
-// gets it right simply leaves nothing to replace.
+// gets it right simply leaves nothing to replace; the compile check below catches the rest.
 function qualifyEnumDefaults() {
   const dir = join(OUT, 'lib', 'src', 'api');
   for (const name of readdirSync(dir)) {
@@ -155,6 +213,74 @@ function qualifyEnumDefaults() {
   }
 }
 
+// ---- labels ---------------------------------------------------------------------------------
+
+const dartString = (text) =>
+  `'${text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\$/g, '\\$').replace(/\n/g, '\\n')}'`;
+
+/** FuelType → fuelType */
+const lowerFirst = (name) => name.charAt(0).toLowerCase() + name.slice(1);
+
+/**
+ * frontend/labels.fr.json as Dart. Each enum becomes an exhaustive `switch` over the generated
+ * enum, so a value missing from the JSON, or one the API no longer has, is a compile error —
+ * the same guarantee the web gets from typing each map as a `Record`.
+ */
+function generateLabels() {
+  const labels = JSON.parse(readFileSync(LABELS, 'utf8'));
+  const out = [
+    '// GENERATED by tool/generate_api.mjs from frontend/labels.fr.json. Do not edit: change the',
+    '// JSON, which the web reads too, and run the script again.',
+    '',
+    "import 'package:autox_api/autox_api.dart';",
+    '',
+  ];
+
+  for (const [enumName, words] of Object.entries(labels.enums)) {
+    const name = lowerFirst(enumName);
+    out.push(`/// ${enumName} in French. An unknown value (newer than this build) has no word: ''.`);
+    out.push(`String ${name}Label(${enumName} value) => switch (value) {`);
+    for (const [value, word] of Object.entries(words)) {
+      out.push(`  ${enumName}.${value} => ${dartString(word)},`);
+    }
+    out.push(`  ${enumName}.unknownDefaultOpenApi => '',`);
+    out.push('};', '');
+    out.push(`/// ${enumName} in French, by wire value and in the JSON's order (the display order).`);
+    out.push(`const Map<String, String> ${name}Labels = {`);
+    for (const [value, word] of Object.entries(words)) {
+      out.push(`  ${dartString(value)}: ${dartString(word)},`);
+    }
+    out.push('};', '');
+  }
+
+  for (const [menu, options] of Object.entries(labels.sortOptions)) {
+    out.push(`/// The ${menu} sort menu, in order.`);
+    out.push(`const List<(SearchSort, String)> ${menu}SortOptions = [`);
+    for (const { value, label } of options) {
+      out.push(`  (SearchSort.${value}, ${dartString(label)}),`);
+    }
+    out.push('];', '');
+  }
+
+  out.push("/// The Crit'Air filter's choices: the highest class wanted.");
+  out.push('const List<(int, String)> critAirMaxOptions = [');
+  for (const { value, label } of labels.critAirMaxOptions) {
+    out.push(`  (${Number(value)}, ${dartString(label)}),`);
+  }
+  out.push('];', '');
+
+  out.push('/// The request fields a validation failure can name, in French.');
+  out.push('const Map<String, String> fieldLabels = {');
+  for (const [field, label] of Object.entries(labels.fields)) {
+    out.push(`  ${dartString(field)}: ${dartString(label)},`);
+  }
+  out.push('};');
+
+  mkdirSync(dirname(LABELS_OUT), { recursive: true });
+  writeFileSync(LABELS_OUT, out.join('\n') + '\n');
+}
+
+checkGeneratorVersion();
 await ensureJar();
 generate();
 rewritePubspec();
@@ -162,4 +288,12 @@ relaxBuildYaml();
 qualifyEnumDefaults();
 run('flutter', ['pub', 'get']);
 run('dart', ['run', 'build_runner', 'build', '--delete-conflicting-outputs'], OUT);
-console.log('API client generated in packages/autox_api.');
+// Errors only: the generated code carries warnings (unused imports) that are not ours to fix.
+try {
+  run('dart', ['analyze', '--no-fatal-warnings'], OUT);
+} catch {
+  fail('the generated client does not compile (see the errors above).');
+}
+generateLabels();
+run('dart', ['format', '--page-width', '120', LABELS_OUT]);
+console.log('API client generated in packages/autox_api, labels in lib/core/labels/labels.g.dart.');

@@ -1,0 +1,187 @@
+{
+  "$comment": [
+    "How a listing's figures are written, as test vectors for the web (shared/listing, shared/format) and the",
+    "Android app (mobile/lib/core/format). Checked by src/app/shared/fixtures.spec.ts and",
+    "mobile/test/shared_fixtures_test.dart. Spaces inside numbers are no-break spaces (U+00A0), as the web prints them."
+  ],
+  "formatPrice": [
+    {
+      "amountMinor": 1250000,
+      "currency": "EUR",
+      "minorUnit": 2,
+      "text": "12 500 €"
+    },
+    {
+      "amountMinor": 1234567,
+      "currency": "EUR",
+      "minorUnit": 2,
+      "text": "12 345,67 €"
+    },
+    {
+      "amountMinor": 99,
+      "currency": "EUR",
+      "minorUnit": 2,
+      "text": "0,99 €"
+    },
+    {
+      "amountMinor": 0,
+      "currency": "EUR",
+      "minorUnit": 2,
+      "text": "0 €"
+    },
+    {
+      "amountMinor": 100000000,
+      "currency": "EUR",
+      "minorUnit": 2,
+      "text": "1 000 000 €"
+    },
+    {
+      "amountMinor": 35000,
+      "currency": "EUR",
+      "minorUnit": 2,
+      "text": "350 €"
+    }
+  ],
+  "formatInteger": [
+    {
+      "value": 0,
+      "text": "0"
+    },
+    {
+      "value": 7,
+      "text": "7"
+    },
+    {
+      "value": 999,
+      "text": "999"
+    },
+    {
+      "value": 1000,
+      "text": "1 000"
+    },
+    {
+      "value": 12480,
+      "text": "12 480"
+    },
+    {
+      "value": 1000000,
+      "text": "1 000 000"
+    }
+  ],
+  "vehicleName": [
+    {
+      "make": "Peugeot",
+      "model": "208",
+      "text": "Peugeot 208"
+    },
+    {
+      "make": "Peugeot",
+      "model": "Peugeot 208",
+      "text": "Peugeot 208"
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "mercedes-benz Classe A",
+      "text": "Mercedes-Benz Classe A"
+    },
+    {
+      "make": "  Renault ",
+      "model": " Clio ",
+      "text": "Renault Clio"
+    },
+    {
+      "make": null,
+      "model": "Clio",
+      "text": "Clio"
+    },
+    {
+      "make": "Dacia",
+      "model": null,
+      "text": "Dacia"
+    }
+  ],
+  "placeOf": [
+    {
+      "city": "Paris",
+      "postalCode": "75011",
+      "countryCode": "FR",
+      "text": "Paris (75)"
+    },
+    {
+      "city": "Saint-Denis",
+      "postalCode": "97400",
+      "countryCode": "FR",
+      "text": "Saint-Denis (974)"
+    },
+    {
+      "city": "Ajaccio",
+      "postalCode": "20000",
+      "countryCode": "FR",
+      "text": "Ajaccio (20)"
+    },
+    {
+      "city": "Bruxelles",
+      "postalCode": "1000",
+      "countryCode": "BE",
+      "text": "Bruxelles"
+    },
+    {
+      "city": "Lyon",
+      "postalCode": null,
+      "countryCode": "FR",
+      "text": "Lyon"
+    },
+    {
+      "city": null,
+      "postalCode": "69001",
+      "countryCode": "FR",
+      "text": null
+    }
+  ],
+  "headlineOf": [
+    {
+      "title": "Peugeot 208 1.2 PureTech",
+      "make": "Peugeot",
+      "model": "208",
+      "version": "1.2 PureTech 100 Allure",
+      "expected": {
+        "title": "Peugeot 208",
+        "subtitle": "1.2 PureTech 100 Allure"
+      }
+    },
+    {
+      "title": "Belle voiture",
+      "make": null,
+      "model": "Golf",
+      "version": "GTI",
+      "expected": {
+        "title": "Belle voiture",
+        "subtitle": null
+      }
+    },
+    {
+      "title": "Renault Clio",
+      "make": "Renault",
+      "model": "Clio",
+      "version": "  ",
+      "expected": {
+        "title": "Renault Clio",
+        "subtitle": null
+      }
+    }
+  ],
+  "leasingTerms": [
+    {
+      "type": "LOA",
+      "durationMonths": 37,
+      "mileagePerYear": 10000,
+      "text": "LOA · 37 mois · 10 000 km/an"
+    },
+    {
+      "type": "LLD",
+      "durationMonths": 48,
+      "mileagePerYear": 15000,
+      "text": "LLD · 48 mois · 15 000 km/an"
+    }
+  ]
+}
