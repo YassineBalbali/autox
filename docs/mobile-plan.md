@@ -332,6 +332,38 @@ longer applies, or a generated client that does not compile.
 **Not in this milestone:** tapping a result (the listing page is milestone 3), the photo gallery,
 and favourites.
 
+## 9c. Milestone 3 — done (2026-11-14)
+
+**The listing page**, `/annonces/:id` (the site's path), over the tab bar from wherever it is
+opened: photos (swiped, counted, full screen with zoom), the title and publication date, the
+price or the leasing offer with its legal mentions, the market verdict with the sentence it rests
+on, the damage notice, key facts, the estimated Crit'Air in the vignette's colours, description,
+specification, equipment by category, the financing simulator (sale, not damaged), the seller with
+a link to the dealer's page, similar listings. A listing no longer online says so.
+
+**The dealers**, `/professionnels` and `/professionnels/:slug`: the directory by name, city or
+département, sorted by listings or name, page after page; a dealer's page with phone (the
+dialler), website (the browser), hours, description and their listings, sale or leasing — the
+site's search limited to that seller (`SearchQuery.sellerId`, app-only, not a URL parameter).
+
+**The rules are the web's, again by shared vectors**: `frontend/fixtures/listing.json`, produced
+by the web's own functions — specification rows, equipment grouping, registration date, the market
+sentence, `simulateCredit` (the published 10 000 € / 5 % / 48 months case, the limits),
+`parseAmount`, `parseRate`, the gallery's order and fallbacks, "Membre depuis", dates and plurals.
+
+**The département names moved to `labels.fr.json` first**, in a web-only commit with the same
+proof as the other labels (a dump before and after, byte-identical; all web tests passing).
+
+**Accessibility, found on the emulator and fixed across the app:** a `Semantics` wrapper without
+`container: true` merges into its parent, so a heading's flag spread to its whole section, and
+loose text was read before the headings and fields that precede it on screen. Every wrapper is
+now its own node, sections and equipment groups read heading first, and a result row is one
+button read whole. Two layout bugs also fixed: the home search field overflowed on a narrow
+screen, and a directory page too short to scroll never loaded the next one.
+
+**Not in this milestone:** contacting a seller or a dealer (it needs an account: milestones 4–5),
+reporting a listing (the same), and opening the site's links in the app (App Links, later).
+
 ## 10. Decisions (settled 2026-11-12)
 
 1. **Application id: `io.github.yassinebalbali.autox`.** Dart package name `autox`. Fixed for

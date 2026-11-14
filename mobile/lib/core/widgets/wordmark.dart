@@ -10,6 +10,7 @@ class Wordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
+    container: true,
     label: 'AutoX',
     excludeSemantics: true,
     child: Text.rich(

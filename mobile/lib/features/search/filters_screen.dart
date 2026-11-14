@@ -313,6 +313,7 @@ class _NumberFieldState extends State<_NumberField> {
 
   @override
   Widget build(BuildContext context) => Semantics(
+    container: true,
     // For TalkBack: the hint alone ("Min") does not say of what.
     label: widget.label,
     child: TextField(

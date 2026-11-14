@@ -20,6 +20,7 @@ Map<String, FakeResponse> _routes({bool smart = false}) => {
 
 void main() {
   testWidgets('the total, the shortcuts and the makes, popular first', (tester) async {
+    useTallScreen(tester);
     await pumpApp(tester, FakeHttp(_routes()));
     expect(find.bySemanticsLabel('Chargement des marques'), findsOneWidget);
     await tester.pumpAndSettle();
@@ -29,13 +30,19 @@ void main() {
     for (final shortcut in ['Acheter', 'Louer', 'Neuf']) {
       expect(find.text(shortcut), findsOneWidget);
     }
-    final makes = tester.widgetList<ListTile>(find.byType(ListTile)).map((tile) => (tile.title! as Text).data).toList();
+    final makes = tester
+        .widgetList<ListTile>(find.byType(ListTile))
+        .map((tile) => (tile.title! as Text).data)
+        .where((title) => title != 'Annuaire des professionnels')
+        .toList();
     expect(makes, ['Peugeot', 'Alpine', 'Volkswagen']);
+    expect(find.text('Annuaire des professionnels'), findsOneWidget);
     // Not offered: the capabilities answered nothing (404 here).
     expect(find.text('Recherche intelligente'), findsNothing);
   });
 
   testWidgets('a make opens its results, by catalogue id', (tester) async {
+    useTallScreen(tester);
     final http = FakeHttp(_routes());
     await pumpApp(tester, http);
     await tester.pumpAndSettle();
@@ -48,6 +55,7 @@ void main() {
   });
 
   testWidgets('a failure says so in French, and "Réessayer" tries again', (tester) async {
+    useTallScreen(tester);
     final http = FakeHttp({'/api/v1/reference/makes': const FakeResponse.error(DioExceptionType.receiveTimeout)});
     await pumpApp(tester, http);
     await tester.pumpAndSettle();

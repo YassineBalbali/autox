@@ -1,6 +1,7 @@
 import 'package:autox_api/autox_api.dart'
     show DamageView, LeasingView, PriceIndicator, PriceLevel, PublicListingSummary;
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -8,12 +9,13 @@ import '../../../core/format/listing_text.dart';
 import '../../../core/format/numbers.dart';
 import '../../../core/labels/labels.g.dart';
 import '../../../core/theme/tokens.dart';
+import '../listing_locations.dart';
 
 /// One search result: the web's phone row (`shared/listing/listing-row.html`) — photo on the
 /// left; then the damage notice, the price (or the monthly payment), the market verdict, the
 /// make and model with the version, two short spec lines, the place and the seller.
 ///
-/// Not a link yet: the listing page is milestone 3.
+/// The whole row opens the listing's page.
 class ListingRow extends StatelessWidget {
   const ListingRow({super.key, required this.listing, this.minorUnit = 2});
 
@@ -27,75 +29,84 @@ class ListingRow extends StatelessWidget {
     final place = placeOf(city: listing.city, postalCode: listing.postalCode, countryCode: listing.countryCode);
     final currency = listing.currencyCode ?? 'EUR';
 
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter, vertical: AppSpace.s3),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _Thumb(listing: listing),
-          const SizedBox(width: AppSpace.s3),
-          Expanded(
-            child: Column(
+    final id = listing.id;
+    // One node for TalkBack: the row is one button, read whole — badges included.
+    return MergeSemantics(
+      child: Material(
+        color: AppColors.surface,
+        child: InkWell(
+          onTap: id == null ? null : () => context.push(listingLocation(id)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter, vertical: AppSpace.s3),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (listing.damage != null) ...[
-                  DamageTag(damage: listing.damage!),
-                  const SizedBox(height: AppSpace.s1),
-                ],
-                if (listing.leasing != null)
-                  LeasingPrice(leasing: listing.leasing!, currency: currency, minorUnit: minorUnit)
-                else if (listing.priceAmount != null)
-                  Text(
-                    formatPrice(listing.priceAmount!, currency: currency, minorUnit: minorUnit),
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: AppType.heavy,
-                      height: AppType.lhTight,
-                      color: AppColors.accent,
-                    ),
-                  ),
-                if (listing.priceIndicator?.level != null) ...[
-                  const SizedBox(height: AppSpace.s1),
-                  PriceBadge(indicator: listing.priceIndicator!),
-                ],
-                const SizedBox(height: AppSpace.s1),
-                Text.rich(
-                  TextSpan(
-                    text: headline.title,
+                _Thumb(listing: listing),
+                const SizedBox(width: AppSpace.s3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (headline.subtitle != null)
-                        TextSpan(
-                          text: '  ${headline.subtitle}',
-                          style: theme.textTheme.bodySmall?.copyWith(fontWeight: AppType.regular),
+                      if (listing.damage != null) ...[
+                        DamageTag(damage: listing.damage!),
+                        const SizedBox(height: AppSpace.s1),
+                      ],
+                      if (listing.leasing != null)
+                        LeasingPrice(leasing: listing.leasing!, currency: currency, minorUnit: minorUnit)
+                      else if (listing.priceAmount != null)
+                        Text(
+                          formatPrice(listing.priceAmount!, currency: currency, minorUnit: minorUnit),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: AppType.heavy,
+                            height: AppType.lhTight,
+                            color: AppColors.accent,
+                          ),
                         ),
+                      if (listing.priceIndicator?.level != null) ...[
+                        const SizedBox(height: AppSpace.s1),
+                        PriceBadge(indicator: listing.priceIndicator!),
+                      ],
+                      const SizedBox(height: AppSpace.s1),
+                      Text.rich(
+                        TextSpan(
+                          text: headline.title,
+                          children: [
+                            if (headline.subtitle != null)
+                              TextSpan(
+                                text: '  ${headline.subtitle}',
+                                style: theme.textTheme.bodySmall?.copyWith(fontWeight: AppType.regular),
+                              ),
+                          ],
+                        ),
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: AppType.bold),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: AppSpace.s0),
+                      _SpecLine(items: _firstLine(listing)),
+                      _SpecLine(items: _secondLine(listing)),
+                      const SizedBox(height: AppSpace.s1),
+                      Row(
+                        children: [
+                          if (place != null) ...[
+                            const Icon(LucideIcons.mapPin, size: 14, color: AppColors.inkFaint),
+                            const SizedBox(width: AppSpace.s0),
+                            Flexible(
+                              child: Text(place, style: theme.textTheme.bodySmall, overflow: TextOverflow.ellipsis),
+                            ),
+                            const SizedBox(width: AppSpace.s2),
+                          ],
+                          SellerBadge(role: listing.seller?.role),
+                        ],
+                      ),
                     ],
                   ),
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: AppType.bold),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppSpace.s0),
-                _SpecLine(items: _firstLine(listing)),
-                _SpecLine(items: _secondLine(listing)),
-                const SizedBox(height: AppSpace.s1),
-                Row(
-                  children: [
-                    if (place != null) ...[
-                      const Icon(LucideIcons.mapPin, size: 14, color: AppColors.inkFaint),
-                      const SizedBox(width: AppSpace.s0),
-                      Flexible(
-                        child: Text(place, style: theme.textTheme.bodySmall, overflow: TextOverflow.ellipsis),
-                      ),
-                      const SizedBox(width: AppSpace.s2),
-                    ],
-                    SellerBadge(role: listing.seller?.role),
-                  ],
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -260,6 +271,7 @@ class PriceBadge extends StatelessWidget {
     }
     final color = colorOf(level);
     return Semantics(
+      container: true,
       label: priceLevelLabel(level),
       excludeSemantics: true,
       child: Row(

@@ -16,6 +16,7 @@ class LoadingView extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.all(AppSpace.s5),
       child: Semantics(
+        container: true,
         label: label,
         child: const SizedBox.square(dimension: 28, child: CircularProgressIndicator(strokeWidth: 3)),
       ),

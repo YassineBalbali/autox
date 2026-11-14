@@ -1,0 +1,85 @@
+/// A listing page as the API sends it (shaped on a real one from the demo data).
+Map<String, Object?> detailJson({
+  String id = 'l1',
+  int? priceAmount = 2249000,
+  bool soldNew = false,
+  Map<String, Object?>? leasing,
+  Map<String, Object?>? damage,
+  Map<String, Object?>? priceIndicator = const {
+    'level': 'GOOD_DEAL',
+    'medianPriceAmount': 2412345,
+    'comparableCount': 14,
+  },
+  String? critAir = 'TWO',
+  String? dealerSlug = 'garage-bellevue',
+  String sellerRole = 'PROFESSIONNEL',
+  List<Map<String, Object?>> images = const [],
+}) => {
+  'id': id,
+  'title': 'Peugeot 3008 1.5 BlueHDi 130 Allure',
+  'description': 'Première main, carnet d’entretien complet.',
+  'priceAmount': priceAmount,
+  'currencyCode': 'EUR',
+  'priceNegotiable': true,
+  'vehicle': {
+    'make': 'Peugeot',
+    'model': '3008',
+    'version': '1.5 BlueHDi 130 Allure',
+    'firstRegistrationYear': 2020,
+    'firstRegistrationMonth': 3,
+    'fuelType': 'DIESEL',
+    'gearbox': 'AUTOMATIC',
+    'bodyType': 'SUV',
+    'powerHp': 130,
+    'powerKw': 96,
+    'doors': 5,
+    'seats': 5,
+  },
+  'location': {'countryCode': 'FR', 'city': 'Lyon', 'postalCode': '69003'},
+  'seller': {
+    'id': 's1',
+    'displayName': 'Garage Bellevue',
+    'role': sellerRole,
+    'memberSince': '2019-03-15T12:00:00Z',
+    'dealerSlug': ?dealerSlug,
+  },
+  'mileageKm': 48000,
+  'condition': soldNew ? 'NEW' : 'USED',
+  'soldNew': soldNew,
+  'exteriorColor': 'GREY',
+  'co2EmissionsGKm': 118,
+  'emissionClass': 'EURO_6D',
+  'featureCodes': ['ABS', 'NAVIGATION'],
+  'images': images,
+  'priceIndicator': ?priceIndicator,
+  'critAir': ?critAir,
+  'damage': ?damage,
+  'leasing': ?leasing,
+  'publishedAt': '2026-11-11T12:00:00Z',
+};
+
+const featuresJson = [
+  {
+    'code': 'ABS',
+    'category': 'SAFETY',
+    'displayOrder': 1,
+    'labels': {'fr-FR': 'ABS'},
+  },
+  {
+    'code': 'NAVIGATION',
+    'category': 'MULTIMEDIA',
+    'displayOrder': 1,
+    'labels': {'fr-FR': 'GPS'},
+  },
+];
+
+Map<String, Object?> imageJson(String id, int position) => {
+  'id': id,
+  'position': position,
+  'status': 'READY',
+  'variants': {
+    'THUMBNAIL': {'url': 'https://img.test/$id/thumb.jpg', 'width': 320, 'height': 240},
+    'CARD': {'url': 'https://img.test/$id/card.jpg', 'width': 800, 'height': 600},
+    'FULL': {'url': 'https://img.test/$id/full.jpg', 'width': 1600, 'height': 1200},
+  },
+};

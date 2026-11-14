@@ -3,9 +3,11 @@ import 'dart:io';
 
 import 'package:autox/core/format/listing_text.dart';
 import 'package:autox/core/format/numbers.dart';
+import 'package:autox/features/listing/listing_text.dart' as listing_text;
 import 'package:autox/features/search/search_query.dart';
-import 'package:autox_api/autox_api.dart' show LeasingType, LeasingView;
+import 'package:autox_api/autox_api.dart' show Feature, ImageResponse, LeasingType, LeasingView, PublicListingDetail;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 /// The shared test vectors in `frontend/fixtures/`, against the app's ports of the web's rules.
 ///
@@ -31,7 +33,12 @@ ResolvedVehicle _vehicle(Object? json) {
   );
 }
 
+/// As the generated models read a date: a string that does not parse is no date.
+DateTime? _date(Object? iso) => iso is String ? DateTime.tryParse(iso) : null;
+
 void main() {
+  setUpAll(() => initializeDateFormatting('fr_FR'));
+
   final search = _fixture('search-query.json');
   final display = _fixture('display.json');
 
@@ -128,6 +135,111 @@ void main() {
           mileagePerYear: c['mileagePerYear'] as int?,
         );
         expect(leasingTerms(leasing), c['text']);
+      }
+    });
+  });
+
+  group('listing.json', () {
+    final listing = _fixture('listing.json');
+    PublicListingDetail detail(Object? json) => PublicListingDetail.fromJson(json! as Map<String, Object?>);
+
+    for (final c in _cases(listing, 'specificationRows')) {
+      test('specificationRows — ${c['name']}', () {
+        expect(
+          listing_text
+              .specificationRows(detail(c['listing']))
+              .map((row) => {'label': row.label, 'value': row.value})
+              .toList(),
+          c['rows'],
+        );
+      });
+    }
+
+    for (final c in _cases(listing, 'groupFeatures')) {
+      test('groupFeatures — ${c['name']}', () {
+        final reference = (c['reference']! as List<Object?>)
+            .map((json) => Feature.fromJson(json! as Map<String, Object?>))
+            .toList();
+        final groups = listing_text.groupFeatures((c['codes']! as List<Object?>).cast<String>(), reference);
+        expect(
+          groups
+              .map((group) => {'category': group.category.value, 'title': group.title, 'items': group.items})
+              .toList(),
+          c['groups'],
+        );
+      });
+    }
+
+    test('registration', () {
+      for (final c in _cases(listing, 'registration')) {
+        expect(listing_text.registration(c['year'] as int?, c['month'] as int?), c['text'], reason: '$c');
+      }
+    });
+
+    for (final c in _cases(listing, 'marketBasis')) {
+      test('marketBasis — ${c['name']}', () {
+        expect(listing_text.marketBasis(detail(c['listing'])), c['text']);
+      });
+    }
+
+    for (final c in _cases(listing, 'simulateCredit')) {
+      test('simulateCredit — ${c['name']}', () {
+        final result = listing_text.simulateCredit(
+          principal: c['principal']! as num,
+          annualRatePercent: c['annualRatePercent']! as num,
+          months: c['months']! as int,
+        );
+        expect(
+          result == null
+              ? null
+              : {'monthly': result.monthly, 'totalRepaid': result.totalRepaid, 'creditCost': result.creditCost},
+          c['result'],
+        );
+      });
+    }
+
+    test('parseAmount and parseRate', () {
+      for (final c in _cases(listing, 'parseAmount')) {
+        expect(listing_text.parseAmount(c['text']! as String), c['value'], reason: '${c['text']}');
+      }
+      for (final c in _cases(listing, 'parseRate')) {
+        expect(listing_text.parseRate(c['text']! as String), c['value'], reason: '${c['text']}');
+      }
+    });
+
+    for (final c in _cases(listing, 'galleryImages')) {
+      test('galleryImages — ${c['name']}', () {
+        final images = (c['images']! as List<Object?>)
+            .map((json) => ImageResponse.fromJson(json! as Map<String, Object?>))
+            .toList();
+        expect(
+          listing_text
+              .galleryImages(images)
+              .map(
+                (image) => {
+                  'id': image.id,
+                  'thumbnail': image.thumbnail,
+                  'medium': image.medium,
+                  'large': image.large,
+                  'width': image.width,
+                  'height': image.height,
+                },
+              )
+              .toList(),
+          c['gallery'],
+        );
+      });
+    }
+
+    test('memberSince, formatDate, countFr', () {
+      for (final c in _cases(listing, 'memberSince')) {
+        expect(listing_text.memberSince(_date(c['iso'])), c['text'], reason: '$c');
+      }
+      for (final c in _cases(listing, 'formatDate')) {
+        expect(listing_text.formatDate(_date(c['iso'])), c['text'], reason: '$c');
+      }
+      for (final c in _cases(listing, 'countFr')) {
+        expect(listing_text.countFr(c['count']! as int, c['singular']! as String, c['plural']! as String), c['text']);
       }
     });
   });

@@ -269,6 +269,13 @@ function generateLabels() {
   }
   out.push('];', '');
 
+  out.push('/// The French départements by code (01 … 95, 2A, 2B, 971 … 976), for the dealer directory.');
+  out.push('const Map<String, String> departementNames = {');
+  for (const [code, name] of Object.entries(labels.departements ?? {})) {
+    out.push(`  ${dartString(code)}: ${dartString(name)},`);
+  }
+  out.push('};', '');
+
   out.push('/// The request fields a validation failure can name, in French.');
   out.push('const Map<String, String> fieldLabels = {');
   for (const [field, label] of Object.entries(labels.fields)) {

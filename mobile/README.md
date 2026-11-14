@@ -4,11 +4,12 @@ The buyer side of AutoX as a Flutter app: search, listings, dealers, favourites,
 searches and messages, in French, with the site's look. Plan, decisions and milestones:
 [docs/mobile-plan.md](../docs/mobile-plan.md).
 
-**Status: milestone 2 (search).** The Rechercher tab searches as the site does: the search
-field with suggestions, "Recherche intelligente", every filter of the site's sidebar, the sort
-orders, cursor-paged results with a live count, /neuf, and the last three searches. Tapping a
-result opens nothing yet: the listing page is milestone 3. Favoris, Messages and Compte are
-milestones 4 and 5.
+**Status: milestone 3 (listings and dealers).** The search as the site has it (milestone 2),
+and now the listing page — photos full screen, key facts, Crit'Air, the market verdict and
+what it rests on, leasing terms, damage, specification, equipment, the financing simulator,
+the seller, similar listings — and the dealers' directory and pages, with their listings,
+phone and website. Contacting a seller, favourites, sign-in and messages are milestones 4
+and 5.
 
 ## Requirements
 
@@ -77,7 +78,8 @@ lib/
   core/reference/       the catalogue and the API's vocabularies
   core/widgets/
   features/search/      the search: its rules (search_query.dart), state, screens
-  features/listing/     the result row; the listing page in milestone 3
+  features/listing/     the listing page, its rules (listing_text.dart) and parts; the result row
+  features/dealers/     the directory and a dealer's page
 test/                   mirrors lib/; test/support/fake_http.dart fakes the API;
                         test/shared_fixtures_test.dart runs ../frontend/fixtures/
 ```

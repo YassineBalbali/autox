@@ -11,6 +11,7 @@ import '../../core/reference/reference_providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/states.dart';
 import '../../core/widgets/wordmark.dart';
+import '../listing/listing_locations.dart';
 import 'recent_searches.dart';
 import 'search_locations.dart';
 import 'search_providers.dart';
@@ -53,6 +54,18 @@ class SearchHomeScreen extends ConsumerWidget {
             if (smart) const _SmartSearch(),
             const _Shortcuts(),
             if (recents.isNotEmpty) _RecentSearches(entries: recents),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s4, AppSpace.gutter, 0),
+              child: Card(
+                child: ListTile(
+                  leading: const Icon(LucideIcons.store, color: AppColors.accent),
+                  title: const Text('Annuaire des professionnels'),
+                  subtitle: const Text('Garages et concessions, leurs coordonnées et leurs annonces'),
+                  trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.inkFaint),
+                  onTap: () => context.push(dealersLocation),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s5, AppSpace.gutter, AppSpace.s2),
               child: Text('Marques', style: theme.textTheme.titleMedium),
@@ -112,6 +125,7 @@ class _Hero extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpace.s3),
           Semantics(
+            container: true,
             button: true,
             label: 'Rechercher une marque, un modèle ou un mot-clé',
             excludeSemantics: true,
@@ -129,9 +143,13 @@ class _Hero extends ConsumerWidget {
                   children: [
                     const Icon(LucideIcons.search, size: 18, color: AppColors.inkSoft),
                     const SizedBox(width: AppSpace.s2),
-                    Text(
-                      'Marque, modèle, mot-clé',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.inkFaint),
+                    // Shrinks rather than overflows: a narrow phone, or large system text.
+                    Expanded(
+                      child: Text(
+                        'Marque, modèle, mot-clé',
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.inkFaint),
+                      ),
                     ),
                   ],
                 ),

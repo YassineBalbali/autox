@@ -2,6 +2,9 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../features/dealers/dealer_directory_screen.dart';
+import '../../features/dealers/dealer_screen.dart';
+import '../../features/listing/listing_screen.dart';
 import '../../features/search/new_cars_screen.dart';
 import '../../features/search/results_screen.dart';
 import '../../features/search/search_entry_screen.dart';
@@ -39,6 +42,22 @@ const _tabs = [
 GoRouter buildRouter({String initialLocation = AppRoutes.search}) => GoRouter(
   initialLocation: initialLocation,
   routes: [
+    // Outside the tabs, so they open over the bar, from any tab: a listing reached from the
+    // search now and from the favourites later is the same page. The site's own paths.
+    GoRoute(
+      path: '/annonces/:id',
+      builder: (_, state) => ListingScreen(id: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/professionnels',
+      builder: (_, _) => const DealerDirectoryScreen(),
+      routes: [
+        GoRoute(
+          path: ':slug',
+          builder: (_, state) => DealerScreen(slug: state.pathParameters['slug']!),
+        ),
+      ],
+    ),
     // One navigator per tab, kept alive: switching tabs returns to where that tab was,
     // scroll position included, as Android users expect from a bottom bar.
     StatefulShellRoute.indexedStack(

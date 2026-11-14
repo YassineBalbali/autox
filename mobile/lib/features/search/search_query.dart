@@ -53,6 +53,7 @@ class SearchQuery {
     this.allowanceMin,
     this.critAirMax,
     this.sort = defaultSort,
+    this.sellerId,
   });
 
   static const SearchQuery empty = SearchQuery();
@@ -91,6 +92,11 @@ class SearchQuery {
   final int? critAirMax;
   final SearchSort sort;
 
+  /// One seller's listings only: a dealer's page. App-only, and deliberately not a URL
+  /// parameter: the site scopes a search to a dealer by its page, not by a parameter, so
+  /// [toQueryParams] and [parseQuery] leave it out.
+  final String? sellerId;
+
   bool get isLeasing => offer == OfferType.LEASING;
 
   SearchQuery copyWith({
@@ -119,6 +125,7 @@ class SearchQuery {
     Object? allowanceMin = _unset,
     Object? critAirMax = _unset,
     SearchSort? sort,
+    Object? sellerId = _unset,
   }) => SearchQuery(
     text: _pick(text, this.text),
     make: _pick(make, this.make),
@@ -145,6 +152,7 @@ class SearchQuery {
     allowanceMin: _pick(allowanceMin, this.allowanceMin),
     critAirMax: _pick(critAirMax, this.critAirMax),
     sort: sort ?? this.sort,
+    sellerId: _pick(sellerId, this.sellerId),
   );
 
   /// The web's field names and wire values: what the shared fixtures describe a query with.
@@ -174,6 +182,7 @@ class SearchQuery {
     'allowanceMin': allowanceMin,
     'critAirMax': critAirMax,
     'sort': sort.value,
+    'sellerId': sellerId,
   };
 
   /// The inverse of [toJson], for a partial description (what differs from [empty]).
@@ -208,6 +217,7 @@ class SearchQuery {
       allowanceMin: number('allowanceMin'),
       critAirMax: number('critAirMax'),
       sort: _enumByValue(SearchSort.values, json['sort'] as String?) ?? defaultSort,
+      sellerId: json['sellerId'] as String?,
     );
   }
 
@@ -280,7 +290,8 @@ SearchQuery switchOffer(SearchQuery query, OfferType offer) => query.copyWith(
 );
 
 /// The same search with every filter cleared, the offer and the sort kept.
-SearchQuery withoutFilters(SearchQuery query) => SearchQuery(offer: query.offer, sort: query.sort);
+SearchQuery withoutFilters(SearchQuery query) =>
+    SearchQuery(offer: query.offer, sort: query.sort, sellerId: query.sellerId);
 
 /// How many filters are set — the number on the "Filtres" button. Sort is not a filter.
 int activeFilterCount(SearchQuery query) => <Object?>[
@@ -595,6 +606,7 @@ ListingSearchCriteria toCriteria(
     location: query.location,
     priceLevel: query.goodDeals ? const [PriceLevel.GOOD_DEAL] : null,
     critAirMax: query.critAirMax,
+    sellerId: query.sellerId,
   );
 }
 

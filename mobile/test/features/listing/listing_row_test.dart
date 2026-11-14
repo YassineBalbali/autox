@@ -18,7 +18,7 @@ void main() {
     await _pump(tester, listingJson(priceLevel: 'GOOD_DEAL'));
 
     expect(find.text('22 490 €'), findsOneWidget);
-    expect(find.bySemanticsLabel('Bonne affaire'), findsOneWidget);
+    expect(find.text('Bonne affaire'), findsOneWidget);
     expect(find.textContaining('Peugeot 3008'), findsOneWidget);
     expect(find.textContaining('1.5 BlueHDi 130 Allure'), findsOneWidget);
     expect(find.text('2020 · 48 000 km'), findsOneWidget);
