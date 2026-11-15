@@ -7,7 +7,7 @@ import 'package:dio/dio.dart';
 /// - `Authorization` and any cookie header are written as `<redacted>`;
 /// - the bodies of the sensitive endpoints (everything under `/auth/`, the password change and
 ///   the account deletion) are never written, in either direction: they carry passwords and
-///   tokens;
+///   tokens; nor is the data export's, which is everything the account holds;
 /// - other bodies are written, cut short.
 class RedactingLogInterceptor extends Interceptor {
   RedactingLogInterceptor(this._sink);
@@ -21,7 +21,8 @@ class RedactingLogInterceptor extends Interceptor {
     final location = Uri.tryParse(path)?.path ?? path;
     return location.contains('/api/v1/auth/') ||
         location.endsWith('/api/v1/me/password') ||
-        location.endsWith('/api/v1/me/deletion');
+        location.endsWith('/api/v1/me/deletion') ||
+        location.endsWith('/api/v1/me/export');
   }
 
   @override

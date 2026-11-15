@@ -11,5 +11,7 @@ abstract final class AppLabels {
   static const sessionUnavailable =
       'Impossible de vérifier votre session pour le moment. Vos informations sont gardées sur ce téléphone.';
 
-  static const myDataHint = 'Le téléchargement se fait sur le site, où il faut se connecter.';
+  static const myDataHint =
+      'Un fichier JSON avec tout ce qu’AutoX garde sur votre compte, à enregistrer ou à envoyer. '
+      'Trois par heure au plus.';
 }

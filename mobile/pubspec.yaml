@@ -34,6 +34,12 @@ dependencies:
   intl: 0.20.3
   url_launcher: 6.3.3
   lucide_icons_flutter: 4.0.3
+  # "Mes données": the export is handed to the Android share sheet (save to Files, Drive, mail).
+  # Nothing else in the stack shares a file; url_launcher opens addresses only.
+  share_plus: 13.3.1
+  # Where the export is written before it is shared: the app's cache directory. Already in the
+  # tree through cached_network_image; named here because the app imports it.
+  path_provider: 2.1.6
 
 dev_dependencies:
   flutter_test:

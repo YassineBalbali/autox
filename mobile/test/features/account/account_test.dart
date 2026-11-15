@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:autox/core/api/api_failure.dart';
 import 'package:autox/core/auth/session.dart';
 import 'package:autox/core/auth/token_store.dart';
 import 'package:autox/core/labels/app_labels.dart';
 import 'package:autox/features/account/account_locations.dart';
+import 'package:autox/features/account/data_export.dart';
 import 'package:autox_api/autox_api.dart' show UserSummary;
 import 'package:dio/dio.dart';
 import 'package:flutter/gestures.dart' show TapGestureRecognizer;
@@ -342,13 +344,44 @@ void main() {
       );
     });
 
-    testWidgets('"Mes données" opens the site’s page', (tester) async {
-      final opened = <Uri>[];
-      await pumpApp(tester, http, location: '/compte', tokens: MemoryTokenStore('refresh-stored'), opened: opened);
+    testWidgets('"Mes données": disabled while preparing, the cold-start hint after 5 s, then the failure in words', (
+      tester,
+    ) async {
+      // What is written and shared is data_export_test's; here, the screen around it.
+      final release = Completer<void>();
+      var calls = 0;
+      await pumpApp(
+        tester,
+        http,
+        location: '/compte',
+        tokens: MemoryTokenStore('refresh-stored'),
+        overrides: [
+          dataExportProvider.overrideWithValue(() async {
+            calls++;
+            await release.future;
+            throw const OfflineFailure();
+          }),
+        ],
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Mes données'));
-      expect(opened, [Uri.parse('http://api.test-site/mon-compte/donnees')]);
+      await tester.pump();
+      expect(find.text('Préparation…'), findsOneWidget);
+      expect(tester.widget<ListTile>(find.widgetWithText(ListTile, 'Préparation…')).enabled, isFalse);
+      await tester.tap(find.text('Préparation…'));
+      expect(calls, 1);
+
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text(AppLabels.coldStart), findsNothing);
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text(AppLabels.coldStart), findsOneWidget);
+
+      release.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Impossible de joindre AutoX. Vérifiez votre connexion internet.'), findsOneWidget);
+      expect(find.text('Mes données'), findsOneWidget);
+      expect(find.text(AppLabels.coldStart), findsNothing);
     });
 
     testWidgets('signing out returns to the sign-in form, even when the server cannot be reached', (tester) async {

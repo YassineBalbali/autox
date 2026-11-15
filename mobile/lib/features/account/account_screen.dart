@@ -4,14 +4,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/api/api_failure.dart';
-import '../../core/api/api_providers.dart';
 import '../../core/auth/session.dart';
 import '../../core/labels/app_labels.dart';
 import '../../core/labels/labels.g.dart';
-import '../../core/links.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/pending.dart';
 import 'account_providers.dart';
+import 'data_export.dart';
 import 'widgets/form_parts.dart';
 
 /// The Compte tab, signed in: who, the address's verification, "Mes données", deletion and
@@ -81,6 +80,8 @@ class _AccountState extends ConsumerState<_Account> {
   String? _resent;
   String? _resendFailure;
   bool _signingOut = false;
+  bool _exporting = false;
+  String? _exportFailure;
 
   Future<void> _resend(String email) async {
     setState(() {
@@ -103,6 +104,29 @@ class _AccountState extends ConsumerState<_Account> {
     }
   }
 
+  /// "Mes données": the export, through the share sheet. Nothing to say on success: the sheet is
+  /// the answer.
+  Future<void> _export() async {
+    if (_exporting) {
+      return;
+    }
+    setState(() {
+      _exporting = true;
+      _exportFailure = null;
+    });
+    try {
+      await ref.read(dataExportProvider)();
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _exportFailure = ApiFailure.from(error).message);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _exporting = false);
+      }
+    }
+  }
+
   Future<void> _signOut() async {
     setState(() => _signingOut = true);
     await ref.read(sessionProvider.notifier).logout();
@@ -117,7 +141,6 @@ class _AccountState extends ConsumerState<_Account> {
     final verified = profile?.emailVerified ?? user.emailVerified ?? false;
     final pending = profile?.emailVerificationPending ?? user.emailVerificationPending ?? false;
     final role = profile?.role ?? user.role;
-    final site = ref.watch(appConfigProvider);
 
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpace.s6),
@@ -184,11 +207,23 @@ class _AccountState extends ConsumerState<_Account> {
             children: [
               ListTile(
                 leading: const Icon(LucideIcons.fileDown),
-                title: const Text('Mes données'),
+                title: Text(_exporting ? 'Préparation…' : 'Mes données'),
                 subtitle: const Text(AppLabels.myDataHint),
-                trailing: const Icon(LucideIcons.externalLink, size: 18),
-                onTap: () => ref.read(linkOpenerProvider)(site.site('/mon-compte/donnees')),
+                trailing: const Icon(LucideIcons.share2, size: 18),
+                enabled: !_exporting,
+                onTap: _export,
               ),
+              if (_exportFailure != null || _exporting)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, AppSpace.s2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_exportFailure != null) FormError(_exportFailure),
+                      ColdStartHint(pending: _exporting),
+                    ],
+                  ),
+                ),
               const Divider(),
               ListTile(
                 leading: const Icon(LucideIcons.trash2, color: AppColors.danger),

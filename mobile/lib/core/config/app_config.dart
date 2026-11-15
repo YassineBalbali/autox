@@ -20,7 +20,7 @@ class AppConfig {
   /// Without a trailing slash: the generated client appends paths starting with `/api`.
   final String apiBaseUrl;
 
-  /// The website, for the pages the app opens in the browser (legal pages, "Mes données").
+  /// The website, for the pages the app opens in the browser (the legal pages).
   final String siteUrl;
 
   /// A page of the website: `site('/conditions-generales')`.

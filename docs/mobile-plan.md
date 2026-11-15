@@ -432,8 +432,13 @@ locally, so the links are relative (`/verifier-email?token=…`): open them on
   terms linking to the site's pages. One key, `notices.registerConsent` in `labels.fr.json`, links
   written `[words](/path)` and split by the same small function on both sides (`forms.json`). The
   API records no consent.
-- **"Mes données" opens the site, where the person must sign in again**: the browser does not share
-  the app's session. A download inside the app (`GET /me/export`) would avoid that.
+- **"Mes données" in the app** (follow-up): `GET /me/export` on the app's own client (so an expired
+  access token goes through the one refresh), written as the site writes it (two-space JSON,
+  `autox-mes-donnees-AAAA-MM-JJ.json`) to the app's cache, handed to the share sheet with
+  `share_plus` 13.3.1, then deleted. share_plus copies the file into `cache/share_plus` for the
+  receiving app and empties that folder at the next share. The generated `ProfileApi.exportData`
+  is not used: its serializer cannot read a free-form object. The debug log never writes the
+  export's body.
 - **Sign-out clears the phone first**, then asks the server to revoke the session: the result is
   the same whatever the server answers, without a 90-second wait on a cold start.
 - **The launch wait is the account tab's**, not the whole app's: the search, listings and dealers

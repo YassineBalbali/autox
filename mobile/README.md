@@ -54,7 +54,7 @@ phone over USB, `adb reverse tcp:8081 tcp:8081` and
 
 A release build has no default addresses and refuses to start without `https://` ones:
 `--dart-define=AUTOX_API_BASE_URL=…` and `--dart-define=AUTOX_SITE_URL=…` (the site, for the
-legal pages and "Mes données"). A debug build opens the site at `http://10.0.2.2:4200`, the web
+legal pages). A debug build opens the site at `http://10.0.2.2:4200`, the web
 app's dev server.
 
 **E-mails, locally:** the backend writes verification and reset e-mails to its own log (mail

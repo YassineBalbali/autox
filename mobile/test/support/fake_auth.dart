@@ -8,6 +8,13 @@ import 'listings.dart';
 
 /// The account endpoints of the API, faked: a numbered token pair per sign-in, registration or
 /// refresh, only the latest access token accepted, and answers a test can change or hold.
+/// What `GET /me/export` answers here: the shape of the real one, cut short.
+const exportJson = {
+  'exportedAt': '2026-11-15T10:00:00Z',
+  'account': {'email': 'jean@exemple.fr', 'displayName': 'Jean Dupont'},
+  'listings': <Object>[],
+};
+
 class FakeAccountApi {
   FakeAccountApi({this.emailVerified = true});
 
@@ -88,6 +95,10 @@ class FakeAccountApi {
       '/api/v1/me/email/verification': _endpoint(
         '/api/v1/me/email/verification',
         (request) => _authorised(request, const FakeResponse.json(204, null)),
+      ),
+      '/api/v1/me/export': _endpoint(
+        '/api/v1/me/export',
+        (request) => _authorised(request, const FakeResponse.json(200, exportJson)),
       ),
       '/api/v1/me/deletion': _endpoint(
         '/api/v1/me/deletion',
