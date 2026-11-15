@@ -408,8 +408,9 @@ locally, so the links are relative (`/verifier-email?token=…`): open them on
 - **Token layer** (`lib/core/auth`): refresh token in the Android Keystore only, access token in
   memory only; one refresh at a time by construction (a shared future filled before the first
   `await`); the rotated token stored before any waiting request resumes; one retry per request;
-  the `/auth/*` calls on a separate client with no auth interceptor; refused refresh (401/403)
-  clears and says "Votre session a expiré" once; unreachable server keeps the token. Logs redact
+  the `/auth/*` calls on a separate client with no auth interceptor; a refused refresh clears the
+  session and says so once — "Votre session a expiré" on a 401, the account's own sentence on a 403
+  (suspended, closed), never "expirée" then; unreachable server keeps the token. Logs redact
   `Authorization` and never write the bodies of `/auth/*`, the password change or the deletion.
 - **Screens**: sign-in, registration (private accounts), forgotten password, the account (who,
   verification banner with "Renvoyer le lien", "Mes données", deletion with the password, sign-out),

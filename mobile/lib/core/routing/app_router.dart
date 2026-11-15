@@ -145,7 +145,8 @@ GoRouter buildRouter({String initialLocation = AppRoutes.search, AuthState Funct
     );
 
 /// The bottom bar around the current tab, and the one place that says "session expirée" — once,
-/// when the server ends a session, whatever screen the person is on.
+/// when the server ends a session, whatever screen the person is on — or, when the server refuses
+/// the account itself (suspended, closed), the account's own sentence.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
 
@@ -154,9 +155,14 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(sessionProvider, (_, next) {
-      if (next case SignedOut(expired: true)) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(errorCodeLabel(ErrorCode.INVALID_REFRESH_TOKEN))));
+      final notice = switch (next) {
+        SignedOut(expired: true) => errorCodeLabel(ErrorCode.INVALID_REFRESH_TOKEN),
+        // Suspended or closed: the account's own sentence, not "session expirée".
+        SignedOut(refused: final refused?) => refused.message,
+        _ => null,
+      };
+      if (notice != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(notice)));
         ref.read(sessionProvider.notifier).acknowledgeExpiry();
       }
     });

@@ -113,6 +113,32 @@ void main() {
       expect(find.text('Trop de tentatives de connexion. Réessayez dans 2 minutes.'), findsOneWidget);
     });
 
+    testWidgets('throttled by address (RATE_LIMITED), and refused accounts (403), each in its own words', (
+      tester,
+    ) async {
+      final tokens = MemoryTokenStore();
+      await pumpApp(tester, http, location: '/connexion', tokens: tokens);
+      await tester.pumpAndSettle();
+      await tester.enterText(_field('Adresse e-mail'), 'jean@exemple.fr');
+      await tester.enterText(_field('Mot de passe'), 'motdepasselong');
+
+      final cases = {
+        const FakeResponse.json(429, {'status': 429, 'code': 'RATE_LIMITED', 'retryAfterSeconds': 45}):
+            'Trop de requêtes. Réessayez dans 45 secondes.',
+        const FakeResponse.json(403, {'status': 403, 'code': 'ACCOUNT_SUSPENDED'}):
+            'Ce compte est suspendu. Contactez le support.',
+        const FakeResponse.json(403, {'status': 403, 'code': 'ACCOUNT_CLOSED'}): 'Ce compte a été fermé.',
+      };
+      for (final MapEntry(key: answer, value: sentence) in cases.entries) {
+        api.answers['/api/v1/auth/login'] = answer;
+        await tester.tap(_button('Se connecter'));
+        await tester.pumpAndSettle();
+        expect(find.text(sentence), findsOneWidget);
+      }
+      expect(tokens.value, isNull);
+      expect(_button('Se connecter'), findsOneWidget);
+    });
+
     testWidgets('while signing in: the button is disabled, then the cold-start hint after 5 s, not before', (
       tester,
     ) async {
@@ -395,6 +421,39 @@ void main() {
       await tester.tap(find.text('Compte'));
       await tester.pumpAndSettle();
       expect(find.text('Votre session a expiré. Reconnectez-vous.'), findsNothing);
+    });
+
+    testWidgets('an account suspended meanwhile (403 on refresh) is signed out with its own sentence, not “expirée”', (
+      tester,
+    ) async {
+      api.emailVerified = false;
+      final tokens = MemoryTokenStore('refresh-stored');
+      await pumpApp(tester, http, location: '/compte', tokens: tokens);
+      await tester.pumpAndSettle();
+
+      api.validAccess = 'expired';
+      api.answers['/api/v1/auth/refresh'] = const FakeResponse.json(403, {'status': 403, 'code': 'ACCOUNT_SUSPENDED'});
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Renvoyer le lien'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ce compte est suspendu. Contactez le support.'), findsOneWidget);
+      expect(find.text('Votre session a expiré. Reconnectez-vous.'), findsNothing);
+      expect(_button('Se connecter'), findsOneWidget);
+      expect(tokens.value, isNull);
+    });
+
+    testWidgets('a closed account found at launch (403 on refresh) says so, and shows the sign-in form', (
+      tester,
+    ) async {
+      api.answers['/api/v1/auth/refresh'] = const FakeResponse.json(403, {'status': 403, 'code': 'ACCOUNT_CLOSED'});
+      final tokens = MemoryTokenStore('refresh-stored');
+      await pumpApp(tester, http, location: '/compte', tokens: tokens);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ce compte a été fermé.'), findsOneWidget);
+      expect(find.text('Votre session a expiré. Reconnectez-vous.'), findsNothing);
+      expect(_button('Se connecter'), findsOneWidget);
+      expect(tokens.value, isNull);
     });
   });
 

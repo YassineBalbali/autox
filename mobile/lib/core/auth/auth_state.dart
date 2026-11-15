@@ -16,10 +16,15 @@ class AuthUnknown extends AuthState {
 }
 
 class SignedOut extends AuthState {
-  const SignedOut({this.expired = false});
+  const SignedOut({this.expired = false, this.refused});
 
-  /// The server refused the session (expired, revoked, signed out elsewhere): said once.
+  /// The server refused the session (expired, revoked, signed out elsewhere): "session
+  /// expirée", said once.
   final bool expired;
+
+  /// The server refused the account itself on a refresh (403: suspended, closed): its own
+  /// sentence is said once instead, never "session expirée", which would invite signing in again.
+  final ServerFailure? refused;
 }
 
 class SignedIn extends AuthState {

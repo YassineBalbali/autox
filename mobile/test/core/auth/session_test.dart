@@ -5,6 +5,7 @@ import 'package:autox/core/api/api_failure.dart';
 import 'package:autox/core/api/api_providers.dart';
 import 'package:autox/core/auth/session.dart';
 import 'package:autox/core/auth/token_store.dart';
+import 'package:autox_api/autox_api.dart' show ErrorCode;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -163,13 +164,21 @@ void main() {
     expect(container.read(sessionProvider.notifier).accessToken, isNull);
   });
 
-  test('an account suspended since (403 on refresh) is signed out too', () async {
+  test('an account suspended since (403 on refresh) is signed out too, as refused, not as expired', () async {
     server.refreshAnswer = const FakeResponse.json(403, {'status': 403, 'code': 'ACCOUNT_SUSPENDED'});
     final tokens = MemoryTokenStore('refresh-stored');
     final container = await _container(http, tokens);
 
-    expect(await _started(container), isA<SignedOut>());
+    expect(
+      await _started(container),
+      isA<SignedOut>()
+          .having((s) => s.expired, 'expired', isFalse)
+          .having((s) => s.refused?.code, 'refused', ErrorCode.ACCOUNT_SUSPENDED),
+    );
     expect(tokens.value, isNull);
+
+    container.read(sessionProvider.notifier).acknowledgeExpiry();
+    expect(container.read(sessionProvider), isA<SignedOut>().having((s) => s.refused, 'refused', isNull));
   });
 
   test('a refresh that cannot reach the server keeps the token, and the next request tries again', () async {

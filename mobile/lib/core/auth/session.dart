@@ -96,7 +96,8 @@ class SessionController extends Notifier<AuthState> {
       final failure = ApiFailure.from(error);
       if (failure is ServerFailure && (failure.status == 401 || failure.status == 403)) {
         await _store.clear();
-        _clearMemory(const SignedOut(expired: true));
+        // 401: the token is over. 403: the account is (suspended, closed), and says so.
+        _clearMemory(failure.status == 403 ? SignedOut(refused: failure) : const SignedOut(expired: true));
         throw const SessionExpired();
       }
       if (ref.mounted && state is! SignedIn) {
@@ -178,9 +179,9 @@ class SessionController extends Notifier<AuthState> {
     }
   }
 
-  /// The "session expirée" notice has been shown: not again.
+  /// The "session expirée" notice, or the account's refusal, has been shown: not again.
   void acknowledgeExpiry() {
-    if (state case SignedOut(expired: true)) {
+    if (state case SignedOut(expired: true) || SignedOut(refused: _?)) {
       state = const SignedOut();
     }
   }
