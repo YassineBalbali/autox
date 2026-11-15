@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:autox/core/api/api_providers.dart';
+import 'package:autox/core/auth/session.dart';
+import 'package:autox/core/auth/token_store.dart';
 import 'package:autox/core/config/app_config.dart';
 import 'package:autox/features/search/recent_searches.dart';
 import 'package:dio/dio.dart';
@@ -24,7 +27,7 @@ class FakeResponse {
 /// The real dio pipeline runs — query encoding, JSON decoding, the generated models' parsing —
 /// so a test exercises what the app would send and read, minus the network.
 class FakeHttp implements HttpClientAdapter {
-  FakeHttp(this.routes, {Map<String, FakeResponse Function(RequestOptions request)>? handlers})
+  FakeHttp(this.routes, {Map<String, FutureOr<FakeResponse> Function(RequestOptions request)>? handlers})
     : handlers = handlers ?? {};
 
   /// Path (without query) → answer. Replaced between calls to simulate a server that recovers.
@@ -32,7 +35,7 @@ class FakeHttp implements HttpClientAdapter {
 
   /// Path → an answer that depends on the request (a page that depends on its cursor). Checked
   /// before [routes].
-  final Map<String, FakeResponse Function(RequestOptions request)> handlers;
+  final Map<String, FutureOr<FakeResponse> Function(RequestOptions request)> handlers;
 
   final List<RequestOptions> requests = [];
 
@@ -46,7 +49,8 @@ class FakeHttp implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
-    final answer = handlers[options.uri.path]?.call(options) ?? routes[options.uri.path];
+    final handler = handlers[options.uri.path];
+    final answer = handler != null ? await handler(options) : routes[options.uri.path];
     if (answer == null) {
       return ResponseBody.fromString('{"status":404}', 404, headers: _json);
     }
@@ -66,16 +70,21 @@ class FakeHttp implements HttpClientAdapter {
 
 const testConfig = AppConfig(apiBaseUrl: 'http://api.test');
 
-/// The provider overrides that put [http] under the whole app, and [preferences] (empty
-/// in-memory ones by default; see [testPreferences]) under what it stores on the phone.
-List<Override> fakeApiOverrides(FakeHttp http, {required SharedPreferences preferences}) => [
+/// The provider overrides that put [http] under the whole app — under both real clients, with
+/// their real interceptors — [preferences] under what it stores on the phone, and [tokens]
+/// (empty: signed out) where the refresh token is kept. [log], when given, receives the request
+/// logs; otherwise none are written.
+List<Override> fakeApiOverrides(
+  FakeHttp http, {
+  required SharedPreferences preferences,
+  TokenStore? tokens,
+  void Function(String line)? log,
+}) => [
   appConfigProvider.overrideWithValue(testConfig),
   sharedPreferencesProvider.overrideWithValue(preferences),
-  dioProvider.overrideWith((ref) {
-    final dio = Dio(BaseOptions(baseUrl: testConfig.apiBaseUrl, listFormat: ListFormat.multi))
-      ..httpClientAdapter = http;
-    return dio;
-  }),
+  httpAdapterProvider.overrideWithValue(http),
+  tokenStoreProvider.overrideWithValue(tokens ?? MemoryTokenStore()),
+  logSinkProvider.overrideWithValue(log),
 ];
 
 /// In-memory preferences holding [values], as the plugin's own test double provides them.
