@@ -6,6 +6,7 @@ import 'package:autox/core/labels/app_labels.dart';
 import 'package:autox/features/account/account_locations.dart';
 import 'package:autox_api/autox_api.dart' show UserSummary;
 import 'package:dio/dio.dart';
+import 'package:flutter/gestures.dart' show TapGestureRecognizer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -164,7 +165,7 @@ void main() {
       await tester.enterText(_field('Confirmer le mot de passe'), confirmation);
     }
 
-    testWidgets('the site’s rules, and the terms to accept', (tester) async {
+    testWidgets('the site’s rules', (tester) async {
       useTallScreen(tester);
       await pumpApp(tester, http, location: '/inscription');
       await tester.pumpAndSettle();
@@ -177,7 +178,6 @@ void main() {
       expect(find.text('Ce champ est obligatoire.'), findsWidgets);
       expect(find.text('Au moins 12 caractères.'), findsOneWidget);
       expect(find.text('Utilisez le format international, par exemple +33612345678.'), findsOneWidget);
-      expect(find.text(AppLabels.acceptTermsRequired), findsOneWidget);
       expect(api.bodies['/api/v1/auth/register'], isNull);
 
       await fill(tester, confirmation: 'autrechose12345');
@@ -186,14 +186,27 @@ void main() {
       expect(find.text('Les deux mots de passe ne correspondent pas.'), findsOneWidget);
     });
 
-    testWidgets('the legal pages open on the site', (tester) async {
+    testWidgets('under the button, the web’s terms notice; its two links open the site’s pages', (tester) async {
       useTallScreen(tester);
       final opened = <Uri>[];
       await pumpApp(tester, http, location: '/inscription', opened: opened);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(TextButton, 'Conditions générales'));
-      await tester.tap(find.widgetWithText(TextButton, 'Confidentialité'));
+      const sentence = 'En créant un compte, vous acceptez les CGU et la politique de confidentialité.';
+      final notice = find.text(sentence, findRichText: true);
+      expect(notice, findsOneWidget);
+      expect(find.byType(Checkbox), findsNothing);
+      expect(tester.getTopLeft(notice).dy, greaterThan(tester.getBottomLeft(_button('Créer mon compte')).dy));
+
+      final spans = <InlineSpan>[];
+      tester.widget<RichText>(notice).text.visitChildren((span) {
+        spans.add(span);
+        return true;
+      });
+      for (final text in ['CGU', 'politique de confidentialité']) {
+        final link = spans.whereType<TextSpan>().singleWhere((span) => span.text == text);
+        (link.recognizer! as TapGestureRecognizer).onTap!();
+      }
 
       expect(opened, [
         Uri.parse('http://api.test-site/conditions-generales'),
@@ -209,7 +222,6 @@ void main() {
       await tester.pumpAndSettle();
 
       await fill(tester);
-      await tester.tap(find.byType(CheckboxListTile));
       await tester.tap(_button('Créer mon compte'));
       await tester.pumpAndSettle();
 
@@ -234,7 +246,6 @@ void main() {
       await pumpApp(tester, http, location: '/inscription');
       await tester.pumpAndSettle();
       await fill(tester);
-      await tester.tap(find.byType(CheckboxListTile));
       await tester.tap(_button('Créer mon compte'));
       await tester.pumpAndSettle();
 
@@ -396,12 +407,13 @@ void main() {
       await pumpApp(tester, http, location: location, tokens: tokens);
       await tester.pumpAndSettle();
       for (final label in labels) {
-        expect(find.bySemanticsLabel(label), findsWidgets, reason: '$label');
+        // The semantics tree itself: a link inside a sentence is a node with no widget of its own.
+        expect(find.semantics.byLabel(label), findsAny, reason: '$label');
       }
       semantics.dispose();
     }
 
-    testWidgets('registration: every field, the terms and the button', (tester) async {
+    testWidgets('registration: every field, the button and the terms notice', (tester) async {
       await expectLabels(tester, '/inscription', [
         'Nom affiché',
         'Adresse e-mail',
@@ -411,10 +423,11 @@ void main() {
         'Nom',
         'Téléphone',
         RegExp('^Pays'),
-        RegExp('^J’accepte les conditions générales et la politique de confidentialité'),
         'Créer mon compte',
-        'Conditions générales',
-        'Confidentialité',
+        // The notice is read whole, and each link is a node of its own.
+        RegExp('^En créant un compte, vous acceptez les'),
+        'CGU',
+        'politique de confidentialité',
       ]);
     });
 

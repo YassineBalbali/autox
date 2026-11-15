@@ -7,7 +7,8 @@ import '../../core/api/api_failure.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/auth/session.dart';
 import '../../core/forms/validation.dart';
-import '../../core/labels/app_labels.dart';
+import '../../core/labels/labels.g.dart' show noticeTexts;
+import '../../core/labels/linked_text.dart';
 import '../../core/links.dart';
 import '../../core/theme/tokens.dart';
 import 'account_locations.dart';
@@ -43,7 +44,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _lastName = TextEditingController();
   final _phone = TextEditingController();
   String _country = 'FR';
-  bool _accepted = false;
   bool _submitted = false;
   bool _pending = false;
   String? _failure;
@@ -64,7 +64,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     'firstName': validateName(_firstName.text),
     'lastName': validateName(_lastName.text),
     'phone': validatePhone(_phone.text.trim()),
-    'terms': _accepted ? null : AppLabels.acceptTermsRequired,
   };
 
   String? _error(String field) => _submitted ? _errors[field] : null;
@@ -199,32 +198,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ],
           onChanged: _pending ? null : (code) => setState(() => _country = code ?? _country),
         ),
-        // Plain text, so TalkBack reads the checkbox whole ("J’accepte les conditions générales
-        // et la politique de confidentialité., case non cochée"); links inside a label would split
-        // it into fragments. The two buttons under it open the pages, on the site.
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          value: _accepted,
-          onChanged: _pending ? null : (value) => setState(() => _accepted = value ?? false),
-          title: const Text(
-            '${AppLabels.acceptTermsBefore}${AppLabels.acceptTermsLink}${AppLabels.acceptTermsBetween}'
-            '${AppLabels.acceptTermsPrivacy}.',
-          ),
-          subtitle: _error('terms') == null
-              ? null
-              : Text(_error('terms')!, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.danger)),
-        ),
-        Wrap(
-          spacing: AppSpace.s2,
-          children: [
-            TextButton(
-              onPressed: () => open(site.site('/conditions-generales')),
-              child: const Text('Conditions générales'),
-            ),
-            TextButton(onPressed: () => open(site.site('/confidentialite')), child: const Text('Confidentialité')),
-          ],
-        ),
         FormError(_failure),
         SubmitButton(
           label: 'Créer mon compte',
@@ -232,6 +205,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           pending: _pending,
           onPressed: _submit,
         ),
+        // As on the site, worded in labels.fr.json: creating the account accepts the terms. The
+        // links open the site's pages.
+        LinkedText(noticeTexts['registerConsent']!, onOpen: (path) => open(site.site(path))),
         TextButton(
           onPressed: _pending ? null : () => context.canPop() ? context.pop() : context.go(AccountLocations.signIn),
           child: const Text('Se connecter'),

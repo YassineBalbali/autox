@@ -426,9 +426,11 @@ locally, so the links are relative (`/verifier-email?token=…`): open them on
   to the sign-in form (which would mean discarding a valid session and retyping the password).
 - **No "unverified e-mail" sign-in error** and no "renvoyer l'e-mail" on the sign-in form: the API
   lets an unverified address sign in. "Renvoyer le lien" is on the account, as on the web.
-- **CGU checkbox: app only.** The web's registration has none and the API records no consent; the
-  app's checkbox is required and links to the site's `/conditions-generales` and `/confidentialite`.
-  Worth deciding whether the web should have it too.
+- **Terms: a notice, not a checkbox** (follow-up, settled): under "Créer mon compte", on the web and
+  in the app, "En créant un compte, vous acceptez les CGU et la politique de confidentialité.", both
+  terms linking to the site's pages. One key, `notices.registerConsent` in `labels.fr.json`, links
+  written `[words](/path)` and split by the same small function on both sides (`forms.json`). The
+  API records no consent.
 - **"Mes données" opens the site, where the person must sign in again**: the browser does not share
   the app's session. A download inside the app (`GET /me/export`) would avoid that.
 - **Sign-out clears the phone first**, then asks the server to revoke the session: the result is

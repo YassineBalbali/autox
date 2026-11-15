@@ -5,6 +5,8 @@ import 'package:autox/core/api/api_failure.dart';
 import 'package:autox/core/format/listing_text.dart';
 import 'package:autox/core/format/numbers.dart';
 import 'package:autox/core/forms/validation.dart';
+import 'package:autox/core/labels/labels.g.dart' show noticeTexts;
+import 'package:autox/core/labels/linked_text.dart';
 import 'package:autox/features/listing/listing_text.dart' as listing_text;
 import 'package:autox/features/search/search_query.dart';
 import 'package:autox_api/autox_api.dart' show Feature, ImageResponse, LeasingType, LeasingView, PublicListingDetail;
@@ -305,6 +307,20 @@ void main() {
     test('the wait after a throttle', () {
       for (final c in _cases(forms, 'wait')) {
         expect(waitSentence(c['seconds']! as num), c['text'], reason: '${c['seconds']}');
+      }
+    });
+
+    test('the notices, split into text and links', () {
+      for (final c in _cases(forms, 'notices')) {
+        final segments = linkedSegments(noticeTexts[c['key']]!);
+        expect(
+          [
+            for (final s in segments) {'text': s.text, 'path': ?s.path},
+          ],
+          c['segments'],
+          reason: '${c['key']}',
+        );
+        expect(segments.map((s) => s.text).join(), c['text']);
       }
     });
 
