@@ -20,7 +20,7 @@ import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { EmailVerificationNotice } from '../../shared/account/email-verification-notice';
 import { Alert } from '../../shared/ui/alert';
 import { Icon } from '../../shared/ui/icon';
-import { MESSAGE_MAX_LENGTH, sendFailure } from '../messages/messaging';
+import { MESSAGE_MAX_LENGTH, canSendMessage, contactGreeting, sendFailure } from '../messages/messaging';
 
 /**
  * "Contacter le vendeur": the way a buyer reaches a seller. Through the platform only — the
@@ -65,7 +65,7 @@ export class ContactSeller {
         name: dealer.name,
         demo: dealer.demo === true,
         back: `/professionnels/${dealer.slug}`,
-        greeting: `Bonjour, j’ai vu votre page sur AutoX. `,
+        greeting: contactGreeting(null),
       };
     }
     const listing = this.listing();
@@ -74,7 +74,7 @@ export class ContactSeller {
       name: listing?.seller?.displayName,
       demo: listing?.seller?.demo === true,
       back: `/annonces/${listing?.id}`,
-      greeting: `Bonjour, votre annonce « ${listing?.title} » m’intéresse. Est-elle toujours disponible ?`,
+      greeting: contactGreeting(listing?.title),
     };
   });
 
@@ -110,7 +110,7 @@ export class ContactSeller {
 
   protected readonly trimmed = computed(() => this.body().trim());
   protected readonly canSend = computed(
-    () => this.trimmed().length > 0 && this.body().length <= MESSAGE_MAX_LENGTH && !this.sending(),
+    () => canSendMessage(this.body()) && !this.sending(),
   );
 
   /**

@@ -10,6 +10,8 @@ import {
   FuelType,
   Gearbox,
   LeasingType,
+  ListingReportReason,
+  MessageReportReason,
   PriceLevel,
   SearchSort,
   UserRole,
@@ -40,6 +42,8 @@ const ENUMS: Record<keyof typeof LABELS.enums, Record<string, string>> = {
   LeasingType,
   CritAir,
   ErrorCode,
+  ListingReportReason,
+  MessageReportReason,
 };
 
 describe('labels.fr.json', () => {

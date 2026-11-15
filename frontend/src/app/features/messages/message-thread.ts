@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 import { ConversationDetail, MessageView } from '../../core/api';
 import { Icon } from '../../shared/ui/icon';
 import { sentAtFull } from './messaging';
+import LABELS from '../../../../labels.fr.json';
 import { ReportForm } from './report-form';
 
 const DAY = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -73,10 +74,10 @@ export function dayLabel(date: Date, now = new Date()): string {
   const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   const days = Math.round((startOfToday - startOfDay) / 86_400_000);
   if (days === 0) {
-    return 'Aujourd’hui';
+    return LABELS.messaging.today;
   }
   if (days === 1) {
-    return 'Hier';
+    return LABELS.messaging.yesterday;
   }
   return DAY.format(date);
 }

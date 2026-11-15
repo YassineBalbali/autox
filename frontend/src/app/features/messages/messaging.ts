@@ -1,17 +1,58 @@
-import { ErrorCode, MessageReportReason } from '../../core/api';
+import { ErrorCode, LastMessage, MessageReportReason } from '../../core/api';
 import { asApiError } from '../../core/errors/api-error';
 import { ErrorMessageService, waitSentenceFr } from '../../core/errors/error-message.service';
+import { fill } from '../../shared/forms/validation';
+import LABELS from '../../../../labels.fr.json';
+
+// The words below are in frontend/labels.fr.json (`messaging`, and the report reasons under
+// `enums`), shared with the Android app; the rules are held to frontend/fixtures/messaging.json.
+const WORDS = LABELS.messaging;
 
 /** The longest message the API accepts. */
 export const MESSAGE_MAX_LENGTH = 2000;
 
+/** The longest note the API accepts with a report, on a message and on a listing. */
+export const MESSAGE_REPORT_NOTE_MAX_LENGTH = 500;
+export const LISTING_REPORT_NOTE_MAX_LENGTH = 1000;
+
 /** The reasons a recipient can give, in the order offered, with the words a user reads. */
-export const REPORT_REASONS: readonly { reason: MessageReportReason; label: string }[] = [
-  { reason: MessageReportReason.SCAM, label: 'Arnaque ou demande de paiement suspecte' },
-  { reason: MessageReportReason.ABUSIVE, label: 'Propos injurieux ou menaçants' },
-  { reason: MessageReportReason.SPAM, label: 'Publicité ou message envoyé en masse' },
-  { reason: MessageReportReason.OTHER, label: 'Autre raison' },
-];
+export const REPORT_REASONS: readonly { reason: MessageReportReason; label: string }[] = Object.entries(
+  LABELS.enums.MessageReportReason,
+).map(([reason, label]) => ({ reason: reason as MessageReportReason, label }));
+
+/** Whether a message can be sent: something besides spaces, and no longer than the API takes. */
+export function canSendMessage(body: string): boolean {
+  return body.trim().length > 0 && body.length <= MESSAGE_MAX_LENGTH;
+}
+
+/** Whether a report can be sent: a reason, and a note when the reason is "other". */
+export function canSubmitReport(reason: string | null, note: string): boolean {
+  return !!reason && (reason !== 'OTHER' || note.trim().length > 0);
+}
+
+/** The note field's placeholder, which says when the note is required. */
+export function reportNotePlaceholder(reason: string | null): string {
+  return reason === 'OTHER' ? WORDS.reportNoteRequired : WORDS.reportNoteOptional;
+}
+
+/** The first line of a message to a listing's seller, or to a dealer from their page. */
+export function contactGreeting(listingTitle: string | undefined | null): string {
+  return listingTitle === null ? WORDS.greetingDealer : fill(WORDS.greetingListing, { title: `${listingTitle}` });
+}
+
+/** The inbox's last line: "Vous : …", "Message masqué par la modération", or the other side's words. */
+export function inboxPreview(last: LastMessage | undefined | null): string {
+  if (!last) {
+    return '';
+  }
+  const text = last.hidden ? WORDS.previewHidden : last.erased ? WORDS.previewErased : (last.preview ?? '');
+  return last.sentByMe ? fill(WORDS.previewMine, { text }) : text;
+}
+
+/** "1 message non lu", "3 messages non lus", for a screen reader beside the badge. */
+export function unreadLabel(count: number): string {
+  return count === 1 ? WORDS.unreadOne : fill(WORDS.unreadMany, { count: String(count) });
+}
 
 const TIME = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const DAY_MONTH = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
@@ -32,7 +73,7 @@ export function sentAtShort(iso: string | undefined, now = new Date()): string {
     return TIME.format(date);
   }
   if (days === 1) {
-    return 'hier';
+    return WORDS.yesterdayShort;
   }
   return date.getFullYear() === now.getFullYear() ? DAY_MONTH.format(date) : DAY_MONTH_YEAR.format(date);
 }
@@ -58,12 +99,12 @@ export function sendFailure(error: unknown, errors: ErrorMessageService): string
   switch (problem?.code) {
     case ErrorCode.RATE_LIMITED: {
       const wait = typeof problem.retryAfterSeconds === 'number' ? ` ${waitSentenceFr(problem.retryAfterSeconds)}` : '';
-      return `Vous avez envoyé beaucoup de messages en peu de temps.${wait}`;
+      return `${WORDS.sendRateLimited}${wait}`;
     }
     case ErrorCode.CONFLICT:
-      return 'Cette conversation est fermée : l’annonce a été retirée, ou l’un des comptes n’est plus actif.';
+      return WORDS.sendClosed;
     case ErrorCode.NOT_FOUND:
-      return 'Cette annonce n’est plus en ligne : il n’est plus possible d’écrire au vendeur.';
+      return WORDS.sendListingGone;
     default:
       return errors.translate(error).message;
   }

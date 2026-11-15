@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { ConversationSummary } from '../../core/api';
 import { SellerBadge } from '../../shared/listing/seller-badge';
 import { Icon } from '../../shared/ui/icon';
-import { sentAtFull, sentAtShort } from './messaging';
+import { inboxPreview, sentAtFull, sentAtShort, unreadLabel } from './messaging';
 
 /**
  * One line of the inbox: who, about which car, the last thing said, and how many of their
@@ -26,20 +26,7 @@ export class InboxItem {
   protected readonly whenFull = computed(() => sentAtFull(this.item().lastMessageAt));
 
   /** "Vous : …", "Message masqué par la modération", or the other side's words. */
-  protected readonly preview = computed(() => {
-    const last = this.item().lastMessage;
-    if (!last) {
-      return '';
-    }
-    const text = last.hidden
-      ? 'Message masqué par la modération'
-      : last.erased
-        ? 'Message effacé'
-        : (last.preview ?? '');
-    return last.sentByMe ? `Vous : ${text}` : text;
-  });
+  protected readonly preview = computed(() => inboxPreview(this.item().lastMessage));
 
-  protected readonly unreadLabel = computed(() =>
-    this.unread() === 1 ? '1 message non lu' : `${this.unread()} messages non lus`,
-  );
+  protected readonly unreadLabel = computed(() => unreadLabel(this.unread()));
 }

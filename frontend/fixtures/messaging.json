@@ -1,0 +1,319 @@
+{
+  "$comment": [
+    "The messaging and report screens’ rules and words, as test vectors for the web",
+    "(features/messages/messaging.ts, message-thread.ts, shared/listing/listing-report.fr.ts) and the Android app",
+    "(mobile/lib/features/messages/messaging_text.dart). Produced by the web’s own code; checked by",
+    "src/app/shared/fixtures.spec.ts and mobile/test/shared_fixtures_test.dart.",
+    "Times are local (no zone): each side reads them in its own zone, so the day boundaries are the same.",
+    "sentAtShort for today is a clock time, formatted by each side in its own zone: here, only its shape."
+  ],
+  "limits": {
+    "messageMaxLength": 2000,
+    "messageReportNoteMaxLength": 500,
+    "listingReportNoteMaxLength": 1000
+  },
+  "canSend": [
+    {
+      "body": "",
+      "repeat": 1,
+      "canSend": false
+    },
+    {
+      "body": "   ",
+      "repeat": 1,
+      "canSend": false
+    },
+    {
+      "body": "\n\n",
+      "repeat": 1,
+      "canSend": false
+    },
+    {
+      "body": "Bonjour",
+      "repeat": 1,
+      "canSend": true
+    },
+    {
+      "body": "  Bonjour  ",
+      "repeat": 1,
+      "canSend": true
+    },
+    {
+      "body": "x",
+      "repeat": 2000,
+      "canSend": true
+    },
+    {
+      "body": "x",
+      "repeat": 2001,
+      "canSend": false
+    },
+    {
+      "body": " ",
+      "repeat": 2001,
+      "canSend": false
+    }
+  ],
+  "canReport": [
+    {
+      "reason": null,
+      "note": "",
+      "canReport": false,
+      "placeholder": "Précisions (facultatif)"
+    },
+    {
+      "reason": null,
+      "note": "Une précision",
+      "canReport": false,
+      "placeholder": "Précisions (facultatif)"
+    },
+    {
+      "reason": "SCAM",
+      "note": "",
+      "canReport": true,
+      "placeholder": "Précisions (facultatif)"
+    },
+    {
+      "reason": "SCAM",
+      "note": "Demande un virement",
+      "canReport": true,
+      "placeholder": "Précisions (facultatif)"
+    },
+    {
+      "reason": "OTHER",
+      "note": "",
+      "canReport": false,
+      "placeholder": "Expliquez ce qui ne va pas (obligatoire)"
+    },
+    {
+      "reason": "OTHER",
+      "note": "   ",
+      "canReport": false,
+      "placeholder": "Expliquez ce qui ne va pas (obligatoire)"
+    },
+    {
+      "reason": "OTHER",
+      "note": "Le kilométrage est faux",
+      "canReport": true,
+      "placeholder": "Expliquez ce qui ne va pas (obligatoire)"
+    }
+  ],
+  "messageReportReasons": [
+    {
+      "reason": "SCAM",
+      "label": "Arnaque ou demande de paiement suspecte"
+    },
+    {
+      "reason": "ABUSIVE",
+      "label": "Propos injurieux ou menaçants"
+    },
+    {
+      "reason": "SPAM",
+      "label": "Publicité ou message envoyé en masse"
+    },
+    {
+      "reason": "OTHER",
+      "label": "Autre raison"
+    }
+  ],
+  "listingReportReasons": [
+    {
+      "reason": "SCAM",
+      "label": "Arnaque"
+    },
+    {
+      "reason": "MISLEADING",
+      "label": "Annonce trompeuse"
+    },
+    {
+      "reason": "INAPPROPRIATE",
+      "label": "Contenu inapproprié"
+    },
+    {
+      "reason": "OTHER",
+      "label": "Autre"
+    }
+  ],
+  "greetings": [
+    {
+      "listingTitle": "Peugeot 208 1.2 PureTech 100 Allure",
+      "text": "Bonjour, votre annonce « Peugeot 208 1.2 PureTech 100 Allure » m’intéresse. Est-elle toujours disponible ?"
+    },
+    {
+      "listingTitle": null,
+      "text": "Bonjour, j’ai vu votre page sur AutoX. "
+    }
+  ],
+  "previews": [
+    {
+      "last": null,
+      "text": ""
+    },
+    {
+      "last": {
+        "preview": "Toujours disponible ?",
+        "sentByMe": false,
+        "hidden": false,
+        "erased": false
+      },
+      "text": "Toujours disponible ?"
+    },
+    {
+      "last": {
+        "preview": "Oui, venez samedi",
+        "sentByMe": true,
+        "hidden": false,
+        "erased": false
+      },
+      "text": "Vous : Oui, venez samedi"
+    },
+    {
+      "last": {
+        "sentByMe": false,
+        "hidden": true,
+        "erased": false
+      },
+      "text": "Message masqué par la modération"
+    },
+    {
+      "last": {
+        "sentByMe": true,
+        "hidden": true,
+        "erased": false
+      },
+      "text": "Vous : Message masqué par la modération"
+    },
+    {
+      "last": {
+        "sentByMe": false,
+        "hidden": false,
+        "erased": true
+      },
+      "text": "Message effacé"
+    }
+  ],
+  "unread": [
+    {
+      "count": 1,
+      "label": "1 message non lu"
+    },
+    {
+      "count": 2,
+      "label": "2 messages non lus"
+    },
+    {
+      "count": 12,
+      "label": "12 messages non lus"
+    }
+  ],
+  "sendFailures": [
+    {
+      "status": 429,
+      "body": {
+        "code": "RATE_LIMITED",
+        "retryAfterSeconds": 120
+      },
+      "message": "Vous avez envoyé beaucoup de messages en peu de temps. Réessayez dans 2 minutes."
+    },
+    {
+      "status": 429,
+      "body": {
+        "code": "RATE_LIMITED"
+      },
+      "message": "Vous avez envoyé beaucoup de messages en peu de temps."
+    },
+    {
+      "status": 409,
+      "body": {
+        "code": "CONFLICT"
+      },
+      "message": "Cette conversation est fermée : l’annonce a été retirée, ou l’un des comptes n’est plus actif."
+    },
+    {
+      "status": 404,
+      "body": {
+        "code": "NOT_FOUND"
+      },
+      "message": "Cette annonce n’est plus en ligne : il n’est plus possible d’écrire au vendeur."
+    },
+    {
+      "status": 403,
+      "body": {
+        "code": "EMAIL_NOT_VERIFIED"
+      },
+      "message": "Vérifiez d’abord votre adresse e-mail, avec le lien que nous vous avons envoyé."
+    },
+    {
+      "status": 403,
+      "body": {
+        "code": "ACCOUNT_SUSPENDED"
+      },
+      "message": "Ce compte est suspendu. Contactez le support."
+    },
+    {
+      "status": 403,
+      "body": {
+        "code": "FORBIDDEN"
+      },
+      "message": "Vous n’avez pas accès à cette ressource."
+    },
+    {
+      "status": 400,
+      "body": {
+        "code": "VALIDATION_FAILED"
+      },
+      "message": "Certaines informations sont incorrectes. Vérifiez les champs signalés."
+    },
+    {
+      "status": 500,
+      "body": {},
+      "message": "Une erreur inattendue s’est produite. Réessayez dans un instant."
+    }
+  ],
+  "sentAtShort": {
+    "now": "2026-10-21T15:00:00",
+    "cases": [
+      {
+        "sentAt": "2026-10-21T09:05:00",
+        "text": "09:05"
+      },
+      {
+        "sentAt": "2026-10-20T23:59:00",
+        "text": "hier"
+      },
+      {
+        "sentAt": "2026-10-12T10:00:00",
+        "text": "12 oct."
+      },
+      {
+        "sentAt": "2026-05-03T10:00:00",
+        "text": "3 mai"
+      },
+      {
+        "sentAt": "2025-10-12T10:00:00",
+        "text": "12 oct. 2025"
+      }
+    ]
+  },
+  "dayLabel": {
+    "now": "2026-10-21T15:00:00",
+    "cases": [
+      {
+        "day": "2026-10-21T08:00:00",
+        "label": "Aujourd’hui"
+      },
+      {
+        "day": "2026-10-20T08:00:00",
+        "label": "Hier"
+      },
+      {
+        "day": "2026-10-19T08:00:00",
+        "label": "lundi 19 octobre 2026"
+      },
+      {
+        "day": "2025-12-31T23:00:00",
+        "label": "mercredi 31 décembre 2025"
+      }
+    ]
+  }
+}

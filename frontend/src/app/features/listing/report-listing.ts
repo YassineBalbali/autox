@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { ErrorCode, ListingReportReason, ListingsService } from '../../core/api';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { LISTING_REPORT_REASONS } from '../../shared/listing/listing-report.fr';
+import { LISTING_REPORT_NOTE_MAX_LENGTH, canSubmitReport, reportNotePlaceholder } from '../messages/messaging';
 import { Alert } from '../../shared/ui/alert';
 
 /**
@@ -52,8 +53,8 @@ import { Alert } from '../../shared/ui/alert';
           id="listing-report-note"
           class="input report__note"
           rows="3"
-          maxlength="1000"
-          [placeholder]="noteRequired() ? 'Expliquez ce qui ne va pas (obligatoire)' : 'Précisions (facultatif)'"
+          [attr.maxlength]="noteMaxLength"
+          [placeholder]="placeholder()"
           [value]="note()"
           (input)="note.set($any($event.target).value)"
         ></textarea>
@@ -136,10 +137,9 @@ export class ReportListing {
   protected readonly reported = signal(false);
   protected readonly justReported = signal(false);
 
-  protected readonly noteRequired = computed(() => this.reason() === ListingReportReason.OTHER);
-  protected readonly canSubmit = computed(
-    () => !!this.reason() && (!this.noteRequired() || this.note().trim().length > 0) && !this.sending(),
-  );
+  protected readonly canSubmit = computed(() => canSubmitReport(this.reason(), this.note()) && !this.sending());
+  protected readonly placeholder = computed(() => reportNotePlaceholder(this.reason()));
+  protected readonly noteMaxLength = LISTING_REPORT_NOTE_MAX_LENGTH;
 
   constructor() {
     // Whether this visitor already reported it, on an earlier visit. A failure here leaves the

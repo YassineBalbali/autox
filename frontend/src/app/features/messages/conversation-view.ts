@@ -27,7 +27,7 @@ import { Inbox } from './inbox';
 import { MessageThread } from './message-thread';
 import { AuthService } from '../../core/auth/auth.service';
 import { EmailVerificationNotice } from '../../shared/account/email-verification-notice';
-import { MESSAGE_MAX_LENGTH, sendFailure } from './messaging';
+import { MESSAGE_MAX_LENGTH, canSendMessage, sendFailure } from './messaging';
 
 /**
  * One conversation: the listing it is about, the messages, and the box to answer in.
@@ -65,7 +65,7 @@ export class ConversationView implements OnDestroy {
   protected readonly sendError = signal<string | null>(null);
   protected readonly maxLength = MESSAGE_MAX_LENGTH;
   protected readonly canSend = computed(
-    () => this.draft().trim().length > 0 && this.draft().length <= MESSAGE_MAX_LENGTH && !this.sending(),
+    () => canSendMessage(this.draft()) && !this.sending(),
   );
 
   private readonly minorUnits = toSignal(inject(ReferenceStore).minorUnits(), {

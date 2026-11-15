@@ -12,7 +12,8 @@
     "",
     "validation: the forms' messages, by validator key; {length}, {min} and {max} are filled in.",
     "messages: what the client says when the API gives no code to word, and the wait after a throttle.",
-    "notices: sentences shown as they are; links are written [words](/path), the site’s paths."
+    "notices: sentences shown as they are; links are written [words](/path), the site’s paths.",
+    "messaging: what the messages and report screens say at runtime; {title}, {text} and {count} are filled in."
   ],
   "enums": {
     "FuelType": {
@@ -160,6 +161,18 @@
       "INVALID_CURSOR": "Cette page de résultats n’est plus valable. Relancez la recherche.",
       "INTERPRETER_UNAVAILABLE": "La recherche intelligente est indisponible pour le moment.",
       "INTERNAL_ERROR": "Une erreur inattendue s’est produite. Réessayez dans un instant."
+    },
+    "ListingReportReason": {
+      "SCAM": "Arnaque",
+      "MISLEADING": "Annonce trompeuse",
+      "INAPPROPRIATE": "Contenu inapproprié",
+      "OTHER": "Autre"
+    },
+    "MessageReportReason": {
+      "SCAM": "Arnaque ou demande de paiement suspecte",
+      "ABUSIVE": "Propos injurieux ou menaçants",
+      "SPAM": "Publicité ou message envoyé en masse",
+      "OTHER": "Autre raison"
     }
   },
   "sortOptions": {
@@ -418,5 +431,22 @@
   },
   "notices": {
     "registerConsent": "En créant un compte, vous acceptez les [CGU](/conditions-generales) et la [politique de confidentialité](/confidentialite)."
+  },
+  "messaging": {
+    "sendRateLimited": "Vous avez envoyé beaucoup de messages en peu de temps.",
+    "sendClosed": "Cette conversation est fermée : l’annonce a été retirée, ou l’un des comptes n’est plus actif.",
+    "sendListingGone": "Cette annonce n’est plus en ligne : il n’est plus possible d’écrire au vendeur.",
+    "greetingListing": "Bonjour, votre annonce « {title} » m’intéresse. Est-elle toujours disponible ?",
+    "greetingDealer": "Bonjour, j’ai vu votre page sur AutoX. ",
+    "previewHidden": "Message masqué par la modération",
+    "previewErased": "Message effacé",
+    "previewMine": "Vous : {text}",
+    "unreadOne": "1 message non lu",
+    "unreadMany": "{count} messages non lus",
+    "today": "Aujourd’hui",
+    "yesterday": "Hier",
+    "yesterdayShort": "hier",
+    "reportNoteRequired": "Expliquez ce qui ne va pas (obligatoire)",
+    "reportNoteOptional": "Précisions (facultatif)"
   }
 }

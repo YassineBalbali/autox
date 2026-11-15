@@ -27,6 +27,23 @@ import {
 import { ErrorMessageService, waitSentenceFr } from '../core/errors/error-message.service';
 import DISPLAY from '../../../fixtures/display.json';
 import FORMS from '../../../fixtures/forms.json';
+import MESSAGING from '../../../fixtures/messaging.json';
+import { dayLabel } from '../features/messages/message-thread';
+import {
+  LISTING_REPORT_NOTE_MAX_LENGTH,
+  MESSAGE_MAX_LENGTH,
+  MESSAGE_REPORT_NOTE_MAX_LENGTH,
+  REPORT_REASONS,
+  canSendMessage,
+  canSubmitReport,
+  contactGreeting,
+  inboxPreview,
+  reportNotePlaceholder,
+  sendFailure,
+  sentAtShort,
+  unreadLabel,
+} from '../features/messages/messaging';
+import { LISTING_REPORT_REASONS } from './listing/listing-report.fr';
 import LISTING from '../../../fixtures/listing.json';
 import SEARCH from '../../../fixtures/search-query.json';
 import {
@@ -243,6 +260,65 @@ describe('shared fixtures: forms', () => {
       expect(service.messageFor(new HttpErrorResponse({ status: c.status, error: c.body }))).toBe(
         c.message,
       );
+    }
+  });
+});
+
+describe('shared fixtures: messaging', () => {
+  it('has the API’s limits', () => {
+    expect({
+      messageMaxLength: MESSAGE_MAX_LENGTH,
+      messageReportNoteMaxLength: MESSAGE_REPORT_NOTE_MAX_LENGTH,
+      listingReportNoteMaxLength: LISTING_REPORT_NOTE_MAX_LENGTH,
+    }).toEqual(MESSAGING.limits);
+  });
+
+  it('decides what can be sent and reported', () => {
+    for (const c of MESSAGING.canSend) {
+      expect({ ...c, canSend: canSendMessage(c.body.repeat(c.repeat)) }).toEqual(c);
+    }
+    for (const c of MESSAGING.canReport) {
+      expect({
+        ...c,
+        canReport: canSubmitReport(c.reason, c.note),
+        placeholder: reportNotePlaceholder(c.reason),
+      }).toEqual(c);
+    }
+  });
+
+  it('offers the report reasons in order', () => {
+    expect(REPORT_REASONS.map(({ reason, label }) => ({ reason, label }))).toEqual(MESSAGING.messageReportReasons);
+    expect(LISTING_REPORT_REASONS.map(({ reason, label }) => ({ reason, label }))).toEqual(
+      MESSAGING.listingReportReasons,
+    );
+  });
+
+  it('words greetings, previews and unread counts', () => {
+    for (const c of MESSAGING.greetings) {
+      expect(contactGreeting(c.listingTitle)).toBe(c.text);
+    }
+    for (const c of MESSAGING.previews) {
+      expect(inboxPreview(c.last)).toBe(c.text);
+    }
+    for (const c of MESSAGING.unread) {
+      expect(unreadLabel(c.count)).toBe(c.label);
+    }
+  });
+
+  it('says why a message was not sent', () => {
+    const errors = TestBed.inject(ErrorMessageService);
+    for (const c of MESSAGING.sendFailures) {
+      expect(sendFailure(new HttpErrorResponse({ status: c.status, error: c.body }), errors)).toBe(c.message);
+    }
+  });
+
+  it('dates messages', () => {
+    const now = new Date(MESSAGING.sentAtShort.now);
+    for (const c of MESSAGING.sentAtShort.cases) {
+      expect(sentAtShort(new Date(c.sentAt).toISOString(), now)).toBe(c.text);
+    }
+    for (const c of MESSAGING.dayLabel.cases) {
+      expect(dayLabel(new Date(c.day), new Date(MESSAGING.dayLabel.now))).toBe(c.label);
     }
   });
 });

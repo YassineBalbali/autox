@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, si
 import { MessageReportReason, MessagesService } from '../../core/api';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { Alert } from '../../shared/ui/alert';
-import { REPORT_REASONS } from './messaging';
+import { MESSAGE_REPORT_NOTE_MAX_LENGTH, REPORT_REASONS, canSubmitReport, reportNotePlaceholder } from './messaging';
 
 /**
  * Reporting a received message: why, and a note. The note is required for "Autre raison",
@@ -38,9 +38,9 @@ import { REPORT_REASONS } from './messaging';
       <textarea
         class="input report__note"
         rows="2"
-        maxlength="500"
+        [attr.maxlength]="noteMaxLength"
         [id]="'report-note-' + messageId()"
-        [placeholder]="noteRequired() ? 'Expliquez ce qui ne va pas (obligatoire)' : 'Précisions (facultatif)'"
+        [placeholder]="placeholder()"
         [value]="note()"
         (input)="note.set($any($event.target).value)"
       ></textarea>
@@ -120,10 +120,9 @@ export class ReportForm {
   protected readonly sending = signal(false);
   protected readonly failure = signal<string | null>(null);
 
-  protected readonly noteRequired = computed(() => this.reason() === MessageReportReason.OTHER);
-  protected readonly canSubmit = computed(
-    () => !!this.reason() && (!this.noteRequired() || this.note().trim().length > 0) && !this.sending(),
-  );
+  protected readonly canSubmit = computed(() => canSubmitReport(this.reason(), this.note()) && !this.sending());
+  protected readonly placeholder = computed(() => reportNotePlaceholder(this.reason()));
+  protected readonly noteMaxLength = MESSAGE_REPORT_NOTE_MAX_LENGTH;
 
   protected submit(event: Event): void {
     event.preventDefault();
