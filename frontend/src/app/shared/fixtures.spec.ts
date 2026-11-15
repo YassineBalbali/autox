@@ -1,3 +1,6 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { convertToParamMap } from '@angular/router';
 
 import {
@@ -21,9 +24,20 @@ import {
   toCriteria,
   toQueryParams,
 } from '../features/search/search-query';
+import { ErrorMessageService, waitSentenceFr } from '../core/errors/error-message.service';
 import DISPLAY from '../../../fixtures/display.json';
+import FORMS from '../../../fixtures/forms.json';
 import LISTING from '../../../fixtures/listing.json';
 import SEARCH from '../../../fixtures/search-query.json';
+import {
+  MAX_LENGTHS,
+  emailValidators,
+  firstErrorFr,
+  matchesPassword,
+  passwordValidators,
+  phoneValidators,
+  requiredText,
+} from './forms/validation';
 import { formatDateFr } from './format/date';
 import { formatIntegerFr } from './format/number';
 import { countFr } from './format/plural';
@@ -167,6 +181,58 @@ describe('shared fixtures: listing', () => {
     }
     for (const c of LISTING.countFr) {
       expect(countFr(c.count, c.singular, c.plural)).toBe(c.text);
+    }
+  });
+});
+
+describe('shared fixtures: forms', () => {
+  const fields: Record<string, ValidatorFn[]> = {
+    email: emailValidators,
+    password: passwordValidators,
+    displayName: [requiredText(), Validators.maxLength(MAX_LENGTHS.displayName)],
+    firstName: [Validators.maxLength(MAX_LENGTHS.firstName)],
+    lastName: [Validators.maxLength(MAX_LENGTHS.lastName)],
+    phone: phoneValidators,
+  };
+
+  it('validates each field as the forms do', () => {
+    for (const c of FORMS.validate) {
+      const control = new FormControl(c.value, { validators: fields[c.field] });
+      expect({ field: c.field, value: c.value, message: firstErrorFr(control.errors) }).toEqual(c);
+    }
+  });
+
+  it('checks the password confirmation', () => {
+    for (const c of FORMS.confirmation) {
+      const group = new FormGroup({
+        password: new FormControl(c.password),
+        passwordConfirmation: new FormControl(c.confirmation, {
+          validators: [requiredText(), matchesPassword('password')],
+        }),
+      });
+      group.controls.passwordConfirmation.updateValueAndValidity();
+      expect(firstErrorFr(group.controls.passwordConfirmation.errors)).toBe(c.message);
+    }
+  });
+
+  it('words every validator key', () => {
+    for (const c of FORMS.errors) {
+      expect(firstErrorFr(c.errors as ValidationErrors)).toBe(c.message);
+    }
+  });
+
+  it('words the wait after a throttle', () => {
+    for (const c of FORMS.wait) {
+      expect(waitSentenceFr(c.seconds)).toBe(c.text);
+    }
+  });
+
+  it('words the API’s errors', () => {
+    const service = TestBed.inject(ErrorMessageService);
+    for (const c of FORMS.api) {
+      expect(service.messageFor(new HttpErrorResponse({ status: c.status, error: c.body }))).toBe(
+        c.message,
+      );
     }
   });
 });

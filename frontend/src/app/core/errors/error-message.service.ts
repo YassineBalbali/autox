@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 
 import { ErrorCode } from '../api';
 import { asApiError, isTransportFailure } from './api-error';
+import LABELS from '../../../../labels.fr.json';
+import { fill } from '../../shared/forms/validation';
 import { ERROR_MESSAGES_FR, fieldLabelFr } from './error-messages.fr';
 
 /** A failure, in words a user can act on. */
@@ -29,11 +31,10 @@ export interface UserFacingError {
 @Injectable({ providedIn: 'root' })
 export class ErrorMessageService {
   /** Kept as the single fallback, so there is one place to change the wording. */
-  private static readonly UNKNOWN =
-    'Une erreur inattendue s’est produite. Réessayez dans un instant.';
+  // Both in frontend/labels.fr.json (`messages`), shared with the Android app.
+  private static readonly UNKNOWN = LABELS.messages.unknown;
 
-  private static readonly OFFLINE =
-    'Impossible de joindre AutoX. Vérifiez votre connexion internet.';
+  private static readonly OFFLINE = LABELS.messages.offline;
 
   translate(error: unknown): UserFacingError {
     if (isTransportFailure(error)) {
@@ -112,11 +113,13 @@ function fieldErrorsOf(problem: { errors?: { field?: string }[] }): ReadonlyMap<
  */
 export function waitSentenceFr(seconds: number): string {
   if (seconds <= 1) {
-    return 'Réessayez dans un instant.';
+    return LABELS.messages.waitInstant;
   }
   if (seconds < 60) {
-    return `Réessayez dans ${Math.ceil(seconds)} secondes.`;
+    return fill(LABELS.messages.waitSeconds, { seconds: String(Math.ceil(seconds)) });
   }
   const minutes = Math.ceil(seconds / 60);
-  return minutes === 1 ? 'Réessayez dans une minute.' : `Réessayez dans ${minutes} minutes.`;
+  return minutes === 1
+    ? LABELS.messages.waitMinute
+    : fill(LABELS.messages.waitMinutes, { minutes: String(minutes) });
 }

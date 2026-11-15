@@ -1,5 +1,7 @@
 import { AbstractControl, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 
+import LABELS from '../../../../labels.fr.json';
+
 /**
  * Client-side validation rules, and the French sentence for each failure.
  *
@@ -88,7 +90,8 @@ export function websiteValidator(): ValidatorFn {
     if (!value) {
       return null;
     }
-    return /^(https?:\/\/)?[^\s/$.?#:]+\.[^\s]+$/i.test(value) && !/^[a-z][a-z0-9+.-]*:(?!\/\/)/i.test(value)
+    return /^(https?:\/\/)?[^\s/$.?#:]+\.[^\s]+$/i.test(value) &&
+      !/^[a-z][a-z0-9+.-]*:(?!\/\/)/i.test(value)
       ? null
       : { website: true };
   };
@@ -142,10 +145,7 @@ export function matchesPassword(passwordKey: string): ValidatorFn {
  * both owned by the component that created them, so it becomes unreachable with the
  * component rather than outliving it.
  */
-export function mirrorPassword(
-  password: AbstractControl,
-  confirmation: AbstractControl,
-): void {
+export function mirrorPassword(password: AbstractControl, confirmation: AbstractControl): void {
   // Once now, because the validator's first run happened before the group existed.
   confirmation.updateValueAndValidity({ emitEvent: false });
 
@@ -210,7 +210,7 @@ export function firstErrorFr(errors: ValidationErrors | null | undefined): strin
   }
   // An unmapped validator. The generic sentence rather than nothing: a field marked
   // invalid with no explanation is a dead end for the user.
-  return 'Cette valeur n’est pas valide.';
+  return LABELS.validation.invalid;
 }
 
 /**
@@ -219,28 +219,38 @@ export function firstErrorFr(errors: ValidationErrors | null | undefined): strin
  * <p>Keyed on Angular's own error keys, so `minlength` and `maxlength` arrive lowercase and
  * carry `{requiredLength, actualLength}` — the length is read from the error rather than
  * from a constant, so one message serves every field that uses the rule.
+ *
+ * <p>The sentences are in frontend/labels.fr.json (`validation`), shared with the Android app,
+ * with `{length}`, `{min}` and `{max}` filled in here. `pattern` has one meaning: there is
+ * exactly one pattern in these forms, and a second needs its own validator and key.
  */
 const MESSAGES_FR: Record<string, (detail: unknown) => string> = {
-  required: () => 'Ce champ est obligatoire.',
-  email: () => 'Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.',
-  minlength: (detail) => `Au moins ${lengthOf(detail)} caractères.`,
-  maxlength: (detail) => `${lengthOf(detail)} caractères au maximum.`,
-  // One message for every pattern in the application would be meaningless, and there is
-  // exactly one pattern in these forms. When a second arrives it needs its own validator
-  // with its own key rather than a second meaning for this one.
-  pattern: () => 'Utilisez le format international, par exemple +33612345678.',
-  passwordMismatch: () => 'Les deux mots de passe ne correspondent pas.',
-  wholeNumber: () => 'Saisissez un nombre entier, sans décimale.',
-  website: () => 'Saisissez une adresse web, par exemple https://www.mon-garage.fr.',
+  required: () => LABELS.validation.required,
+  email: () => LABELS.validation.email,
+  minlength: (detail) => fill(LABELS.validation.minlength, { length: String(lengthOf(detail)) }),
+  maxlength: (detail) => fill(LABELS.validation.maxlength, { length: String(lengthOf(detail)) }),
+  pattern: () => LABELS.validation.pattern,
+  passwordMismatch: () => LABELS.validation.passwordMismatch,
+  wholeNumber: () => LABELS.validation.wholeNumber,
+  website: () => LABELS.validation.website,
   range: (detail) => {
     const { min, max } = (detail ?? {}) as { min?: number; max?: number };
-    return `Saisissez une valeur entre ${GROUPED.format(min ?? 0)} et ${GROUPED.format(max ?? 0)}.`;
+    return fill(LABELS.validation.range, {
+      min: GROUPED.format(min ?? 0),
+      max: GROUPED.format(max ?? 0),
+    });
   },
 };
 
+/** "{length} caractères au maximum." with its placeholders replaced. */
+export function fill(template: string, values: Readonly<Record<string, string>>): string {
+  return template.replace(/\{(\w+)\}/g, (whole, name: string) => values[name] ?? whole);
+}
+
 /** Bounds are shown grouped — "3 000 000", not "3000000" — with a space every font draws. */
 const GROUPED = {
-  format: (value: number) => new Intl.NumberFormat('fr-FR').format(value).replace(/\u202f/g, '\u00a0'),
+  format: (value: number) =>
+    new Intl.NumberFormat('fr-FR').format(value).replace(/\u202f/g, '\u00a0'),
 };
 
 function lengthOf(detail: unknown): number {

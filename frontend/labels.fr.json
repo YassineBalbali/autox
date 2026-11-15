@@ -8,7 +8,10 @@
     "Key order is display order where one matters (FeatureCategory, DamageFilter).",
     "Values come from the API, words from here: the agreed split, docs/mobile-plan.md section 2.",
     "",
-    "departements: the French départements by code (01 … 95, 2A, 2B, 971 … 976), for the dealer directory."
+    "departements: the French départements by code (01 … 95, 2A, 2B, 971 … 976), for the dealer directory.",
+    "",
+    "validation: the forms' messages, by validator key; {length}, {min} and {max} are filled in.",
+    "messages: what the client says when the API gives no code to word, and the wait after a throttle."
   ],
   "enums": {
     "FuelType": {
@@ -391,5 +394,25 @@
     "09": "Ariège",
     "2A": "Corse-du-Sud",
     "2B": "Haute-Corse"
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "email": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.",
+    "minlength": "Au moins {length} caractères.",
+    "maxlength": "{length} caractères au maximum.",
+    "pattern": "Utilisez le format international, par exemple +33612345678.",
+    "passwordMismatch": "Les deux mots de passe ne correspondent pas.",
+    "wholeNumber": "Saisissez un nombre entier, sans décimale.",
+    "website": "Saisissez une adresse web, par exemple https://www.mon-garage.fr.",
+    "range": "Saisissez une valeur entre {min} et {max}.",
+    "invalid": "Cette valeur n’est pas valide."
+  },
+  "messages": {
+    "offline": "Impossible de joindre AutoX. Vérifiez votre connexion internet.",
+    "unknown": "Une erreur inattendue s’est produite. Réessayez dans un instant.",
+    "waitInstant": "Réessayez dans un instant.",
+    "waitSeconds": "Réessayez dans {seconds} secondes.",
+    "waitMinute": "Réessayez dans une minute.",
+    "waitMinutes": "Réessayez dans {minutes} minutes."
   }
 }

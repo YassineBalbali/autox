@@ -1,0 +1,481 @@
+{
+  "$comment": [
+    "The account forms' rules and the API's error sentences, as test vectors for the web",
+    "(shared/forms/validation.ts, core/errors/error-message.service.ts) and the Android app",
+    "(mobile/lib/core/forms/validation.dart, mobile/lib/core/api/api_failure.dart). Produced by the web's own",
+    "code before the sentences moved to labels.fr.json, so the web passing them shows the move changed nothing.",
+    "Checked by src/app/shared/fixtures.spec.ts and mobile/test/shared_fixtures_test.dart."
+  ],
+  "validate": [
+    {
+      "field": "email",
+      "value": "",
+      "message": "Ce champ est obligatoire."
+    },
+    {
+      "field": "email",
+      "value": "   ",
+      "message": "Ce champ est obligatoire."
+    },
+    {
+      "field": "email",
+      "value": "nom@exemple.fr",
+      "message": null
+    },
+    {
+      "field": "email",
+      "value": "Prénom.Nom+tag@sous.domaine.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": "sans-arobase.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": "a@b",
+      "message": null
+    },
+    {
+      "field": "email",
+      "value": "a@b.c",
+      "message": null
+    },
+    {
+      "field": "email",
+      "value": "deux@@exemple.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": "espace dedans@exemple.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": ".point@exemple.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": "point.@exemple.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": "x@-tiret.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": "x@tiret-.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@exemple.fr",
+      "message": null
+    },
+    {
+      "field": "email",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@exemple.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "email",
+      "value": "n@dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.fr",
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "field": "password",
+      "value": "",
+      "message": "Ce champ est obligatoire."
+    },
+    {
+      "field": "password",
+      "value": "            ",
+      "message": "Ce champ est obligatoire."
+    },
+    {
+      "field": "password",
+      "value": "court",
+      "message": "Au moins 12 caractères."
+    },
+    {
+      "field": "password",
+      "value": "12345678901",
+      "message": "Au moins 12 caractères."
+    },
+    {
+      "field": "password",
+      "value": "123456789012",
+      "message": null
+    },
+    {
+      "field": "password",
+      "value": "éééééééééééé",
+      "message": null
+    },
+    {
+      "field": "password",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "message": null
+    },
+    {
+      "field": "password",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "message": "128 caractères au maximum."
+    },
+    {
+      "field": "displayName",
+      "value": "",
+      "message": "Ce champ est obligatoire."
+    },
+    {
+      "field": "displayName",
+      "value": "  ",
+      "message": "Ce champ est obligatoire."
+    },
+    {
+      "field": "displayName",
+      "value": "Jean",
+      "message": null
+    },
+    {
+      "field": "displayName",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "message": null
+    },
+    {
+      "field": "displayName",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "message": "120 caractères au maximum."
+    },
+    {
+      "field": "firstName",
+      "value": "",
+      "message": null
+    },
+    {
+      "field": "firstName",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "message": null
+    },
+    {
+      "field": "firstName",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "message": "80 caractères au maximum."
+    },
+    {
+      "field": "lastName",
+      "value": "",
+      "message": null
+    },
+    {
+      "field": "lastName",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "message": "80 caractères au maximum."
+    },
+    {
+      "field": "phone",
+      "value": "",
+      "message": null
+    },
+    {
+      "field": "phone",
+      "value": "+33612345678",
+      "message": null
+    },
+    {
+      "field": "phone",
+      "value": "0612345678",
+      "message": "Utilisez le format international, par exemple +33612345678."
+    },
+    {
+      "field": "phone",
+      "value": "+3361234",
+      "message": null
+    },
+    {
+      "field": "phone",
+      "value": "+336123",
+      "message": "Utilisez le format international, par exemple +33612345678."
+    },
+    {
+      "field": "phone",
+      "value": "+0612345678",
+      "message": "Utilisez le format international, par exemple +33612345678."
+    },
+    {
+      "field": "phone",
+      "value": "+33 6 12 34 56 78",
+      "message": "Utilisez le format international, par exemple +33612345678."
+    },
+    {
+      "field": "phone",
+      "value": "+1222222222222222222",
+      "message": null
+    },
+    {
+      "field": "phone",
+      "value": "+12222222222222222222",
+      "message": "Utilisez le format international, par exemple +33612345678."
+    }
+  ],
+  "confirmation": [
+    {
+      "password": "unmotdepasselong",
+      "confirmation": "",
+      "message": "Ce champ est obligatoire."
+    },
+    {
+      "password": "unmotdepasselong",
+      "confirmation": "unmotdepasselong",
+      "message": null
+    },
+    {
+      "password": "unmotdepasselong",
+      "confirmation": "unmotdepasseLong",
+      "message": "Les deux mots de passe ne correspondent pas."
+    }
+  ],
+  "errors": [
+    {
+      "errors": {
+        "required": true
+      },
+      "message": "Ce champ est obligatoire."
+    },
+    {
+      "errors": {
+        "email": true
+      },
+      "message": "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr."
+    },
+    {
+      "errors": {
+        "minlength": {
+          "requiredLength": 12,
+          "actualLength": 3
+        }
+      },
+      "message": "Au moins 12 caractères."
+    },
+    {
+      "errors": {
+        "maxlength": {
+          "requiredLength": 120,
+          "actualLength": 121
+        }
+      },
+      "message": "120 caractères au maximum."
+    },
+    {
+      "errors": {
+        "pattern": {
+          "requiredPattern": "x",
+          "actualValue": "y"
+        }
+      },
+      "message": "Utilisez le format international, par exemple +33612345678."
+    },
+    {
+      "errors": {
+        "passwordMismatch": true
+      },
+      "message": "Les deux mots de passe ne correspondent pas."
+    },
+    {
+      "errors": {
+        "wholeNumber": true
+      },
+      "message": "Saisissez un nombre entier, sans décimale."
+    },
+    {
+      "errors": {
+        "website": true
+      },
+      "message": "Saisissez une adresse web, par exemple https://www.mon-garage.fr."
+    },
+    {
+      "errors": {
+        "range": {
+          "min": 1000,
+          "max": 2500000
+        }
+      },
+      "message": "Saisissez une valeur entre 1 000 et 2 500 000."
+    },
+    {
+      "errors": {
+        "somethingNew": true
+      },
+      "message": "Cette valeur n’est pas valide."
+    },
+    {
+      "errors": {
+        "required": true,
+        "minlength": {
+          "requiredLength": 12,
+          "actualLength": 0
+        }
+      },
+      "message": "Ce champ est obligatoire."
+    }
+  ],
+  "wait": [
+    {
+      "seconds": 0,
+      "text": "Réessayez dans un instant."
+    },
+    {
+      "seconds": 1,
+      "text": "Réessayez dans un instant."
+    },
+    {
+      "seconds": 1.5,
+      "text": "Réessayez dans 2 secondes."
+    },
+    {
+      "seconds": 2,
+      "text": "Réessayez dans 2 secondes."
+    },
+    {
+      "seconds": 30,
+      "text": "Réessayez dans 30 secondes."
+    },
+    {
+      "seconds": 59,
+      "text": "Réessayez dans 59 secondes."
+    },
+    {
+      "seconds": 59.5,
+      "text": "Réessayez dans 60 secondes."
+    },
+    {
+      "seconds": 60,
+      "text": "Réessayez dans une minute."
+    },
+    {
+      "seconds": 61,
+      "text": "Réessayez dans 2 minutes."
+    },
+    {
+      "seconds": 120,
+      "text": "Réessayez dans 2 minutes."
+    },
+    {
+      "seconds": 121,
+      "text": "Réessayez dans 3 minutes."
+    },
+    {
+      "seconds": 900,
+      "text": "Réessayez dans 15 minutes."
+    }
+  ],
+  "api": [
+    {
+      "status": 0,
+      "body": null,
+      "message": "Impossible de joindre AutoX. Vérifiez votre connexion internet."
+    },
+    {
+      "status": 502,
+      "body": "<html>Bad gateway</html>",
+      "message": "Une erreur inattendue s’est produite. Réessayez dans un instant."
+    },
+    {
+      "status": 500,
+      "body": {
+        "code": "INTERNAL_ERROR"
+      },
+      "message": "Une erreur inattendue s’est produite. Réessayez dans un instant."
+    },
+    {
+      "status": 401,
+      "body": {
+        "code": "INVALID_CREDENTIALS"
+      },
+      "message": "Adresse e-mail ou mot de passe incorrect."
+    },
+    {
+      "status": 429,
+      "body": {
+        "code": "TOO_MANY_ATTEMPTS",
+        "retryAfterSeconds": 30
+      },
+      "message": "Trop de tentatives de connexion. Réessayez dans 30 secondes."
+    },
+    {
+      "status": 429,
+      "body": {
+        "code": "TOO_MANY_ATTEMPTS",
+        "retryAfterSeconds": 240
+      },
+      "message": "Trop de tentatives de connexion. Réessayez dans 4 minutes."
+    },
+    {
+      "status": 429,
+      "body": {
+        "code": "RATE_LIMITED",
+        "retryAfterSeconds": 60
+      },
+      "message": "Trop de requêtes. Réessayez dans une minute."
+    },
+    {
+      "status": 429,
+      "body": {
+        "code": "RATE_LIMITED"
+      },
+      "message": "Trop de requêtes."
+    },
+    {
+      "status": 403,
+      "body": {
+        "code": "ACCOUNT_SUSPENDED"
+      },
+      "message": "Ce compte est suspendu. Contactez le support."
+    },
+    {
+      "status": 403,
+      "body": {
+        "code": "ACCOUNT_CLOSED"
+      },
+      "message": "Ce compte a été fermé."
+    },
+    {
+      "status": 409,
+      "body": {
+        "code": "EMAIL_ALREADY_REGISTERED"
+      },
+      "message": "Un compte existe déjà avec cette adresse e-mail."
+    },
+    {
+      "status": 400,
+      "body": {
+        "code": "CURRENT_PASSWORD_INCORRECT"
+      },
+      "message": "Le mot de passe actuel est incorrect."
+    },
+    {
+      "status": 401,
+      "body": {
+        "code": "INVALID_REFRESH_TOKEN"
+      },
+      "message": "Votre session a expiré. Reconnectez-vous."
+    },
+    {
+      "status": 400,
+      "body": {
+        "code": "NOT_A_CODE_WE_KNOW"
+      },
+      "message": "Une erreur inattendue s’est produite. Réessayez dans un instant."
+    }
+  ]
+}
