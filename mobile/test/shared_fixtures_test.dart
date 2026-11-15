@@ -8,8 +8,10 @@ import 'package:autox/core/forms/validation.dart';
 import 'package:autox/core/labels/labels.g.dart' show noticeTexts;
 import 'package:autox/core/labels/linked_text.dart';
 import 'package:autox/features/listing/listing_text.dart' as listing_text;
+import 'package:autox/features/messages/messaging_text.dart';
 import 'package:autox/features/search/search_query.dart';
-import 'package:autox_api/autox_api.dart' show Feature, ImageResponse, LeasingType, LeasingView, PublicListingDetail;
+import 'package:autox_api/autox_api.dart'
+    show Feature, ImageResponse, LastMessage, LeasingType, LeasingView, PublicListingDetail;
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -336,6 +338,80 @@ void main() {
                 response: Response<Object>(requestOptions: options, statusCode: status, data: c['body']),
               );
         expect(ApiFailure.from(error).message, c['message'], reason: '$c');
+      }
+    });
+  });
+
+  group('messaging.json', () {
+    final messaging = _fixture('messaging.json');
+
+    test('the API’s limits', () {
+      expect(messaging['limits'], {
+        'messageMaxLength': messageMaxLength,
+        'messageReportNoteMaxLength': messageReportNoteMaxLength,
+        'listingReportNoteMaxLength': listingReportNoteMaxLength,
+      });
+    });
+
+    test('what can be sent, and reported', () {
+      for (final c in _cases(messaging, 'canSend')) {
+        final body = (c['body']! as String) * (c['repeat']! as int);
+        expect(canSendMessage(body), c['canSend'], reason: '${c['body']} × ${c['repeat']}');
+      }
+      for (final c in _cases(messaging, 'canReport')) {
+        final reason = c['reason'] as String?;
+        expect(canSubmitReport(reason, c['note']! as String), c['canReport'], reason: '$c');
+        expect(reportNotePlaceholder(reason), c['placeholder'], reason: '$c');
+      }
+    });
+
+    test('the report reasons, in order', () {
+      expect([
+        for (final (reason, label) in messageReportReasons) {'reason': reason.name, 'label': label},
+      ], messaging['messageReportReasons']);
+      expect([
+        for (final (reason, label) in listingReportReasons) {'reason': reason.name, 'label': label},
+      ], messaging['listingReportReasons']);
+    });
+
+    test('greetings, previews and unread counts', () {
+      for (final c in _cases(messaging, 'greetings')) {
+        expect(contactGreeting(c['listingTitle'] as String?), c['text']);
+      }
+      for (final c in _cases(messaging, 'previews')) {
+        final last = c['last'] == null ? null : LastMessage.fromJson(c['last']! as Map<String, Object?>);
+        expect(inboxPreview(last), c['text'], reason: '${c['last']}');
+      }
+      for (final c in _cases(messaging, 'unread')) {
+        expect(unreadLabel(c['count']! as int), c['label']);
+      }
+    });
+
+    test('why a message was not sent', () {
+      for (final c in _cases(messaging, 'sendFailures')) {
+        final options = RequestOptions(path: '/x');
+        final error = DioException(
+          requestOptions: options,
+          type: DioExceptionType.badResponse,
+          response: Response<Object>(requestOptions: options, statusCode: c['status']! as int, data: c['body']),
+        );
+        expect(sendFailure(ApiFailure.from(error)), c['message'], reason: '$c');
+      }
+    });
+
+    test('the dates of messages, in the phone’s zone', () {
+      final short = messaging['sentAtShort']! as Map<String, Object?>;
+      final now = DateTime.parse(short['now']! as String);
+      for (final c in _cases(short, 'cases')) {
+        expect(sentAtShort(DateTime.parse(c['sentAt']! as String), now: now), c['text'], reason: '${c['sentAt']}');
+      }
+      final days = messaging['dayLabel']! as Map<String, Object?>;
+      for (final c in _cases(days, 'cases')) {
+        expect(
+          dayLabel(DateTime.parse(c['day']! as String), now: DateTime.parse(days['now']! as String)),
+          c['label'],
+          reason: '${c['day']}',
+        );
       }
     });
   });

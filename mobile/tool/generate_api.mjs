@@ -280,6 +280,7 @@ function generateLabels() {
     ['validation', 'validationMessages', "The forms' messages by validator key; {length}, {min}, {max} to fill."],
     ['messages', 'clientMessages', 'No connection, an unexpected error, the wait after a throttle.'],
     ['notices', 'noticeTexts', 'Sentences shown as they are; links written [words](/path), split by linkedSegments.'],
+    ['messaging', 'messagingTexts', 'What the messages and report screens say; {title}, {text}, {count} to fill.'],
   ]) {
     out.push(`/// ${what}`);
     out.push(`const Map<String, String> ${name} = {`);
