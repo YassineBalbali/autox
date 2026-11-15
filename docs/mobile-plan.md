@@ -364,6 +364,80 @@ screen, and a directory page too short to scroll never loaded the next one.
 **Not in this milestone:** contacting a seller or a dealer (it needs an account: milestones 4–5),
 reporting a listing (the same), and opening the site's links in the app (App Links, later).
 
+## 9d. Milestone 4 — done (2026-11-15)
+
+### What the backend does (read before building; no change was needed)
+
+| | |
+|---|---|
+| Sign-in | `POST /api/v1/auth/login` {email, password, deviceLabel} → 200 `AuthResponse` |
+| Registration | `POST /api/v1/auth/register` → **201 with a token pair: the account is signed in at once** |
+| Refresh | `POST /api/v1/auth/refresh` {refreshToken} → 200, a **new** refresh token every time |
+| Sign-out | `POST /api/v1/auth/logout` {refreshToken} → 204, idempotent |
+| Me | `GET /api/v1/me` (Bearer) → `UserProfileResponse` (emailVerified, emailVerificationPending) |
+| Forgotten password | `POST /api/v1/auth/password/forgot` {email} → 202, whatever the address |
+| Resend verification | `POST /api/v1/me/email/verification` (Bearer) → 204 |
+| Delete account | `POST /api/v1/me/deletion` {password} (Bearer) → 204; every session ended |
+| Data export | `GET /api/v1/me/export` (Bearer) → JSON attachment; the site's page is `/mon-compte/donnees` |
+
+`AuthResponse`: accessToken, tokenType, expiresInSeconds, accessTokenExpiresAt, refreshToken,
+refreshTokenExpiresAt, user (`UserSummary`). Access token 15 minutes (HS256); refresh token 90 days,
+rotated on every use (`rotate-refresh-tokens: true`).
+
+| Case | Answer |
+|---|---|
+| Wrong credentials (unknown address or wrong password, indistinguishable) | 401 `INVALID_CREDENTIALS` |
+| Throttled sign-in | 429 `TOO_MANY_ATTEMPTS`, `Retry-After` and `retryAfterSeconds` |
+| Other throttles (registration, reset, resend) | 429 `RATE_LIMITED` |
+| Refresh token unknown, expired, or reused (the whole family is then revoked) | 401 `INVALID_REFRESH_TOKEN` |
+| Account suspended / closed (on sign-in and on refresh) | 403 `ACCOUNT_SUSPENDED` / `ACCOUNT_CLOSED` |
+| Wrong password on deletion | 400 `CURRENT_PASSWORD_INCORRECT` |
+| Unverified address | **not a sign-in error**: it may sign in; publishing and messaging answer 403 `EMAIL_NOT_VERIFIED` |
+
+Passwords: 12 to 128 characters, nothing else (server). The web validates the same client-side,
+plus Angular's e-mail rule, the confirmation, the display name, names and phone format; those rules
+are now `frontend/fixtures/forms.json`, run by both apps.
+
+Local e-mail: `autox.mail.provider` defaults to `log` (no key in `.env`): the verification and
+reset messages, links included, are written to the **backend's log**. `AUTOX_SITE_URL` is not set
+locally, so the links are relative (`/verifier-email?token=…`): open them on
+`http://localhost:4200` with the web app's dev server running.
+
+### Built
+
+- **Token layer** (`lib/core/auth`): refresh token in the Android Keystore only, access token in
+  memory only; one refresh at a time by construction (a shared future filled before the first
+  `await`); the rotated token stored before any waiting request resumes; one retry per request;
+  the `/auth/*` calls on a separate client with no auth interceptor; refused refresh (401/403)
+  clears and says "Votre session a expiré" once; unreachable server keeps the token. Logs redact
+  `Authorization` and never write the bodies of `/auth/*`, the password change or the deletion.
+- **Screens**: sign-in, registration (private accounts), forgotten password, the account (who,
+  verification banner with "Renvoyer le lien", "Mes données", deletion with the password, sign-out),
+  the Messages tab asking to sign in. The account's places follow the session through a
+  `go_router` redirect; at launch the account waits neutrally while a stored session is checked.
+- **Cold start**: 90-second timeouts; under any pending button, after 5 s, "Le serveur démarre…".
+- **Shared words**: the forms' messages and the error service's sentences moved to
+  `labels.fr.json` (web commit, proved by `forms.json`, produced before the move).
+
+### Chosen differently from the brief
+
+- **Registration signs in.** The API answers with a token pair, and the web goes straight to the
+  account. The app does the same and shows "Vérifiez votre boîte mail" there, instead of returning
+  to the sign-in form (which would mean discarding a valid session and retyping the password).
+- **No "unverified e-mail" sign-in error** and no "renvoyer l'e-mail" on the sign-in form: the API
+  lets an unverified address sign in. "Renvoyer le lien" is on the account, as on the web.
+- **CGU checkbox: app only.** The web's registration has none and the API records no consent; the
+  app's checkbox is required and links to the site's `/conditions-generales` and `/confidentialite`.
+  Worth deciding whether the web should have it too.
+- **"Mes données" opens the site, where the person must sign in again**: the browser does not share
+  the app's session. A download inside the app (`GET /me/export`) would avoid that.
+- **Sign-out clears the phone first**, then asks the server to revoke the session: the result is
+  the same whatever the server answers, without a 90-second wait on a cold start.
+- **The launch wait is the account tab's**, not the whole app's: the search, listings and dealers
+  are public and should not wait up to a minute for a server waking up.
+- **Template copy is duplicated**, as in milestones 2 and 3 (button labels, headings); everything
+  the site words at runtime — error codes, field names, the forms' messages — is shared.
+
 ## 10. Decisions (settled 2026-11-12)
 
 1. **Application id: `io.github.yassinebalbali.autox`.** Dart package name `autox`. Fixed for

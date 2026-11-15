@@ -4,7 +4,11 @@ The buyer side of AutoX as a Flutter app: search, listings, dealers, favourites,
 searches and messages, in French, with the site's look. Plan, decisions and milestones:
 [docs/mobile-plan.md](../docs/mobile-plan.md).
 
-**Status: milestone 3 (listings and dealers).** The search as the site has it (milestone 2),
+**Status: milestone 4 (sign-in and accounts).** Sign-in, registration (private accounts),
+forgotten password, the account (verification, "Mes données", deletion, sign-out), sessions kept
+between launches. Details and the backend's contract: docs/mobile-plan.md, section 9d.
+
+**Milestone 3 (listings and dealers).** The search as the site has it (milestone 2),
 and now the listing page — photos full screen, key facts, Crit'Air, the market verdict and
 what it rests on, leasing terms, damage, specification, equipment, the financing simulator,
 the seller, similar listings — and the dealers' directory and pages, with their listings,
@@ -48,7 +52,14 @@ Another address: `flutter run --dart-define=AUTOX_API_BASE_URL=https://…`. On 
 phone over USB, `adb reverse tcp:8081 tcp:8081` and
 `--dart-define=AUTOX_API_BASE_URL=http://localhost:8081`.
 
-A release build has no default address and refuses to start without an `https://` one.
+A release build has no default addresses and refuses to start without `https://` ones:
+`--dart-define=AUTOX_API_BASE_URL=…` and `--dart-define=AUTOX_SITE_URL=…` (the site, for the
+legal pages and "Mes données"). A debug build opens the site at `http://10.0.2.2:4200`, the web
+app's dev server.
+
+**E-mails, locally:** the backend writes verification and reset e-mails to its own log (mail
+provider `log`). Copy the link's `?token=…` onto `http://localhost:4200/verifier-email` in a
+browser, with the web app's dev server running, to verify an address.
 
 ## Checks
 

@@ -110,7 +110,12 @@ void main() {
     server.gate = Completer<void>();
     const n = 6;
     final calls = [for (var i = 0; i < n; i++) dio.get<Object>('/api/v1/me')];
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    // Until the refresh has started, then long enough for all six 401s to have arrived behind it.
+    for (var i = 0; i < 500 && server.refreshBodies.length < 2; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(http.to('/api/v1/me'), hasLength(n), reason: 'all six sent, none retried yet');
 
     expect(server.refreshBodies, ['refresh-stored', 'refresh-1'], reason: 'one refresh in flight for all six');
     server.gate!.complete();

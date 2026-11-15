@@ -1,26 +1,43 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'core/auth/session.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
 
-/// The application: French only, the site's theme, go_router for navigation.
-class AutoxApp extends StatefulWidget {
+/// The application: French only, the site's theme, go_router for navigation, the account's
+/// places following the session.
+class AutoxApp extends ConsumerStatefulWidget {
   const AutoxApp({super.key, this.initialLocation = AppRoutes.search});
 
   final String initialLocation;
 
   @override
-  State<AutoxApp> createState() => _AutoxAppState();
+  ConsumerState<AutoxApp> createState() => _AutoxAppState();
 }
 
-class _AutoxAppState extends State<AutoxApp> {
+class _AutoxAppState extends ConsumerState<AutoxApp> {
+  /// Tells the router to look again at its redirect whenever the session changes.
+  final _sessionChanged = ValueNotifier<int>(0);
+
   // Built once: a router rebuilt on every frame would lose the navigation state.
-  late final GoRouter _router = buildRouter(initialLocation: widget.initialLocation);
+  late final GoRouter _router = buildRouter(
+    initialLocation: widget.initialLocation,
+    session: () => ref.read(sessionProvider),
+    refresh: _sessionChanged,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual(sessionProvider, (_, _) => _sessionChanged.value++);
+  }
 
   @override
   void dispose() {
     _router.dispose();
+    _sessionChanged.dispose();
     super.dispose();
   }
 

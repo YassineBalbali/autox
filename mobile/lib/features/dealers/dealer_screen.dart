@@ -2,9 +2,9 @@ import 'package:autox_api/autox_api.dart' show DealerPage, OfferType;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_failure.dart';
+import '../../core/links.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/states.dart';
 import '../listing/listing_text.dart' show memberSince;
@@ -15,12 +15,6 @@ import '../search/search_query.dart';
 import 'dealer_directory_screen.dart' show DealerLogo;
 import 'dealer_providers.dart';
 import 'dealer_text.dart';
-
-/// Opens a link outside the app: the dialler, the browser. Replaced in tests.
-final linkOpenerProvider = Provider<Future<bool> Function(Uri uri)>(
-  (ref) =>
-      (uri) => launchUrl(uri, mode: LaunchMode.externalApplication),
-);
 
 /// A dealer's page, `/professionnels/:slug`: who they are, how to reach them, and their listings
 /// — the site's search, limited to this seller.

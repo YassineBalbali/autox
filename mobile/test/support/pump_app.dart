@@ -1,21 +1,33 @@
 import 'package:autox/app.dart';
+import 'package:autox/core/auth/token_store.dart';
+import 'package:autox/core/links.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart' show Size;
 
 import 'fake_http.dart';
 
-/// The whole app on [http], opened at [location], with [stored] as the phone's preferences.
+/// The whole app on [http], opened at [location], with [stored] as the phone's preferences,
+/// [tokens] where the refresh token is kept (signed out by default), and every link the app
+/// would open outside recorded in [opened].
 Future<void> pumpApp(
   WidgetTester tester,
   FakeHttp http, {
   String location = '/recherche',
   Map<String, Object> stored = const {},
+  TokenStore? tokens,
+  List<Uri>? opened,
 }) async {
   final preferences = await testPreferences(stored);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: fakeApiOverrides(http, preferences: preferences),
+      overrides: [
+        ...fakeApiOverrides(http, preferences: preferences, tokens: tokens),
+        linkOpenerProvider.overrideWithValue((uri) async {
+          opened?.add(uri);
+          return true;
+        }),
+      ],
       retry: (_, _) => null,
       child: AutoxApp(initialLocation: location),
     ),

@@ -20,10 +20,27 @@ void main() {
       );
     });
 
-    test('the defined address is used, without a trailing slash', () {
-      final config = AppConfig.resolve(defined: 'https://autox-api.onrender.com/', isRelease: true);
+    test('the defined addresses are used, without a trailing slash', () {
+      final config = AppConfig.resolve(
+        defined: 'https://autox-api.onrender.com/',
+        definedSite: 'https://autox-demo.vercel.app/',
+        isRelease: true,
+      );
 
       expect(config.apiBaseUrl, 'https://autox-api.onrender.com');
+      expect(config.siteUrl, 'https://autox-demo.vercel.app');
+      expect(config.site('/confidentialite'), Uri.parse('https://autox-demo.vercel.app/confidentialite'));
+    });
+
+    test('a release build needs the website too', () {
+      expect(
+        () => AppConfig.resolve(defined: 'https://autox-api.onrender.com', isRelease: true),
+        throwsA(isA<AppConfigException>()),
+      );
+    });
+
+    test('a debug build defaults the website to the web app’s server on this PC', () {
+      expect(AppConfig.resolve(defined: '', isRelease: false).siteUrl, 'http://10.0.2.2:4200');
     });
 
     test('something that is not an http(s) URL is rejected', () {

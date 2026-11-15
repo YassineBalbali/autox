@@ -68,7 +68,7 @@ class FakeHttp implements HttpClientAdapter {
   };
 }
 
-const testConfig = AppConfig(apiBaseUrl: 'http://api.test');
+const testConfig = AppConfig(apiBaseUrl: 'http://api.test', siteUrl: 'http://api.test-site');
 
 /// The provider overrides that put [http] under the whole app — under both real clients, with
 /// their real interceptors — [preferences] under what it stores on the phone, and [tokens]

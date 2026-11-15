@@ -34,7 +34,8 @@ void main() {
 
     await tester.tap(find.text('Compte'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('La connexion'), findsOneWidget);
+    // Signed out: the account is the sign-in form.
+    expect(find.widgetWithText(FilledButton, 'Se connecter'), findsOneWidget);
 
     await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Rechercher')));
     await tester.pumpAndSettle();
