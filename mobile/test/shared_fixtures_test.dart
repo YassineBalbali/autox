@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:autox/core/api/api_failure.dart';
 import 'package:autox/core/format/listing_text.dart';
 import 'package:autox/core/format/numbers.dart';
+import 'package:autox/core/forms/validation.dart';
 import 'package:autox/features/listing/listing_text.dart' as listing_text;
 import 'package:autox/features/search/search_query.dart';
 import 'package:autox_api/autox_api.dart' show Feature, ImageResponse, LeasingType, LeasingView, PublicListingDetail;
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -240,6 +243,83 @@ void main() {
       }
       for (final c in _cases(listing, 'countFr')) {
         expect(listing_text.countFr(c['count']! as int, c['singular']! as String, c['plural']! as String), c['text']);
+      }
+    });
+  });
+
+  group('forms.json', () {
+    final forms = _fixture('forms.json');
+    final validators = <String, String? Function(String)>{
+      'email': validateEmail,
+      'password': validatePassword,
+      'displayName': validateDisplayName,
+      'firstName': validateName,
+      'lastName': validateName,
+      'phone': validatePhone,
+    };
+
+    test('every field, as the web validates it', () {
+      for (final c in _cases(forms, 'validate')) {
+        expect(validators[c['field']]!(c['value']! as String), c['message'], reason: '${c['field']} "${c['value']}"');
+      }
+    });
+
+    test('the password confirmation', () {
+      for (final c in _cases(forms, 'confirmation')) {
+        expect(validatePasswordConfirmation(c['confirmation']! as String, c['password']! as String), c['message']);
+      }
+    });
+
+    test('every validator key, in words', () {
+      for (final c in _cases(forms, 'errors')) {
+        final errors = c['errors']! as Map<String, Object?>;
+        // The web words the first key it knows.
+        final key = errors.keys.firstWhere(
+          (key) => const {
+            'required',
+            'email',
+            'minlength',
+            'maxlength',
+            'pattern',
+            'passwordMismatch',
+            'wholeNumber',
+            'website',
+            'range',
+          }.contains(key),
+          orElse: () => 'invalid',
+        );
+        final detail = errors[key] is Map ? errors[key]! as Map<String, Object?> : const <String, Object?>{};
+        expect(
+          messageForKey(
+            key,
+            length: detail['requiredLength'] as int?,
+            min: detail['min'] == null ? null : formatInteger(detail['min']! as int),
+            max: detail['max'] == null ? null : formatInteger(detail['max']! as int),
+          ),
+          c['message'],
+          reason: '$errors',
+        );
+      }
+    });
+
+    test('the wait after a throttle', () {
+      for (final c in _cases(forms, 'wait')) {
+        expect(waitSentence(c['seconds']! as num), c['text'], reason: '${c['seconds']}');
+      }
+    });
+
+    test('the API errors, by status and code', () {
+      for (final c in _cases(forms, 'api')) {
+        final status = c['status']! as int;
+        final options = RequestOptions(path: '/x');
+        final error = status == 0
+            ? DioException(requestOptions: options, type: DioExceptionType.connectionError)
+            : DioException(
+                requestOptions: options,
+                type: DioExceptionType.badResponse,
+                response: Response<Object>(requestOptions: options, statusCode: status, data: c['body']),
+              );
+        expect(ApiFailure.from(error).message, c['message'], reason: '$c');
       }
     });
   });

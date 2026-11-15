@@ -1,13 +1,16 @@
 import 'package:autox_api/autox_api.dart' show ApiError, ErrorCode;
 import 'package:dio/dio.dart';
 
+import '../forms/validation.dart' show waitSentence;
+import '../labels/labels.g.dart';
+
 /// What went wrong with a call, in the terms a screen needs: a French sentence for the person,
 /// whether trying again could help, and the API's stable code when there is one.
 ///
-/// This is the first cut, for the screens of milestone 1. The full French table of
-/// [ErrorCode]s comes with sign-in (milestone 4), from the shared labels file the web will read
-/// too; until then an API error is shown by its kind, never by the API's `message`, which is
-/// developer-facing English by contract (docs/auth-decisions.md, section 2).
+/// Worded as the web's `ErrorMessageService` words them, from `frontend/labels.fr.json`: the
+/// code's sentence, with the wait added after a throttle; the generic sentence when there is no
+/// code to word. Never the API's `message`, which is developer-facing English by contract
+/// (docs/auth-decisions.md, section 2). Checked against the web by `frontend/fixtures/forms.json`.
 sealed class ApiFailure implements Exception {
   const ApiFailure();
 
@@ -23,6 +26,10 @@ sealed class ApiFailure implements Exception {
     }
     if (error is! DioException) {
       return const UnexpectedFailure();
+    }
+    // A request that failed because its token could not be renewed carries the reason.
+    if (error.error case final ApiFailure inner) {
+      return inner;
     }
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
@@ -63,14 +70,14 @@ class OfflineFailure extends ApiFailure {
   const OfflineFailure();
 
   @override
-  String get message => 'Impossible de joindre AutoX. Vérifiez votre connexion internet.';
+  String get message => clientMessages['offline']!;
 
   @override
   bool get retryable => true;
 }
 
 /// Also what a cold start of the free Render instance looks like when it is slower than the
-/// timeouts, hence the wording.
+/// timeouts, hence the wording. App-only: a browser has no timeout to word.
 class TimeoutFailure extends ApiFailure {
   const TimeoutFailure();
 
@@ -99,20 +106,24 @@ class ServerFailure extends ApiFailure {
   /// The RFC 9457 body, when the API sent one.
   final ApiError? problem;
 
-  ErrorCode? get code => problem?.code;
+  /// The API's stable code; null when there is none, or one newer than this build.
+  ErrorCode? get code {
+    final code = problem?.code;
+    return code == ErrorCode.unknownDefaultOpenApi ? null : code;
+  }
+
+  /// How long to wait, when the server says (a throttle).
+  int? get retryAfterSeconds => problem?.retryAfterSeconds;
 
   @override
   String get message {
-    if (status == 429) {
-      return 'Trop de tentatives. Patientez un instant, puis réessayez.';
+    final code = this.code;
+    if (code == null) {
+      return clientMessages['unknown']!;
     }
-    if (status == 404) {
-      return 'Cette page n’existe pas ou plus.';
-    }
-    if (status >= 500) {
-      return 'AutoX rencontre un problème. Réessayez dans un instant.';
-    }
-    return 'La demande n’a pas pu aboutir.';
+    final sentence = errorCodeLabel(code);
+    final wait = retryAfterSeconds;
+    return wait == null ? sentence : '$sentence ${waitSentence(wait)}';
   }
 
   @override
@@ -123,7 +134,7 @@ class UnexpectedFailure extends ApiFailure {
   const UnexpectedFailure();
 
   @override
-  String get message => 'Une erreur inattendue s’est produite.';
+  String get message => clientMessages['unknown']!;
 
   @override
   bool get retryable => true;

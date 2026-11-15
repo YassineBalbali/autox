@@ -276,6 +276,18 @@ function generateLabels() {
   }
   out.push('};', '');
 
+  for (const [section, name, what] of [
+    ['validation', 'validationMessages', "The forms' messages by validator key; {length}, {min}, {max} to fill."],
+    ['messages', 'clientMessages', 'No connection, an unexpected error, the wait after a throttle.'],
+  ]) {
+    out.push(`/// ${what}`);
+    out.push(`const Map<String, String> ${name} = {`);
+    for (const [key, text] of Object.entries(labels[section] ?? {})) {
+      out.push(`  ${dartString(key)}: ${dartString(text)},`);
+    }
+    out.push('};', '');
+  }
+
   out.push('/// The request fields a validation failure can name, in French.');
   out.push('const Map<String, String> fieldLabels = {');
   for (const [field, label] of Object.entries(labels.fields)) {
