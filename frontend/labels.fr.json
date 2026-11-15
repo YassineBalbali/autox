@@ -11,7 +11,8 @@
     "departements: the French départements by code (01 … 95, 2A, 2B, 971 … 976), for the dealer directory.",
     "",
     "validation: the forms' messages, by validator key; {length}, {min} and {max} are filled in.",
-    "messages: what the client says when the API gives no code to word, and the wait after a throttle."
+    "messages: what the client says when the API gives no code to word, and the wait after a throttle.",
+    "notices: sentences shown as they are; links are written [words](/path), the site’s paths."
   ],
   "enums": {
     "FuelType": {
@@ -414,5 +415,8 @@
     "waitSeconds": "Réessayez dans {seconds} secondes.",
     "waitMinute": "Réessayez dans une minute.",
     "waitMinutes": "Réessayez dans {minutes} minutes."
+  },
+  "notices": {
+    "registerConsent": "En créant un compte, vous acceptez les [CGU](/conditions-generales) et la [politique de confidentialité](/confidentialite)."
   }
 }

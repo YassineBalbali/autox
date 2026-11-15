@@ -477,5 +477,30 @@
       },
       "message": "Une erreur inattendue s’est produite. Réessayez dans un instant."
     }
+  ],
+  "notices": [
+    {
+      "key": "registerConsent",
+      "text": "En créant un compte, vous acceptez les CGU et la politique de confidentialité.",
+      "segments": [
+        {
+          "text": "En créant un compte, vous acceptez les "
+        },
+        {
+          "text": "CGU",
+          "path": "/conditions-generales"
+        },
+        {
+          "text": " et la "
+        },
+        {
+          "text": "politique de confidentialité",
+          "path": "/confidentialite"
+        },
+        {
+          "text": "."
+        }
+      ]
+    }
   ]
 }

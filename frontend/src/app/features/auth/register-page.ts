@@ -26,6 +26,8 @@ import {
 } from '../../shared/forms/validation';
 import { submitState } from '../../shared/forms/submit-state';
 import { Alert } from '../../shared/ui/alert';
+import { linkedSegments } from '../../shared/format/linked-text';
+import LABELS from '../../../../labels.fr.json';
 
 /** The only market with content today, and the default so the select is never empty. */
 const DEFAULT_COUNTRY = 'FR';
@@ -54,6 +56,9 @@ export class RegisterPage {
   protected readonly roles = UserRole;
   protected readonly maxLengths = MAX_LENGTHS;
   protected readonly passwordMinLength = PASSWORD_MIN_LENGTH;
+
+  /** Under the button: creating the account accepts the terms. Worded in labels.fr.json, as in the app. */
+  protected readonly consent = linkedSegments(LABELS.notices.registerConsent);
 
   /**
    * The enabled markets, for the country field.

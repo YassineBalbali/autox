@@ -160,6 +160,17 @@
           <ng-container i18n="@@registerSubmit">Créer mon compte</ng-container>
         }
       </button>
+
+      <!-- From frontend/labels.fr.json (notices.registerConsent): the app shows the same sentence. -->
+      <p class="meta" data-testid="register-consent">
+        @for (segment of consent; track $index) {
+          @if (segment.path) {
+            <a [routerLink]="segment.path">{{ segment.text }}</a>
+          } @else {
+            <ng-container>{{ segment.text }}</ng-container>
+          }
+        }
+      </p>
     </form>
   </div>
 

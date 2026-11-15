@@ -147,6 +147,26 @@ describe('RegisterPage', () => {
     expect(() => byLabel('Numéro SIRET')).toThrow();
   });
 
+  it('says under the button that creating the account accepts the terms, linked to both pages', () => {
+    const consent: HTMLElement = fixture.nativeElement.querySelector(
+      '[data-testid="register-consent"]',
+    );
+    const button: HTMLElement = fixture.nativeElement.querySelector('button[type="submit"]');
+
+    expect(consent.textContent?.trim()).toBe(
+      'En créant un compte, vous acceptez les CGU et la politique de confidentialité.',
+    );
+    expect(button.compareDocumentPosition(consent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const links = Array.from(consent.querySelectorAll('a')).map((a) => [
+      a.textContent,
+      a.getAttribute('href'),
+    ]);
+    expect(links).toEqual([
+      ['CGU', '/conditions-generales'],
+      ['politique de confidentialité', '/confidentialite'],
+    ]);
+  });
+
   // --- the dealer path ----------------------------------------------------
 
   describe('as a dealer', () => {

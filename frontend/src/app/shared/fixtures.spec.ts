@@ -39,6 +39,8 @@ import {
   requiredText,
 } from './forms/validation';
 import { formatDateFr } from './format/date';
+import { linkedSegments } from './format/linked-text';
+import LABELS from '../../../labels.fr.json';
 import { formatIntegerFr } from './format/number';
 import { countFr } from './format/plural';
 import { simulateCredit } from './listing/financing';
@@ -224,6 +226,14 @@ describe('shared fixtures: forms', () => {
   it('words the wait after a throttle', () => {
     for (const c of FORMS.wait) {
       expect(waitSentenceFr(c.seconds)).toBe(c.text);
+    }
+  });
+
+  it('splits the notices into text and links', () => {
+    for (const c of FORMS.notices) {
+      const segments = linkedSegments(LABELS.notices[c.key as keyof typeof LABELS.notices]);
+      expect(segments).toEqual(c.segments);
+      expect(segments.map((segment) => segment.text).join('')).toBe(c.text);
     }
   });
 
