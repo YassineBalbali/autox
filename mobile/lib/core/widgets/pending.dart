@@ -86,7 +86,7 @@ class SubmitButton extends StatelessWidget {
   final String label;
   final String pendingLabel;
   final bool pending;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) => Column(

@@ -13,6 +13,8 @@ Map<String, Object?> detailJson({
   String? critAir = 'TWO',
   String? dealerSlug = 'garage-bellevue',
   String sellerRole = 'PROFESSIONNEL',
+  String sellerId = 's1',
+  bool demo = false,
   List<Map<String, Object?>> images = const [],
 }) => {
   'id': id,
@@ -37,7 +39,8 @@ Map<String, Object?> detailJson({
   },
   'location': {'countryCode': 'FR', 'city': 'Lyon', 'postalCode': '69003'},
   'seller': {
-    'id': 's1',
+    'id': sellerId,
+    'demo': demo,
     'displayName': 'Garage Bellevue',
     'role': sellerRole,
     'memberSince': '2019-03-15T12:00:00Z',

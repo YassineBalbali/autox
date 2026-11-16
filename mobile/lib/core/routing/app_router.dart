@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:autox_api/autox_api.dart' show ErrorCode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +14,9 @@ import '../../features/account/register_screen.dart';
 import '../../features/dealers/dealer_directory_screen.dart';
 import '../../features/dealers/dealer_screen.dart';
 import '../../features/listing/listing_screen.dart';
+import '../../features/messages/conversation_screen.dart';
+import '../../features/messages/messages_screen.dart';
+import '../../features/messages/messaging_providers.dart';
 import '../../features/search/new_cars_screen.dart';
 import '../../features/search/results_screen.dart';
 import '../../features/search/search_entry_screen.dart';
@@ -19,7 +24,6 @@ import '../../features/search/search_home_screen.dart';
 import '../../features/search/search_query.dart';
 import '../../features/search/smart_search.dart';
 import '../auth/session.dart';
-import '../labels/app_labels.dart';
 import '../labels/labels.g.dart';
 import '../widgets/pending.dart';
 import '../widgets/states.dart';
@@ -63,7 +67,19 @@ GoRouter buildRouter({String initialLocation = AppRoutes.search, AuthState Funct
         // search now and from the favourites later is the same page. The site's own paths.
         GoRoute(
           path: '/annonces/:id',
-          builder: (_, state) => ListingScreen(id: state.pathParameters['id']!),
+          builder: (_, state) => ListingScreen(
+            id: state.pathParameters['id']!,
+            // Back from signing in on the way to writing to the seller, or to reporting the listing.
+            write: state.uri.queryParameters['ecrire'] == '1',
+            report: state.uri.queryParameters['signaler'] == '1',
+          ),
+        ),
+        // A conversation, over the bar like a listing: reached from the inbox, from a listing just
+        // written about, and from a dealer's page.
+        GoRoute(
+          path: '/messages/:id',
+          builder: (_, state) =>
+              ConversationScreen(key: ValueKey(state.pathParameters['id']), id: state.pathParameters['id']!),
         ),
         GoRoute(
           path: '/professionnels',
@@ -71,7 +87,8 @@ GoRouter buildRouter({String initialLocation = AppRoutes.search, AuthState Funct
           routes: [
             GoRoute(
               path: ':slug',
-              builder: (_, state) => DealerScreen(slug: state.pathParameters['slug']!),
+              builder: (_, state) =>
+                  DealerScreen(slug: state.pathParameters['slug']!, write: state.uri.queryParameters['ecrire'] == '1'),
             ),
           ],
         ),
@@ -124,7 +141,7 @@ GoRouter buildRouter({String initialLocation = AppRoutes.search, AuthState Funct
               ],
             ),
             StatefulShellBranch(
-              routes: [GoRoute(path: AppRoutes.messages, builder: (_, _) => const _MessagesScreen())],
+              routes: [GoRoute(path: AppRoutes.messages, builder: (_, _) => const MessagesScreen())],
             ),
             StatefulShellBranch(
               routes: [
@@ -134,8 +151,14 @@ GoRouter buildRouter({String initialLocation = AppRoutes.search, AuthState Funct
                   routes: [GoRoute(path: 'attente', builder: (_, _) => const _AccountWait())],
                 ),
                 // Signed-out places, the site's paths, in the account's tab.
-                GoRoute(path: AccountLocations.signIn, builder: (_, _) => const LoginScreen()),
-                GoRoute(path: AccountLocations.register, builder: (_, _) => const RegisterScreen()),
+                GoRoute(
+                  path: AccountLocations.signIn,
+                  builder: (_, state) => LoginScreen(returnTo: safeReturn(state.uri)),
+                ),
+                GoRoute(
+                  path: AccountLocations.register,
+                  builder: (_, state) => RegisterScreen(returnTo: safeReturn(state.uri)),
+                ),
                 GoRoute(path: AccountLocations.forgotPassword, builder: (_, _) => const ForgotPasswordScreen()),
               ],
             ),
@@ -147,13 +170,46 @@ GoRouter buildRouter({String initialLocation = AppRoutes.search, AuthState Funct
 /// The bottom bar around the current tab, and the one place that says "session expirée" — once,
 /// when the server ends a session, whatever screen the person is on — or, when the server refuses
 /// the account itself (suspended, closed), the account's own sentence.
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  late final AppLifecycleListener _lifecycle;
+
+  StatefulNavigationShell get shell => widget.shell;
+
+  @override
+  void initState() {
+    super.initState();
+    // No push in v1: the unread count is asked for again whenever the app comes back.
+    _lifecycle = AppLifecycleListener(onResume: () => unawaited(ref.read(unreadCountProvider.notifier).refresh()));
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  void _select(int index) {
+    if (_tabs[index].path == AppRoutes.messages) {
+      // The Messages tab chosen: the count and the list, fresh.
+      unawaited(ref.read(unreadCountProvider.notifier).refresh());
+      unawaited(ref.read(inboxProvider.notifier).refresh());
+    }
+    // Tapping the current tab again goes back to its first screen, the platform habit.
+    shell.goBranch(index, initialLocation: index == shell.currentIndex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final unread = ref.watch(unreadCountProvider);
     ref.listen(sessionProvider, (_, next) {
       final notice = switch (next) {
         SignedOut(expired: true) => errorCodeLabel(ErrorCode.INVALID_REFRESH_TOKEN),
@@ -166,10 +222,10 @@ class AppShell extends ConsumerWidget {
         ref.read(sessionProvider.notifier).acknowledgeExpiry();
       }
     });
-    return _bar(context);
+    return _bar(context, unread);
   }
 
-  Widget _bar(BuildContext context) => Scaffold(
+  Widget _bar(BuildContext context, int unread) => Scaffold(
     body: shell,
     bottomNavigationBar: DecoratedBox(
       decoration: BoxDecoration(
@@ -177,50 +233,23 @@ class AppShell extends ConsumerWidget {
       ),
       child: NavigationBar(
         selectedIndex: shell.currentIndex,
-        // Tapping the current tab again goes back to its first screen, the platform habit.
-        onDestinationSelected: (index) => shell.goBranch(index, initialLocation: index == shell.currentIndex),
-        destinations: [for (final tab in _tabs) NavigationDestination(icon: Icon(tab.icon), label: tab.label)],
+        onDestinationSelected: _select,
+        destinations: [
+          for (final tab in _tabs)
+            NavigationDestination(
+              icon: tab.path == AppRoutes.messages && unread > 0
+                  ? Semantics(
+                      // "Messages, 2 conversations non lues": the badge's number alone says nothing.
+                      label: unread == 1 ? '1 conversation non lue' : '$unread conversations non lues',
+                      child: Badge(label: Text('$unread'), child: Icon(tab.icon)),
+                    )
+                  : Icon(tab.icon),
+              label: tab.label,
+            ),
+        ],
       ),
     ),
   );
-}
-
-/// Messages arrive in the next milestone; signed out, the tab asks to sign in first.
-class _MessagesScreen extends ConsumerWidget {
-  const _MessagesScreen();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final signedIn = ref.watch(sessionProvider) is SignedIn;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Messages'), centerTitle: false),
-      body: signedIn
-          ? const ComingSoonView(
-              icon: LucideIcons.messageSquare,
-              title: 'Bientôt disponible',
-              body: 'Vos conversations avec les vendeurs apparaîtront ici.',
-            )
-          : Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const ComingSoonView(
-                      icon: LucideIcons.messageSquare,
-                      title: AppLabels.messagesSignedOut,
-                      body: 'Vos conversations avec les vendeurs sont liées à votre compte.',
-                    ),
-                    FilledButton(
-                      onPressed: () => context.go(AccountLocations.signIn),
-                      child: const Text('Se connecter'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
 }
 
 /// The account, while the stored session is being checked: a neutral wait.
