@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { ImageResponse, ImageStatus, ListingPhotosService } from '../../core/api';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
+import { ReferenceStore } from '../../core/reference/reference.store';
 import { Alert } from '../../shared/ui/alert';
 import { ACCEPTED_TYPES, needsPreparing, preparePhoto } from './photo-prepare';
-import { PHOTO_RULES, PhotoUploadService, rejectionFor } from './photo-upload.service';
+import { PhotoRefusal, PhotoUploadService, limitsFrom, rejectionFor } from './photo-upload.service';
 
 /** A file on its way up, or one that did not make it. */
 interface QueuedUpload {
@@ -70,9 +72,16 @@ export class PhotoUploader {
   /** The photo being dragged, by index. */
   private dragging: number | null = null;
 
-  protected readonly rules = PHOTO_RULES;
+  /**
+   * The API's limits (largest file, fewest pixels, most photos), or `null` until they are
+   * read, or if they cannot be: the checks that need them then wait for the API's own.
+   */
+  protected readonly limits = toSignal(limitsFrom(inject(ReferenceStore)), { initialValue: null });
   protected readonly accept = ACCEPTED_TYPES;
-  protected readonly full = computed(() => this.photos().length >= PHOTO_RULES.maxPerListing);
+  protected readonly full = computed(() => {
+    const limits = this.limits();
+    return limits !== null && this.photos().length >= limits.maxPerListing;
+  });
   protected readonly busy = computed(() =>
     this.queue().some((item) => item.state === 'sending' || item.state === 'processing'),
   );
@@ -119,7 +128,7 @@ export class PhotoUploader {
     for (const file of files) {
       if (needsPreparing(file)) {
         // Only the count can be checked now; the rest once it is redrawn.
-        const reason = rejectionFor(file, count, { countOnly: true });
+        const reason = rejectionFor(file, count, this.limits(), { countOnly: true });
         if (reason) {
           refused.push(reason);
           continue;
@@ -130,7 +139,7 @@ export class PhotoUploader {
         void preparePhoto(file).then((prepared) => this.prepared(item.key, prepared));
         continue;
       }
-      const reason = rejectionFor(file, count);
+      const reason = rejectionFor(file, count, this.limits());
       if (reason) {
         refused.push(reason);
       } else {
@@ -147,7 +156,7 @@ export class PhotoUploader {
   /** A photo made ready on the device: checked as any other, then in line to be sent. */
   private prepared(key: number, file: File): void {
     // Its place in the count was already taken when it was chosen.
-    const reason = rejectionFor(file, 0);
+    const reason = rejectionFor(file, 0, this.limits());
     if (reason) {
       this.queue.update((queue) => queue.filter((item) => item.key !== key));
       this.refused.update((refused) => [...refused, reason]);
@@ -182,9 +191,17 @@ export class PhotoUploader {
         }
       },
       error: (error: unknown) => {
-        // The reason, in French, next to the file it concerns — and the queue carries on:
-        // one unreadable photo should not strand the nine behind it.
-        this.patch(next.key, { state: 'failed', error: this.errors.messageFor(error) });
+        if (error instanceof PhotoRefusal) {
+          // Too large or too small for the API, found before anything was sent: refused
+          // like a file of the wrong type, by name, in the words the API's refusal gets.
+          // Trying again would not change the photo, so it leaves the queue.
+          this.queue.update((queue) => queue.filter((item) => item.key !== next.key));
+          this.refused.update((refused) => [...refused, `« ${next.name} » : ${error.message}`]);
+        } else {
+          // The reason, in French, next to the file it concerns — and the queue carries on:
+          // one unreadable photo should not strand the nine behind it.
+          this.patch(next.key, { state: 'failed', error: this.errors.messageFor(error) });
+        }
         this.pump();
       },
     });

@@ -15,7 +15,7 @@
   >
     @if (full()) {
       <p class="dropzone__text" i18n="@@uploaderFull">
-        Cette annonce contient le maximum de {{ rules.maxPerListing }} photos. Supprimez-en une
+        Cette annonce contient le maximum de {{ limits()?.maxPerListing }} photos. Supprimez-en une
         pour en ajouter une autre.
       </p>
     } @else {
@@ -27,10 +27,17 @@
         <ng-container i18n="@@uploaderChoose">Choisir des photos</ng-container>
         <input class="visually-hidden" type="file" multiple [accept]="accept" (change)="onChosen($event)" />
       </label>
-      <p class="meta" i18n="@@uploaderRules">
-        JPEG, PNG ou WebP, jusqu’à {{ rules.maxPerListing }} photos ; les photos lourdes sont
-        réduites avant l’envoi. La première est la photo principale.
-      </p>
+      @if (limits(); as limits) {
+        <p class="meta" i18n="@@uploaderRules">
+          JPEG, PNG ou WebP, jusqu’à {{ limits.maxPerListing }} photos ; les photos lourdes sont
+          réduites avant l’envoi. La première est la photo principale.
+        </p>
+      } @else {
+        <p class="meta" i18n="@@uploaderRulesWithoutCount">
+          JPEG, PNG ou WebP ; les photos lourdes sont réduites avant l’envoi. La première est la
+          photo principale.
+        </p>
+      }
     }
   </div>
 

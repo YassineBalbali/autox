@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ACCEPTED_TYPES, PREPARE, jpegName, needsPreparing, preparePhoto } from './photo-prepare';
+import { ACCEPTED_TYPES, PREPARE, jpegName, needsPreparing, photoSize, preparePhoto } from './photo-prepare';
 
 const MB = 1024 * 1024;
 const file = (name: string, type: string, size: number) => new File([new Uint8Array(size)], name, { type });
@@ -105,5 +105,25 @@ describe('photo preparation', () => {
     expect(jpegName('Citroën_C3_-_2016_(17).jpg.webp')).toBe('Citroën_C3_-_2016_(17).jpg');
     expect(jpegName('photo.jpg.jpg')).toBe('photo.jpg');
     expect(jpegName('PHOTO.JPEG')).toBe('PHOTO.jpg');
+  });
+
+  describe('photoSize', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('measures the photo, and lets go of what it decoded', async () => {
+      const close = vi.fn();
+      vi.stubGlobal('createImageBitmap', async () => ({ width: 1600, height: 1200, close }));
+
+      expect(await photoSize(file('a.jpg', 'image/jpeg', 10))).toEqual({ width: 1600, height: 1200 });
+      expect(close).toHaveBeenCalled();
+    });
+
+    it('answers null for a file the browser cannot decode', async () => {
+      vi.stubGlobal('createImageBitmap', async () => {
+        throw new DOMException('undecodable', 'InvalidStateError');
+      });
+
+      expect(await photoSize(file('a.heic', 'image/heic', 10))).toBeNull();
+    });
   });
 });

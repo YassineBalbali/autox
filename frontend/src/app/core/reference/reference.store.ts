@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, defer, map, of, shareReplay, tap } from 'rxjs';
 
-import { Country, Feature, Make, Model, ReferenceService } from '../api';
+import { Country, Feature, Make, Model, PhotoRules, ReferenceService } from '../api';
 
 /**
  * Reference data — makes, models, enum values, countries — fetched once and shared.
@@ -24,6 +24,7 @@ export class ReferenceStore {
   private enums$: Observable<Record<string, string[]>> | null = null;
   private countries$: Observable<Country[]> | null = null;
   private features$: Observable<Feature[]> | null = null;
+  private photoRules$: Observable<PhotoRules> | null = null;
   private readonly models$ = new Map<string, Observable<Model[]>>();
 
   /** Active makes, popular ones first — the order the API returns them in. */
@@ -60,6 +61,18 @@ export class ReferenceStore {
     return (this.features$ ??= this.once(
       () => this.api.features(),
       () => (this.features$ = null),
+    ));
+  }
+
+  /**
+   * What a photo or a logo must be for the API to accept it — types, largest file, fewest
+   * pixels, most photos per listing — from the API's own configuration, so that a check in
+   * the browser cannot drift from the one on the server.
+   */
+  photoRules(): Observable<PhotoRules> {
+    return (this.photoRules$ ??= this.once(
+      () => this.api.photoRules(),
+      () => (this.photoRules$ = null),
     ));
   }
 

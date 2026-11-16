@@ -1,13 +1,17 @@
 import { HttpClient, HttpEventType, HttpHeaders, HttpRequest } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, switchMap } from 'rxjs';
 
-import { ProfileService } from '../../core/api';
+import { ErrorCode, ProfileService } from '../../core/api';
 import { skipAuth } from '../../core/auth/auth.service';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
+import { ERROR_MESSAGES_FR } from '../../core/errors/error-messages.fr';
+import { ReferenceStore } from '../../core/reference/reference.store';
 import { DealerLogo } from '../../shared/dealer/dealer-logo';
 import { Alert } from '../../shared/ui/alert';
-import { PHOTO_RULES } from '../seller/photo-upload.service';
+import { PHOTO_TYPES } from '../seller/photo-prepare';
+import { PhotoLimits, limitsFrom, megabytes } from '../seller/photo-upload.service';
 import { AccountProfileStore } from './account-profile.store';
 
 /**
@@ -90,6 +94,8 @@ export class CompanyLogo {
   private readonly http = inject(HttpClient);
   private readonly store = inject(AccountProfileStore);
   private readonly errors = inject(ErrorMessageService);
+  /** The API's limits; the size is checked here only once they are known. */
+  private readonly limits = toSignal(limitsFrom(inject(ReferenceStore)), { initialValue: null });
 
   private readonly input = viewChild.required<ElementRef<HTMLInputElement>>('file');
 
@@ -106,7 +112,7 @@ export class CompanyLogo {
     if (!file) {
       return;
     }
-    const refused = logoRejection(file);
+    const refused = logoRejection(file, this.limits());
     if (refused) {
       this.failure.set(refused);
       return;
@@ -164,15 +170,15 @@ export class CompanyLogo {
 }
 
 /** Why a file cannot be a logo, in French, or null. The API checks again. */
-export function logoRejection(file: File): string | null {
-  if (!(PHOTO_RULES.contentTypes as readonly string[]).includes(file.type)) {
+export function logoRejection(file: File, limits: PhotoLimits | null): string | null {
+  if (!PHOTO_TYPES.includes(file.type)) {
     return `« ${file.name} » n’est pas une image JPEG ou PNG.`;
   }
   if (file.size === 0) {
     return `« ${file.name} » est un fichier vide.`;
   }
-  if (file.size > PHOTO_RULES.maxBytes) {
-    return `« ${file.name} » est trop volumineux : 10 Mo au plus.`;
+  if (limits && file.size > limits.maxBytes) {
+    return `« ${file.name} » : ${ERROR_MESSAGES_FR[ErrorCode.IMAGE_TOO_LARGE]} La taille maximale est de ${megabytes(limits.maxBytes)} Mo.`;
   }
   return null;
 }

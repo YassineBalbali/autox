@@ -167,8 +167,13 @@ describe('company page rules', () => {
   });
 
   it('refuses a logo that is not a JPEG or PNG, or too large', () => {
-    expect(logoRejection(new File(['x'], 'logo.gif', { type: 'image/gif' }))).toContain('n’est pas une image JPEG ou PNG');
-    expect(logoRejection(new File([new Uint8Array(11 * 1024 * 1024)], 'logo.png', { type: 'image/png' }))).toContain('10 Mo');
-    expect(logoRejection(new File(['x'], 'logo.png', { type: 'image/png' }))).toBeNull();
+    const limits = { maxBytes: 10 * 1024 * 1024, minDimension: 400, maxPerListing: 20 };
+    expect(logoRejection(new File(['x'], 'logo.gif', { type: 'image/gif' }), limits)).toContain('n’est pas une image JPEG ou PNG');
+    expect(logoRejection(new File([new Uint8Array(11 * 1024 * 1024)], 'logo.png', { type: 'image/png' }), limits)).toContain(
+      'La taille maximale est de 10 Mo.',
+    );
+    expect(logoRejection(new File(['x'], 'logo.png', { type: 'image/png' }), limits)).toBeNull();
+    // The size waits for the API's limits; the API checks it regardless.
+    expect(logoRejection(new File([new Uint8Array(11 * 1024 * 1024)], 'logo.png', { type: 'image/png' }), null)).toBeNull();
   });
 });

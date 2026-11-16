@@ -89,6 +89,21 @@ row pointing at nothing).
 Reordering numbers the ready photos in the order given, then any other row (an upload under way)
 after them in its order: every row gets a new position, so none can collide.
 
+## 2b. The same limits, checked in the browser first
+
+`GET /api/v1/reference/photo-rules` serves the limits from `autox.listing.images`: accepted
+types, largest file, fewest pixels on the shorter edge, most photos per listing. The site's
+uploader (and the dealer logo) reads them through `ReferenceStore.photoRules()`, so no number is
+copied into the web. Before asking for a slot, `refusalBeforeUpload` measures the photo
+(`createImageBitmap`) and refuses one too large or too small with the sentence the API's refusal
+gets (`IMAGE_TOO_LARGE`, `IMAGE_TOO_SMALL` in `labels.fr.json`), naming the file. A photo the
+browser cannot decode, or limits that cannot be read, go to the API, whose checks always run.
+The accepted types stay a web constant (`PHOTO_TYPES`), because the file input, the WebP
+conversion and the "JPEG ou PNG" sentence are built around them.
+
+A converted photo keeps its name with `.jpg` in place of every image extension at the end:
+`photo.jpg.webp` becomes `photo.jpg`, not `photo.jpg.jpg`.
+
 ## 3. Read URLs are signed and expiring, unless you set a CDN
 
 With `AUTOX_S3_PUBLIC_BASE_URL` empty, variant URLs are pre-signed GETs valid for six hours.

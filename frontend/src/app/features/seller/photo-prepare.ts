@@ -1,10 +1,8 @@
-import { PHOTO_RULES } from './photo-upload.service';
-
 /**
  * How a photo from a phone is made ready before it is sent.
  *
  * <p>A phone's camera roll is the opposite of what the upload expects: photos of 12 to 48
- * megapixels, several megabytes each and sometimes over the 10 MB limit, sometimes WebP,
+ * megapixels, several megabytes each and sometimes over the API's size limit, sometimes WebP,
  * occasionally with no type reported by the picker at all — and sent over a mobile
  * connection. So a photo the API would refuse, or that is simply heavy, is redrawn in the
  * browser first: turned the right way up from its EXIF orientation, scaled to at most
@@ -20,6 +18,13 @@ import { PHOTO_RULES } from './photo-upload.service';
  * cannot be sent. (iOS needs no help here: it converts HEIC to JPEG itself when the file
  * input does not ask for HEIC, which is why HEIC is not in the input's accept list.)
  */
+/**
+ * The types the API takes as uploaded, which the file input and the conversion of WebP are
+ * built around (and the French "JPEG ou PNG" with them). The numbers — largest file, fewest
+ * pixels, most photos — are the API's, read from it: see `PhotoLimits`.
+ */
+export const PHOTO_TYPES: readonly string[] = ['image/jpeg', 'image/png'];
+
 export const PREPARE = {
   maxEdge: 2560,
   quality: 0.85,
@@ -28,11 +33,11 @@ export const PREPARE = {
 } as const;
 
 /** What the file input offers: the types the API takes, and WebP, which is converted. */
-export const ACCEPTED_TYPES = [...PHOTO_RULES.contentTypes, 'image/webp'].join(',');
+export const ACCEPTED_TYPES = [...PHOTO_TYPES, 'image/webp'].join(',');
 
 /** Whether a file is to be redrawn before it is sent. Decided at once, without decoding. */
 export function needsPreparing(file: File): boolean {
-  const supported = (PHOTO_RULES.contentTypes as readonly string[]).includes(file.type);
+  const supported = PHOTO_TYPES.includes(file.type);
   if (supported) {
     return file.size > PREPARE.keepBelowBytes;
   }
@@ -71,7 +76,7 @@ export async function preparePhoto(file: File): Promise<File> {
   bitmap.close();
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', PREPARE.quality));
-  const supported = (PHOTO_RULES.contentTypes as readonly string[]).includes(file.type);
+  const supported = PHOTO_TYPES.includes(file.type);
   if (!blob || (supported && blob.size >= file.size)) {
     return file;
   }
@@ -87,4 +92,19 @@ export function jpegName(name: string): string {
   const imageExtensions = /(\.(jpe?g|jfif|png|webp|heic|heif|avif|gif|bmp|tiff?))+$/i;
   const stem = imageExtensions.test(name) ? name.replace(imageExtensions, '') : name.replace(/\.[^./\\]+$/, '');
   return `${stem || 'photo'}.jpg`;
+}
+
+/**
+ * The photo's width and height in pixels, or `null` when the browser cannot decode it — the
+ * API then decides. The shorter edge is the same whichever way up the photo is shown.
+ */
+export async function photoSize(file: Blob): Promise<{ width: number; height: number } | null> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const size = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return size;
+  } catch {
+    return null;
+  }
 }

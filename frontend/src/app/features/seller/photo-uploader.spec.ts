@@ -5,10 +5,13 @@ import { Subject } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { BASE_PATH, ErrorCode, ImageResponse, ImageStatus } from '../../core/api';
-import { PhotoUploadService, UploadEvent } from './photo-upload.service';
+import LABELS from '../../../../labels.fr.json';
+import { PhotoRefusal, PhotoUploadService, UploadEvent } from './photo-upload.service';
 import { PhotoUploader } from './photo-uploader';
 
 const BASE = 'http://api.test';
+const RULES = `${BASE}/api/v1/reference/photo-rules`;
+const RULES_BODY = { contentTypes: ['image/jpeg', 'image/png'], maxBytes: 10 * 1024 * 1024, minDimension: 400, maxPerListing: 20 };
 
 /** Stands in for the three-step upload: each call hands back a subject the test drives. */
 class FakeUploads {
@@ -44,7 +47,8 @@ describe('PhotoUploader', () => {
 
   const file = (name: string, type = 'image/jpeg', size = 1024) => new File([new Uint8Array(size)], name, { type });
 
-  async function render(initial: ImageResponse[] = []): Promise<void> {
+  /** `rules`: the API's limits, or `null` to leave the request unanswered. */
+  async function render(initial: ImageResponse[] = [], rules: object | null = RULES_BODY): Promise<void> {
     TestBed.resetTestingModule();
     uploads = new FakeUploads();
     TestBed.configureTestingModule({
@@ -62,6 +66,10 @@ describe('PhotoUploader', () => {
     emitted = [];
     fixture.componentInstance.changed.subscribe((photos) => emitted.push(photos));
     await fixture.whenStable();
+    if (rules) {
+      backend.expectOne(RULES).flush(rules);
+      await fixture.whenStable();
+    }
   }
 
   const el = () => fixture.nativeElement as HTMLElement;
@@ -167,7 +175,7 @@ describe('PhotoUploader', () => {
       const refused = Array.from(el().querySelectorAll('.uploader__refused li')).map((item) => item.textContent);
       expect(refused).toEqual([
         '« notes.pdf » n’est pas une image JPEG ou PNG.',
-        '« enorme.jpg » est trop volumineuse (11 Mo). La taille maximale est de 10 Mo.',
+        `« enorme.jpg » : ${LABELS.enums.ErrorCode.IMAGE_TOO_LARGE} La taille maximale est de 10 Mo.`,
       ]);
       expect(uploads.calls.map((call) => call.file.name)).toEqual(['bonne.jpg']);
     });
@@ -345,6 +353,42 @@ describe('PhotoUploader', () => {
       expect(shownIds()).toEqual(['a', 'b']);
       expect(emitted).toEqual([]);
       expect(el().querySelector('app-alert')).not.toBeNull();
+    });
+  });
+
+  describe('the API’s limits', () => {
+    it('refuses, by name and in the words of the API’s refusal, a photo found too small before sending', async () => {
+      await render();
+      await drop(file('miniature.jpg'), file('bonne.jpg'));
+
+      uploads.calls[0].events.error(new PhotoRefusal(ErrorCode.IMAGE_TOO_SMALL));
+      await settle();
+
+      expect(el().textContent).toContain(`« miniature.jpg » : ${LABELS.enums.ErrorCode.IMAGE_TOO_SMALL}`);
+      // Out of the queue, since trying again would not change the photo; the next one goes.
+      expect(queue().map((row) => row.textContent)).toEqual([expect.stringContaining('bonne.jpg')]);
+      expect(uploads.calls.map((call) => call.file.name)).toEqual(['miniature.jpg', 'bonne.jpg']);
+    });
+
+    it('takes the most photos per listing from the API', async () => {
+      await render([photo('a', 0), photo('b', 1)], { ...RULES_BODY, maxPerListing: 2 });
+
+      expect(el().textContent).toContain('Cette annonce contient le maximum de 2 photos.');
+      expect(el().querySelector('input[type=file]')).toBeNull();
+    });
+
+    it('says how many photos a listing takes once the API has said', async () => {
+      await render();
+
+      expect(el().textContent).toContain('jusqu’à 20 photos');
+    });
+
+    it('lets files through to the API’s own checks while its limits are unknown', async () => {
+      await render(Array.from({ length: 20 }, (_, index) => photo(`p${index}`, index)), null);
+      await drop(file('vingt-et-unieme.jpg'));
+
+      expect(el().textContent).not.toContain('jusqu’à');
+      expect(uploads.calls.map((call) => call.file.name)).toEqual(['vingt-et-unieme.jpg']);
     });
   });
 
