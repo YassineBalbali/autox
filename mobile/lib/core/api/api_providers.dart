@@ -21,7 +21,11 @@ final httpAdapterProvider = Provider<HttpClientAdapter?>((ref) => null);
 
 /// Where request logs go: the console, in debug builds only. Tests capture it to prove that no
 /// token is ever written there.
-final logSinkProvider = Provider<void Function(String line)?>((ref) => kDebugMode ? debugPrint : null);
+final logSinkProvider = Provider<void Function(String line)?>((ref) => logSinkFor(debug: kDebugMode));
+
+/// The console in a debug build; nothing at all otherwise. Without a sink no logging interceptor
+/// is installed, so a profile or release build writes no request line, header or body anywhere.
+void Function(String line)? logSinkFor({required bool debug}) => debug ? debugPrint : null;
 
 BaseOptions _options(AppConfig config, {required Duration receive}) => BaseOptions(
   baseUrl: config.apiBaseUrl,

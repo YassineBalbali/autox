@@ -2,13 +2,16 @@
     <!-- The API. In the main manifest, not only the debug one: a release needs it too. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- HTTPS only (res/xml/network_security_config.xml); the debug build replaces that file. -->
     <application
         android:label="AutoX"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:fullBackupContent="false"
-        android:dataExtractionRules="@xml/data_extraction_rules">
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

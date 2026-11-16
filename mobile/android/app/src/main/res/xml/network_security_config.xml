@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every build: HTTPS only, the system's certificate authorities only. Explicit, because
+     Android allows cleartext by default below API 28 and the app installs from API 24. The debug
+     build replaces this file (src/debug/res/xml) to reach the local backend over HTTP; release
+     and profile builds keep this one. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
