@@ -27,6 +27,22 @@ void main() {
     expect(find.text('Pro'), findsOneWidget);
   });
 
+  testWidgets('the photo count: shown past one photo, and for one photo without a cover', (tester) async {
+    await _pump(tester, listingJson(photoCount: 1));
+    expect(find.text('1'), findsOneWidget);
+
+    await _pump(tester, {
+      ...listingJson(photoCount: 1),
+      'coverImage': {
+        'THUMBNAIL': {'url': 'http://localhost:9000/l1/thumbnail.jpg', 'width': 320, 'height': 240},
+      },
+    });
+    expect(find.text('1'), findsNothing);
+
+    await _pump(tester, listingJson(photoCount: 3));
+    expect(find.text('3'), findsOneWidget);
+  });
+
   testWidgets('a new car says "Neuf" instead of its few kilometres', (tester) async {
     await _pump(tester, listingJson(soldNew: true, mileageKm: 15, year: 2026, sellerRole: 'PARTICULIER'));
 

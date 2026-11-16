@@ -149,6 +149,7 @@ class _Thumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cover = coverOf(listing);
+    final photos = listing.photoCount ?? 0;
     final placeholder = Container(
       color: AppColors.surfaceSunk,
       alignment: Alignment.center,
@@ -175,7 +176,8 @@ class _Thumb extends StatelessWidget {
                 placeholder: (_, _) => placeholder,
                 errorWidget: (_, _, _) => placeholder,
               ),
-            if ((listing.photoCount ?? 0) > 1)
+            // One photo with its cover says nothing; one photo and no cover says it exists.
+            if (photos > 1 || (photos > 0 && cover == null))
               Positioned(
                 left: AppSpace.s1,
                 bottom: AppSpace.s1,
@@ -191,7 +193,7 @@ class _Thumb extends StatelessWidget {
                       const Icon(LucideIcons.camera, size: 12, color: AppColors.surface),
                       const SizedBox(width: 3),
                       Text(
-                        '${listing.photoCount}',
+                        '$photos',
                         style: const TextStyle(
                           fontSize: AppType.txs,
                           color: AppColors.surface,
