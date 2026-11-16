@@ -61,4 +61,18 @@ public final class ReferenceDtos {
      */
     public record Enums(Map<String, List<String>> values) {
     }
+
+    /**
+     * What a listing photo (or a dealer's logo) must be for the API to accept it: the limits it
+     * enforces at upload, from its configuration ({@code autox.listing.images}). A client checks
+     * them before sending anything, so that a seller hears at once, not after the upload; the
+     * API checks them again whatever a client does.
+     *
+     * @param contentTypes the types accepted as uploaded
+     * @param maxBytes the largest file, in bytes
+     * @param minDimension the fewest pixels on the shorter edge, after the photo is turned upright
+     * @param maxPerListing the most photos one listing may have, uploads under way included
+     */
+    public record PhotoRules(List<String> contentTypes, long maxBytes, int minDimension, int maxPerListing) {
+    }
 }

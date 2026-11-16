@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MvcResult;
 class ReferenceEndpointsIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired ListingTestFixtures fixtures;
+    @Autowired com.autox.listing.image.ImageProperties imageProperties;
 
     // --- access -----------------------------------------------------------
 
@@ -34,7 +35,7 @@ class ReferenceEndpointsIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("every reference endpoint is readable without a token")
     void publicWithoutAuthentication() throws Exception {
         for (String path : List.of("/api/v1/reference/enums", "/api/v1/reference/features",
-                "/api/v1/reference/makes", "/api/v1/reference/countries")) {
+                "/api/v1/reference/makes", "/api/v1/reference/countries", "/api/v1/reference/photo-rules")) {
             mockMvc.perform(get(path)).andExpect(status().isOk());
         }
     }
@@ -53,6 +54,21 @@ class ReferenceEndpointsIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/reference/features")
                         .header("If-None-Match", result.getResponse().getHeader("ETag")))
                 .andExpect(status().isNotModified());
+    }
+
+    // --- photo rules ------------------------------------------------------
+
+    @Test
+    @DisplayName("the photo rules are the limits the upload enforces, from its configuration")
+    void photoRulesComeFromTheConfiguration() throws Exception {
+        mockMvc.perform(get("/api/v1/reference/photo-rules"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "max-age=3600, public"))
+                .andExpect(jsonPath("$.contentTypes[0]").value(imageProperties.allowedContentTypes().get(0)))
+                .andExpect(jsonPath("$.contentTypes.length()").value(imageProperties.allowedContentTypes().size()))
+                .andExpect(jsonPath("$.maxBytes").value(imageProperties.maxBytes()))
+                .andExpect(jsonPath("$.minDimension").value(imageProperties.minDimension()))
+                .andExpect(jsonPath("$.maxPerListing").value(imageProperties.maxPerListing()));
     }
 
     // --- enums ------------------------------------------------------------

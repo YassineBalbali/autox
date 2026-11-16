@@ -1,5 +1,6 @@
 package com.autox.reference.api;
 
+import com.autox.listing.image.ImageProperties;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Duration;
 import java.util.List;
@@ -32,9 +33,11 @@ public class ReferenceController {
     private static final CacheControl CACHE = CacheControl.maxAge(Duration.ofHours(1)).cachePublic();
 
     private final ReferenceService reference;
+    private final ImageProperties images;
 
-    public ReferenceController(ReferenceService reference) {
+    public ReferenceController(ReferenceService reference, ImageProperties images) {
         this.reference = reference;
+        this.images = images;
     }
 
     /**
@@ -78,6 +81,17 @@ public class ReferenceController {
     @GetMapping("/countries")
     public ResponseEntity<List<ReferenceDtos.Country>> countries() {
         return cacheable(reference.countries());
+    }
+
+    /**
+     * The limits a photo must meet to be accepted, as the API enforces them. Read by the
+     * site's uploader to refuse a file before sending it, in the words the API's refusal
+     * would get; configuration, so it changes only with a deploy.
+     */
+    @GetMapping("/photo-rules")
+    public ResponseEntity<ReferenceDtos.PhotoRules> photoRules() {
+        return cacheable(new ReferenceDtos.PhotoRules(List.copyOf(images.allowedContentTypes()),
+                images.maxBytes(), images.minDimension(), images.maxPerListing()));
     }
 
     private static <T> ResponseEntity<T> cacheable(T body) {

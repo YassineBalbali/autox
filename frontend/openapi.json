@@ -2549,6 +2549,38 @@
         }
       }
     },
+    "/api/v1/reference/photo-rules": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "The limits a photo must meet to be accepted, as the API enforces them.",
+        "description": "The limits a photo must meet to be accepted, as the API enforces them. Read by the\n site's uploader to refuse a file before sending it, in the words the API's refusal\n would get; configuration, so it changes only with a deploy.",
+        "operationId": "photoRules",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoRules"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/reference/makes/{makeId}/models": {
       "get": {
         "tags": [
@@ -4282,6 +4314,34 @@
   },
   "components": {
     "schemas": {
+      "PhotoRules": {
+        "type": "object",
+        "description": "What a listing photo (or a dealer's logo) must be for the API to accept it: the limits it\n enforces at upload, from its configuration (<code>autox.listing.images</code>). A client checks\n them before sending anything, so that a seller hears at once, not after the upload; the\n API checks them again whatever a client does.",
+        "properties": {
+          "contentTypes": {
+            "type": "array",
+            "description": "the types accepted as uploaded",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxBytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "the largest file, in bytes"
+          },
+          "minDimension": {
+            "type": "integer",
+            "format": "int32",
+            "description": "the fewest pixels on the shorter edge, after the photo is turned upright"
+          },
+          "maxPerListing": {
+            "type": "integer",
+            "format": "int32",
+            "description": "the most photos one listing may have, uploads under way included"
+          }
+        }
+      },
       "ReorderImagesRequest": {
         "type": "object",
         "description": "The gallery's new order, front to back. Position 0 is the cover photo.\n\n <p>Must be a complete permutation of the listing's ready images — a partial list is\n rejected rather than interpreted, because \"move this one to the front\" and \"these are the\n only ones I know about\" are indistinguishable otherwise, and guessing wrong silently\n reorders someone's gallery.",
