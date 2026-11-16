@@ -78,8 +78,13 @@ export async function preparePhoto(file: File): Promise<File> {
   return new File([blob], jpegName(file.name), { type: 'image/jpeg', lastModified: file.lastModified });
 }
 
-/** "IMG_2041.HEIC" → "IMG_2041.jpg": the name the seller recognises, with the type it now has. */
+/**
+ * "IMG_2041.HEIC" → "IMG_2041.jpg": the name the seller recognises, with the type it now has.
+ * The extension is replaced, never added to: every image extension at the end goes, so a file
+ * saved from a web page as "photo.jpg.webp" becomes "photo.jpg", not "photo.jpg.jpg".
+ */
 export function jpegName(name: string): string {
-  const stem = name.replace(/\.[^./\\]+$/, '');
+  const imageExtensions = /(\.(jpe?g|jfif|png|webp|heic|heif|avif|gif|bmp|tiff?))+$/i;
+  const stem = imageExtensions.test(name) ? name.replace(imageExtensions, '') : name.replace(/\.[^./\\]+$/, '');
   return `${stem || 'photo'}.jpg`;
 }

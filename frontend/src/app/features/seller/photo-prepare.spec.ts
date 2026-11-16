@@ -100,5 +100,10 @@ describe('photo preparation', () => {
     expect(jpegName('voiture.face.webp')).toBe('voiture.face.jpg');
     expect(jpegName('sans-extension')).toBe('sans-extension.jpg');
     expect(jpegName('.webp')).toBe('photo.jpg');
+    expect(jpegName('photo.webp')).toBe('photo.jpg');
+    // A file saved from a web page: replaced, never appended to.
+    expect(jpegName('Citroën_C3_-_2016_(17).jpg.webp')).toBe('Citroën_C3_-_2016_(17).jpg');
+    expect(jpegName('photo.jpg.jpg')).toBe('photo.jpg');
+    expect(jpegName('PHOTO.JPEG')).toBe('PHOTO.jpg');
   });
 });
