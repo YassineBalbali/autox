@@ -16,6 +16,18 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
     @Query("select l from Listing l where l.id = :id and l.deletedAt is null")
     Optional<Listing> findActiveById(@Param("id") UUID id);
 
+    /**
+     * Takes the row lock that serialises every change to a listing's photos: asking for an
+     * upload slot, confirming one, reordering, removing, and the sweeper's clean-up. Each takes
+     * it first and reads the photos after, so none of them works from positions another is
+     * rewriting. Held until the transaction ends; empty when there is no such listing.
+     *
+     * <p>Native, and a constant rather than the entity, so that it locks the one row without
+     * loading the listing or its associations.
+     */
+    @Query(value = "SELECT 1 FROM listing WHERE id = :id FOR UPDATE", nativeQuery = true)
+    Optional<Integer> lockPhotos(@Param("id") UUID id);
+
     @Query("select l from Listing l where l.seller.id = :sellerId and l.deletedAt is null")
     Page<Listing> findBySeller(@Param("sellerId") UUID sellerId, Pageable pageable);
 

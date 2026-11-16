@@ -8,6 +8,7 @@ import com.autox.listing.ListingAccessGuard;
 import com.autox.listing.ListingImage;
 import com.autox.listing.ListingImageRepository;
 import com.autox.listing.ListingImageVariant;
+import com.autox.listing.ListingRepository;
 import com.autox.listing.dto.ImageResponse;
 import com.autox.listing.dto.ImageUploadRequest;
 import com.autox.listing.dto.ImageUploadTicket;
@@ -21,12 +22,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Photo upload, confirmation, ordering and removal.
@@ -42,7 +46,15 @@ import org.springframework.transaction.annotation.Transactional;
  * </ol>
  *
  * <p>A row that never reaches step three is an orphan, which is why the slot carries an
- * expiry and {@link ListingImageSweeper} exists.
+ * expiry and {@link ListingImageSweeper} exists. An upload refused at step three is deleted
+ * there and then, with every file stored for it, and the rows after it move up: a listing
+ * holds only its photos and the uploads under way, at consecutive positions from zero.
+ *
+ * <p><b>One change at a time per listing.</b> Every method that writes a listing's photos
+ * first locks the listing's row ({@link ListingRepository#lockPhotos}) and reads the photos
+ * only after, so two of them never renumber the same rows from different snapshots: the
+ * sweeper waits for a seller's reorder, a reorder for an upload being confirmed. The site
+ * sends a seller's photos one at a time, so in practice nothing waits.
  */
 @Service
 public class ListingImageService {
@@ -57,26 +69,29 @@ public class ListingImageService {
 
     private final ListingAccessGuard accessGuard;
     private final ListingImageRepository images;
+    private final ListingRepository listings;
     private final ObjectStorage storage;
     private final StorageProperties storageProperties;
     private final ImageProperties imageProperties;
     private final ImageResizer resizer;
-    private final ImageFailureRecorder failureRecorder;
+    private final TransactionTemplate transactions;
 
     public ListingImageService(ListingAccessGuard accessGuard,
                                ListingImageRepository images,
+                               ListingRepository listings,
                                ObjectStorage storage,
                                StorageProperties storageProperties,
                                ImageProperties imageProperties,
                                ImageResizer resizer,
-                               ImageFailureRecorder failureRecorder) {
+                               PlatformTransactionManager transactionManager) {
         this.accessGuard = accessGuard;
         this.images = images;
+        this.listings = listings;
         this.storage = storage;
         this.storageProperties = storageProperties;
         this.imageProperties = imageProperties;
         this.resizer = resizer;
-        this.failureRecorder = failureRecorder;
+        this.transactions = new TransactionTemplate(transactionManager);
     }
 
     // --- step 1: ask for a slot -------------------------------------------
@@ -84,6 +99,9 @@ public class ListingImageService {
     @Transactional
     public ImageUploadTicket requestUpload(UUID callerId, boolean admin, UUID listingId,
                                            ImageUploadRequest request) {
+        // Before the count and the next position are read: two slots asked for at once would
+        // otherwise take the same position, and the second would fail at commit.
+        listings.lockPhotos(listingId);
         Listing listing = accessGuard.require(callerId, admin, listingId);
         requireEditable(listing);
 
@@ -133,25 +151,93 @@ public class ListingImageService {
      *
      * <p>Idempotent: confirming an already-ready image returns it unchanged, because a mobile
      * client that loses its connection mid-response will retry.
+     *
+     * <p>An upload refused here — too large, not an image, too small, or anything else going
+     * wrong with its file — is <b>removed</b>: its row is deleted and the rows after it move
+     * up, in a transaction that commits, and then every file stored for it is deleted. The
+     * seller is told why and can choose another photo; nothing is left to hold a position, the
+     * photo allowance or storage. Hence a transaction template rather than
+     * {@code @Transactional}: the removal must commit although the request fails.
      */
-    @Transactional
     public ImageResponse confirmUpload(UUID callerId, boolean admin, UUID listingId, UUID imageId) {
+        Confirmation outcome = transactions.execute(status -> confirmLocked(callerId, admin, listingId, imageId));
+        if (outcome.refusal() == null) {
+            return outcome.image();
+        }
+        // Committed: the row is gone. Its files go now; storage last, as in delete().
+        deleteObjects(imageId, outcome.removedKeys());
+        throw outcome.refusal();
+    }
+
+    /** What a confirmation came to: the photo, or why it was refused and what to delete. */
+    private record Confirmation(ImageResponse image, RuntimeException refusal, List<String> removedKeys) {
+    }
+
+    private Confirmation confirmLocked(UUID callerId, boolean admin, UUID listingId, UUID imageId) {
+        listings.lockPhotos(listingId);
         Listing listing = accessGuard.require(callerId, admin, listingId);
 
         ListingImage image = images.findByIdAndListing(imageId, listingId)
                 .orElseThrow(() -> ApiException.notFound("Image"));
 
         if (image.getStatus() == ImageStatus.READY) {
-            return ImageResponse.from(image, storage::readUrl);
+            return new Confirmation(ImageResponse.from(image, storage::readUrl), null, List.of());
         }
 
-        ObjectStorage.StoredObject stored = storage.stat(image.getStorageKey())
-                .orElseThrow(() -> ApiException.uploadNotFound(
-                        "No uploaded file was found for this image. Upload to the pre-signed URL first;"
-                                + " if it has expired, request a new one."));
+        Optional<ObjectStorage.StoredObject> stored;
+        Processed processed = null;
+        try {
+            stored = storage.stat(image.getStorageKey());
+            if (stored.isPresent()) {
+                processed = process(image, stored.get());
+            }
+        } catch (RuntimeException refused) {
+            return remove(image, refused);
+        }
+        if (processed == null) {
+            // Not a refusal: the client may confirm before its last byte has landed, and can
+            // try again. The slot stays until it is confirmed or its URL expires.
+            throw ApiException.uploadNotFound(
+                    "No uploaded file was found for this image. Upload to the pre-signed URL first;"
+                            + " if it has expired, request a new one.");
+        }
 
+        image.getVariants().clear();
+        for (Processed.Variant variant : processed.variants()) {
+            image.getVariants().add(ListingImageVariant.of(image, variant.type(), variant.key(),
+                    variant.width(), variant.height(), variant.byteSize()));
+        }
+        image.setWidth(processed.width());
+        image.setHeight(processed.height());
+        // The size and checksum of what is now stored, not of what was uploaded.
+        image.setByteSize((long) processed.content().length);
+        image.setChecksumSha256(com.autox.common.Sha256.hex(processed.content()));
+        image.setUploadedAt(Instant.now());
+        image.setStatus(ImageStatus.READY);
+
+        // A photo nobody has seen is now on the listing: an approval given before it
+        // arrived does not cover it. See Listing#contentChanged.
+        if (listing.contentChanged()) {
+            log.info("Listing {} gained a photo after approval and is back in the moderation queue", listingId);
+        }
+
+        log.info("Image {} confirmed for listing {} ({}x{}, {} variants)",
+                imageId, listingId, processed.width(), processed.height(), image.getVariants().size());
+        return new Confirmation(ImageResponse.from(image, storage::readUrl), null, List.of());
+    }
+
+    /** The checked, sanitised upload and its renditions, already written to storage. */
+    private record Processed(int width, int height, byte[] content, List<Variant> variants) {
+        record Variant(ImageVariantType type, String key, int width, int height, int byteSize) {
+        }
+    }
+
+    /**
+     * Checks the stored object and writes its renditions. Touches storage only, never the row,
+     * so that a refusal leaves the row as it was for {@link #remove} to delete.
+     */
+    private Processed process(ListingImage image, ObjectStorage.StoredObject stored) {
         if (stored.byteSize() > imageProperties.maxBytes()) {
-            fail(image);
             throw ApiException.imageTooLarge("The uploaded file is larger than the "
                     + megabytes(imageProperties.maxBytes()) + " MB limit.");
         }
@@ -163,8 +249,6 @@ public class ListingImageService {
             // The only trustworthy check: a content type header is whatever the client typed.
             decoded = resizer.decode(content);
         } catch (ImageResizer.UnreadableImageException notAnImage) {
-            fail(image);
-            storage.delete(image.getStorageKey());
             throw ApiException.unsupportedImageType(notAnImage.getMessage());
         }
 
@@ -172,45 +256,43 @@ public class ListingImageService {
         // stripping it would leave every portrait photo lying on its side.
         int orientation = ImageMetadata.readJpegOrientation(content);
         decoded = ImageMetadata.applyOrientation(decoded, orientation);
-        content = rewriteStoredOriginal(image, content, decoded, orientation, stored.contentType());
 
-        if (Math.min(decoded.getWidth(), decoded.getHeight()) < imageProperties.minDimension()) {
-            fail(image);
-            storage.delete(image.getStorageKey());
+        int shorterEdge = Math.min(decoded.getWidth(), decoded.getHeight());
+        if (shorterEdge < imageProperties.minDimension()) {
             throw ApiException.imageTooSmall("Images must be at least "
                     + imageProperties.minDimension() + " pixels on the shorter edge; this one is "
-                    + Math.min(decoded.getWidth(), decoded.getHeight()) + ".");
+                    + shorterEdge + ".");
         }
 
-        image.getVariants().clear();
+        content = rewriteStoredOriginal(image, content, decoded, orientation, stored.contentType());
+
+        UUID listingId = image.getListing().getId();
+        List<Processed.Variant> variants = new ArrayList<>();
         for (Map.Entry<ImageVariantType, Integer> entry : imageProperties.variantMaxEdge().entrySet()) {
             ImageVariantType type = entry.getKey();
             ImageResizer.Rendition rendition = resizer.render(decoded, entry.getValue(),
                     imageProperties.jpegQuality());
 
-            String key = variantKey(listingId, imageId, type);
+            String key = variantKey(listingId, image.getId(), type);
             storage.write(key, rendition.content(), "image/jpeg");
-            image.getVariants().add(ListingImageVariant.of(image, type, key,
+            variants.add(new Processed.Variant(type, key,
                     rendition.width(), rendition.height(), rendition.content().length));
         }
+        return new Processed(decoded.getWidth(), decoded.getHeight(), content, variants);
+    }
 
-        image.setWidth(decoded.getWidth());
-        image.setHeight(decoded.getHeight());
-        // The size and checksum of what is now stored, not of what was uploaded.
-        image.setByteSize((long) content.length);
-        image.setChecksumSha256(com.autox.common.Sha256.hex(content));
-        image.setUploadedAt(Instant.now());
-        image.setStatus(ImageStatus.READY);
-
-        // A photo nobody has seen is now on the listing: an approval given before it
-        // arrived does not cover it. See Listing#contentChanged.
-        if (listing.contentChanged()) {
-            log.info("Listing {} gained a photo after approval and is back in the moderation queue", listingId);
-        }
-
-        log.info("Image {} confirmed for listing {} ({}x{}, {} variants)",
-                imageId, listingId, decoded.getWidth(), decoded.getHeight(), image.getVariants().size());
-        return ImageResponse.from(image, storage::readUrl);
+    /**
+     * Deletes a refused upload's row and closes the gap, inside the confirmation's transaction,
+     * which then commits; the caller deletes the files once it has.
+     */
+    private Confirmation remove(ListingImage image, RuntimeException refusal) {
+        UUID listingId = image.getListing().getId();
+        List<String> keys = everyKeyOf(image);
+        images.delete(image);
+        images.flush();
+        renumber(listingId);
+        log.info("Upload {} for listing {} refused and removed: {}", image.getId(), listingId, refusal.getMessage());
+        return new Confirmation(null, refusal, keys);
     }
 
     // --- read -------------------------------------------------------------
@@ -228,16 +310,18 @@ public class ListingImageService {
     /**
      * Applies a new gallery order.
      *
-     * <p>The whole set must be supplied. Positions are then rewritten in place, which
-     * transiently duplicates values — allowed because the unique constraint on
+     * <p>The whole set of ready photos must be supplied. Positions are then rewritten in
+     * place, which transiently duplicates values — allowed because the unique constraint on
      * {@code (listing_id, position)} is deferred to commit. Without that, this would need a
      * two-pass shuffle through negative positions.
      */
     @Transactional
     public List<ImageResponse> reorder(UUID callerId, boolean admin, UUID listingId, List<UUID> order) {
+        listings.lockPhotos(listingId);
         accessGuard.require(callerId, admin, listingId);
 
-        List<ListingImage> ready = images.findReadyByListing(listingId);
+        List<ListingImage> all = images.findByListing(listingId);
+        List<ListingImage> ready = all.stream().filter(image -> image.getStatus() == ImageStatus.READY).toList();
         if (ready.isEmpty()) {
             throw ApiException.conflict("This listing has no confirmed photos to reorder.");
         }
@@ -261,6 +345,15 @@ public class ListingImageService {
         for (UUID id : order) {
             byId.get(id).setPosition(position++);
         }
+        // Then every other row — an upload under way, or a FAILED row an earlier version left —
+        // after the photos, in the order it had. Every row gets a new position, so none keeps
+        // one a photo has just taken; numbering the photos alone did exactly that, and the
+        // unique constraint refused the commit.
+        for (ListingImage image : all) {
+            if (image.getStatus() != ImageStatus.READY) {
+                image.setPosition(position++);
+            }
+        }
         images.flush();
 
         return images.findReadyByListing(listingId).stream()
@@ -276,6 +369,7 @@ public class ListingImageService {
      */
     @Transactional
     public void delete(UUID callerId, boolean admin, UUID listingId, UUID imageId) {
+        listings.lockPhotos(listingId);
         Listing listing = accessGuard.require(callerId, admin, listingId);
 
         ListingImage image = images.findByIdAndListing(imageId, listingId)
@@ -288,7 +382,7 @@ public class ListingImageService {
             log.info("Listing {} lost a photo after approval and is back in the moderation queue", listingId);
         }
 
-        List<String> keys = image.allStorageKeys();
+        List<String> keys = everyKeyOf(image);
         images.delete(image);
         images.flush();
 
@@ -297,41 +391,58 @@ public class ListingImageService {
         // Storage last: a failure here leaves bytes nobody references, which the sweeper can
         // clean up later. Deleting storage first and then failing would leave a row pointing
         // at nothing, which the API would serve as a broken image.
-        try {
-            storage.deleteAll(keys);
-        } catch (RuntimeException e) {
-            log.warn("Image {} removed from the database but {} object(s) remain in storage: {}",
-                    imageId, keys.size(), e.getMessage());
-        }
+        deleteObjects(imageId, keys);
     }
 
-    /** Used by the sweeper; expects to be called inside a transaction. */
-    @Transactional
-    public int purgeAbandonedUploads() {
-        List<ListingImage> abandoned = images.findAbandonedUploads(Instant.now());
-        if (abandoned.isEmpty()) {
-            return 0;
-        }
+    // --- clean-up ---------------------------------------------------------
 
+    /**
+     * Removes every row that will never be a photo, with its files: upload slots whose URL
+     * expired before they were confirmed, and the {@code FAILED} rows earlier versions kept
+     * for refused uploads. The listing's other rows then take consecutive positions again, in
+     * the order they had. For {@link ListingImageSweeper}; returns how many rows went.
+     *
+     * <p>One transaction per listing, holding the listing's photo lock
+     * ({@link ListingRepository#lockPhotos}): it waits for a seller's change in progress, and
+     * the seller's next change waits for it. The rows are looked up again once the lock is
+     * held, so a slot confirmed in the meantime is a photo and is left alone, and a second run
+     * finds nothing to do. Files are deleted after the commit, as in {@link #delete}.
+     */
+    public int purgeDeadUploads() {
+        Instant now = Instant.now();
+        int removed = 0;
+        for (UUID listingId : images.findListingsWithDeadUploads(now)) {
+            try {
+                removed += purgeDeadUploads(listingId, now);
+            } catch (RuntimeException e) {
+                // One listing's trouble does not hold up the others; the next run retries it.
+                log.warn("Could not clean up the dead uploads of listing {}: {}", listingId, e.getMessage());
+            }
+        }
+        return removed;
+    }
+
+    private int purgeDeadUploads(UUID listingId, Instant now) {
         List<String> keys = new ArrayList<>();
-        Set<UUID> listingIds = new LinkedHashSet<>();
-        for (ListingImage image : abandoned) {
-            keys.addAll(image.allStorageKeys());
-            listingIds.add(image.getListing().getId());
-        }
-
-        images.deleteAll(abandoned);
-        images.flush();
-        listingIds.forEach(this::renumber);
-
-        try {
-            // Covers the case where the client did upload but never confirmed: the object is
-            // there, unreferenced, and would otherwise be paid for forever.
-            storage.deleteAll(keys);
-        } catch (RuntimeException e) {
-            log.warn("Could not delete {} orphaned object(s): {}", keys.size(), e.getMessage());
-        }
-        return abandoned.size();
+        Integer removed = transactions.execute(status -> {
+            if (listings.lockPhotos(listingId).isEmpty()) {
+                return 0;
+            }
+            List<ListingImage> dead = images.findDeadUploads(listingId, now);
+            if (dead.isEmpty()) {
+                return 0;
+            }
+            dead.forEach(image -> keys.addAll(everyKeyOf(image)));
+            images.deleteAll(dead);
+            images.flush();
+            renumber(listingId);
+            return dead.size();
+        });
+        // Covers the slot uploaded but never confirmed, and the file of an upload refused as
+        // too large, which earlier versions left in the bucket: referenced by nothing, and
+        // otherwise paid for forever.
+        deleteObjects(listingId, keys);
+        return removed == null ? 0 : removed;
     }
 
     // --- helpers ----------------------------------------------------------
@@ -382,6 +493,7 @@ public class ListingImageService {
         }
     }
 
+    /** Consecutive positions from zero, in the current order. Under the listing's photo lock. */
     private void renumber(UUID listingId) {
         List<ListingImage> remaining = images.findByListing(listingId);
         short position = 0;
@@ -392,11 +504,29 @@ public class ListingImageService {
     }
 
     /**
-     * Records the failure in its own transaction, because every caller throws immediately
-     * afterwards and the caller's transaction will be rolled back.
+     * Every key a file of this image can be stored under: the original and each rendition,
+     * whether or not the row has recorded it yet — a refusal can come after some renditions
+     * were written. Deleting a key with nothing under it does nothing.
      */
-    private void fail(ListingImage image) {
-        failureRecorder.markFailed(image.getId());
+    private static List<String> everyKeyOf(ListingImage image) {
+        Set<String> keys = new LinkedHashSet<>(image.allStorageKeys());
+        for (ImageVariantType type : ImageVariantType.values()) {
+            keys.add(variantKey(image.getListing().getId(), image.getId(), type));
+        }
+        return List.copyOf(keys);
+    }
+
+    /** After the rows are gone: a failure leaves files nobody references, and is logged. */
+    private void deleteObjects(UUID owner, List<String> keys) {
+        if (keys.isEmpty()) {
+            return;
+        }
+        try {
+            storage.deleteAll(keys);
+        } catch (RuntimeException e) {
+            log.warn("Rows of {} removed but {} object(s) may remain in storage: {}",
+                    owner, keys.size(), e.getMessage());
+        }
     }
 
     private static void requireEditable(Listing listing) {

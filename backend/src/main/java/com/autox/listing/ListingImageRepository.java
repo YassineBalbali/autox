@@ -68,7 +68,8 @@ public interface ListingImageRepository extends JpaRepository<ListingImage, UUID
     Optional<ListingImage> findWithVariants(@Param("id") UUID id);
 
     /**
-     * Counts everything not yet known to have failed, pending uploads included. A seller who
+     * Counts every photo and upload slot, pending ones included; {@code FAILED} rows, which only
+     * earlier versions wrote and the sweeper removes, do not count. A seller who
      * has requested twenty upload URLs has used their allowance, otherwise requesting URLs
      * without confirming them is an unbounded way around the cap.
      */
@@ -82,12 +83,24 @@ public interface ListingImageRepository extends JpaRepository<ListingImage, UUID
     @Query("select coalesce(max(i.position), -1) from ListingImage i where i.listing.id = :listingId")
     short findMaxPosition(@Param("listingId") UUID listingId);
 
-    /** Abandoned upload slots: a URL was issued, the client never confirmed, the URL expired. */
+    /**
+     * Listings holding a row that will never be a photo: a {@code FAILED} one (only earlier
+     * versions wrote them), or an upload slot whose URL expired before it was confirmed.
+     */
     @Query("""
-            select i from ListingImage i
-             where i.status = com.autox.listing.ImageStatus.PENDING
-               and i.uploadExpiresAt is not null
-               and i.uploadExpiresAt < :before
+            select distinct i.listing.id from ListingImage i
+             where i.status = com.autox.listing.ImageStatus.FAILED
+                or (i.status = com.autox.listing.ImageStatus.PENDING and i.uploadExpiresAt < :before)
             """)
-    List<ListingImage> findAbandonedUploads(@Param("before") Instant before);
+    List<UUID> findListingsWithDeadUploads(@Param("before") Instant before);
+
+    /** Those rows of one listing, with their variants, so that every stored file is known. */
+    @Query("""
+            select distinct i from ListingImage i
+             left join fetch i.variants
+             where i.listing.id = :listingId
+               and (i.status = com.autox.listing.ImageStatus.FAILED
+                    or (i.status = com.autox.listing.ImageStatus.PENDING and i.uploadExpiresAt < :before))
+            """)
+    List<ListingImage> findDeadUploads(@Param("listingId") UUID listingId, @Param("before") Instant before);
 }

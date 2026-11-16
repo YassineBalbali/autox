@@ -54,18 +54,40 @@ The interesting part is not the pre-signed URL, it is what stops it being abused
   itself, before anything is ours. There is a test that uploads a larger file to a URL signed
   for a smaller one and asserts the PUT fails.
 - **The declared content type proves nothing**, so confirmation decodes the file. A shell
-  script renamed `payload.jpg` is rejected at step three, the slot is marked `FAILED`, and the
-  object is deleted from the bucket. Tested.
+  script renamed `payload.jpg` is rejected at step three, and the slot's row and every file
+  stored for it are deleted. Tested.
 - **Storage keys are derived, never taken from the client.** The key is
   `listings/{listingId}/{imageId}/original.jpg`. A filename containing `../` or another
   seller's id cannot influence it. The client's filename is kept only for display.
 - **The photo cap counts pending slots.** Otherwise requesting slots without confirming them
   is an unbounded way around the limit.
-- **A failure is recorded in its own transaction.** This is the third time this trap has
-  appeared — after refresh-token replay detection and login throttling. Rejecting an upload
-  means recording the rejection *and* failing the request, and doing both in one transaction
-  rolls the record back. It is now a named component (`ImageFailureRecorder`) rather than an
-  inline call, because the pattern clearly recurs.
+- **A refused upload leaves nothing behind.** Too large, not an image, too small, or anything
+  else going wrong with its file at step three: the row is deleted, the rows after it move up,
+  and every file stored for it (original and renditions) is deleted. The removal commits
+  although the request fails, which is why confirmation runs in a transaction template rather
+  than under `@Transactional`. Earlier versions kept the row as `FAILED` at its position
+  instead, which hid the listing's cover in results and made reordering fail; the sweeper removes
+  those rows (section 2a).
+
+## 2a. One change at a time per listing, and the sweeper
+
+Every write to a listing's photos — asking for a slot, confirming, reordering, removing, the
+sweeper — first takes `SELECT … FOR UPDATE` on the listing's row
+(`ListingRepository.lockPhotos`) and reads the photos only after. So two of them never renumber
+the same rows from different snapshots, two slots asked for at once cannot take the same
+position, and positions stay consecutive from zero. The site sends a seller's photos one at a
+time, so in practice nothing waits.
+
+The sweeper (`ListingImageSweeper`, every fifteen minutes, one instance at a time) removes the
+rows that will never be photos: upload slots whose URL expired before they were confirmed, and
+`FAILED` rows from earlier versions. One transaction per listing, holding that lock; the rows
+are looked up again once it is held, so a slot confirmed in the meantime is left alone and a
+second run finds nothing. The listing's other rows are renumbered in their current order, then
+the files are deleted (after the commit: a storage failure leaves unreferenced files, never a
+row pointing at nothing).
+
+Reordering numbers the ready photos in the order given, then any other row (an upload under way)
+after them in its order: every row gets a new position, so none can collide.
 
 ## 3. Read URLs are signed and expiring, unless you set a CDN
 

@@ -15,7 +15,10 @@ import org.springframework.stereotype.Component;
  * object sits in the bucket referenced by nothing — billed monthly, forever.
  *
  * <p>Only slots whose pre-signed URL has already expired are touched, so an upload still in
- * flight is never pulled out from under a client.
+ * flight is never pulled out from under a client. The {@code FAILED} rows earlier versions kept
+ * for refused uploads go too, with the file a "too large" refusal left behind, and each
+ * listing's photos move up to close the gaps; see
+ * {@link ListingImageService#purgeDeadUploads} for how it keeps out of a seller's way.
  *
  * <p>Dealers' logo uploads are swept here too ({@code CompanyLogoService}): the same handshake,
  * the same waste when it stops halfway.
@@ -46,9 +49,9 @@ public class ListingImageSweeper {
     public void purgeAbandonedUploads() {
         coordinator.runExclusively("listing-image-cleanup", () -> {
             try {
-                int removed = imageService.purgeAbandonedUploads();
+                int removed = imageService.purgeDeadUploads();
                 if (removed > 0) {
-                    log.info("Removed {} abandoned upload slot(s)", removed);
+                    log.info("Removed {} dead upload(s): expired slots and refused uploads", removed);
                 }
                 int logos = this.logos.purgeAbandonedUploads();
                 if (logos > 0) {

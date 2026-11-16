@@ -54,6 +54,7 @@ class ListingImageIntegrationTest extends AbstractIntegrationTest {
     @Autowired ObjectStorage storage;
     @Autowired ImageProperties imageProperties;
     @Autowired ListingImageService imageService;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     @BeforeEach
     void ensureBucket() {
@@ -218,7 +219,7 @@ class ListingImageIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("bytes that are not an image are rejected at confirmation and the object is deleted")
+    @DisplayName("bytes that are not an image are rejected at confirmation: row and object are deleted")
     void nonImageBytesAreRejected() throws Exception {
         JsonNode seller = register(uniqueEmail("liar"), UserRole.PARTICULIER);
         String listingId = createListing(seller);
@@ -228,20 +229,20 @@ class ListingImageIntegrationTest extends AbstractIntegrationTest {
                 requestSlotBody(seller, listingId, "payload.jpg", "image/jpeg", notAnImage.length));
         assertThat(uploadTo(ticket, notAnImage)).isEqualTo(200);
 
-        String imageId = ticket.get("imageId").asText();
+        UUID imageId = UUID.fromString(ticket.get("imageId").asText());
+        String key = imageRepository.findById(imageId).orElseThrow().getStorageKey();
         mockMvc.perform(post("/api/v1/listings/" + listingId + "/images/" + imageId + "/confirm")
                         .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_IMAGE_TYPE"));
 
-        ListingImage stored = imageRepository.findWithVariants(UUID.fromString(imageId)).orElseThrow();
-        assertThat(stored.getStatus()).isEqualTo(ImageStatus.FAILED);
+        assertThat(imageRepository.findById(imageId)).isEmpty();
         // The uploaded junk is not left in the bucket.
-        assertThat(storage.stat(stored.getStorageKey())).isEmpty();
+        assertThat(storage.stat(key)).isEmpty();
     }
 
     @Test
-    @DisplayName("an image below the minimum resolution is rejected")
+    @DisplayName("an image below the minimum resolution is rejected: row and object are deleted")
     void tinyImageIsRejected() throws Exception {
         JsonNode seller = register(uniqueEmail("pixel"), UserRole.PARTICULIER);
         String listingId = createListing(seller);
@@ -250,12 +251,67 @@ class ListingImageIntegrationTest extends AbstractIntegrationTest {
         JsonNode ticket = objectMapper.readTree(
                 requestSlotBody(seller, listingId, "tiny.jpg", "image/jpeg", tiny.length));
         assertThat(uploadTo(ticket, tiny)).isEqualTo(200);
+        UUID imageId = UUID.fromString(ticket.get("imageId").asText());
+        String key = imageRepository.findById(imageId).orElseThrow().getStorageKey();
+
+        mockMvc.perform(post("/api/v1/listings/" + listingId + "/images/" + imageId + "/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMAGE_TOO_SMALL"));
+
+        assertThat(imageRepository.findById(imageId)).isEmpty();
+        assertThat(storage.stat(key)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a stored file over the limit is refused at confirmation, and its file does not stay in storage")
+    void oversizedObjectIsRemovedWithItsFile() throws Exception {
+        JsonNode seller = register(uniqueEmail("smuggler"), UserRole.PARTICULIER);
+        String listingId = createListing(seller);
+
+        JsonNode ticket = objectMapper.readTree(
+                requestSlotBody(seller, listingId, "big.jpg", "image/jpeg", 5000));
+        UUID imageId = UUID.fromString(ticket.get("imageId").asText());
+        String key = imageRepository.findById(imageId).orElseThrow().getStorageKey();
+        // The signed URL holds the client to the declared length; written directly, this is
+        // what any other way of getting a larger object there would leave.
+        storage.write(key, new byte[(int) imageProperties.maxBytes() + 1], "image/jpeg");
+
+        mockMvc.perform(post("/api/v1/listings/" + listingId + "/images/" + imageId + "/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value("IMAGE_TOO_LARGE"));
+
+        assertThat(imageRepository.findById(imageId)).isEmpty();
+        assertThat(storage.stat(key)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a refused upload closes its gap: the photos after it move up, in their order")
+    void refusedUploadClosesTheGap() throws Exception {
+        JsonNode seller = register(uniqueEmail("gap"), UserRole.PARTICULIER);
+        String listingId = createListing(seller);
+
+        String first = uploadImage(seller, listingId, jpegOf(800, 600));
+        byte[] tiny = jpegOf(200, 150);
+        JsonNode ticket = objectMapper.readTree(
+                requestSlotBody(seller, listingId, "tiny.jpg", "image/jpeg", tiny.length));
+        assertThat(uploadTo(ticket, tiny)).isEqualTo(200);
+        String last = uploadImage(seller, listingId, jpegOf(800, 600));
+        assertThat(positionsOf(listingId)).containsExactly(0, 1, 2);
 
         mockMvc.perform(post("/api/v1/listings/" + listingId + "/images/"
                         + ticket.get("imageId").asText() + "/confirm")
                         .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("IMAGE_TOO_SMALL"));
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/v1/listings/" + listingId + "/images")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(first))
+                .andExpect(jsonPath("$[0].position").value(0))
+                .andExpect(jsonPath("$[1].id").value(last))
+                .andExpect(jsonPath("$[1].position").value(1));
     }
 
     @Test
@@ -330,6 +386,72 @@ class ListingImageIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[0].position").value(0))
                 .andExpect(jsonPath("$[1].id").value(first))
                 .andExpect(jsonPath("$[2].id").value(second));
+    }
+
+    @Test
+    @DisplayName("reordering a listing that still has a FAILED row from an earlier version works")
+    void reorderWithALegacyFailedRow() throws Exception {
+        // The production case: the refused upload came first, kept position 0 as FAILED, and
+        // numbering the ready photos 0..n-1 gave one of them that position too, which the
+        // unique constraint refused at commit.
+        JsonNode seller = register(uniqueEmail("legacy-order"), UserRole.PARTICULIER);
+        String listingId = createListing(seller);
+        UUID failed = legacyFailedRow(seller, listingId);
+        String first = uploadImage(seller, listingId, jpegOf(800, 600));
+        String second = uploadImage(seller, listingId, jpegOf(800, 600));
+
+        reorder(seller, listingId, List.of(second, first))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(second))
+                .andExpect(jsonPath("$[0].position").value(0))
+                .andExpect(jsonPath("$[1].id").value(first))
+                .andExpect(jsonPath("$[1].position").value(1));
+
+        // The leftover goes after the photos, until the sweeper removes it.
+        assertThat(imageRepository.findById(failed).orElseThrow().getPosition()).isEqualTo((short) 2);
+    }
+
+    @Test
+    @DisplayName("reordering after a refused upload works, the refusal having left nothing behind")
+    void reorderAfterARefusedUpload() throws Exception {
+        JsonNode seller = register(uniqueEmail("after-refusal"), UserRole.PARTICULIER);
+        String listingId = createListing(seller);
+
+        byte[] tiny = jpegOf(200, 150);
+        JsonNode ticket = objectMapper.readTree(
+                requestSlotBody(seller, listingId, "tiny.jpg", "image/jpeg", tiny.length));
+        assertThat(uploadTo(ticket, tiny)).isEqualTo(200);
+        mockMvc.perform(post("/api/v1/listings/" + listingId + "/images/"
+                        + ticket.get("imageId").asText() + "/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(status().isBadRequest());
+
+        String first = uploadImage(seller, listingId, jpegOf(800, 600));
+        String second = uploadImage(seller, listingId, jpegOf(800, 600));
+        assertThat(positionsOf(listingId)).containsExactly(0, 1);
+
+        reorder(seller, listingId, List.of(second, first))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(second))
+                .andExpect(jsonPath("$[1].id").value(first));
+    }
+
+    @Test
+    @DisplayName("reordering while an upload is under way keeps the upload after the photos")
+    void reorderWithAnUploadUnderWay() throws Exception {
+        JsonNode seller = register(uniqueEmail("mid-upload"), UserRole.PARTICULIER);
+        String listingId = createListing(seller);
+
+        String first = uploadImage(seller, listingId, jpegOf(800, 600));
+        UUID pending = UUID.fromString(objectMapper.readTree(
+                requestSlotBody(seller, listingId, "slow.jpg", "image/jpeg", 5000)).get("imageId").asText());
+        String second = uploadImage(seller, listingId, jpegOf(800, 600));
+
+        reorder(seller, listingId, List.of(second, first))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(second))
+                .andExpect(jsonPath("$[1].id").value(first));
+        assertThat(imageRepository.findById(pending).orElseThrow().getPosition()).isEqualTo((short) 2);
     }
 
     @Test
@@ -433,13 +555,13 @@ class ListingImageIntegrationTest extends AbstractIntegrationTest {
         assertThat(storage.stat(key)).isPresent();
 
         // Nothing is swept while the URL is still valid.
-        assertThat(imageService.purgeAbandonedUploads()).isZero();
+        assertThat(imageService.purgeDeadUploads()).isZero();
 
         // Back-date the slot's expiry rather than waiting out the TTL.
         jdbcTemplate.update("UPDATE listing_image SET upload_expires_at = ? WHERE id = ?",
                 java.sql.Timestamp.from(Instant.now().minus(1, ChronoUnit.HOURS)), imageId);
 
-        assertThat(imageService.purgeAbandonedUploads()).isEqualTo(1);
+        assertThat(imageService.purgeDeadUploads()).isEqualTo(1);
         assertThat(imageRepository.findById(imageId)).isEmpty();
         assertThat(storage.stat(key)).isEmpty();
     }
@@ -454,8 +576,79 @@ class ListingImageIntegrationTest extends AbstractIntegrationTest {
         jdbcTemplate.update("UPDATE listing_image SET upload_expires_at = ?",
                 java.sql.Timestamp.from(Instant.now().minus(1, ChronoUnit.HOURS)));
 
-        assertThat(imageService.purgeAbandonedUploads()).isZero();
+        assertThat(imageService.purgeDeadUploads()).isZero();
         assertThat(imageRepository.findById(UUID.fromString(imageId))).isPresent();
+    }
+
+    @Test
+    @DisplayName("the sweeper removes FAILED rows from earlier versions with their files, renumbers, and is idempotent")
+    void sweeperRemovesLegacyFailedRows() throws Exception {
+        JsonNode seller = register(uniqueEmail("legacy-sweep"), UserRole.PARTICULIER);
+        String listingId = createListing(seller);
+        UUID failed = legacyFailedRow(seller, listingId);
+        String key = imageRepository.findById(failed).orElseThrow().getStorageKey();
+        String first = uploadImage(seller, listingId, jpegOf(800, 600));
+        String second = uploadImage(seller, listingId, jpegOf(800, 600));
+        reorder(seller, listingId, List.of(second, first)).andExpect(status().isOk());
+        assertThat(storage.stat(key)).isPresent();
+
+        assertThat(imageService.purgeDeadUploads()).isEqualTo(1);
+
+        assertThat(imageRepository.findById(failed)).isEmpty();
+        assertThat(storage.stat(key)).isEmpty();
+        // The ready photos keep the order the seller gave them, from zero.
+        mockMvc.perform(get("/api/v1/listings/" + listingId + "/images")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(seller)))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(second))
+                .andExpect(jsonPath("$[0].position").value(0))
+                .andExpect(jsonPath("$[1].id").value(first))
+                .andExpect(jsonPath("$[1].position").value(1));
+        for (String photo : List.of(first, second)) {
+            for (String photoKey : imageRepository.findWithVariants(UUID.fromString(photo)).orElseThrow().allStorageKeys()) {
+                assertThat(storage.stat(photoKey)).as("object %s", photoKey).isPresent();
+            }
+        }
+
+        // A second run finds nothing to do.
+        assertThat(imageService.purgeDeadUploads()).isZero();
+        assertThat(positionsOf(listingId)).containsExactly(0, 1);
+    }
+
+    @Test
+    @DisplayName("the sweeper waits for a change to the listing's photos in progress")
+    void sweeperWaitsForTheListingsPhotoLock() throws Exception {
+        JsonNode seller = register(uniqueEmail("locked"), UserRole.PARTICULIER);
+        String listingId = createListing(seller);
+        UUID failed = legacyFailedRow(seller, listingId);
+        uploadImage(seller, listingId, jpegOf(800, 600));
+
+        java.util.concurrent.CountDownLatch locked = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        // Another transaction holding the lock, as a reorder or a confirmation would.
+        Thread holder = new Thread(() -> new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+                .executeWithoutResult(status -> {
+                    jdbcTemplate.queryForList("SELECT 1 FROM listing WHERE id = ?::uuid FOR UPDATE", listingId);
+                    locked.countDown();
+                    try {
+                        release.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }));
+        holder.start();
+        assertThat(locked.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+        java.util.concurrent.CompletableFuture<Integer> sweep =
+                java.util.concurrent.CompletableFuture.supplyAsync(imageService::purgeDeadUploads);
+        Thread.sleep(500);
+        assertThat(sweep).isNotDone();
+        assertThat(imageRepository.findById(failed)).isPresent();
+
+        release.countDown();
+        holder.join();
+        assertThat(sweep.get(10, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(1);
+        assertThat(positionsOf(listingId)).containsExactly(0);
     }
 
     // --- access control ---------------------------------------------------
@@ -549,6 +742,35 @@ class ListingImageIntegrationTest extends AbstractIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(session)))
                 .andExpect(status().isOk());
         return imageId;
+    }
+
+    /**
+     * What earlier versions left for a refused upload: the row at its position, marked FAILED,
+     * and its file still in storage (a "too large" refusal kept it). Returns the row's id.
+     */
+    private UUID legacyFailedRow(JsonNode session, String listingId) throws Exception {
+        byte[] jpeg = jpegOf(800, 600);
+        JsonNode ticket = objectMapper.readTree(
+                requestSlotBody(session, listingId, "refused.jpg", "image/jpeg", jpeg.length));
+        assertThat(uploadTo(ticket, jpeg)).isEqualTo(200);
+        UUID imageId = UUID.fromString(ticket.get("imageId").asText());
+        jdbcTemplate.update("UPDATE listing_image SET status = 'FAILED' WHERE id = ?", imageId);
+        return imageId;
+    }
+
+    /** Every row's position, photos and uploads alike, in order. */
+    private List<Integer> positionsOf(String listingId) {
+        return jdbcTemplate.queryForList(
+                "SELECT position FROM listing_image WHERE listing_id = ?::uuid ORDER BY position",
+                Integer.class, listingId);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions reorder(
+            JsonNode session, String listingId, List<String> order) throws Exception {
+        return mockMvc.perform(put("/api/v1/listings/" + listingId + "/images/order")
+                .header(HttpHeaders.AUTHORIZATION, bearer(session))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("imageIds", order))));
     }
 
     /** A real HTTP PUT to the pre-signed URL, sending exactly the headers it requires. */
