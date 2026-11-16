@@ -47,6 +47,8 @@ coverage/
 *.key
 *.p12
 *.jks
+*.keystore
+key.properties
 application-local.yml
 application-local.yaml
 application-local.properties
