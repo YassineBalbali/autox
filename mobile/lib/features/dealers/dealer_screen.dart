@@ -10,6 +10,7 @@ import '../../core/widgets/states.dart';
 import '../listing/listing_text.dart' show memberSince;
 import '../listing/widgets/listing_parts.dart' show PageSection;
 import '../listing/widgets/listing_row.dart';
+import '../messages/contact_seller.dart';
 import '../search/search_providers.dart';
 import '../search/search_query.dart';
 import 'dealer_directory_screen.dart' show DealerLogo;
@@ -19,9 +20,12 @@ import 'dealer_text.dart';
 /// A dealer's page, `/professionnels/:slug`: who they are, how to reach them, and their listings
 /// — the site's search, limited to this seller.
 class DealerScreen extends ConsumerStatefulWidget {
-  const DealerScreen({super.key, required this.slug});
+  const DealerScreen({super.key, required this.slug, this.write = false});
 
   final String slug;
+
+  /// Opened to write to the dealer (`?ecrire=1`, back from signing in on another path).
+  final bool write;
 
   @override
   ConsumerState<DealerScreen> createState() => _DealerScreenState();
@@ -118,6 +122,20 @@ class _DealerScreenState extends ConsumerState<DealerScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+        // "Contacter ce professionnel", before the details, as on the web.
+        SliverToBoxAdapter(
+          child: Semantics(
+            container: true,
+            label: 'Contacter ce professionnel',
+            explicitChildNodes: true,
+            child: Container(
+              color: AppColors.surface,
+              margin: const EdgeInsets.only(top: AppSpace.s2),
+              padding: const EdgeInsets.all(AppSpace.gutter),
+              child: ContactSeller(target: ContactTarget.dealer(dealer), openOnArrival: widget.write),
             ),
           ),
         ),

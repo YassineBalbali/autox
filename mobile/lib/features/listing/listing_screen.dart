@@ -8,10 +8,12 @@ import '../../core/api/api_failure.dart';
 import '../../core/format/numbers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/states.dart';
+import '../messages/contact_seller.dart';
 import '../search/search_locations.dart';
 import 'listing_locations.dart';
 import 'listing_providers.dart';
 import 'listing_text.dart';
+import 'report_listing.dart';
 import 'widgets/financing_simulator.dart';
 import 'widgets/listing_parts.dart';
 import 'widgets/listing_row.dart';
@@ -21,9 +23,13 @@ import 'widgets/photo_gallery.dart';
 /// photos, the summary (title, price or leasing offer, market verdict, damage), key facts,
 /// Crit'Air, description, specification, equipment, financing, the seller, similar listings.
 class ListingScreen extends ConsumerWidget {
-  const ListingScreen({super.key, required this.id});
+  const ListingScreen({super.key, required this.id, this.write = false, this.report = false});
 
   final String id;
+
+  /// Opened to write to the seller (`?ecrire=1`), or to report the listing (`?signaler=1`).
+  final bool write;
+  final bool report;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,16 +43,18 @@ class ListingScreen extends ConsumerWidget {
           ServerFailure(status: 404) => const _Gone(),
           _ => FailureView(error: error, onRetry: () => ref.invalidate(listingDetailProvider(id))),
         },
-        data: (listing) => _Page(listing: listing),
+        data: (listing) => _Page(listing: listing, write: write, report: report),
       ),
     );
   }
 }
 
 class _Page extends ConsumerWidget {
-  const _Page({required this.listing});
+  const _Page({required this.listing, this.write = false, this.report = false});
 
   final PublicListingDetail listing;
+  final bool write;
+  final bool report;
 
   /// The web's rule: a car for sale, not a leasing offer and not damaged, with a price.
   static bool financeable(PublicListingDetail listing) =>
@@ -128,12 +136,21 @@ class _Page extends ConsumerWidget {
               ],
             ),
           ),
+          // Where the web's summary has it: right under the price.
+          PageSection(
+            child: ContactSeller(target: ContactTarget.listing(listing), openOnArrival: write),
+          ),
           PageSection(child: KeyFacts(listing: listing)),
           if (listing.critAir != null) PageSection(child: CritAirBadge(critAir: listing.critAir!)),
           if ((listing.description ?? '').trim().isNotEmpty)
             PageSection(
               title: 'Description',
               child: Text(listing.description!.trim(), style: theme.textTheme.bodyMedium),
+            ),
+          // Under the description, where a reader who doubts it is.
+          if (listing.id != null)
+            PageSection(
+              child: ReportListing(listing: listing, openOnArrival: report),
             ),
           if (specification.isNotEmpty)
             PageSection(
