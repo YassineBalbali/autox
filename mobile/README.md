@@ -177,6 +177,7 @@ git push origin mobile-v1.0.0
 tool/generate_api.mjs   generates packages/autox_api from ../frontend/openapi.json, and
                         lib/core/labels/labels.g.dart from ../frontend/labels.fr.json
 tool/release_version.mjs  mobile-v1.2.3 → versionName and versionCode, for the release job
+tool/generate_icon.mjs  the launcher icon's Android resources, from assets/icon/autox-icon.svg
 packages/autox_api/     the generated client (git-ignored, never edited)
 lib/
   app.dart main.dart

@@ -123,6 +123,13 @@ The site gets the same face from the `@fontsource/barlow-semi-condensed` npm pac
 dependency. Flutter needs TrueType files rather than the web's WOFF2, so the app carries its
 own copy; the OFL permits bundling it in an application, unmodified, with the licence.
 
+## Mobile app — launcher icon
+
+`mobile/assets/icon/autox-icon.svg`, and the Android resources `mobile/tool/generate_icon.mjs`
+makes from it: the "X" of the site's wordmark (`frontend/public/autox-wordmark.svg`, the same
+outline, letterform derived from Barlow Semi Condensed ExtraBold, SIL Open Font License 1.1, as
+above), white on the AutoX accent blue. AutoX's own mark; no third-party logo or artwork.
+
 ## Mobile app — Lucide icons
 
 The app draws Lucide's icons from the `lucide_icons_flutter` package (4.0.3, MIT,

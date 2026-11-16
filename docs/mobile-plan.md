@@ -554,8 +554,11 @@ What the web does, and the app mirrors:
 - **Version** from the tag (`tool/release_version.mjs`): `mobile-v1.2.3` → `1.2.3` / `10203`.
 - **Signing** (`android/app/build.gradle.kts`): `android/key.properties` or the `ANDROID_*`
   variables; the debug key otherwise, except when `AUTOX_REQUIRE_RELEASE_SIGNING=true`.
-- **Not done here**: the launcher icon is still Flutter's default, and the remaining M6 items in
-  section 9 (cold-start and offline states, accessibility pass) were not part of this brief.
+- **Launcher icon**: the wordmark's "X", white on the accent blue, as an adaptive icon (with a
+  monochrome layer for themed icons) and PNGs for Android 7; source `assets/icon/autox-icon.svg`,
+  resources by `tool/generate_icon.mjs`.
+- **Not done here**: the remaining M6 items in section 9 (cold-start and offline states,
+  accessibility pass) were not part of this brief.
 
 ## 10. Decisions (settled 2026-11-12)
 
