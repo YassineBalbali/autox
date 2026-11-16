@@ -29,7 +29,10 @@ final _countriesProvider = FutureProvider.autoDispose<List<Country>>((ref) async
 /// register on the website. The account is signed in as soon as it exists (the API returns a
 /// token pair), and says to check the mailbox for the verification link.
 class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.returnTo});
+
+  /// Registering on the way somewhere: once the account exists (and is signed in), back there.
+  final String? returnTo;
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -96,7 +99,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               countryCode: _country,
             ),
           );
-      router.go(AccountLocations.welcome);
+      if (!mounted || !leaveForReturn(context, widget.returnTo)) {
+        router.go(AccountLocations.welcome);
+      }
     } on ApiFailure catch (failure) {
       if (mounted) {
         setState(() => _failure = failure.message);
