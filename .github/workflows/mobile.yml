@@ -153,23 +153,29 @@ jobs:
       # the build, which would otherwise succeed and give an app that refuses to start.
       - name: Release configuration is set
         env:
-          AUTOX_API_URL: ${{ vars.AUTOX_API_URL }}
+          AUTOX_API_BASE_URL: ${{ vars.AUTOX_API_BASE_URL }}
           AUTOX_SITE_URL: ${{ vars.AUTOX_SITE_URL }}
           ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
         run: |
           missing=0
-          for name in AUTOX_API_URL AUTOX_SITE_URL ANDROID_CERT_SHA256; do
+          for name in AUTOX_API_BASE_URL AUTOX_SITE_URL ANDROID_CERT_SHA256; do
             if [ -z "${!name}" ]; then
               echo "::error::Repository variable $name is not set (Settings, Secrets and variables, Actions, Variables)."
               missing=1
             fi
           done
-          for name in AUTOX_API_URL AUTOX_SITE_URL; do
+          for name in AUTOX_API_BASE_URL AUTOX_SITE_URL; do
             if [ -n "${!name}" ] && [ "${!name#https://}" = "${!name}" ]; then
               echo "::error::$name must start with https://."
               missing=1
             fi
           done
+          # The origin only: the app's paths already start with /api/v1/.
+          case "$AUTOX_API_BASE_URL" in
+            */api|*/api/|*/api/v1|*/api/v1/)
+              echo "::error::AUTOX_API_BASE_URL is the server's address alone, without /api/v1."
+              missing=1 ;;
+          esac
           exit $missing
 
       - name: Generate the API client and the labels
@@ -199,7 +205,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          AUTOX_API_URL: ${{ vars.AUTOX_API_URL }}
+          AUTOX_API_BASE_URL: ${{ vars.AUTOX_API_BASE_URL }}
           AUTOX_SITE_URL: ${{ vars.AUTOX_SITE_URL }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
           VERSION_CODE: ${{ steps.version.outputs.code }}
@@ -209,7 +215,7 @@ jobs:
           flutter build apk --release \
             --build-name="$VERSION_NAME" \
             --build-number="$VERSION_CODE" \
-            --dart-define=AUTOX_API_BASE_URL="$AUTOX_API_URL" \
+            --dart-define=AUTOX_API_BASE_URL="$AUTOX_API_BASE_URL" \
             --dart-define=AUTOX_SITE_URL="$AUTOX_SITE_URL"
           mkdir -p "$RUNNER_TEMP/release"
           cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/release/autox-$VERSION_NAME.apk"

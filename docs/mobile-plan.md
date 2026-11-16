@@ -247,7 +247,7 @@ actions pinned the same way).
   keep it and its passwords somewhere safe offline — a lost key means existing installs cannot
   be updated — and add four repository secrets: `ANDROID_KEYSTORE_BASE64`,
   `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, plus a variable
-  `AUTOX_API_BASE_URL`.
+  `AUTOX_API_BASE_URL` (and `AUTOX_SITE_URL`, `ANDROID_CERT_SHA256`: see section 9f).
 
 ---
 
@@ -548,9 +548,9 @@ What the web does, and the app mirrors:
   `minSdk` is 24). The debug build overrides the file to allow HTTP to `10.0.2.2` and
   `localhost`; the profile build no longer does.
 - **No logs**: without a sink (`logSinkFor(debug: false)`) no logging interceptor is installed.
-- **Addresses**: the release job checks `AUTOX_API_URL` and `AUTOX_SITE_URL` (https) before
-  building and passes them as `AUTOX_API_BASE_URL` / `AUTOX_SITE_URL` dart-defines; the app still
-  refuses to start without them (milestone 4).
+- **Addresses**: the repository variables `AUTOX_API_BASE_URL` and `AUTOX_SITE_URL`, the same names
+  as the dart-defines they become. The release job checks them (set, https, the API without
+  `/api/v1`) before building; the app still refuses to start without them (milestone 4).
 - **Version** from the tag (`tool/release_version.mjs`): `mobile-v1.2.3` → `1.2.3` / `10203`.
 - **Signing** (`android/app/build.gradle.kts`): `android/key.properties` or the `ANDROID_*`
   variables; the debug key otherwise, except when `AUTOX_REQUIRE_RELEASE_SIGNING=true`.

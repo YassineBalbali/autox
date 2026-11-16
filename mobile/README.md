@@ -131,13 +131,18 @@ Repository → Settings → Secrets and variables → Actions.
 | `ANDROID_KEYSTORE_PASSWORD` | Secrets | The keystore's password |
 | `ANDROID_KEY_ALIAS` | Secrets | `autox` |
 | `ANDROID_KEY_PASSWORD` | Secrets | The same password (PKCS12) |
-| `AUTOX_API_URL` | Variables | The API, `https://…` (e.g. `https://autox-api-kyuo.onrender.com`) |
-| `AUTOX_SITE_URL` | Variables | The site, `https://…` (e.g. `https://autox-demo.vercel.app`) |
+| `AUTOX_API_BASE_URL` | Variables | `https://autox-api-kyuo.onrender.com` |
+| `AUTOX_SITE_URL` | Variables | `https://autox-demo.vercel.app` |
 | `ANDROID_CERT_SHA256` | Variables | The fingerprint from step 2, colons or not |
 
 The job refuses to publish an APK whose signer is not `ANDROID_CERT_SHA256` (checked with
 `apksigner verify --print-certs`), so a wrong keystore in the secret fails the run instead of
 shipping an APK that cannot update the installed app.
+
+Both addresses are **origins only**: no `/api/v1` (every API path in the app starts with it, and
+the job refuses a value ending in `/api…`), no path on the site (the app adds `/conditions-generales`
+and the like). A trailing slash is tolerated and removed. They are the same names as the
+`--dart-define`s of a local release build.
 
 **Signing locally (optional):** `android/key.properties`, git-ignored, with `storeFile=` (absolute
 path), `storePassword=`, `keyAlias=autox`, `keyPassword=`. Without it, `flutter build apk --release`
