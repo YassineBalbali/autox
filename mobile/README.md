@@ -4,7 +4,10 @@ The buyer side of AutoX as a Flutter app: search, listings, dealers, favourites,
 searches and messages, in French, with the site's look. Plan, decisions and milestones:
 [docs/mobile-plan.md](../docs/mobile-plan.md).
 
-**Status: milestone 5 (contacting sellers and reporting).** "Contacter le vendeur" on listings and
+**Status: milestone 6 (release).** Signed APKs on GitHub Releases from `mobile-v*` tags; release
+builds speak HTTPS only and log nothing. See "Publishing a release" below.
+
+**Milestone 5 (contacting sellers and reporting).** "Contacter le vendeur" on listings and
 dealer pages, the Messages tab (inbox, conversations, replies, unread badge), reporting a listing
 or a message. Details and the backend's rules: docs/mobile-plan.md, section 9e.
 
@@ -76,11 +79,99 @@ flutter analyze --fatal-infos
 flutter test
 ```
 
+## Publishing a release
+
+A tag `mobile-v<major>.<minor>.<patch>` runs the `release` job of `.github/workflows/mobile.yml`
+after the checks: one universal APK, signed with the release key, published with its `.sha256`
+on a GitHub Release named after the tag. Latest:
+<https://github.com/YassineBalbali/autox/releases/latest>.
+
+**Version rule** (`tool/release_version.mjs`): `mobile-v1.2.3` gives versionName `1.2.3` and
+versionCode `1 × 10000 + 2 × 100 + 3 = 10203`. Minor and patch stay below 100; each release needs a
+higher tag than the last, or phones refuse the update. Local builds keep `pubspec.yaml`'s version.
+
+### Once: the keystore
+
+Created on your machine and **never put in the repository** (`*.jks`, `*.keystore` and
+`key.properties` are git-ignored). PowerShell, from any folder. `keytool` comes with the JDK; if
+it is not on the PATH, use `& "$env:JAVA_HOME\bin\keytool.exe"`.
+
+```powershell
+# 1. Create it, outside the repository. keytool asks for the password and your name; type them
+#    there, not on the command line (it would stay in the shell history). PKCS12 uses one
+#    password for the store and the key.
+New-Item -ItemType Directory -Force C:\Users\belbe\keys | Out-Null
+keytool -genkeypair -v -keystore C:\Users\belbe\keys\autox-release.jks -storetype PKCS12 `
+  -alias autox -keyalg RSA -keysize 4096 -validity 10000
+
+# 2. Its certificate's SHA-256 fingerprint (public, not a secret): the "SHA256:" line.
+keytool -list -v -keystore C:\Users\belbe\keys\autox-release.jks -alias autox
+
+# 3. Base64 for GitHub, into a file (nothing printed); copy its content into the secret, then
+#    delete the file.
+[IO.File]::WriteAllText("C:\Users\belbe\keys\autox-release.jks.base64",
+  [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\Users\belbe\keys\autox-release.jks")))
+Get-Content -Raw C:\Users\belbe\keys\autox-release.jks.base64 | Set-Clipboard
+Remove-Item C:\Users\belbe\keys\autox-release.jks.base64
+```
+
+**Back it up now.** Copy `autox-release.jks` to a USB drive kept offline, and put the password in a
+password manager. **If the keystore or its password is lost, no update can ever be signed with
+the same key**: Android installs an update only when it is signed by the same certificate, so
+every user would have to uninstall the app, losing what it keeps on the phone, and install a new
+one.
+
+### Once: GitHub settings
+
+Repository → Settings → Secrets and variables → Actions.
+
+| Name | Tab | Value |
+|---|---|---|
+| `ANDROID_KEYSTORE_BASE64` | Secrets | The base64 from step 3 |
+| `ANDROID_KEYSTORE_PASSWORD` | Secrets | The keystore's password |
+| `ANDROID_KEY_ALIAS` | Secrets | `autox` |
+| `ANDROID_KEY_PASSWORD` | Secrets | The same password (PKCS12) |
+| `AUTOX_API_URL` | Variables | The API, `https://…` (e.g. `https://autox-api-kyuo.onrender.com`) |
+| `AUTOX_SITE_URL` | Variables | The site, `https://…` (e.g. `https://autox-demo.vercel.app`) |
+| `ANDROID_CERT_SHA256` | Variables | The fingerprint from step 2, colons or not |
+
+The job refuses to publish an APK whose signer is not `ANDROID_CERT_SHA256` (checked with
+`apksigner verify --print-certs`), so a wrong keystore in the secret fails the run instead of
+shipping an APK that cannot update the installed app.
+
+**Signing locally (optional):** `android/key.properties`, git-ignored, with `storeFile=` (absolute
+path), `storePassword=`, `keyAlias=autox`, `keyPassword=`. Without it, `flutter build apk --release`
+signs with the debug key and still works.
+
+### Each release
+
+```powershell
+# 1. Dependencies: move the pins in pubspec.yaml that need it, run the checks, commit.
+flutter pub outdated
+
+# 2. Tag and push the tag (main already pushed and green).
+git tag mobile-v1.0.0
+git push origin mobile-v1.0.0
+```
+
+### Installing it on a phone
+
+1. On the phone, open the release page, download `autox-1.0.0.apk`, open it.
+2. Android asks to allow the browser (or Files) to **install unknown apps**: allow it for that
+   app, go back, install. Play Protect may warn about an app it does not know.
+3. To check the file first, on the PC:
+
+```powershell
+(Get-FileHash .\autox-1.0.0.apk -Algorithm SHA256).Hash -eq (Get-Content .\autox-1.0.0.apk.sha256).Split(' ')[0]
+# True: it is the file the release job built. Then: adb install .\autox-1.0.0.apk
+```
+
 ## Layout
 
 ```
 tool/generate_api.mjs   generates packages/autox_api from ../frontend/openapi.json, and
                         lib/core/labels/labels.g.dart from ../frontend/labels.fr.json
+tool/release_version.mjs  mobile-v1.2.3 → versionName and versionCode, for the release job
 packages/autox_api/     the generated client (git-ignored, never edited)
 lib/
   app.dart main.dart

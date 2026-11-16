@@ -2,6 +2,10 @@
 
 **Démo en ligne : [autox-demo.vercel.app](https://autox-demo.vercel.app)**
 
+**Application Android : [dernière version](https://github.com/YassineBalbali/autox/releases/latest)**
+(fichier APK à installer soi-même ; l'installation et la vérification de l'empreinte sont décrites
+dans [mobile/README.md](mobile/README.md#publishing-a-release)).
+
 > **In English.** AutoX is a car marketplace for the French market:
 > - Buying, selling, leasing offers and new cars from dealers.
 > - A natural-language search whose output is checked by the server.
@@ -167,12 +171,13 @@ et 768 px).
 
 ## Intégration et déploiement continus
 
-Deux workflows GitHub Actions, à chaque push, sur chaque pull request et une fois par semaine :
+Trois workflows GitHub Actions, à chaque push, sur chaque pull request et une fois par semaine :
 
 | Workflow | Étapes |
 |---|---|
 | `backend.yml` | `mvn clean verify` (tous les tests) ; construction de l'image Docker de production ; scan Trivy (échec sur une faille HIGH ou CRITICAL corrigeable) ; puis, sur `main`, appel du deploy hook de Render pour ce commit précis |
 | `frontend.yml` | `npm ci` ; audit des dépendances livrées au navigateur ; génération du client d'API ; lint ; tests des scripts ; build ; tests |
+| `mobile.yml` | Génération du client d'API Dart ; format ; analyse ; tests ; APK de debug. Sur un tag `mobile-v*` : APK signé, empreinte du certificat vérifiée, publié sur une GitHub Release |
 
 **Comment part un déploiement :**
 - **L'API** n'est déployée que si le workflow backend est vert. Le déploiement automatique de

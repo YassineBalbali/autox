@@ -523,6 +523,40 @@ What the web does, and the app mirrors:
 - **"Signaler ce message" is a sheet**, the web's inline form as a phone presents a form; a message
   reported is marked "Signalé", as on the web.
 
+## 9f. Milestone 6 — done (2026-11-16)
+
+### The missing list thumbnail (backend)
+
+- **Cause.** A failed upload (too small, unreadable, too large at confirmation) stays in
+  `listing_image` as `FAILED` and keeps its `position`; the next upload takes the next one. Search
+  results, similar listings, dealer pages and the inbox took their cover from `position = 0`
+  (`ListingSearchRepository.findCoverImages`), so a seller whose first try failed had a photo
+  (count 1) and no cover. The listing page and "Mes annonces" already took the first **READY**
+  photo (`ListingImageRepository.findCoversByListings`). Variants are made synchronously at
+  confirmation, in the same transaction: none were missing, and storage (MinIO locally, Supabase in
+  production) plays no part.
+- **Production**: affected, by the same code, wherever an upload was refused before one succeeded.
+- **Fix**: the cover is the lowest-position READY photo, in both queries. No data change, no
+  regeneration: existing listings show their cover as soon as the fixed API runs.
+- **App**: one photo and no cover shows the count, as the web does; with a cover, a single photo
+  still shows none.
+
+### Release builds
+
+- **HTTPS only**: `src/main/res/xml/network_security_config.xml` refuses cleartext and trusts the
+  system's authorities only, explicitly (Android's default allows cleartext below API 28, and
+  `minSdk` is 24). The debug build overrides the file to allow HTTP to `10.0.2.2` and
+  `localhost`; the profile build no longer does.
+- **No logs**: without a sink (`logSinkFor(debug: false)`) no logging interceptor is installed.
+- **Addresses**: the release job checks `AUTOX_API_URL` and `AUTOX_SITE_URL` (https) before
+  building and passes them as `AUTOX_API_BASE_URL` / `AUTOX_SITE_URL` dart-defines; the app still
+  refuses to start without them (milestone 4).
+- **Version** from the tag (`tool/release_version.mjs`): `mobile-v1.2.3` → `1.2.3` / `10203`.
+- **Signing** (`android/app/build.gradle.kts`): `android/key.properties` or the `ANDROID_*`
+  variables; the debug key otherwise, except when `AUTOX_REQUIRE_RELEASE_SIGNING=true`.
+- **Not done here**: the launcher icon is still Flutter's default, and the remaining M6 items in
+  section 9 (cold-start and offline states, accessibility pass) were not part of this brief.
+
 ## 10. Decisions (settled 2026-11-12)
 
 1. **Application id: `io.github.yassinebalbali.autox`.** Dart package name `autox`. Fixed for
