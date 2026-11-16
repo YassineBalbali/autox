@@ -2,6 +2,7 @@ package com.autox.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -130,6 +131,25 @@ class MessagingIntegrationTest extends AbstractIntegrationTest {
     @Nested
     @DisplayName("both sides see the conversation, and nobody else does")
     class Inboxes {
+
+        @Test
+        @DisplayName("the inbox shows the listing's first confirmed photo, past a failed upload in first place")
+        void inboxCoverSkipsAFailedUpload() throws Exception {
+            jdbcTemplate.update("UPDATE listing_image SET position = 1 WHERE listing_id = ?::uuid", listingId);
+            jdbcTemplate.update("""
+                    INSERT INTO listing_image_variant (id, image_id, variant, storage_key, width, height, byte_size)
+                    SELECT ?, i.id, 'THUMBNAIL', 'listings/retried/thumbnail.jpg', 320, 240, 4000
+                      FROM listing_image i WHERE i.listing_id = ?::uuid
+                    """, com.autox.common.UuidV7.generate(), listingId);
+            jdbcTemplate.update("""
+                    INSERT INTO listing_image (id, listing_id, position, status, storage_key, content_type, byte_size)
+                    VALUES (?, ?::uuid, 0, 'FAILED', 'listings/failed/original.jpg', 'image/jpeg', 12345)
+                    """, com.autox.common.UuidV7.generate(), listingId);
+            contact(buyer, "Bonjour");
+
+            mockMvc.perform(get("/api/v1/conversations").header(HttpHeaders.AUTHORIZATION, bearer(buyer)))
+                    .andExpect(jsonPath("$.items[0].listing.coverUrl").value(containsString("listings/retried/thumbnail.jpg")));
+        }
 
         @Test
         @DisplayName("the seller has it in their inbox, unread, as the seller")

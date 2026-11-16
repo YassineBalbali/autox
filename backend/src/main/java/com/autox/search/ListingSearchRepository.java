@@ -585,7 +585,12 @@ public class ListingSearchRepository {
             com.autox.listing.dto.LeasingView leasing) {
     }
 
-    /** Cover images for a page of results, in one query rather than one per row. */
+    /**
+     * Cover images for a page of results, in one query rather than one per row: each listing's
+     * first <em>confirmed</em> photo, as {@code ListingImageRepository#findCoversByListings} has it.
+     * Not "position 0": a failed upload keeps its place in the order, so a seller whose first
+     * attempt was refused has the photo that worked at position 1 and nothing ready at 0.
+     */
     public Map<UUID, Map<String, CoverVariant>> findCoverImages(List<UUID> listingIds) {
         if (listingIds.isEmpty()) {
             return Map.of();
@@ -597,7 +602,9 @@ public class ListingSearchRepository {
                   JOIN listing_image_variant v ON v.image_id = i.id
                  WHERE i.listing_id IN (:ids)
                    AND i.status = 'READY'
-                   AND i.position = 0
+                   AND i.position = (SELECT min(j.position) FROM listing_image j
+                                      WHERE j.listing_id = i.listing_id
+                                        AND j.status = 'READY')
                 """;
 
         Map<UUID, Map<String, CoverVariant>> covers = new java.util.HashMap<>();

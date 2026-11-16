@@ -1,6 +1,7 @@
 package com.autox.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -354,6 +355,35 @@ class PublicSearchIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/listings"))
                 .andExpect(jsonPath("$.items[0].coverImage.THUMBNAIL.url").isNotEmpty())
                 .andExpect(jsonPath("$.items[0].coverImage.THUMBNAIL.width").value(320));
+    }
+
+    @Test
+    @DisplayName("the cover is the first confirmed photo, even when a failed upload holds the first place")
+    void coverSkipsAFailedFirstUpload() throws Exception {
+        JsonNode seller = register(uniqueEmail("retried"), UserRole.PARTICULIER);
+        String id = createListing(seller, Map.of("title", "Second try"));
+        insertImageWithThumbnail(id, 0, "FAILED");
+        insertImageWithThumbnail(id, 1, "READY");
+        publish(seller, id);
+
+        mockMvc.perform(get("/api/v1/listings"))
+                .andExpect(jsonPath("$.items[0].title").value("Second try"))
+                .andExpect(jsonPath("$.items[0].photoCount").value(1))
+                .andExpect(jsonPath("$.items[0].coverImage.THUMBNAIL.url").value(containsString("/1/thumbnail.jpg")));
+    }
+
+    private void insertImageWithThumbnail(String listingId, int position, String status) {
+        UUID imageId = com.autox.common.UuidV7.generate();
+        jdbcTemplate.update("""
+                INSERT INTO listing_image (id, listing_id, position, status, storage_key,
+                                           content_type, byte_size, width, height, uploaded_at)
+                VALUES (?, ?::uuid, ?, ?, ?, 'image/jpeg', 12345, 1600, 1200, now())
+                """, imageId, listingId, position, status, "listings/" + listingId + "/" + position + "/original.jpg");
+        jdbcTemplate.update("""
+                INSERT INTO listing_image_variant (id, image_id, variant, storage_key, width, height, byte_size)
+                VALUES (?, ?, 'THUMBNAIL', ?, 320, 240, 4000)
+                """, com.autox.common.UuidV7.generate(), imageId,
+                "listings/" + listingId + "/" + position + "/thumbnail.jpg");
     }
 
     @Test
