@@ -446,6 +446,83 @@ locally, so the links are relative (`/verifier-email?token=…`): open them on
 - **Template copy is duplicated**, as in milestones 2 and 3 (button labels, headings); everything
   the site words at runtime — error codes, field names, the forms' messages — is shared.
 
+## 9e. Milestone 5 — done (2026-11-16)
+
+### What the backend does (read before building; no change was needed)
+
+| Purpose | Endpoint | Notes |
+|---|---|---|
+| Write to a listing's seller | `POST /listings/{id}/conversation` `{body}` | Starts the buyer's conversation, **or continues the one they already have** about that listing: no 409, no duplicate |
+| Write to a dealer from their page | `POST /dealers/{slug}/conversation` `{body}` | Same rule, one conversation per buyer and dealer page |
+| Inbox | `GET /conversations?page&size` | `PageResponse` (`items, page, size, totalElements, totalPages, hasNext`), size 1–50 (20 by default); as buyer **and** as seller, newest first |
+| One conversation | `GET /conversations/{id}` | Messages oldest first, the latest 200 (`earlierOmitted` beyond); not paged. A GET changes nothing |
+| Reply | `POST /conversations/{id}/messages` `{body}` | 409 `CONFLICT` once closed (`canReply` false) |
+| Mark read | `POST /conversations/{id}/read` | 204 |
+| Unread count | `GET /conversations/unread` | `{conversations}`: conversations with an unopened message |
+| Report a message | `POST /messages/{id}/report` `{reason, note?}` | A message one **received**; once per person, a second report is **accepted (204) and changes nothing** |
+| Report a listing | `POST /listings/{id}/report`, `GET` for "already?" | 409 `LISTING_ALREADY_REPORTED`; 429 past five an hour |
+
+Rules the server enforces:
+
+- **Verified address** to start or continue a conversation and to report a listing:
+  403 `EMAIL_NOT_VERIFIED`, read from the account (not the token). Reporting a message does not
+  require it.
+- **Own listing / own page**: 403 `FORBIDDEN`. **Own message**: 403 on reporting it.
+- **Listing not online** (sold, withdrawn, removed, its seller suspended): 404 for a first message;
+  an existing conversation continues until `canReply` turns false (409 then). A suspended
+  seller's listings are not public at all, so the listing page itself is the 404 the app shows.
+- **Suspended or closed sender**: 403 `ACCOUNT_SUSPENDED`.
+- **Length**: 1–2000 characters after trimming; report notes 500 (message) and 1000 (listing),
+  required when the reason is `OTHER`.
+- **Rate limits**: 429 `RATE_LIMITED` with `retryAfterSeconds` — 20 messages / 10 min, 10 new
+  conversations per window (defaults), 5 listing reports an hour, the export three an hour.
+- **No idempotency key** on any send. The app never resends by itself; the one automatic repeat
+  is the auth interceptor's single retry after a 401, which the server refused before reading the
+  body — so the message is written once (tested).
+
+What the web does, and the app mirrors:
+
+- **Listing page**: "Contacter le vendeur", messages only — no phone. A dealer's page also has it,
+  beside the dealer's phone and website. The demo's sellers carry "ne répondra pas".
+- **Messages**: every conversation, buyer and seller sides alike; a seller's line reads
+  "Votre annonce · …"; the counterpart's "Pro"/"Particulier" badge; a bold line and a count for
+  unread. Message text is plain text, links not made clickable.
+- **Unread**: the header's count is polled once a minute while the tab is visible; the open
+  conversation is not polled (it reloads when the inbox shows a newer message).
+
+### Built
+
+- **Shared words and rules** (web commit first): the report reasons join `enums`; the send
+  failures, greetings, previews, unread and day labels go under `messaging` in
+  `labels.fr.json`; `frontend/fixtures/messaging.json`, produced by the web's code, holds both
+  clients to the same send and report rules, sentences and dates. Every moved string was checked
+  byte for byte against the web's previous source.
+- **Contact** (`features/messages/contact_seller.dart`) on the listing page (under the price, as in
+  the web's summary) and the dealer page: the web's states, the message in a bottom sheet with
+  the web's first line, the count, the safety advice.
+- **Messages tab**: inbox (paged as the API pages, pull to refresh), conversation (header, days,
+  bubbles, composer, closed and unverified states), report a message, the tab's badge.
+- **Report a listing** under the description, once per person.
+- **Sign-in on the way**: `signInFirst` opens the sign-in form over the page that asks and pops back
+  with "signed in"; registering from there comes back too. `/connexion?suivant=…` (the web's
+  parameter, its `safeReturnUrl` rule) does the same from an address.
+
+### Chosen differently from the brief
+
+- **"Open the existing conversation instead of starting one"**: there is no endpoint to find it,
+  and the web has no such state — writing again *is* continuing it, server-side. The app does the
+  same: the message lands in the existing conversation, and "Voir la conversation" opens it.
+- **Reporting a listing signed out**: the brief asks for sign-in then back; the web hides the button
+  from signed-out visitors. The app follows the brief.
+- **15-second poll of the open conversation**: app only (no push yet). The badge is refreshed on
+  resume, on selecting the tab, and after opening or sending — not on a timer, unlike the web.
+- **A conversation opens over the tab bar** (`/messages/:id` is a top-level route, like a
+  listing): it is reached from a listing and a dealer page as well as from the inbox, and go_router
+  cannot push one tab's page over a page outside the tabs. For the same reason the sign-in forms
+  opened on the way somewhere are plain pages over the current one.
+- **"Signaler ce message" is a sheet**, the web's inline form as a phone presents a form; a message
+  reported is marked "Signalé", as on the web.
+
 ## 10. Decisions (settled 2026-11-12)
 
 1. **Application id: `io.github.yassinebalbali.autox`.** Dart package name `autox`. Fixed for

@@ -4,7 +4,11 @@ The buyer side of AutoX as a Flutter app: search, listings, dealers, favourites,
 searches and messages, in French, with the site's look. Plan, decisions and milestones:
 [docs/mobile-plan.md](../docs/mobile-plan.md).
 
-**Status: milestone 4 (sign-in and accounts).** Sign-in, registration (private accounts),
+**Status: milestone 5 (contacting sellers and reporting).** "Contacter le vendeur" on listings and
+dealer pages, the Messages tab (inbox, conversations, replies, unread badge), reporting a listing
+or a message. Details and the backend's rules: docs/mobile-plan.md, section 9e.
+
+**Milestone 4 (sign-in and accounts).** Sign-in, registration (private accounts),
 forgotten password, the account (verification, "Mes données", deletion, sign-out), sessions kept
 between launches. Details and the backend's contract: docs/mobile-plan.md, section 9d.
 
