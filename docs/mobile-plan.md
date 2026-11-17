@@ -554,9 +554,10 @@ What the web does, and the app mirrors:
 - **Version** from the tag (`tool/release_version.mjs`): `mobile-v1.2.3` → `1.2.3` / `10203`.
 - **Signing** (`android/app/build.gradle.kts`): `android/key.properties` or the `ANDROID_*`
   variables; the debug key otherwise, except when `AUTOX_REQUIRE_RELEASE_SIGNING=true`.
-- **Launcher icon**: the wordmark's "X", white on the accent blue, as an adaptive icon (with a
-  monochrome layer for themed icons) and PNGs for Android 7; source `assets/icon/autox-icon.svg`,
-  resources by `tool/generate_icon.mjs`.
+- **Launcher icon**: a two-tone X (one stroke the accent blue, one near-black, a thin white gap
+  where they cross) on white, as an adaptive icon (white background layer, the X as foreground
+  inside the 66-unit safe zone, a one-colour monochrome layer for themed icons) and PNGs for
+  Android 7; source `assets/icon/autox-icon.svg`, resources by `tool/generate_icon.mjs`.
 - **Not done here**: the remaining M6 items in section 9 (cold-start and offline states,
   accessibility pass) were not part of this brief.
 

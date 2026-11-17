@@ -125,10 +125,16 @@ own copy; the OFL permits bundling it in an application, unmodified, with the li
 
 ## Mobile app — launcher icon
 
-`mobile/assets/icon/autox-icon.svg`, and the Android resources `mobile/tool/generate_icon.mjs`
-makes from it: the "X" of the site's wordmark (`frontend/public/autox-wordmark.svg`, the same
-outline, letterform derived from Barlow Semi Condensed ExtraBold, SIL Open Font License 1.1, as
-above), white on the AutoX accent blue. AutoX's own mark; no third-party logo or artwork.
+| | |
+|---|---|
+| Files | `mobile/assets/icon/autox-icon.svg`, and the Android resources and `autox-icon-512.png` that `mobile/tool/generate_icon.mjs` makes from it |
+| Design | A two-tone X: one stroke AutoX blue (`#0057FF`), one near-black (`#111111`), a thin white gap where they cross, on white |
+| Source | The design was generated with an AI image tool, then redrawn by hand as a vector: two straight-edged strokes on Android's 108-unit icon grid. No pixels of the generated image are used |
+| Font | None: the X is drawn as geometry, not set in a typeface |
+| Licence | The project's own, like the rest of the code |
+
+AutoX's own mark; no third-party logo or artwork. It replaced an earlier icon, the "X" of the
+site's wordmark (letterform from Barlow Semi Condensed) in white on blue.
 
 ## Mobile app — Lucide icons
 
