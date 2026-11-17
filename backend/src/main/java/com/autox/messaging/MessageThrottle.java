@@ -2,6 +2,7 @@ package com.autox.messaging;
 
 import com.autox.throttle.ThrottleCounters;
 import com.autox.throttle.ThrottleScope;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -30,10 +31,12 @@ public class MessageThrottle {
 
     private final ThrottleCounters counters;
     private final MessagingThrottleProperties properties;
+    private final Clock clock;
 
-    public MessageThrottle(ThrottleCounters counters, MessagingThrottleProperties properties) {
+    public MessageThrottle(ThrottleCounters counters, MessagingThrottleProperties properties, Clock clock) {
         this.counters = counters;
         this.properties = properties;
+        this.clock = clock;
     }
 
     /**
@@ -45,7 +48,7 @@ public class MessageThrottle {
         if (!properties.enabled()) {
             return Decision.ALLOWED;
         }
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         String key = senderId.toString();
 
         if (startsConversation) {
