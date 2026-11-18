@@ -61,6 +61,20 @@ void main() {
       expect(find.text('Ne payez jamais un véhicule avant de l’avoir vu.'), findsOneWidget);
     });
 
+    testWidgets('the composer keeps its name for TalkBack once its placeholder gives way to the text', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await open(tester);
+      await tester.enterText(_composer(), 'Je passe samedi.');
+      await tester.pump();
+
+      final field = tester.getSemantics(find.byType(EditableText));
+      expect(field.label, contains('Votre réponse'));
+      expect(field.value, 'Je passe samedi.');
+      // The send button, a 48 dp target.
+      expect(tester.getSize(find.byTooltip('Envoyer')).height, greaterThanOrEqualTo(48));
+      semantics.dispose();
+    });
+
     testWidgets('a message is shown as typed: markup stays text, links are not made tappable', (tester) async {
       messaging.conversation(
         messages: [messaging.message('<b>Gras</b> https://exemple.fr', mine: false, id: 'm-seller')],

@@ -12,9 +12,11 @@ import '../../core/format/numbers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/pending.dart';
 import '../../core/widgets/states.dart';
+import '../../core/widgets/surfaces.dart';
 import '../account/widgets/form_parts.dart' show FormError;
 import '../account/widgets/verify_notice.dart';
 import '../listing/widgets/listing_tags.dart' show SellerBadge;
+import 'messages_screen.dart' show ListingThumb;
 import 'messaging_providers.dart';
 import 'messaging_text.dart';
 import 'widgets/report_sheet.dart';
@@ -126,12 +128,13 @@ class _Conversation extends ConsumerWidget {
     final canReply = detail.canReply ?? false;
     return Column(
       children: [
-        _Header(detail: detail),
-        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s2, AppSpace.gutter, AppSpace.s1),
+          child: _Header(detail: detail),
+        ),
         Expanded(
           child: _Thread(id: id, detail: detail, reportedHere: state.reportedHere),
         ),
-        const Divider(height: 1),
         if (canReply && mustVerify)
           const Padding(
             padding: EdgeInsets.all(AppSpace.gutter),
@@ -158,7 +161,8 @@ class _Conversation extends ConsumerWidget {
   }
 }
 
-/// Who, and about which listing (or which dealer page).
+/// Who, and about which listing (or which dealer page), as a card over the thread: the listing's
+/// photo, its title and price; the whole card opens the listing while it is online.
 class _Header extends StatelessWidget {
   const _Header({required this.detail});
 
@@ -170,69 +174,79 @@ class _Header extends StatelessWidget {
     final seller = detail.role == ConversationRole.SELLER;
     final listing = detail.listing;
     final dealerPage = detail.dealerPage;
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s2, AppSpace.gutter, AppSpace.s2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final online = listing != null && (listing.online ?? false) && listing.id != null;
+
+    final who = Semantics(
+      container: true,
+      child: Wrap(
+        spacing: AppSpace.s1,
+        runSpacing: AppSpace.s0,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Semantics(
-            container: true,
-            child: Wrap(
-              spacing: AppSpace.s1,
-              crossAxisAlignment: WrapCrossAlignment.center,
+          SellerBadge(role: detail.counterpart?.role?.name),
+          Text(seller ? 'intéressé par votre annonce' : 'vendeur de cette annonce', style: theme.textTheme.bodySmall),
+        ],
+      ),
+    );
+
+    final Widget about;
+    VoidCallback? onTap;
+    if (listing != null) {
+      onTap = online ? () => context.push('/annonces/${listing.id}') : null;
+      about = Semantics(
+        container: true,
+        link: online,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              listing.title ?? '',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium?.copyWith(color: online ? AppColors.ink : AppColors.inkSoft),
+            ),
+            if (!online)
+              Text('Plus en ligne', style: theme.textTheme.labelSmall)
+            else if (listing.priceAmount != null)
+              Text(
+                formatPrice(listing.priceAmount!, currency: listing.currencyCode ?? 'EUR'),
+                style: theme.textTheme.labelLarge,
+              ),
+          ],
+        ),
+      );
+    } else if (dealerPage != null) {
+      onTap = dealerPage.slug == null ? null : () => context.push('/professionnels/${dealerPage.slug}');
+      about = Text(
+        seller
+            ? 'Message envoyé depuis votre page professionnelle.'
+            : 'Message envoyé depuis la page du professionnel.',
+        style: theme.textTheme.bodySmall?.copyWith(color: AppColors.accentStrong, fontWeight: AppType.semibold),
+      );
+    } else {
+      about = Text('L’annonce n’existe plus.', style: theme.textTheme.bodySmall);
+    }
+
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpace.s3),
+      child: Row(
+        children: [
+          if (listing != null) ...[ListingThumb(url: listing.coverUrl), const SizedBox(width: AppSpace.s3)],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SellerBadge(role: detail.counterpart?.role?.name),
-                Text(
-                  seller ? 'intéressé par votre annonce' : 'vendeur de cette annonce',
-                  style: theme.textTheme.bodySmall,
-                ),
+                who,
+                const SizedBox(height: AppSpace.s1),
+                about,
               ],
             ),
           ),
-          const SizedBox(height: AppSpace.s1),
-          if (listing != null)
-            InkWell(
-              onTap: (listing.online ?? false) && listing.id != null
-                  ? () => context.push('/annonces/${listing.id}')
-                  : null,
-              child: Semantics(
-                container: true,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        listing.title ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: (listing.online ?? false) ? AppColors.accent : AppColors.ink,
-                        ),
-                      ),
-                    ),
-                    if (!(listing.online ?? false))
-                      Text('Plus en ligne', style: theme.textTheme.labelSmall)
-                    else if (listing.priceAmount != null)
-                      Text(
-                        formatPrice(listing.priceAmount!, currency: listing.currencyCode ?? 'EUR'),
-                        style: theme.textTheme.labelMedium,
-                      ),
-                  ],
-                ),
-              ),
-            )
-          else if (dealerPage != null)
-            InkWell(
-              onTap: dealerPage.slug == null ? null : () => context.push('/professionnels/${dealerPage.slug}'),
-              child: Text(
-                seller
-                    ? 'Message envoyé depuis votre page professionnelle.'
-                    : 'Message envoyé depuis la page du professionnel.',
-                style: theme.textTheme.bodySmall?.copyWith(color: AppColors.accent),
-              ),
-            )
-          else
-            Text('L’annonce n’existe plus.', style: theme.textTheme.bodySmall),
+          if (onTap != null) ...[
+            const SizedBox(width: AppSpace.s2),
+            const Icon(LucideIcons.chevronRight, size: AppSizes.icon, color: AppColors.inkFaint),
+          ],
         ],
       ),
     );
@@ -388,11 +402,17 @@ class MessageBubble extends StatelessWidget {
                 label: '$who : $_text, ${sentAtFull(message.sentAt)}${reported ? ', signalé' : ''}',
                 child: ExcludeSemantics(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.s3, vertical: AppSpace.s2),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.s4, vertical: AppSpace.s3),
                     decoration: BoxDecoration(
                       color: mine ? AppColors.accent : AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: mine ? null : Border.all(color: AppColors.line),
+                      // Round, but for the corner on the writer's side, by the edge they write from.
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(AppRadius.lg),
+                        topRight: const Radius.circular(AppRadius.lg),
+                        bottomLeft: Radius.circular(mine ? AppRadius.lg : AppRadius.xs),
+                        bottomRight: Radius.circular(mine ? AppRadius.xs : AppRadius.lg),
+                      ),
+                      boxShadow: mine ? null : AppShadows.card,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,11 +424,11 @@ class MessageBubble extends StatelessWidget {
                             fontStyle: quiet ? FontStyle.italic : null,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AppSpace.s1),
                         Text(
                           [timeOf(message.sentAt), if (reported) 'Signalé'].join(' · '),
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: mine ? AppColors.accentInk.withValues(alpha: 0.8) : AppColors.inkFaint,
+                            color: mine ? AppColors.accentInk : AppColors.inkFaint,
                           ),
                         ),
                       ],
@@ -427,7 +447,7 @@ class MessageBubble extends StatelessWidget {
                       foregroundColor: AppColors.inkFaint,
                     ),
                     onPressed: onReport,
-                    icon: const Icon(LucideIcons.flag, size: 12),
+                    icon: const Icon(LucideIcons.flag, size: AppSizes.iconTiny),
                     label: const Text('Signaler'),
                   ),
                 ),
@@ -499,53 +519,77 @@ class _ComposerState extends ConsumerState<Composer> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final seller = widget.role == ConversationRole.SELLER;
-    return SafeArea(
-      top: false,
-      child: Container(
-        color: AppColors.surface,
-        padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s2, AppSpace.s2, AppSpace.s2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (_failure != null) ...[FormError(_failure), const SizedBox(height: AppSpace.s1)],
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _draft,
-                    enabled: !_sending,
-                    minLines: 1,
-                    maxLines: 5,
-                    maxLength: messageMaxLength,
-                    keyboardType: TextInputType.multiline,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      labelText: 'Votre réponse',
-                      hintText: 'Écrire un message…',
-                      border: OutlineInputBorder(),
-                      counterText: '',
+    // A pill on a grey fill, no outline: the composer, not a form.
+    const pill = OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+      borderSide: BorderSide.none,
+    );
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: AppColors.surface, boxShadow: AppShadows.floating),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s3, AppSpace.s3, AppSpace.s2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_failure != null) ...[FormError(_failure), const SizedBox(height: AppSpace.s1)],
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _draft,
+                      enabled: !_sending,
+                      minLines: 1,
+                      maxLines: 5,
+                      maxLength: messageMaxLength,
+                      keyboardType: TextInputType.multiline,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(
+                        // The label stays the field's name for TalkBack; on screen it is the
+                        // placeholder, and gives way to the text.
+                        labelText: 'Votre réponse',
+                        floatingLabelBehavior: FloatingLabelBehavior.never,
+                        fillColor: AppColors.surfaceSunk,
+                        contentPadding: EdgeInsets.symmetric(horizontal: AppSpace.s5, vertical: AppSpace.s3),
+                        border: pill,
+                        enabledBorder: pill,
+                        disabledBorder: pill,
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+                          borderSide: BorderSide(color: AppColors.accent, width: 2),
+                        ),
+                        counterText: '',
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: AppSpace.s1),
-                IconButton.filled(
-                  tooltip: _sending ? 'Envoi…' : 'Envoyer',
-                  onPressed: _canSend ? _send : null,
-                  icon: Icon(LucideIcons.send, size: 20, semanticLabel: _sending ? 'Envoi…' : 'Envoyer'),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpace.s1),
-            Text(
-              seller
-                  ? 'Ne remettez jamais le véhicule avant que le paiement soit encaissé, et faites vérifier tout '
-                        'chèque de banque par la banque qui l’a émis.'
-                  : 'Ne payez jamais un véhicule avant de l’avoir vu.',
-              style: theme.textTheme.bodySmall,
-            ),
-            ColdStartHint(pending: _sending),
-          ],
+                  const SizedBox(width: AppSpace.s2),
+                  IconButton.filled(
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size.square(AppSizes.touch),
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: AppColors.accentInk,
+                      disabledBackgroundColor: AppColors.surfaceSunk,
+                      disabledForegroundColor: AppColors.inkFaint,
+                    ),
+                    tooltip: _sending ? 'Envoi…' : 'Envoyer',
+                    onPressed: _canSend ? _send : null,
+                    icon: Icon(LucideIcons.send, size: AppSizes.icon, semanticLabel: _sending ? 'Envoi…' : 'Envoyer'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpace.s1),
+              Text(
+                seller
+                    ? 'Ne remettez jamais le véhicule avant que le paiement soit encaissé, et faites vérifier tout '
+                          'chèque de banque par la banque qui l’a émis.'
+                    : 'Ne payez jamais un véhicule avant de l’avoir vu.',
+                style: theme.textTheme.bodySmall,
+              ),
+              ColdStartHint(pending: _sending),
+            ],
+          ),
         ),
       ),
     );
