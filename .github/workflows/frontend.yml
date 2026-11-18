@@ -4,8 +4,12 @@ name: frontend
 # filtered to the paths that can affect the result. frontend/openapi.json is in the list
 # because the API client is generated from it — a refreshed contract changes the generated
 # types, which can break compilation here without a single line of Angular changing.
+#
+# Branches only, never a tag, as in the backend workflow: a `mobile-v*` tag is the mobile
+# workflow's alone, and path filters would not have kept it out.
 on:
   push:
+    branches: ['**']
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend.yml'

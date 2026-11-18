@@ -261,7 +261,10 @@ is not automated — `docs/weaknesses.md`, W10.
 Two workflows, both on **every push** to every branch, on pull requests into `main` or
 `master`, and **weekly** whatever was pushed — an advisory published about a dependency
 nobody touched should not wait for the next commit. Each push run is filtered to the paths
-that can change its result.
+that can change its result. Branch pushes only: a tag never runs them. Path filters do not
+apply to tags, so both name `branches: ['**']`, and a `mobile-v*` release tag runs
+`mobile.yml` alone (`mobile/README.md`). The Render deploy also requires a push to
+`refs/heads/main`; `frontend/scripts/deploy-config.test.mjs` asserts both.
 
 | Workflow | Watches | Runs |
 |---|---|---|

@@ -31,6 +31,26 @@ describe('Vercel deployments', () => {
   });
 });
 
+describe('a mobile-v* tag', () => {
+  // Path filters do not apply to tags, so a workflow whose push trigger names neither branches
+  // nor tags runs for every tag. Naming branches alone leaves tags out.
+  const push = (file) => {
+    const text = read(`.github/workflows/${file}`);
+    return text.slice(text.indexOf('\n  push:\n'), text.indexOf('\n  pull_request:\n'));
+  };
+
+  it('runs the mobile workflow', () => {
+    assert.match(push('mobile.yml'), /^    tags: \['mobile-v\*'\]$/m);
+  });
+
+  for (const file of ['backend.yml', 'frontend.yml']) {
+    it(`does not run ${file}`, () => {
+      assert.match(push(file), /^    branches: \['\*\*'\]$/m);
+      assert.doesNotMatch(push(file), /tags/);
+    });
+  }
+});
+
 describe('Render deploys', () => {
   const workflow = read('.github/workflows/backend.yml');
   const job = workflow.slice(workflow.indexOf('\n  deploy:\n'));

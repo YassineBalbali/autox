@@ -13,8 +13,13 @@ name: backend
 #     from. OpenApiSnapshotTest compares it against the live document, so a snapshot
 #     refreshed without the backend change behind it has to fail here.
 #   this workflow file    — so a change to the job that runs the tests is itself tested.
+#
+# Branches only, never a tag: path filters do not apply to tags (GitHub's rule), so without
+# `branches` every `mobile-v*` release tag ran this suite too. Naming branches alone is what
+# leaves tags out. The deploy job below needs refs/heads/main besides, so a tag cannot deploy.
 on:
   push:
+    branches: ['**']
     paths:
       - 'backend/**'
       - 'frontend/openapi.json'
