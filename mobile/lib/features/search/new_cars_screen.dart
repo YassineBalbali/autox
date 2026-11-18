@@ -6,7 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/format/numbers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/states.dart';
-import '../listing/widgets/listing_row.dart';
+import '../listing/widgets/listing_card.dart';
 import 'search_locations.dart';
 import 'search_providers.dart';
 import 'search_query.dart';
@@ -76,7 +76,11 @@ class NewCarsScreen extends ConsumerWidget {
               ),
             ],
             ResultsStatus.ready => [
-              for (final listing in arrivals.items.take(latest)) ...[ListingRow(listing: listing), const Divider()],
+              for (final listing in arrivals.items.take(latest))
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, AppSpace.s3),
+                  child: ListingCard(listing: listing),
+                ),
             ],
           },
         ],
@@ -93,6 +97,6 @@ class _Heading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s5, AppSpace.gutter, AppSpace.s2),
-    child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+    child: Text(text, style: Theme.of(context).textTheme.titleLarge),
   );
 }

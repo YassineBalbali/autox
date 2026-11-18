@@ -1,4 +1,4 @@
-import 'package:autox/features/listing/widgets/listing_row.dart';
+import 'package:autox/features/listing/widgets/listing_card.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -36,11 +36,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('30 annonces'), findsOneWidget);
-    expect(find.text('Filtres (3)'), findsOneWidget);
+    expect(find.bySemanticsLabel('Filtres, 3 actifs'), findsOneWidget);
     for (final chip in ['Peugeot', 'Diesel', 'Jusqu’à 25 000 €']) {
       expect(find.widgetWithText(InputChip, chip), findsOneWidget);
     }
-    expect(find.byType(ListingRow), findsWidgets);
+    expect(find.byType(ListingCard), findsWidgets);
     final sent = http.to('/api/v1/listings').single.uri.queryParameters;
     expect(sent, {
       'makeId': 'm-peugeot',
@@ -79,7 +79,7 @@ void main() {
     final last = http.to('/api/v1/listings').last.uri.queryParameters;
     expect(last.containsKey('fuelType'), isFalse);
     expect(last['makeId'], 'm-peugeot');
-    expect(find.text('Filtres (1)'), findsOneWidget);
+    expect(find.bySemanticsLabel('Filtres, 1 actif'), findsOneWidget);
   });
 
   testWidgets('"Louer" switches to leasing offers, dropping what only a sale means', (tester) async {
@@ -100,7 +100,7 @@ void main() {
     await pumpApp(tester, http, location: '/recherche/resultats');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Plus récentes'));
+    await tester.tap(find.byTooltip('Trier par : Plus récentes'));
     await tester.pumpAndSettle();
     for (final label in ['Prix croissant', 'Prix décroissant', 'Kilométrage croissant']) {
       expect(find.text(label), findsOneWidget);
@@ -126,7 +126,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(http.to('/api/v1/listings').last.uri.queryParameters.containsKey('fuelType'), isFalse);
-    expect(find.byType(ListingRow), findsOneWidget);
+    expect(find.byType(ListingCard), findsOneWidget);
   });
 
   testWidgets('a search is remembered once its results open', (tester) async {

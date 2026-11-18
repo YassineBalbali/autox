@@ -155,10 +155,10 @@ sessions and sign-out.
 La Cote valuation, account deletion and data export (link to the site), push notifications,
 App Links, iOS, Play Store.
 
-**Look:** colours, spacing and radii transcribed from `frontend/src/styles/_tokens.scss` into a
+**Look (v1):** colours, spacing and radii transcribed from `frontend/src/styles/_tokens.scss` into a
 Dart `AppTokens` + `ThemeData`; Barlow Semi Condensed bundled as asset font files (OFL, as the
 web bundles it — no runtime font download); Lucide icons. Dense classifieds layout, following
-the web's mobile pass rather than its desktop one.
+the web's mobile pass rather than its desktop one. Replaced by the v1.1 refresh (section 9g).
 
 ---
 
@@ -560,6 +560,40 @@ What the web does, and the app mirrors:
   Android 7; source `assets/icon/autox-icon.svg`, resources by `tool/generate_icon.mjs`.
 - **Not done here**: the remaining M6 items in section 9 (cold-start and offline states,
   accessibility pass) were not part of this brief.
+
+## 9g. v1.1 visual refresh, phase 1 — design system and search flow (2026-11-18)
+
+The app has its own look now, no longer the site's: the launcher icon's palette (white cards on
+a light cool grey, `#111111` text, AutoX blue only for actions and selection, a light-blue tint
+for chosen things), large corners, round buttons and chips, a heavier type scale. App only:
+nothing in the backend, the web or the app's behaviour changed.
+
+- **One tokens file**, `lib/core/theme/tokens.dart`: colours, spacing, text styles by role
+  (`AppText`), radii, shadows, component sizes. `app_theme.dart` builds the Material theme from
+  it; shared pieces (`AppCard`, `IconTile`, `SpecChip`) are in `lib/core/widgets/surfaces.dart`.
+  `tokens_test.dart` keeps the blue and the status colours equal to the site's, lists the
+  neutrals the app sets itself, and checks every text colour on its surfaces against WCAG AA
+  (4.5:1).
+- **Tab bar**: a floating pill (`FloatingTabBar`), still Material's `NavigationBar` inside, so
+  TalkBack's tab semantics and the unread badge are unchanged. Its labels stop growing at 130 %
+  system text: past that, four labels no longer fit a 360 dp phone.
+- **Search home**: big title, a pill search field, the smart search, Acheter / Louer / Neuf as
+  tiles, recent searches and the dealer directory as cards, the makes in one card.
+- **Filters**: the same filters in five expandable cards (`FilterGroup`): Marque & modèle (with
+  the body type), État & année (year, mileage, new or used, damage), Prix & financement (price
+  and good deals, or the leasing terms), Caractéristiques (fuel, gearbox, Crit'Air),
+  Localisation. Each card's summary is the chips' own wording; a test checks every filter is in
+  exactly one group. Groups with something chosen open by themselves. The sticky "Voir N
+  annonces" keeps its live count.
+- **Results**: count, a Filtres pill with how many are set, a round sort button; the active
+  filters as one sideways-scrolling row of removable chips; `ListingCard` (wide photo, black
+  price, the verdict bar, facts as chips, place and seller). The toolbar scrolls with the list,
+  so large text cannot squeeze the results out. The Neuf page uses the same cards; the listing
+  page's similar listings and the dealer page keep `ListingRow` until phase 2.
+- **Not done, on purpose**: no favourite heart on the cards (favourites do not exist yet, the
+  tab says "Bientôt disponible"; a heart that does nothing would be a behaviour change) and no
+  list/grid view button (there is one view). No golden tests: the project has none; layout is
+  covered by widget tests at 360 dp and 200 % text instead.
 
 ## 10. Decisions (settled 2026-11-12)
 

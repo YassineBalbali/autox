@@ -1,4 +1,5 @@
 import 'package:autox/features/listing/widgets/financing_simulator.dart';
+import 'package:autox/features/listing/widgets/listing_card.dart';
 import 'package:autox/features/listing/widgets/listing_row.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -124,7 +125,7 @@ void main() {
     expect(find.text('Cette annonce n’est plus disponible'), findsOneWidget);
     await tester.tap(find.text('Voir les annonces'));
     await tester.pumpAndSettle();
-    expect(find.byType(ListingRow), findsOneWidget);
+    expect(find.byType(ListingCard), findsOneWidget);
   });
 
   testWidgets('similar listings are shown under the page and open their own', (tester) async {
@@ -153,7 +154,7 @@ void main() {
     await pumpApp(tester, fake, location: '/recherche/resultats');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(ListingRow));
+    await tester.tap(find.byType(ListingCard));
     await tester.pumpAndSettle();
 
     expect(find.text('Annonce'), findsOneWidget);

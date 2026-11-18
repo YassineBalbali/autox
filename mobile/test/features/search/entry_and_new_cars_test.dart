@@ -1,4 +1,4 @@
-import 'package:autox/features/listing/widgets/listing_row.dart';
+import 'package:autox/features/listing/widgets/listing_card.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -86,7 +86,7 @@ void main() {
       expect(http.to('/api/v1/listings/makes').single.uri.queryParameters, {'condition': 'NEW'});
       final latest = http.to('/api/v1/listings').single.uri.queryParameters;
       expect((latest['condition'], latest['browse']), ('NEW', 'true'));
-      expect(find.byType(ListingRow), findsOneWidget);
+      expect(find.byType(ListingCard), findsOneWidget);
       expect(find.textContaining('Neuf'), findsWidgets);
     });
 

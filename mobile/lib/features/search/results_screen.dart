@@ -8,7 +8,8 @@ import '../../core/format/numbers.dart';
 import '../../core/labels/labels.g.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/states.dart';
-import '../listing/widgets/listing_row.dart';
+import '../../core/widgets/surfaces.dart';
+import '../listing/widgets/listing_card.dart';
 import 'filters_screen.dart';
 import 'recent_searches.dart';
 import 'search_locations.dart';
@@ -93,41 +94,39 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _Toolbar(
-            query: query,
-            filterCount: activeFilterCount(query),
-            onOffer: (offer) => _go(switchOffer(query, offer)),
-            onFilters: _openFilters,
-            onSort: (sort) => _go(query.copyWith(sort: sort)),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                ref.invalidate(resultCountProvider(query));
-                ref.read(searchResultsProvider(query).notifier).retry();
-              },
-              child: CustomScrollView(
-                controller: _scroll,
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: _Heading(
-                      count: count.value,
-                      chips: chips,
-                      interpretation: interpretation,
-                      onDismissNote: () => setState(() => _noteDismissed = true),
-                      onRemove: (filter) => _go(filter.without),
-                      onClear: () => _go(withoutFilters(query)),
-                    ),
-                  ),
-                  ..._results(results),
-                ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(resultCountProvider(query));
+          ref.read(searchResultsProvider(query).notifier).retry();
+        },
+        // The toolbar scrolls with the results: with large system text it would leave a small
+        // phone no room for them.
+        child: CustomScrollView(
+          controller: _scroll,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _Toolbar(
+                query: query,
+                count: count.value,
+                filterCount: activeFilterCount(query),
+                onOffer: (offer) => _go(switchOffer(query, offer)),
+                onFilters: _openFilters,
+                onSort: (sort) => _go(query.copyWith(sort: sort)),
               ),
             ),
-          ),
-        ],
+            SliverToBoxAdapter(
+              child: _Heading(
+                chips: chips,
+                interpretation: interpretation,
+                onDismissNote: () => setState(() => _noteDismissed = true),
+                onRemove: (filter) => _go(filter.without),
+                onClear: () => _go(withoutFilters(query)),
+              ),
+            ),
+            ..._results(results),
+          ],
+        ),
       ),
     );
   }
@@ -156,10 +155,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           ];
         }
         return [
-          SliverList.separated(
-            itemCount: results.items.length,
-            separatorBuilder: (_, _) => const Divider(),
-            itemBuilder: (_, index) => ListingRow(listing: results.items[index]),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
+            sliver: SliverList.separated(
+              itemCount: results.items.length,
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpace.s3),
+              itemBuilder: (_, index) => ListingCard(listing: results.items[index]),
+            ),
           ),
           SliverToBoxAdapter(
             child: _Footer(results: results, onRetry: () => ref.read(searchResultsProvider(query).notifier).loadMore()),
@@ -169,10 +171,11 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   }
 }
 
-/// Acheter / Louer, Filtres with its count, and the sort order.
+/// Acheter / Louer; then the count, Filtres with how many are set, and the sort order.
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.query,
+    required this.count,
     required this.filterCount,
     required this.onOffer,
     required this.onFilters,
@@ -180,6 +183,7 @@ class _Toolbar extends StatelessWidget {
   });
 
   final SearchQuery query;
+  final ResultCount? count;
   final int filterCount;
   final ValueChanged<OfferType> onOffer;
   final VoidCallback onFilters;
@@ -187,16 +191,13 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final options = query.isLeasing ? leasingSortOptions : saleSortOptions;
     final sort = sortFor(query.sort, query.offer);
     final sortLabel = options.where((option) => option.$1 == sort).firstOrNull?.$2 ?? options.first.$2;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.line)),
-      ),
-      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s2, AppSpace.gutter, AppSpace.s2),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s1, AppSpace.gutter, AppSpace.s2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -217,33 +218,24 @@ class _Toolbar extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: AppSpace.s2),
-          Row(
+          const SizedBox(height: AppSpace.s3),
+          // The count, and the buttons at the end; under it when large text leaves no room beside.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpace.s2,
+            runSpacing: AppSpace.s2,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onFilters,
-                  icon: const Icon(LucideIcons.slidersHorizontal, size: 18),
-                  label: Text(filterCount == 0 ? 'Filtres' : 'Filtres ($filterCount)'),
-                ),
-              ),
-              const SizedBox(width: AppSpace.s2),
-              Expanded(
-                child: PopupMenuButton<SearchSort>(
-                  tooltip: 'Trier par',
-                  initialValue: sort,
-                  onSelected: onSort,
-                  itemBuilder: (_) => [
-                    for (final (value, label) in options) PopupMenuItem(value: value, child: Text(label)),
-                  ],
-                  child: IgnorePointer(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(LucideIcons.arrowDownUp, size: 18),
-                      label: Text(sortLabel, overflow: TextOverflow.ellipsis),
-                    ),
+              Text(count == null ? ' ' : resultCountLabel(count!), style: theme.textTheme.titleLarge),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: _FiltersButton(count: filterCount, onPressed: onFilters),
                   ),
-                ),
+                  const SizedBox(width: AppSpace.s2),
+                  _sortButton(options, sort, sortLabel),
+                ],
               ),
             ],
           ),
@@ -251,12 +243,67 @@ class _Toolbar extends StatelessWidget {
       ),
     );
   }
+
+  Widget _sortButton(List<(SearchSort, String)> options, SearchSort sort, String sortLabel) =>
+      PopupMenuButton<SearchSort>(
+        tooltip: 'Trier par : $sortLabel',
+        initialValue: sort,
+        onSelected: onSort,
+        icon: const Icon(LucideIcons.arrowDownUp, size: AppSizes.icon),
+        style: roundIconButtonStyle,
+        itemBuilder: (_) => [for (final (value, label) in options) PopupMenuItem(value: value, child: Text(label))],
+      );
 }
 
-/// The count, the smart-search note, and the filters that are set, as chips to remove.
+/// "Filtres", with how many are set in a blue dot; TalkBack hears "Filtres, 2 actifs".
+class _FiltersButton extends StatelessWidget {
+  const _FiltersButton({required this.count, required this.onPressed});
+
+  final int count;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: switch (count) {
+      0 => 'Filtres',
+      1 => 'Filtres, 1 actif',
+      _ => 'Filtres, $count actifs',
+    },
+    excludeSemantics: true,
+    child: OutlinedButton(
+      onPressed: onPressed,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(LucideIcons.slidersHorizontal, size: AppSizes.icon),
+          const SizedBox(width: AppSpace.s2),
+          const Flexible(child: Text('Filtres', overflow: TextOverflow.ellipsis, softWrap: false)),
+          if (count > 0) ...[
+            const SizedBox(width: AppSpace.s2),
+            Container(
+              constraints: const BoxConstraints(minWidth: AppSizes.icon),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.s1),
+              decoration: const BoxDecoration(
+                color: AppColors.accent,
+                borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '$count',
+                style: AppText.tag.copyWith(color: AppColors.accentInk, fontWeight: AppType.bold),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+/// The smart-search note, and the filters that are set, as a row of chips to remove.
 class _Heading extends StatelessWidget {
   const _Heading({
-    required this.count,
     required this.chips,
     required this.interpretation,
     required this.onDismissNote,
@@ -264,7 +311,6 @@ class _Heading extends StatelessWidget {
     required this.onClear,
   });
 
-  final ResultCount? count;
   final List<AppliedFilter> chips;
   final Interpretation? interpretation;
   final VoidCallback onDismissNote;
@@ -272,39 +318,43 @@ class _Heading extends StatelessWidget {
   final VoidCallback onClear;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s3, AppSpace.gutter, AppSpace.s2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(count == null ? ' ' : resultCountLabel(count!), style: theme.textTheme.titleMedium),
-          if (interpretation != null) ...[
-            const SizedBox(height: AppSpace.s2),
-            InterpretationNote(interpretation: interpretation!, onDismiss: onDismissNote),
-          ],
-          if (chips.isNotEmpty) ...[
-            const SizedBox(height: AppSpace.s2),
-            Wrap(
-              spacing: AppSpace.s1,
-              runSpacing: AppSpace.s1,
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: AppSpace.s3),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (interpretation != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, AppSpace.s2),
+            child: InterpretationNote(interpretation: interpretation!, onDismiss: onDismissNote),
+          ),
+        if (chips.isNotEmpty)
+          // One line that scrolls sideways, every chip built, so each can be reached and removed.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
+            child: Row(
               children: [
-                for (final chip in chips)
+                for (final chip in chips) ...[
                   InputChip(
                     label: Text(chip.label),
+                    backgroundColor: AppColors.accentSoft,
+                    side: const BorderSide(color: AppColors.accentSoft),
+                    labelStyle: AppText.tag.copyWith(fontSize: AppType.tsm, color: AppColors.accentStrong),
                     onDeleted: () => onRemove(chip),
+                    deleteIcon: const Icon(LucideIcons.x, size: AppSizes.iconSmall),
+                    deleteIconColor: AppColors.accentStrong,
                     deleteButtonTooltipMessage: 'Retirer le filtre ${chip.label}',
-                    visualDensity: VisualDensity.compact,
                   ),
+                  const SizedBox(width: AppSpace.s2),
+                ],
                 if (chips.length > 1) TextButton(onPressed: onClear, child: const Text('Tout effacer')),
               ],
             ),
-          ],
-        ],
-      ),
-    );
-  }
+          ),
+      ],
+    ),
+  );
 }
 
 /// "22 annonces", "1 annonce", "Plus de 10 000 annonces" — the web's wording.
