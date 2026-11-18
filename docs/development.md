@@ -272,7 +272,9 @@ that can change its result.
 Alpine packages and every library in it — with Trivy (run from its image, pinned by digest),
 and fails on a HIGH or CRITICAL advisory that has a fixed version. Advisories judged not to
 apply are in `backend/.trivyignore`, each with the reason a reviewer can check. The frontend
-job runs `npm audit --omit=dev --audit-level=high`: what reaches a browser.
+job runs `npm run audit:prod`: `npm audit --omit=dev`, what reaches a browser, failing on
+HIGH and CRITICAL except the dated exceptions in `frontend/audit-exceptions.json`, each
+explained in `docs/weaknesses.md` (R11).
 `.github/dependabot.yml` proposes the upgrades, grouped weekly, for Maven, npm, the Actions
 themselves, the MinIO image digest and the Dockerfile's base images.
 

@@ -71,8 +71,12 @@ jobs:
       # The build tools are left out of the gate on purpose — the API client generator
       # pulls in a dependency chain with open advisories that never ships, and failing on
       # it would only teach everyone to ignore this step. Dependabot reports those.
+      #
+      # `npm audit --omit=dev`, failing on HIGH and CRITICAL like --audit-level=high, except
+      # the advisories in audit-exceptions.json: one package each, with its reason and a review
+      # date after which it fails again. Each is explained in docs/weaknesses.md (R11).
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: npm run audit:prod
 
       # Explicit, though lint/build/test each trigger it through their pre-scripts. Doing
       # it once up front means a generator failure is reported as a generator failure

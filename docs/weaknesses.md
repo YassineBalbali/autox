@@ -206,6 +206,36 @@ take the password. This was wider than R9. Since 27 October 2026 the URL is
 `sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory`, and the API refuses
 to start with a URL for another machine that does not verify (docs/deployment.md, step 1).
 
+### R11. A picomatch advisory with no fix, excused in the audit until 18 December 2026 — low
+
+**The advisory.** GHSA-fc5q-39xc-vjpf (high, CVSS 7.5): a pattern with a repeated single-branch
+extglob, such as `+(a)`, makes picomatch's regular expression backtrack for a very long time
+(ReDoS). It covers every release up to 4.0.7, and 4.0.7 is the latest (checked 18 November
+2026), so `overrides` cannot pin a fixed one. `npm audit fix --force` would move
+`@angular/localize` back to 19, which this Angular 22 site cannot use.
+
+**Why it does not apply.** The frontend's production dependencies reach picomatch only through
+`@angular/localize` → `tinyglobby` → `fdir`. Within `@angular/localize`, only its three
+command-line tools import `tinyglobby` (`tools/bundles/src/{extract,translate,migrate}/cli.js`,
+the `localize-*` commands). Neither the runtime (`@angular/localize`, `/init`) nor the build's
+translation inlining (`/tools`) does. Those tools glob file patterns that a developer types, and
+this project does not run them: French is the source locale and nothing is translated. So none
+of picomatch is in the browser bundle, and no visitor's input reaches it. The other
+picomatch users (the Angular CLI, Vite, Vitest, ESLint) are development dependencies, outside
+the gate, and see only patterns from the repository's own configuration.
+
+**The exception.** `frontend/audit-exceptions.json` names this advisory in `picomatch` alone,
+with `reviewBy` 2026-12-18. `npm run audit:prod` (`frontend/scripts/audit.mjs`, no added
+dependency) runs `npm audit --omit=dev` and fails on every other HIGH or CRITICAL advisory,
+as `--audit-level=high` did. It also fails on this one again from the review date, and it
+warns when an exception no longer matches anything. `scripts/audit.test.mjs` tests those
+rules, refuses an exception without a reason or a date, limits a review date to 30 days
+ahead, and requires each exception to be explained here.
+
+**On review.** If picomatch has a fixed release, pin it with `overrides` in `package.json` and
+delete the exception. Otherwise, check the reasoning above again and set a new date at most
+30 days ahead.
+
 ### Checked and found sound
 
 Stated so they are not re-examined for nothing: ADMIN cannot be self-assigned at

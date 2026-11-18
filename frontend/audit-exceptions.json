@@ -1,0 +1,8 @@
+[
+  {
+    "advisory": "GHSA-fc5q-39xc-vjpf",
+    "package": "picomatch",
+    "reviewBy": "2026-12-18",
+    "reason": "No fixed release (4.0.7 is the latest and affected). Reached only through @angular/localize's command-line tools (localize-extract, -translate, -migrate), which glob file patterns a developer types; none of it is in the browser bundle and no visitor input reaches it. docs/weaknesses.md, R11."
+  }
+]
