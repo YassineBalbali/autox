@@ -38,10 +38,10 @@ jobs:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           # Pinned, not "lts/*": a runner image rolling forward to a Node major Angular has
           # not qualified is a red build with no commit behind it. 24.22.1 is the October 2026
@@ -57,7 +57,7 @@ jobs:
       # Angular rather than a lighter TypeScript-native one — and the JVM is already a
       # first-class dependency of this repository, so it is a cost worth paying here.
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: temurin
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload build output
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: frontend-dist
           path: frontend/dist/
