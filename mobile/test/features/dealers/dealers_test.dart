@@ -1,7 +1,7 @@
 import 'package:autox/core/links.dart';
 import 'package:autox/features/dealers/dealer_screen.dart';
 import 'package:autox/features/dealers/dealer_text.dart';
-import 'package:autox/features/listing/widgets/listing_row.dart';
+import 'package:autox/features/listing/widgets/listing_card.dart';
 import 'package:autox_api/autox_api.dart' show DealerCard;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -155,7 +155,7 @@ void main() {
       expect(find.text('Lyon (69)'), findsWidgets); // the dealer, and their listing
       expect(find.text('Lundi–samedi, 9 h – 19 h'), findsOneWidget);
       expect(find.text('garage-bellevue.fr'), findsOneWidget);
-      expect(find.byType(ListingRow), findsOneWidget);
+      expect(find.byType(ListingCard), findsOneWidget);
       expect(http.to('/api/v1/listings').single.uri.queryParameters['sellerId'], 's1');
 
       await tester.tap(find.text('+33 4 78 00 00 00'));

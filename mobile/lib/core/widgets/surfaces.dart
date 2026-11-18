@@ -29,6 +29,46 @@ class AppCard extends StatelessWidget {
   }
 }
 
+/// A tab's big title, a heading for TalkBack, with an optional line under it.
+class ScreenTitle extends StatelessWidget {
+  const ScreenTitle(this.title, {super.key, this.subtitle});
+
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(container: true, header: true, child: Text(title, style: theme.textTheme.headlineLarge)),
+        if (subtitle != null) ...[
+          const SizedBox(height: AppSpace.s1),
+          Semantics(container: true, child: Text(subtitle!, style: theme.textTheme.bodySmall)),
+        ],
+      ],
+    );
+  }
+}
+
+/// A group's small title above its card, settings-style: "Mes données", "Compte".
+class GroupLabel extends StatelessWidget {
+  const GroupLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(AppSpace.s1, AppSpace.s5, AppSpace.s1, AppSpace.s2),
+    child: Semantics(
+      container: true,
+      header: true,
+      child: Text(text, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppColors.inkSoft)),
+    ),
+  );
+}
+
 /// An icon on a tinted rounded square: the mark at the start of a card or a section.
 class IconTile extends StatelessWidget {
   const IconTile({super.key, required this.icon, this.size = AppSizes.iconTile});
@@ -57,6 +97,21 @@ final ButtonStyle roundIconButtonStyle = IconButton.styleFrom(
   backgroundColor: AppColors.surface,
   minimumSize: const Size(AppSizes.touch, AppSizes.touch),
   side: const BorderSide(color: AppColors.lineStrong),
+  shape: const CircleBorder(),
+);
+
+/// A round button over a photo: a white disc of [AppSizes.overPhotoButton], its touch target
+/// padded to 48 dp. The back, share and heart buttons on a listing's photos and the heart on a
+/// result's photo.
+final ButtonStyle overPhotoButtonStyle = IconButton.styleFrom(
+  foregroundColor: AppColors.ink,
+  backgroundColor: AppColors.overPhoto,
+  fixedSize: const Size.square(AppSizes.overPhotoButton),
+  minimumSize: const Size.square(AppSizes.overPhotoButton),
+  padding: EdgeInsets.zero,
+  tapTargetSize: MaterialTapTargetSize.padded,
+  elevation: 1,
+  shadowColor: AppColors.ink,
   shape: const CircleBorder(),
 );
 

@@ -8,8 +8,8 @@ import '../../core/links.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/states.dart';
 import '../listing/listing_text.dart' show memberSince;
+import '../listing/widgets/listing_card.dart';
 import '../listing/widgets/listing_parts.dart' show PageSection;
-import '../listing/widgets/listing_row.dart';
 import '../messages/contact_seller.dart';
 import '../search/search_providers.dart';
 import '../search/search_query.dart';
@@ -224,10 +224,13 @@ class _DealerScreenState extends ConsumerState<DealerScreen> {
       ),
     ],
     ResultsStatus.ready => [
-      SliverList.separated(
-        itemCount: results.items.length,
-        separatorBuilder: (_, _) => const Divider(),
-        itemBuilder: (_, index) => ListingRow(listing: results.items[index]),
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
+        sliver: SliverList.separated(
+          itemCount: results.items.length,
+          separatorBuilder: (_, _) => const SizedBox(height: AppSpace.s3),
+          itemBuilder: (_, index) => ListingCard(listing: results.items[index]),
+        ),
       ),
       SliverToBoxAdapter(
         child: Padding(

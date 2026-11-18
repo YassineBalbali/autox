@@ -13,6 +13,7 @@ import '../../features/account/login_screen.dart';
 import '../../features/account/register_screen.dart';
 import '../../features/dealers/dealer_directory_screen.dart';
 import '../../features/dealers/dealer_screen.dart';
+import '../../features/favourites/favourites_screen.dart';
 import '../../features/listing/listing_screen.dart';
 import '../../features/messages/conversation_screen.dart';
 import '../../features/messages/messages_screen.dart';
@@ -27,7 +28,6 @@ import '../auth/session.dart';
 import '../labels/labels.g.dart';
 import '../theme/tokens.dart';
 import '../widgets/pending.dart';
-import '../widgets/states.dart';
 
 /// The app's paths: French, like the site's (`/recherche`), so a link shared from one can be
 /// mapped onto the other when App Links arrive.
@@ -130,16 +130,7 @@ GoRouter buildRouter({String initialLocation = AppRoutes.search, AuthState Funct
               ],
             ),
             StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: AppRoutes.favourites,
-                  builder: (_, _) => const _ComingSoonScreen(
-                    title: 'Favoris',
-                    icon: LucideIcons.heart,
-                    body: 'Les annonces marquées d’un cœur seront gardées ici, sur ce téléphone.',
-                  ),
-                ),
-              ],
+              routes: [GoRoute(path: AppRoutes.favourites, builder: (_, _) => const FavouritesScreen())],
             ),
             StatefulShellBranch(
               routes: [GoRoute(path: AppRoutes.messages, builder: (_, _) => const MessagesScreen())],
@@ -291,19 +282,5 @@ class _AccountWait extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Mon compte'), centerTitle: false),
     body: const PendingView(label: 'Vérification de la session'),
-  );
-}
-
-class _ComingSoonScreen extends StatelessWidget {
-  const _ComingSoonScreen({required this.title, required this.icon, required this.body});
-
-  final String title;
-  final IconData icon;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title), centerTitle: false),
-    body: ComingSoonView(icon: icon, title: 'Bientôt disponible', body: body),
   );
 }

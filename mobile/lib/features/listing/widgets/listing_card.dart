@@ -9,22 +9,40 @@ import '../../../core/format/numbers.dart';
 import '../../../core/labels/labels.g.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/surfaces.dart';
+import '../../favourites/favourite_button.dart';
 import '../listing_locations.dart';
-import 'listing_row.dart';
+import 'listing_tags.dart';
 
 /// One search result as a card: the photo, large and rounded; then the damage notice, the price
 /// (or the monthly payment), the market verdict, the make and model with the version, the key
 /// facts as small chips, the place and the seller.
 ///
-/// The whole card opens the listing's page, and TalkBack reads it as one button.
+/// The whole card opens the listing's page, and TalkBack reads it as one button. The heart on the
+/// photo is a button of its own, after it.
 class ListingCard extends StatelessWidget {
   const ListingCard({super.key, required this.listing, this.minorUnit = 2});
 
   final PublicListingSummary listing;
   final int minorUnit;
 
+  /// Where the heart sits: its disc [AppSpace.s2] from the photo's corner, the photo
+  /// [AppSpace.s3] inside the card, the disc centred in its 48 dp target.
+  static const double _heartInset = AppSpace.s3 + AppSpace.s2 - (AppSizes.touch - AppSizes.overPhotoButton) / 2;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Stack(
+    children: [
+      _card(context),
+      if (listing.id != null)
+        Positioned(
+          top: _heartInset,
+          right: _heartInset,
+          child: FavouriteButton(listing: listing),
+        ),
+    ],
+  );
+
+  Widget _card(BuildContext context) {
     final theme = Theme.of(context);
     final headline = headlineOfListing(listing);
     final place = placeOf(city: listing.city, postalCode: listing.postalCode, countryCode: listing.countryCode);

@@ -42,6 +42,15 @@ abstract final class AppColors {
 
   /// Behind the photo count on a photo.
   static const scrim = Color(0xB3111111);
+
+  /// The discs of the buttons over a photo: white, the photo barely through.
+  static const overPhoto = Color(0xEBFFFFFF);
+
+  /// The top of a listing's photos, under the status bar and the buttons.
+  static const photoShade = Color(0x66111111);
+
+  /// A listing that went offline, in the favourites: its photo washed out.
+  static const retired = Color(0xB3F4F5F7);
 }
 
 /// A 4-pixel base; most of the interface lives on 8, 12 and 16.
@@ -238,6 +247,22 @@ abstract final class AppSizes {
 
   /// A result card's photo: wider than tall.
   static const double cardPhotoAspect = 16 / 10;
+
+  /// A listing's photos, edge to edge.
+  static const double galleryAspect = 4 / 3;
+
+  /// The disc of a button over a photo; its touch target is padded to [touch].
+  static const double overPhotoButton = 40;
+
+  /// A small photo: a conversation's listing, a removed favourite.
+  static const double thumbWidth = 72;
+  static const double thumbHeight = 54;
+
+  /// The avatar on the account's card and a seller's.
+  static const double avatar = 48;
+
+  /// The Crit'Air vignette.
+  static const double vignette = 64;
 }
 
 /// Android's minimum touch target. The web's touch rules use 44 CSS px; Material asks 48 dp.

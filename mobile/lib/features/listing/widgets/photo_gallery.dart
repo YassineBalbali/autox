@@ -4,7 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../listing_text.dart';
-import 'listing_row.dart' show imageCacheKey;
+import 'listing_tags.dart' show imageCacheKey;
 
 /// The listing's photos: swiped one by one at 4:3, the count over them, and full screen on a tap,
 /// where they can be zoomed. Placeholder when there are none.

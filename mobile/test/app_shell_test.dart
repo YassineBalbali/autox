@@ -29,8 +29,7 @@ void main() {
 
     await tester.tap(find.text('Favoris'));
     await tester.pumpAndSettle();
-    expect(find.text('Bientôt disponible'), findsOneWidget);
-    expect(find.textContaining('sur ce téléphone'), findsOneWidget);
+    expect(find.text('Aucun favori pour l’instant'), findsOneWidget);
 
     await tester.tap(find.text('Compte'));
     await tester.pumpAndSettle();

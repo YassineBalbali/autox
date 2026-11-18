@@ -2,27 +2,36 @@ import 'package:autox/core/format/numbers.dart';
 import 'package:autox/core/theme/app_theme.dart';
 import 'package:autox/core/widgets/surfaces.dart';
 import 'package:autox/features/listing/widgets/listing_card.dart';
+import 'package:autox/features/search/recent_searches.dart' show sharedPreferencesProvider;
 import 'package:autox_api/autox_api.dart' show PublicListingSummary;
 import 'package:flutter/semantics.dart' show SemanticsAction;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../support/fake_http.dart';
 import '../../support/listings.dart';
 
-Future<void> _pump(WidgetTester tester, Map<String, Object?> json, {double textScale = 1}) => tester.pumpWidget(
-  MaterialApp(
-    theme: AppTheme.light(),
-    home: MediaQuery(
-      data: MediaQueryData(size: const Size(360, 800), textScaler: TextScaler.linear(textScale)),
-      child: Scaffold(
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [ListingCard(listing: PublicListingSummary.fromJson(json))],
+Future<void> _pump(WidgetTester tester, Map<String, Object?> json, {double textScale = 1}) async {
+  final preferences = await testPreferences();
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        home: MediaQuery(
+          data: MediaQueryData(size: const Size(360, 800), textScaler: TextScaler.linear(textScale)),
+          child: Scaffold(
+            body: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [ListingCard(listing: PublicListingSummary.fromJson(json))],
+            ),
+          ),
         ),
       ),
     ),
-  ),
-);
+  );
+}
 
 void main() {
   testWidgets('a sale: price, verdict, name, version, the facts as chips, place, seller', (tester) async {

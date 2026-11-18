@@ -14,7 +14,7 @@ import '../../core/widgets/pending.dart';
 import '../../core/widgets/states.dart';
 import '../account/widgets/form_parts.dart' show FormError;
 import '../account/widgets/verify_notice.dart';
-import '../listing/widgets/listing_row.dart' show SellerBadge;
+import '../listing/widgets/listing_tags.dart' show SellerBadge;
 import 'messaging_providers.dart';
 import 'messaging_text.dart';
 import 'widgets/report_sheet.dart';

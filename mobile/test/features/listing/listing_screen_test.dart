@@ -1,6 +1,5 @@
 import 'package:autox/features/listing/widgets/financing_simulator.dart';
 import 'package:autox/features/listing/widgets/listing_card.dart';
-import 'package:autox/features/listing/widgets/listing_row.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:material_ui/material_ui.dart';
@@ -141,7 +140,7 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('Annonces similaires'), 400, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(ListingRow));
+    await tester.tap(find.byType(ListingCard));
     await tester.pumpAndSettle();
 
     expect(fake.to('/api/v1/listings/l2'), hasLength(1));

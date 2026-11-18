@@ -10,7 +10,7 @@ import '../../core/labels/app_labels.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/states.dart';
 import '../account/account_locations.dart';
-import '../listing/widgets/listing_row.dart' show SellerBadge, imageCacheKey;
+import '../listing/widgets/listing_tags.dart' show SellerBadge, imageCacheKey;
 import 'messages_locations.dart';
 import 'messaging_providers.dart';
 import 'messaging_text.dart';

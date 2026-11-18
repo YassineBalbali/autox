@@ -15,8 +15,9 @@ import 'listing_providers.dart';
 import 'listing_text.dart';
 import 'report_listing.dart';
 import 'widgets/financing_simulator.dart';
+import 'widgets/listing_card.dart';
 import 'widgets/listing_parts.dart';
-import 'widgets/listing_row.dart';
+import 'widgets/listing_tags.dart';
 import 'widgets/photo_gallery.dart';
 
 /// A listing's page, `/annonces/:id` — the web's `listing-page.html` in the phone's order:
@@ -229,7 +230,11 @@ class _Similar extends ConsumerWidget {
             child: Text('Annonces similaires', style: Theme.of(context).textTheme.titleMedium),
           ),
         ),
-        for (final listing in similar) ...[ListingRow(listing: listing), const Divider()],
+        for (final listing in similar)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, AppSpace.s3),
+            child: ListingCard(listing: listing),
+          ),
       ],
     );
   }

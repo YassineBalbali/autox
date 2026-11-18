@@ -7,7 +7,7 @@ import '../../../core/format/numbers.dart';
 import '../../../core/labels/labels.g.dart';
 import '../../../core/theme/tokens.dart';
 import '../listing_text.dart';
-import 'listing_row.dart' show DamageTag;
+import 'listing_tags.dart' show DamageTag;
 
 /// The parts of the listing page, each the web's component of the same name.
 

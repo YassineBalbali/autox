@@ -9,7 +9,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/states.dart';
 import '../listing/listing_locations.dart';
 import '../listing/listing_text.dart' show countFr, memberSince;
-import '../listing/widgets/listing_row.dart' show imageCacheKey;
+import '../listing/widgets/listing_tags.dart' show imageCacheKey;
 import 'dealer_providers.dart';
 import 'dealer_text.dart';
 
