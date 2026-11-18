@@ -365,12 +365,19 @@ class _Tile extends StatelessWidget {
     child: AppCard(
       onTap: onTap,
       padding: const EdgeInsets.fromLTRB(AppSpace.s3, AppSpace.s4, AppSpace.s3, AppSpace.s4),
+      // The icon above the title, both centred in the tile.
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconTile(icon: icon),
           const SizedBox(height: AppSpace.s3),
-          Text(label, style: Theme.of(context).textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.titleMedium,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     ),

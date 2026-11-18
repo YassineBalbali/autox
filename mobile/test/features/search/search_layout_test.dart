@@ -1,5 +1,6 @@
 import 'package:autox/core/theme/app_theme.dart';
 import 'package:autox/core/theme/tokens.dart';
+import 'package:autox/core/widgets/surfaces.dart';
 import 'package:autox/features/search/filters_screen.dart';
 import 'package:autox/features/search/search_query.dart';
 import 'package:autox_api/autox_api.dart'
@@ -116,6 +117,20 @@ void main() {
 
       expect(tester.takeException(), isNull);
     });
+  });
+
+  testWidgets('the Acheter, Louer and Neuf tiles centre their icon above their title', (tester) async {
+    await pumpApp(tester, FakeHttp({'/api/v1/reference/makes': const FakeResponse.json(200, makesJson)}));
+    await tester.pumpAndSettle();
+
+    for (final label in ['Acheter', 'Louer', 'Neuf']) {
+      final title = find.text(label);
+      final tile = find.ancestor(of: title, matching: find.byType(AppCard)).first;
+      final icon = find.descendant(of: tile, matching: find.byType(IconTile));
+      expect(tester.getCenter(icon).dx, moreOrLessEquals(tester.getCenter(tile).dx, epsilon: 0.5));
+      expect(tester.getCenter(title).dx, moreOrLessEquals(tester.getCenter(tile).dx, epsilon: 0.5));
+      expect(tester.getCenter(icon).dy, lessThan(tester.getCenter(title).dy));
+    }
   });
 
   testWidgets('a filter chip’s label is drawn in ink, and in blue once chosen', (tester) async {
