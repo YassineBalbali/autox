@@ -39,12 +39,24 @@ void main() {
     useTallScreen(tester);
     await pumpApp(tester, http, location: location);
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Filtres'));
+    await tester.tap(find.bySemanticsLabel(RegExp('^Filtres')));
     await settleDebounced(tester);
+  }
+
+  /// Opens a group of filters by its card's title.
+  Future<void> openGroup(WidgetTester tester, String title) async {
+    await tester.scrollUntilVisible(find.text(title), 200, scrollable: _list);
+    await tester.tap(find.text(title));
+    await tester.pumpAndSettle();
   }
 
   testWidgets('offers the values the API has and the app knows, in the API’s order', (tester) async {
     await openFilters(tester, '/recherche/resultats');
+    // Nothing chosen: every group closed, each saying so.
+    expect(find.byType(FilterChip), findsNothing);
+    expect(find.text('Toutes les marques'), findsOneWidget);
+    await openGroup(tester, 'Caractéristiques');
+    await openGroup(tester, 'Prix & financement');
 
     final fuels = tester
         .widgetList<FilterChip>(find.byType(FilterChip))
@@ -62,27 +74,32 @@ void main() {
     await openFilters(tester, '/recherche/resultats');
     expect(find.text('Voir 100 annonces'), findsOneWidget);
 
+    await openGroup(tester, 'Caractéristiques');
     await tester.tap(find.widgetWithText(FilterChip, 'Diesel'));
     await tester.pump();
-    await tester.enterText(find.byType(TextField).at(3), '20000'); // Prix max: after Année de, à, Prix min
+    await openGroup(tester, 'Prix & financement');
+    await tester.enterText(find.byKey(const ValueKey('Prix maximum en euros')), '20000');
     await settleDebounced(tester);
 
     final counted = http.to('/api/v1/listings/count').last.uri.queryParameters;
     expect(counted, {'priceMax': '2000000', 'currency': 'EUR', 'fuelType': 'DIESEL'});
     expect(find.text('Voir 103 annonces'), findsOneWidget);
+    // The groups' summaries say what is chosen in them.
+    expect(find.textContaining('Jusqu’à 20'), findsOneWidget);
 
     await tester.tap(find.text('Voir 103 annonces'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Filtres (2)'), findsOneWidget);
+    expect(find.bySemanticsLabel('Filtres, 2 actifs'), findsOneWidget);
     expect(http.to('/api/v1/listings').last.uri.queryParameters['fuelType'], 'DIESEL');
   });
 
   testWidgets('a reversed range is put the right way round, as a link would be', (tester) async {
     await openFilters(tester, '/recherche/resultats');
 
-    await tester.enterText(find.byType(TextField).at(0), '2022'); // Année de
-    await tester.enterText(find.byType(TextField).at(1), '2015'); // Année à
+    await openGroup(tester, 'État & année');
+    await tester.enterText(find.byKey(const ValueKey('Année minimum')), '2022');
+    await tester.enterText(find.byKey(const ValueKey('Année maximum')), '2015');
     await settleDebounced(tester);
     await tester.tap(find.textContaining('Voir '));
     await tester.pumpAndSettle();
@@ -93,6 +110,7 @@ void main() {
 
   testWidgets('leasing shows the terms instead of the price', (tester) async {
     await openFilters(tester, '/recherche/resultats?offre=location');
+    await openGroup(tester, 'Prix & financement');
 
     expect(find.text('Mensualité (€/mois)'), findsOneWidget);
     expect(find.text('Durée (mois)'), findsOneWidget);
@@ -103,6 +121,9 @@ void main() {
 
   testWidgets('damaged vehicles only switches good deals off', (tester) async {
     await openFilters(tester, '/recherche/resultats?bonnes_affaires=1');
+    // Open from the start: something is chosen in it.
+    expect(find.text('Bonnes affaires uniquement'), findsOneWidget);
+    await openGroup(tester, 'État & année');
 
     await tester.scrollUntilVisible(find.text('Endommagés uniquement'), 200, scrollable: _list);
     await tester.tap(find.text('Endommagés uniquement'));
@@ -115,8 +136,9 @@ void main() {
 
   testWidgets('a make, then its model, from the catalogue', (tester) async {
     await openFilters(tester, '/recherche/resultats');
+    await openGroup(tester, 'Marque & modèle');
 
-    await tester.tap(find.text('Toutes les marques'));
+    await tester.tap(find.text('Toutes les marques').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Peugeot').last);
     await tester.pumpAndSettle();
@@ -140,6 +162,6 @@ void main() {
 
     await tester.tap(find.byTooltip('Fermer'));
     await tester.pumpAndSettle();
-    expect(find.text('Filtres (2)'), findsOneWidget, reason: 'the search itself is unchanged');
+    expect(find.bySemanticsLabel('Filtres, 2 actifs'), findsOneWidget, reason: 'the search itself is unchanged');
   });
 }
