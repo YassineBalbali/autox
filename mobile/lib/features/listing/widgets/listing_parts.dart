@@ -159,19 +159,23 @@ class CritAirBadge extends StatelessWidget {
             height: AppSizes.vignette,
             decoration: BoxDecoration(color: background, shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  number == null ? 'Non classé' : 'Crit’Air',
-                  style: TextStyle(color: ink, fontSize: AppType.t2xs, fontWeight: AppType.semibold),
-                ),
-                if (number != null)
+            padding: const EdgeInsets.all(AppSpace.s2),
+            // A fixed vignette: with the system text at its largest, its words shrink to fit it.
+            child: FittedBox(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    '$number',
-                    style: TextStyle(color: ink, fontSize: AppType.tlg, fontWeight: AppType.heavy, height: 1),
+                    number == null ? 'Non classé' : 'Crit’Air',
+                    style: TextStyle(color: ink, fontSize: AppType.t2xs, fontWeight: AppType.semibold),
                   ),
-              ],
+                  if (number != null)
+                    Text(
+                      '$number',
+                      style: TextStyle(color: ink, fontSize: AppType.tlg, fontWeight: AppType.heavy, height: 1),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

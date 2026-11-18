@@ -170,7 +170,7 @@ class InboxTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Flexible(
+                    Expanded(
                       child: Text(
                         item.counterpart?.displayName ?? '',
                         maxLines: 1,
@@ -178,9 +178,7 @@ class InboxTile extends StatelessWidget {
                         style: theme.textTheme.titleMedium?.copyWith(fontWeight: strong ? AppType.heavy : AppType.bold),
                       ),
                     ),
-                    const SizedBox(width: AppSpace.s1),
-                    SellerBadge(role: item.counterpart?.role?.name),
-                    const Spacer(),
+                    const SizedBox(width: AppSpace.s2),
                     Text(
                       when,
                       style: theme.textTheme.labelSmall?.copyWith(
@@ -190,7 +188,20 @@ class InboxTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                Text(_about, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall),
+                Row(
+                  children: [
+                    SellerBadge(role: item.counterpart?.role?.name),
+                    const SizedBox(width: AppSpace.s1),
+                    Expanded(
+                      child: Text(
+                        _about,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: AppSpace.s1),
                 Text(
                   inboxPreview(item.lastMessage),

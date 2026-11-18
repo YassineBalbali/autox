@@ -126,14 +126,19 @@ class _Conversation extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mustVerify = ref.watch(mustVerifyProvider);
     final canReply = detail.canReply ?? false;
+    final writing = canReply && !mustVerify;
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s2, AppSpace.gutter, AppSpace.s1),
-          child: _Header(detail: detail),
-        ),
+        // The listing's card and the safety advice scroll with the messages: with the system text
+        // at its largest, a fixed card and a fixed note would leave the thread no room.
         Expanded(
-          child: _Thread(id: id, detail: detail, reportedHere: state.reportedHere),
+          child: _Thread(
+            id: id,
+            detail: detail,
+            reportedHere: state.reportedHere,
+            header: _Header(detail: detail),
+            footer: writing ? _SafetyNote(role: detail.role) : null,
+          ),
         ),
         if (canReply && mustVerify)
           const Padding(
@@ -253,17 +258,58 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// The web's safety advice, above the box to answer in: one line for a buyer, the payment's for a
+/// seller.
+class _SafetyNote extends StatelessWidget {
+  const _SafetyNote({required this.role});
+
+  final ConversationRole? role;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Icon(LucideIcons.shieldCheck, size: AppSizes.iconSmall, color: AppColors.inkSoft),
+      const SizedBox(width: AppSpace.s2),
+      Expanded(
+        child: Text(
+          role == ConversationRole.SELLER
+              ? 'Ne remettez jamais le véhicule avant que le paiement soit encaissé, et faites vérifier tout '
+                    'chèque de banque par la banque qui l’a émis.'
+              : 'Ne payez jamais un véhicule avant de l’avoir vu.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ),
+    ],
+  );
+}
+
 /// The messages, by day, newest at the bottom (a reversed list: it opens at the end).
 class _Thread extends ConsumerWidget {
-  const _Thread({required this.id, required this.detail, required this.reportedHere});
+  const _Thread({
+    required this.id,
+    required this.detail,
+    required this.reportedHere,
+    required this.header,
+    this.footer,
+  });
 
   final String id;
   final ConversationDetail detail;
   final Set<String> reportedHere;
 
+  /// Above the first message, and under the last one.
+  final Widget header;
+  final Widget? footer;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entries = <Widget>[];
+    final entries = <Widget>[
+      Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.s2),
+        child: header,
+      ),
+    ];
     if (detail.earlierOmitted ?? false) {
       entries.add(
         Padding(
@@ -290,6 +336,14 @@ class _Thread extends ConsumerWidget {
           counterpart: detail.counterpart?.displayName ?? '',
           reported: (message.reportedByMe ?? false) || reportedHere.contains(message.id),
           onReport: () => _report(context, ref, message),
+        ),
+      );
+    }
+    if (footer != null) {
+      entries.add(
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpace.s2),
+          child: footer,
         ),
       );
     }
@@ -517,8 +571,6 @@ class _ComposerState extends ConsumerState<Composer> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final seller = widget.role == ConversationRole.SELLER;
     // A pill on a grey fill, no outline: the composer, not a form.
     const pill = OutlineInputBorder(
       borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
@@ -578,14 +630,6 @@ class _ComposerState extends ConsumerState<Composer> {
                     icon: Icon(LucideIcons.send, size: AppSizes.icon, semanticLabel: _sending ? 'Envoi…' : 'Envoyer'),
                   ),
                 ],
-              ),
-              const SizedBox(height: AppSpace.s1),
-              Text(
-                seller
-                    ? 'Ne remettez jamais le véhicule avant que le paiement soit encaissé, et faites vérifier tout '
-                          'chèque de banque par la banque qui l’a émis.'
-                    : 'Ne payez jamais un véhicule avant de l’avoir vu.',
-                style: theme.textTheme.bodySmall,
               ),
               ColdStartHint(pending: _sending),
             ],

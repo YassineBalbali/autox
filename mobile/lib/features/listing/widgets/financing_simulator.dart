@@ -166,9 +166,13 @@ class _Figure extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpace.s1),
-      child: Row(
+      // Side by side; the value under its label when the two no longer fit on one line.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpace.s2,
         children: [
-          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+          Text(label, style: theme.textTheme.bodyMedium),
           Text(
             value,
             style: major
