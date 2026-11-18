@@ -2,8 +2,8 @@ import 'package:material_ui/material_ui.dart';
 
 import 'tokens.dart';
 
-/// The site's look as a Material theme: grey page, white surfaces, hairlines instead of
-/// shadows, nearly square corners, Barlow Semi Condensed throughout, blue only for what acts.
+/// The tokens as a Material theme: a light grey page, white rounded cards, near-black text with
+/// a strong hierarchy, fully round buttons and chips, blue only for what acts or is selected.
 abstract final class AppTheme {
   static ThemeData light() {
     const scheme = ColorScheme(
@@ -12,8 +12,10 @@ abstract final class AppTheme {
       onPrimary: AppColors.accentInk,
       primaryContainer: AppColors.accentSoft,
       onPrimaryContainer: AppColors.accentStrong,
-      secondary: AppColors.navy,
+      secondary: AppColors.ink,
       onSecondary: AppColors.surface,
+      secondaryContainer: AppColors.accentSoft,
+      onSecondaryContainer: AppColors.accentStrong,
       error: AppColors.danger,
       onError: AppColors.surface,
       errorContainer: AppColors.dangerSoft,
@@ -24,11 +26,17 @@ abstract final class AppTheme {
       surfaceContainerLowest: AppColors.surface,
       surfaceContainerLow: AppColors.surfaceSunk,
       surfaceContainer: AppColors.page,
+      surfaceContainerHighest: AppColors.surfaceSunk,
       outline: AppColors.lineStrong,
       outlineVariant: AppColors.line,
     );
 
-    const square = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.md)));
+    const pill = StadiumBorder();
+    const label = TextStyle(fontFamily: AppType.family, fontSize: AppType.tbody, fontWeight: AppType.bold);
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderSide: const BorderSide(color: AppColors.lineStrong),
+    );
 
     return ThemeData(
       colorScheme: scheme,
@@ -37,16 +45,15 @@ abstract final class AppTheme {
       textTheme: _textTheme(),
       dividerTheme: const DividerThemeData(color: AppColors.line, thickness: 1, space: 1),
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.page,
         foregroundColor: AppColors.ink,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        shape: Border(bottom: BorderSide(color: AppColors.line)),
         titleTextStyle: TextStyle(
           fontFamily: AppType.family,
-          fontSize: AppType.tmd,
-          fontWeight: AppType.bold,
+          fontSize: AppType.tlg,
+          fontWeight: AppType.heavy,
           color: AppColors.ink,
         ),
       ),
@@ -54,20 +61,21 @@ abstract final class AppTheme {
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         indicatorColor: AppColors.accentSoft,
+        indicatorShape: pill,
         elevation: 0,
-        height: 64,
+        height: AppSizes.tabBar,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
             fontFamily: AppType.family,
             fontSize: AppType.txs,
-            fontWeight: states.contains(WidgetState.selected) ? AppType.bold : AppType.semibold,
-            color: states.contains(WidgetState.selected) ? AppColors.accent : AppColors.inkSoft,
+            fontWeight: states.contains(WidgetState.selected) ? AppType.heavy : AppType.semibold,
+            color: states.contains(WidgetState.selected) ? AppColors.accentStrong : AppColors.inkSoft,
           ),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            size: 22,
-            color: states.contains(WidgetState.selected) ? AppColors.accent : AppColors.inkSoft,
+            size: AppSizes.icon,
+            color: states.contains(WidgetState.selected) ? AppColors.accentStrong : AppColors.inkSoft,
           ),
         ),
       ),
@@ -76,28 +84,100 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: AppColors.line),
-          borderRadius: BorderRadius.all(Radius.circular(AppRadius.md)),
-        ),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.lg))),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.accent,
           foregroundColor: AppColors.accentInk,
-          minimumSize: const Size(kMinTouchTarget, kMinTouchTarget),
-          shape: square,
-          textStyle: const TextStyle(fontFamily: AppType.family, fontSize: AppType.tbody, fontWeight: AppType.bold),
+          minimumSize: const Size(AppSizes.touch, AppSizes.touch),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.s5),
+          shape: pill,
+          textStyle: label,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.ink,
-          minimumSize: const Size(kMinTouchTarget, kMinTouchTarget),
+          backgroundColor: AppColors.surface,
+          minimumSize: const Size(AppSizes.touch, AppSizes.touch),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.s4),
           side: const BorderSide(color: AppColors.lineStrong),
-          shape: square,
-          textStyle: const TextStyle(fontFamily: AppType.family, fontSize: AppType.tbody, fontWeight: AppType.semibold),
+          shape: pill,
+          textStyle: label,
         ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.accent,
+          minimumSize: const Size(AppSizes.touch, AppSizes.touch),
+          shape: pill,
+          textStyle: label,
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(AppSizes.touch, AppSizes.touch)),
+          shape: const WidgetStatePropertyAll(pill),
+          side: const WidgetStatePropertyAll(BorderSide(color: AppColors.lineStrong)),
+          textStyle: const WidgetStatePropertyAll(label),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected) ? AppColors.ink : AppColors.surface,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected) ? AppColors.surface : AppColors.ink,
+          ),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.surface,
+        selectedColor: AppColors.accentSoft,
+        disabledColor: AppColors.surfaceSunk,
+        checkmarkColor: AppColors.accentStrong,
+        deleteIconColor: AppColors.inkSoft,
+        side: WidgetStateBorderSide.resolveWith(
+          (states) =>
+              BorderSide(color: states.contains(WidgetState.selected) ? AppColors.accent : AppColors.lineStrong),
+        ),
+        shape: pill,
+        // A chosen chip's label is set by the chip itself (AppText.chipSelected): Material's
+        // chips do not take it from the theme.
+        labelStyle: AppText.chip.copyWith(fontFamily: AppType.family),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.s2, vertical: AppSpace.s1),
+      ),
+      inputDecorationTheme: InputDecorationThemeData(
+        filled: true,
+        fillColor: AppColors.surface,
+        hintStyle: AppText.body.copyWith(color: AppColors.inkFaint),
+        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.s4, vertical: AppSpace.s3),
+        border: fieldBorder,
+        enabledBorder: fieldBorder,
+        focusedBorder: fieldBorder.copyWith(borderSide: const BorderSide(color: AppColors.accent, width: 2)),
+        errorBorder: fieldBorder.copyWith(borderSide: const BorderSide(color: AppColors.danger)),
+        disabledBorder: fieldBorder.copyWith(borderSide: const BorderSide(color: AppColors.line)),
+      ),
+      switchTheme: SwitchThemeData(
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? AppColors.accent : null,
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg))),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        textStyle: AppText.body,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColors.ink,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
       ),
       listTileTheme: const ListTileThemeData(
         tileColor: AppColors.surface,
@@ -106,7 +186,7 @@ abstract final class AppTheme {
         titleTextStyle: TextStyle(
           fontFamily: AppType.family,
           fontSize: AppType.tbody,
-          fontWeight: AppType.semibold,
+          fontWeight: AppType.bold,
           color: AppColors.ink,
         ),
         subtitleTextStyle: TextStyle(fontFamily: AppType.family, fontSize: AppType.tsm, color: AppColors.inkSoft),
@@ -115,22 +195,18 @@ abstract final class AppTheme {
     );
   }
 
-  static TextTheme _textTheme() {
-    TextStyle style(double size, FontWeight weight, double height, [Color color = AppColors.ink]) =>
-        TextStyle(fontSize: size, fontWeight: weight, height: height, color: color);
-
-    return TextTheme(
-      headlineMedium: style(AppType.t2xl, AppType.heavy, AppType.lhTight), // the price on a listing
-      headlineSmall: style(AppType.txl, AppType.bold, AppType.lhTight), // page titles
-      titleLarge: style(AppType.tlg, AppType.bold, AppType.lhTight), // section titles
-      titleMedium: style(AppType.tmd, AppType.bold, AppType.lhSnug), // row and panel titles
-      titleSmall: style(AppType.tbody, AppType.semibold, AppType.lhSnug),
-      bodyLarge: style(AppType.tbody, AppType.regular, AppType.lhBody),
-      bodyMedium: style(AppType.tbody, AppType.regular, AppType.lhBody),
-      bodySmall: style(AppType.tsm, AppType.regular, AppType.lhSnug, AppColors.inkSoft), // spec lines
-      labelLarge: style(AppType.tbody, AppType.semibold, AppType.lhSnug),
-      labelMedium: style(AppType.txs, AppType.semibold, AppType.lhSnug, AppColors.inkSoft),
-      labelSmall: style(AppType.t2xs, AppType.regular, AppType.lhSnug, AppColors.inkFaint), // units, legal
-    );
-  }
+  static TextTheme _textTheme() => TextTheme(
+    headlineLarge: AppText.screenTitle, // a tab's big title
+    headlineMedium: AppText.priceLarge, // the price on a listing
+    headlineSmall: AppText.pageTitle, // page titles
+    titleLarge: AppText.sectionTitle, // section titles, the result count
+    titleMedium: AppText.cardTitle, // card and row titles
+    titleSmall: AppText.label.copyWith(fontWeight: AppType.semibold),
+    bodyLarge: AppText.body,
+    bodyMedium: AppText.body,
+    bodySmall: AppText.secondary, // spec lines, summaries
+    labelLarge: AppText.label,
+    labelMedium: AppText.tag,
+    labelSmall: AppText.fine, // units, legal
+  );
 }

@@ -56,12 +56,7 @@ class ListingRow extends StatelessWidget {
                       else if (listing.priceAmount != null)
                         Text(
                           formatPrice(listing.priceAmount!, currency: currency, minorUnit: minorUnit),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: AppType.heavy,
-                            height: AppType.lhTight,
-                            color: AppColors.accent,
-                          ),
+                          style: AppText.price,
                         ),
                       if (listing.priceIndicator?.level != null) ...[
                         const SizedBox(height: AppSpace.s1),
@@ -183,10 +178,7 @@ class _Thumb extends StatelessWidget {
                 bottom: AppSpace.s1,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.s1, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: AppColors.navy.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
+                  decoration: BoxDecoration(color: AppColors.scrim, borderRadius: BorderRadius.circular(AppRadius.sm)),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -235,15 +227,14 @@ class LeasingPrice extends StatelessWidget {
         Text.rich(
           TextSpan(
             text: formatPrice(leasing.monthlyPayment ?? 0, currency: currency, minorUnit: minorUnit),
-            style: const TextStyle(fontSize: 24, fontWeight: AppType.bold, height: AppType.lhTight),
-            children: const [
+            style: AppText.price,
+            children: [
               TextSpan(
                 text: '/mois',
-                style: TextStyle(fontSize: AppType.tsm, fontWeight: AppType.semibold),
+                style: AppText.tag.copyWith(color: AppColors.ink),
               ),
             ],
           ),
-          style: const TextStyle(color: AppColors.accent),
         ),
         Text(leasingTerms(leasing), style: theme.textTheme.labelMedium),
       ],
@@ -281,18 +272,20 @@ class PriceBadge extends StatelessWidget {
         children: [
           for (final segment in _levels)
             Container(
-              width: 14,
-              height: 5,
-              margin: const EdgeInsets.only(right: 2),
+              width: AppSizes.verdictSegmentWidth,
+              height: AppSizes.verdictSegmentHeight,
+              margin: const EdgeInsets.only(right: AppSpace.s0),
               decoration: BoxDecoration(
                 color: segment == level ? color : AppColors.line,
-                borderRadius: BorderRadius.circular(1),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
             ),
           const SizedBox(width: AppSpace.s1),
-          Text(
-            priceLevelLabel(level),
-            style: TextStyle(fontSize: AppType.tsm, fontWeight: AppType.bold, color: color),
+          Flexible(
+            child: Text(
+              priceLevelLabel(level),
+              style: AppText.tag.copyWith(fontWeight: AppType.bold, color: color),
+            ),
           ),
         ],
       ),
@@ -318,24 +311,17 @@ class SellerBadge extends StatelessWidget {
     }
     final pro = role == 'PROFESSIONNEL';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.s1, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.s2, vertical: AppSpace.s0),
       decoration: BoxDecoration(
         color: pro ? AppColors.accentSoft : AppColors.surfaceSunk,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: pro ? AppColors.accentStrong : AppColors.inkSoft),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: AppType.txs,
-              fontWeight: AppType.semibold,
-              color: pro ? AppColors.accentStrong : AppColors.inkSoft,
-            ),
-          ),
+          Icon(icon, size: AppSizes.iconTiny, color: pro ? AppColors.accentStrong : AppColors.inkSoft),
+          const SizedBox(width: AppSpace.s1),
+          Text(label, style: AppText.tag.copyWith(color: pro ? AppColors.accentStrong : AppColors.inkSoft)),
         ],
       ),
     );
@@ -367,11 +353,11 @@ class DamageTag extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.s1, vertical: 1),
-          decoration: BoxDecoration(color: AppColors.dangerSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-          child: const Text(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.s2, vertical: AppSpace.s0),
+          decoration: BoxDecoration(color: AppColors.dangerSoft, borderRadius: BorderRadius.circular(AppRadius.pill)),
+          child: Text(
             'Véhicule endommagé',
-            style: TextStyle(fontSize: AppType.txs, fontWeight: AppType.bold, color: AppColors.danger),
+            style: AppText.tag.copyWith(fontWeight: AppType.bold, color: AppColors.danger),
           ),
         ),
         if (facts.isNotEmpty) Text(facts, style: Theme.of(context).textTheme.bodySmall),

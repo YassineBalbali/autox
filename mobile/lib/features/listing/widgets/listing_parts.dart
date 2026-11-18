@@ -122,8 +122,8 @@ class CritAirBadge extends StatelessWidget {
   static (Color, Color) coloursOf(CritAir value) => switch (value) {
     CritAir.ZERO => (const Color(0xFF00A651), AppColors.surface),
     CritAir.ONE => (const Color(0xFF7D4E9D), AppColors.surface),
-    CritAir.TWO => (const Color(0xFFFCD800), AppColors.navy),
-    CritAir.THREE => (const Color(0xFFF08A00), AppColors.navy),
+    CritAir.TWO => (const Color(0xFFFCD800), AppColors.ink),
+    CritAir.THREE => (const Color(0xFFF08A00), AppColors.ink),
     CritAir.FOUR => (const Color(0xFF8B1D2C), AppColors.surface),
     CritAir.FIVE => (const Color(0xFF6E6E6E), AppColors.surface),
     _ => (AppColors.surfaceSunk, AppColors.inkSoft),

@@ -117,10 +117,7 @@ class _Counter extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: AppSpace.s2, vertical: 2),
-    decoration: BoxDecoration(
-      color: AppColors.navy.withValues(alpha: 0.75),
-      borderRadius: BorderRadius.circular(AppRadius.sm),
-    ),
+    decoration: BoxDecoration(color: AppColors.scrim, borderRadius: BorderRadius.circular(AppRadius.sm)),
     child: Text(
       text,
       style: const TextStyle(color: AppColors.surface, fontSize: AppType.tsm, fontWeight: AppType.semibold),

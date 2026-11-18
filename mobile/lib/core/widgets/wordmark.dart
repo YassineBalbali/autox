@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../theme/tokens.dart';
 
-/// "AutoX": "Auto" in navy, "X" in the accent, at the heavy weight, as the site's logo.
+/// "AutoX": "Auto" in ink, "X" in the accent, at the heavy weight, as the site's logo.
 class Wordmark extends StatelessWidget {
   const Wordmark({super.key, this.size = 22});
 
@@ -25,7 +25,7 @@ class Wordmark extends StatelessWidget {
         children: const [
           TextSpan(
             text: 'Auto',
-            style: TextStyle(color: AppColors.navy),
+            style: TextStyle(color: AppColors.ink),
           ),
           TextSpan(
             text: 'X',
