@@ -65,11 +65,22 @@ jobs:
           cache: true
 
       # openapi-generator is a Java program; the same version as the web's client.
+      #
+      # The Gradle cache (~/.gradle/caches and the wrapper's distribution) is restored here, so
+      # the APK build does not fetch the Android dependencies from Maven Central and Google on
+      # every run: Maven Central answers a busy runner with 429 Too Many Requests. Keyed on the
+      # Gradle files and on pubspec.lock, whose plugins bring their own Android dependencies.
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: temurin
+          cache: gradle
+          cache-dependency-path: |
+            mobile/android/*.gradle.kts
+            mobile/android/app/*.gradle.kts
+            mobile/android/gradle/wrapper/gradle-wrapper.properties
+            mobile/pubspec.lock
 
       - name: Cache the generator jar
         uses: actions/cache@v5
@@ -130,11 +141,18 @@ jobs:
           channel: stable
           cache: true
 
+      # The same Gradle cache as the check job, read with the same key.
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: temurin
+          cache: gradle
+          cache-dependency-path: |
+            mobile/android/*.gradle.kts
+            mobile/android/app/*.gradle.kts
+            mobile/android/gradle/wrapper/gradle-wrapper.properties
+            mobile/pubspec.lock
 
       - name: Cache the generator jar
         uses: actions/cache@v5
