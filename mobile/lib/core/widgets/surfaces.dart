@@ -71,22 +71,25 @@ class GroupLabel extends StatelessWidget {
 
 /// An icon on a tinted rounded square: the mark at the start of a card or a section.
 class IconTile extends StatelessWidget {
-  const IconTile({super.key, required this.icon, this.size = AppSizes.iconTile});
+  const IconTile({super.key, required this.icon, this.size = AppSizes.iconTile, this.danger = false});
 
   final IconData icon;
   final double size;
+
+  /// In the danger colours: an action that cannot be undone.
+  final bool danger;
 
   @override
   Widget build(BuildContext context) => ExcludeSemantics(
     child: Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
-        color: AppColors.accentSoft,
-        borderRadius: BorderRadius.all(Radius.circular(AppRadius.sm)),
+      decoration: BoxDecoration(
+        color: danger ? AppColors.dangerSoft : AppColors.accentSoft,
+        borderRadius: const BorderRadius.all(Radius.circular(AppRadius.sm)),
       ),
       alignment: Alignment.center,
-      child: Icon(icon, size: AppSizes.iconTileIcon, color: AppColors.accentStrong),
+      child: Icon(icon, size: AppSizes.iconTileIcon, color: danger ? AppColors.danger : AppColors.accentStrong),
     ),
   );
 }

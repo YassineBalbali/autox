@@ -196,7 +196,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
         DropdownButtonFormField<String>(
           initialValue: _country,
-          decoration: const InputDecoration(labelText: 'Pays', border: OutlineInputBorder()),
+          decoration: const InputDecoration(labelText: 'Pays'),
           items: [
             for (final country in countries)
               DropdownMenuItem(value: country.code, child: Text(country.name ?? country.code!)),

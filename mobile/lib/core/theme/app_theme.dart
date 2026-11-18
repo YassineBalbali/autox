@@ -33,10 +33,6 @@ abstract final class AppTheme {
 
     const pill = StadiumBorder();
     const label = TextStyle(fontFamily: AppType.family, fontSize: AppType.tbody, fontWeight: AppType.bold);
-    final fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      borderSide: const BorderSide(color: AppColors.lineStrong),
-    );
 
     return ThemeData(
       colorScheme: scheme,
@@ -146,16 +142,9 @@ abstract final class AppTheme {
         labelStyle: AppText.chip.copyWith(fontFamily: AppType.family),
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.s2, vertical: AppSpace.s1),
       ),
-      inputDecorationTheme: InputDecorationThemeData(
-        filled: true,
-        fillColor: AppColors.surface,
-        hintStyle: AppText.body.copyWith(color: AppColors.inkFaint),
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.s4, vertical: AppSpace.s3),
-        border: fieldBorder,
-        enabledBorder: fieldBorder,
-        focusedBorder: fieldBorder.copyWith(borderSide: const BorderSide(color: AppColors.accent, width: 2)),
-        errorBorder: fieldBorder.copyWith(borderSide: const BorderSide(color: AppColors.danger)),
-        disabledBorder: fieldBorder.copyWith(borderSide: const BorderSide(color: AppColors.line)),
+      inputDecorationTheme: _fields(
+        radius: AppRadius.md,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.s4, vertical: AppSpace.s3),
       ),
       switchTheme: SwitchThemeData(
         trackColor: WidgetStateProperty.resolveWith(
@@ -192,6 +181,32 @@ abstract final class AppTheme {
         subtitleTextStyle: TextStyle(fontFamily: AppType.family, fontSize: AppType.tsm, color: AppColors.inkSoft),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppColors.accent),
+    );
+  }
+
+  /// The fields of the account's forms (sign-in, registration): fully round, a little taller,
+  /// the text further from the curve.
+  static InputDecorationThemeData pillFields() => _fields(
+    radius: AppRadius.pill,
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.s5, vertical: AppSpace.s4),
+  );
+
+  static InputDecorationThemeData _fields({required double radius, required EdgeInsets padding}) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(radius),
+      borderSide: const BorderSide(color: AppColors.lineStrong),
+    );
+    return InputDecorationThemeData(
+      filled: true,
+      fillColor: AppColors.surface,
+      hintStyle: AppText.body.copyWith(color: AppColors.inkFaint),
+      contentPadding: padding,
+      border: border,
+      enabledBorder: border,
+      focusedBorder: border.copyWith(borderSide: const BorderSide(color: AppColors.accent, width: 2)),
+      errorBorder: border.copyWith(borderSide: const BorderSide(color: AppColors.danger)),
+      focusedErrorBorder: border.copyWith(borderSide: const BorderSide(color: AppColors.danger, width: 2)),
+      disabledBorder: border.copyWith(borderSide: const BorderSide(color: AppColors.line)),
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/api/api_failure.dart';
 import '../../core/auth/session.dart';
 import '../../core/forms/validation.dart';
+import '../../core/theme/tokens.dart';
 import 'account_locations.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
@@ -104,7 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email, AutofillHints.username],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.s3),
             PasswordField(
               controller: _password,
               error: _passwordError,

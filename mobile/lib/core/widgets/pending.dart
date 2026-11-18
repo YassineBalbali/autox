@@ -92,7 +92,11 @@ class SubmitButton extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      FilledButton(onPressed: pending ? null : onPressed, child: Text(pending ? pendingLabel : label)),
+      FilledButton(
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(AppSizes.control)),
+        onPressed: pending ? null : onPressed,
+        child: Text(pending ? pendingLabel : label),
+      ),
       ColdStartHint(pending: pending),
     ],
   );

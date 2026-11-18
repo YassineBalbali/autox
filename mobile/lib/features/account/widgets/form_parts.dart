@@ -3,7 +3,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/labels/labels.g.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/widgets/surfaces.dart';
 
 export '../../../core/widgets/pending.dart' show SubmitButton;
 
@@ -54,7 +56,6 @@ class FormTextField extends StatelessWidget {
       hintText: hint,
       errorText: error,
       errorMaxLines: 3,
-      border: const OutlineInputBorder(),
     ),
   );
 }
@@ -107,10 +108,9 @@ class _PasswordFieldState extends State<PasswordField> {
       labelText: widget.label ?? fieldLabels[widget.field] ?? widget.field,
       errorText: widget.error,
       errorMaxLines: 3,
-      border: const OutlineInputBorder(),
       suffixIcon: IconButton(
         tooltip: _visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe',
-        icon: Icon(_visible ? LucideIcons.eyeOff : LucideIcons.eye, size: 20),
+        icon: Icon(_visible ? LucideIcons.eyeOff : LucideIcons.eye, size: AppSizes.icon),
         onPressed: () => setState(() => _visible = !_visible),
       ),
     ),
@@ -175,7 +175,8 @@ class FormNotice extends StatelessWidget {
   }
 }
 
-/// The page around a form: a title, a reading width, scrolling with the keyboard open.
+/// The page around a form: a title, the form on a white rounded card with fully round fields
+/// and buttons, scrolling with the keyboard open.
 class FormPage extends StatelessWidget {
   const FormPage({super.key, required this.title, required this.children});
 
@@ -186,11 +187,25 @@ class FormPage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(title), centerTitle: false),
     body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s4, AppSpace.gutter, AppSpace.s6),
-        children: [
-          for (final child in children) ...[child, const SizedBox(height: AppSpace.s3)],
-        ],
+      child: Theme(
+        data: Theme.of(context).copyWith(inputDecorationTheme: AppTheme.pillFields()),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s2, AppSpace.gutter, AppSpace.s6),
+          children: [
+            AppCard(
+              padding: const EdgeInsets.all(AppSpace.s4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (index, child) in children.indexed) ...[
+                    if (index > 0) const SizedBox(height: AppSpace.s3),
+                    child,
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );

@@ -9,6 +9,7 @@ import '../../core/labels/app_labels.dart';
 import '../../core/labels/labels.g.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/pending.dart';
+import '../../core/widgets/surfaces.dart';
 import 'account_providers.dart';
 import 'data_export.dart';
 import 'widgets/form_parts.dart';
@@ -26,16 +27,37 @@ class AccountScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Mon compte'), centerTitle: false),
-      body: switch (session) {
-        SignedIn(:final user) => _Account(user: user, welcome: welcome),
-        SessionUnavailable(:final failure) => _Unavailable(failure: failure),
-        // A moment, while the router takes a signed-out person to the sign-in form.
-        AuthUnknown() || SignedOut() => const PendingView(label: 'Vérification de la session'),
-      },
+      body: SafeArea(
+        bottom: false,
+        child: switch (session) {
+          SignedIn(:final user) => _Account(user: user, welcome: welcome),
+          SessionUnavailable(:final failure) => _Titled(child: _Unavailable(failure: failure)),
+          // A moment, while the router takes a signed-out person to the sign-in form.
+          AuthUnknown() || SignedOut() => const _Titled(child: PendingView(label: 'Vérification de la session')),
+        },
+      ),
     );
   }
 }
+
+/// The tab's big title over a whole-screen state.
+class _Titled extends StatelessWidget {
+  const _Titled({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Padding(padding: _titlePadding, child: ScreenTitle('Mon compte')),
+      Expanded(child: child),
+    ],
+  );
+}
+
+/// Around the tab's big title.
+const _titlePadding = EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s5, AppSpace.gutter, AppSpace.s4);
 
 class _Unavailable extends ConsumerWidget {
   const _Unavailable({required this.failure});
@@ -49,7 +71,7 @@ class _Unavailable extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.cloudOff, size: 36, color: AppColors.inkFaint),
+          const IconTile(icon: LucideIcons.cloudOff, size: AppSizes.touch + AppSpace.s4),
           const SizedBox(height: AppSpace.s3),
           Text(failure.message, textAlign: TextAlign.center),
           const SizedBox(height: AppSpace.s1),
@@ -143,17 +165,17 @@ class _AccountState extends ConsumerState<_Account> {
     final role = profile?.role ?? user.role;
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: AppSpace.s6),
+      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, AppSpace.s6),
       children: [
-        Container(
-          color: AppColors.surface,
-          padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s4, AppSpace.gutter, AppSpace.s4),
+        Padding(padding: _titlePadding.copyWith(left: 0, right: 0), child: const ScreenTitle('Mon compte')),
+        // Who: the profile's card.
+        AppCard(
           child: Row(
             children: [
               const CircleAvatar(
-                radius: 24,
+                radius: AppSizes.avatar / 2,
                 backgroundColor: AppColors.accentSoft,
-                child: Icon(LucideIcons.userRound, color: AppColors.accent),
+                child: Icon(LucideIcons.userRound, color: AppColors.accentStrong, size: AppSizes.icon),
               ),
               const SizedBox(width: AppSpace.s3),
               Expanded(
@@ -177,39 +199,35 @@ class _AccountState extends ConsumerState<_Account> {
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s4, AppSpace.gutter, 0),
+        if (widget.welcome && !verified) ...[
+          const SizedBox(height: AppSpace.s3),
+          FormNotice(
+            'Un lien de vérification a été envoyé à $email. Cliquez dessus pour pouvoir publier une annonce '
+            'et envoyer des messages.',
+            title: 'Vérifiez votre boîte mail',
+          ),
+        ],
+        if (!verified) ...[
+          const SizedBox(height: AppSpace.s3),
+          _VerifyBanner(
+            pending: pending,
+            resent: _resent,
+            failure: _resendFailure,
+            resending: _resending,
+            onResend: () => _resend(email),
+          ),
+        ],
+        const GroupLabel('Données personnelles'),
+        AppCard(
+          padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (widget.welcome && !verified)
-                FormNotice(
-                  'Un lien de vérification a été envoyé à $email. Cliquez dessus pour pouvoir publier une annonce '
-                  'et envoyer des messages.',
-                  title: 'Vérifiez votre boîte mail',
-                ),
-              if (!verified) ...[
-                _VerifyBanner(
-                  pending: pending,
-                  resent: _resent,
-                  failure: _resendFailure,
-                  resending: _resending,
-                  onResend: () => _resend(email),
-                ),
-                const SizedBox(height: AppSpace.s3),
-              ],
-            ],
-          ),
-        ),
-        Material(
-          color: AppColors.surface,
-          child: Column(
-            children: [
               ListTile(
-                leading: const Icon(LucideIcons.fileDown),
+                leading: const IconTile(icon: LucideIcons.fileDown),
                 title: Text(_exporting ? 'Préparation…' : 'Mes données'),
                 subtitle: const Text(AppLabels.myDataHint),
-                trailing: const Icon(LucideIcons.share2, size: 18),
+                trailing: const Icon(LucideIcons.share2, size: AppSizes.icon, color: AppColors.inkSoft),
                 enabled: !_exporting,
                 onTap: _export,
               ),
@@ -224,18 +242,25 @@ class _AccountState extends ConsumerState<_Account> {
                     ],
                   ),
                 ),
-              const Divider(),
+            ],
+          ),
+        ),
+        const GroupLabel('Compte'),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
               ListTile(
-                leading: const Icon(LucideIcons.trash2, color: AppColors.danger),
-                title: const Text('Supprimer mon compte', style: TextStyle(color: AppColors.danger)),
-                onTap: () => showDialog<void>(context: context, builder: (_) => const DeleteAccountDialog()),
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(LucideIcons.logOut),
+                leading: const IconTile(icon: LucideIcons.logOut),
                 title: Text(_signingOut ? 'Déconnexion…' : 'Se déconnecter'),
                 enabled: !_signingOut,
                 onTap: _signOut,
+              ),
+              const Divider(indent: AppSpace.gutter, endIndent: AppSpace.gutter),
+              ListTile(
+                leading: const IconTile(icon: LucideIcons.trash2, danger: true),
+                title: const Text('Supprimer mon compte', style: TextStyle(color: AppColors.danger)),
+                onTap: () => showDialog<void>(context: context, builder: (_) => const DeleteAccountDialog()),
               ),
             ],
           ),
