@@ -244,11 +244,12 @@ class _Action extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       FilledButton.icon(
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(AppSizes.control)),
         onPressed: onPressed,
-        icon: const Icon(LucideIcons.messageCircle, size: 18),
+        icon: const Icon(LucideIcons.messageCircle, size: AppSizes.icon),
         label: const Text('Contacter le vendeur'),
       ),
-      const SizedBox(height: AppSpace.s1),
+      const SizedBox(height: AppSpace.s2),
       Semantics(container: true, child: Text(note, style: Theme.of(context).textTheme.bodySmall)),
     ],
   );

@@ -6,12 +6,14 @@ import '../../../core/format/listing_text.dart' show placeOf;
 import '../../../core/format/numbers.dart';
 import '../../../core/labels/labels.g.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/widgets/surfaces.dart';
 import '../listing_text.dart';
 import 'listing_tags.dart' show DamageTag;
 
 /// The parts of the listing page, each the web's component of the same name.
 
-/// A titled block of the page: white, a hairline under it.
+/// A titled block of a page (a listing's, a dealer's): a white rounded card on the grey, the
+/// page's margins around it.
 class PageSection extends StatelessWidget {
   const PageSection({super.key, required this.child, this.title});
 
@@ -19,11 +21,9 @@ class PageSection extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: AppColors.surface,
-    shape: const Border(bottom: BorderSide(color: AppColors.line)),
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s4, AppSpace.gutter, AppSpace.s4),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, AppSpace.s3),
+    child: AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,14 +44,14 @@ class PageSection extends StatelessWidget {
   );
 }
 
-/// The tiles under the photos: year, mileage (or "Neuf"), energy, gearbox, power.
+/// The key facts as a grid of rounded tiles, two by two: year, mileage (or "Neuf"), energy,
+/// gearbox, power.
 class KeyFacts extends StatelessWidget {
   const KeyFacts({super.key, required this.listing});
 
   final PublicListingDetail listing;
 
-  @override
-  Widget build(BuildContext context) {
+  static List<(IconData, String, String)> factsOf(PublicListingDetail listing) {
     final vehicle = listing.vehicle;
     final registered = registration(vehicle?.firstRegistrationYear, vehicle?.firstRegistrationMonth);
     final facts = <(IconData, String, String)>[
@@ -70,13 +70,19 @@ class KeyFacts extends StatelessWidget {
         (LucideIcons.cog, 'Boîte de vitesses', gearboxLabel(vehicle.gearbox!)),
       if (vehicle?.powerHp != null) (LucideIcons.zap, 'Puissance', '${formatInteger(vehicle!.powerHp!)}${nbsp}ch'),
     ];
+    return facts;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final facts = factsOf(listing);
     if (facts.isEmpty) {
       return const SizedBox.shrink();
     }
     final theme = Theme.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = (constraints.maxWidth - AppSpace.s2 * 2) / 3;
+        final width = (constraints.maxWidth - AppSpace.s2) / 2;
         return Wrap(
           spacing: AppSpace.s2,
           runSpacing: AppSpace.s2,
@@ -88,18 +94,18 @@ class KeyFacts extends StatelessWidget {
                 excludeSemantics: true,
                 child: Container(
                   width: width,
-                  padding: const EdgeInsets.all(AppSpace.s2),
-                  decoration: BoxDecoration(
+                  padding: const EdgeInsets.all(AppSpace.s3),
+                  decoration: const BoxDecoration(
                     color: AppColors.surfaceSunk,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    borderRadius: BorderRadius.all(Radius.circular(AppRadius.md)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(icon, size: 20, color: AppColors.inkSoft),
-                      const SizedBox(height: AppSpace.s1),
+                      Icon(icon, size: AppSizes.icon, color: AppColors.accentStrong),
+                      const SizedBox(height: AppSpace.s2),
                       Text(label, style: theme.textTheme.labelMedium),
-                      Text(value, style: theme.textTheme.titleSmall?.copyWith(fontWeight: AppType.bold)),
+                      Text(value, style: theme.textTheme.titleMedium),
                     ],
                   ),
                 ),
@@ -149,8 +155,8 @@ class CritAirBadge extends StatelessWidget {
       children: [
         ExcludeSemantics(
           child: Container(
-            width: 64,
-            height: 64,
+            width: AppSizes.vignette,
+            height: AppSizes.vignette,
             decoration: BoxDecoration(color: background, shape: BoxShape.circle),
             alignment: Alignment.center,
             child: Column(
@@ -217,7 +223,7 @@ class LeasingOffer extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.s2, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.s2, vertical: AppSpace.s0),
               decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
               child: Text(
                 leasingTypeTitle(leasing),
@@ -261,7 +267,7 @@ class _Term extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.s0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -365,10 +371,10 @@ class EquipmentList extends StatelessWidget {
               children: [
                 for (final item in group.items)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(vertical: AppSpace.s0),
                     child: Row(
                       children: [
-                        const Icon(LucideIcons.check, size: 16, color: AppColors.success),
+                        const Icon(LucideIcons.check, size: AppSizes.iconSmall, color: AppColors.success),
                         const SizedBox(width: AppSpace.s2),
                         Expanded(child: Text(item, style: theme.textTheme.bodyMedium)),
                       ],
@@ -414,9 +420,13 @@ class SellerCard extends StatelessWidget {
         Row(
           children: [
             CircleAvatar(
-              radius: 20,
+              radius: AppSizes.avatar / 2,
               backgroundColor: AppColors.surfaceSunk,
-              child: Icon(professional ? LucideIcons.store : LucideIcons.user, size: 20, color: AppColors.inkSoft),
+              child: Icon(
+                professional ? LucideIcons.store : LucideIcons.user,
+                size: AppSizes.icon,
+                color: AppColors.inkSoft,
+              ),
             ),
             const SizedBox(width: AppSpace.s3),
             Expanded(
@@ -439,7 +449,8 @@ class SellerCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (onOpenDealer != null) const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.inkFaint),
+            if (onOpenDealer != null)
+              const Icon(LucideIcons.chevronRight, size: AppSizes.icon, color: AppColors.inkFaint),
           ],
         ),
         if (place != null || since != null) const SizedBox(height: AppSpace.s2),
@@ -460,10 +471,10 @@ class _Line extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     container: true,
     child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.s0),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.inkFaint),
+          Icon(icon, size: AppSizes.iconSmall, color: AppColors.inkFaint),
           const SizedBox(width: AppSpace.s2),
           Expanded(child: Text(text, style: Theme.of(context).textTheme.bodySmall)),
         ],

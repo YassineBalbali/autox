@@ -1,5 +1,10 @@
+import 'package:autox/core/format/numbers.dart';
+import 'package:autox/core/links.dart';
+import 'package:autox/features/favourites/favourites.dart';
+import 'package:autox/features/listing/listing_screen.dart';
 import 'package:autox/features/listing/widgets/financing_simulator.dart';
 import 'package:autox/features/listing/widgets/listing_card.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:material_ui/material_ui.dart';
@@ -19,6 +24,41 @@ void main() {
     '/api/v1/reference/makes': const FakeResponse.json(200, makesJson),
   });
 
+  testWidgets('over the photos: back, share and the heart, each a 48 dp button TalkBack names', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final shared = <String>[];
+    await pumpApp(
+      tester,
+      http(detailJson()),
+      location: '/annonces/l1',
+      overrides: [textSharerProvider.overrideWithValue((text, {subject}) async => shared.add(text))],
+    );
+    await tester.pumpAndSettle();
+
+    // Back and share are named by their tooltips, which TalkBack reads.
+    Finder buttonOf(Finder inner) => find.ancestor(of: inner, matching: find.byType(IconButton)).first;
+    for (final button in [
+      buttonOf(find.byTooltip('Retour')),
+      buttonOf(find.byTooltip('Partager')),
+      find.bySemanticsLabel('Ajouter Peugeot 3008 aux favoris'),
+    ]) {
+      expect(button, findsOneWidget);
+      expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
+    }
+
+    await tester.tap(find.byTooltip('Partager'));
+    await tester.pump();
+    expect(shared, ['Peugeot 3008 1.5 BlueHDi 130 Allure\nhttp://api.test-site/annonces/l1']);
+
+    // Saved from its page: the Favoris tab has it, as a result card.
+    await tester.tap(find.bySemanticsLabel('Ajouter Peugeot 3008 aux favoris'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ajoutée à vos favoris'), findsOneWidget);
+    final saved = ProviderScope.containerOf(tester.element(find.byType(ListingScreen))).read(favouritesProvider);
+    expect(saved.single.listing.make, 'Peugeot');
+    expect(saved.single.listing.city, 'Lyon');
+    semantics.dispose();
+  });
   testWidgets('a sale: every section, in order, in French', (tester) async {
     useTallScreen(tester);
     await pumpApp(tester, http(detailJson()), location: '/annonces/l1');
@@ -26,8 +66,7 @@ void main() {
 
     expect(find.text('Peugeot 3008 1.5 BlueHDi 130 Allure'), findsOneWidget);
     expect(find.text('Publiée le 11 novembre 2026'), findsOneWidget);
-    // The price, and the simulator's amount borrowed before any down payment.
-    expect(find.text('22 490 €'), findsNWidgets(2));
+    expect(find.text(formatPrice(2249000)), findsOneWidget);
     expect(find.bySemanticsLabel('Bonne affaire'), findsOneWidget);
     expect(find.textContaining('Comparé à 14 Peugeot 3008 de même motorisation de 2018 à 2022'), findsOneWidget);
     expect(find.text('Prix négociable'), findsOneWidget);
@@ -41,8 +80,14 @@ void main() {
     expect(find.text('Sécurité'), findsOneWidget);
     expect(find.text('GPS'), findsOneWidget);
     // Financing: a car for sale, not damaged.
+    await tester.scrollUntilVisible(find.byType(FinancingSimulator), 400, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
     expect(find.text('Simuler un financement'), findsOneWidget);
-    expect(find.byType(FinancingSimulator), findsOneWidget);
+    // The price, and the simulator's amount borrowed before any down payment.
+    expect(
+      find.descendant(of: find.byType(FinancingSimulator), matching: find.text(formatPrice(2249000))),
+      findsOneWidget,
+    );
     // The seller, further down.
     await tester.scrollUntilVisible(
       find.text('Membre depuis mars 2019'),
@@ -166,7 +211,7 @@ void main() {
     await pumpApp(tester, http(detailJson(images: [imageJson('b', 1), imageJson('a', 0)])), location: '/annonces/l1');
     await tester.pumpAndSettle();
 
-    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel(RegExp('^Photo 1 sur 2')));
     await tester.pumpAndSettle();
 

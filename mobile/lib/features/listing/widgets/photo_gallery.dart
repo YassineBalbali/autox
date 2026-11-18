@@ -9,9 +9,12 @@ import 'listing_tags.dart' show imageCacheKey;
 /// The listing's photos: swiped one by one at 4:3, the count over them, and full screen on a tap,
 /// where they can be zoomed. Placeholder when there are none.
 class PhotoGallery extends StatefulWidget {
-  const PhotoGallery({super.key, required this.images, required this.subject});
+  const PhotoGallery({super.key, required this.images, required this.subject, this.fill = false});
 
   final List<GalleryImage> images;
+
+  /// Filling the space it is given (a page's header) rather than taking its own 4:3.
+  final bool fill;
 
   /// What the photos are of, for TalkBack: "Photo 2 sur 9 : Peugeot 208".
   final String subject;
@@ -37,19 +40,20 @@ class _PhotoGalleryState extends State<PhotoGallery> {
     ),
   );
 
+  Widget _frame(Widget child) => widget.fill ? child : AspectRatio(aspectRatio: AppSizes.galleryAspect, child: child);
+
   @override
   Widget build(BuildContext context) {
     final images = widget.images;
     if (images.isEmpty) {
-      return AspectRatio(
-        aspectRatio: 4 / 3,
-        child: Container(
+      return _frame(
+        Container(
           color: AppColors.surfaceSunk,
           alignment: Alignment.center,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(LucideIcons.image, size: 40, color: AppColors.inkFaint),
+              const Icon(LucideIcons.image, size: AppSizes.iconTile, color: AppColors.inkFaint),
               const SizedBox(height: AppSpace.s1),
               Text('Pas de photo', style: Theme.of(context).textTheme.bodySmall),
             ],
@@ -57,9 +61,8 @@ class _PhotoGalleryState extends State<PhotoGallery> {
         ),
       );
     }
-    return AspectRatio(
-      aspectRatio: 4 / 3,
-      child: Stack(
+    return _frame(
+      Stack(
         fit: StackFit.expand,
         children: [
           PageView.builder(
@@ -79,9 +82,9 @@ class _PhotoGalleryState extends State<PhotoGallery> {
           ),
           if (images.length > 1)
             Positioned(
-              right: AppSpace.s2,
-              bottom: AppSpace.s2,
-              child: ExcludeSemantics(child: _Counter(text: '${_index + 1} / ${images.length}')),
+              right: AppSpace.s3,
+              bottom: AppSpace.s3,
+              child: ExcludeSemantics(child: _Counter(text: '${_index + 1}/${images.length}')),
             ),
         ],
       ),
@@ -116,11 +119,14 @@ class _Counter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: AppSpace.s2, vertical: 2),
-    decoration: BoxDecoration(color: AppColors.scrim, borderRadius: BorderRadius.circular(AppRadius.sm)),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.s3, vertical: AppSpace.s1),
+    decoration: const BoxDecoration(
+      color: AppColors.scrim,
+      borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+    ),
     child: Text(
       text,
-      style: const TextStyle(color: AppColors.surface, fontSize: AppType.tsm, fontWeight: AppType.semibold),
+      style: AppText.chip.copyWith(color: AppColors.surface, fontWeight: AppType.bold),
     ),
   );
 }

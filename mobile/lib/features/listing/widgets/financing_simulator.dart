@@ -75,11 +75,7 @@ class _FinancingSimulatorState extends State<FinancingSimulator> {
                 controller: _downPayment,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d ]'))],
-                decoration: InputDecoration(
-                  labelText: 'Apport ($symbol)',
-                  isDense: true,
-                  border: const OutlineInputBorder(),
-                ),
+                decoration: InputDecoration(labelText: 'Apport ($symbol)', isDense: true),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -87,7 +83,8 @@ class _FinancingSimulatorState extends State<FinancingSimulator> {
             Expanded(
               child: DropdownButtonFormField<int>(
                 initialValue: _months,
-                decoration: const InputDecoration(labelText: 'Durée', isDense: true, border: OutlineInputBorder()),
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Durée', isDense: true),
                 items: [
                   for (final months in financingDurations) DropdownMenuItem(value: months, child: Text('$months mois')),
                 ],
@@ -100,7 +97,7 @@ class _FinancingSimulatorState extends State<FinancingSimulator> {
         TextField(
           controller: _rate,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: 'Taux annuel (%)', isDense: true, border: OutlineInputBorder()),
+          decoration: const InputDecoration(labelText: 'Taux annuel (%)', isDense: true),
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: AppSpace.s1),

@@ -7,6 +7,7 @@ import '../../core/api/api_failure.dart';
 import '../../core/links.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/states.dart';
+import '../../core/widgets/surfaces.dart';
 import '../listing/listing_text.dart' show memberSince;
 import '../listing/widgets/listing_card.dart';
 import '../listing/widgets/listing_parts.dart' show PageSection;
@@ -91,11 +92,12 @@ class _DealerScreenState extends ConsumerState<DealerScreen> {
     return CustomScrollView(
       controller: _scroll,
       slivers: [
+        const SliverToBoxAdapter(child: SizedBox(height: AppSpace.s3)),
         SliverToBoxAdapter(
           child: PageSection(
             child: Row(
               children: [
-                DealerLogo(url: dealer.logoUrl, size: 64),
+                DealerLogo(url: dealer.logoUrl, size: AppSizes.vignette),
                 const SizedBox(width: AppSpace.s3),
                 Expanded(
                   child: Column(
@@ -131,10 +133,7 @@ class _DealerScreenState extends ConsumerState<DealerScreen> {
             container: true,
             label: 'Contacter ce professionnel',
             explicitChildNodes: true,
-            child: Container(
-              color: AppColors.surface,
-              margin: const EdgeInsets.only(top: AppSpace.s2),
-              padding: const EdgeInsets.all(AppSpace.gutter),
+            child: PageSection(
               child: ContactSeller(target: ContactTarget.dealer(dealer), openOnArrival: widget.write),
             ),
           ),
@@ -182,7 +181,7 @@ class _DealerScreenState extends ConsumerState<DealerScreen> {
                 Semantics(
                   container: true,
                   header: true,
-                  child: Text('Annonces de ce professionnel', style: theme.textTheme.titleMedium),
+                  child: Text('Annonces de ce professionnel', style: theme.textTheme.titleLarge),
                 ),
                 if ((dealer.leasingListings ?? 0) > 0) ...[
                   const SizedBox(height: AppSpace.s2),
@@ -267,9 +266,8 @@ class _Contact extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpace.s2),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 18, color: AppColors.inkSoft),
+            IconTile(icon: icon),
             const SizedBox(width: AppSpace.s3),
             Expanded(
               child: Column(

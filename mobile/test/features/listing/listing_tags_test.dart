@@ -4,8 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('the damage notice lists what was declared, then whether the car runs', () {
-    expect(DamageTag.factsOf(DamageView(types: [DamageType.BODYWORK, DamageType.HAIL], running: true)),
-        'Carrosserie, Grêle · Roulant');
+    expect(
+      DamageTag.factsOf(DamageView(types: [DamageType.BODYWORK, DamageType.HAIL], running: true)),
+      'Carrosserie, Grêle · Roulant',
+    );
     expect(DamageTag.factsOf(DamageView(running: false)), 'Non roulant');
     expect(DamageTag.factsOf(DamageView()), isEmpty);
   });
