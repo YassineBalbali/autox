@@ -25,6 +25,7 @@ import '../../features/search/search_query.dart';
 import '../../features/search/smart_search.dart';
 import '../auth/session.dart';
 import '../labels/labels.g.dart';
+import '../theme/tokens.dart';
 import '../widgets/pending.dart';
 import '../widgets/states.dart';
 
@@ -227,10 +228,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   Widget _bar(BuildContext context, int unread) => Scaffold(
     body: shell,
-    bottomNavigationBar: DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
-      ),
+    bottomNavigationBar: FloatingTabBar(
       child: NavigationBar(
         selectedIndex: shell.currentIndex,
         onDestinationSelected: _select,
@@ -241,12 +239,45 @@ class _AppShellState extends ConsumerState<AppShell> {
                   ? Semantics(
                       // "Messages, 2 conversations non lues": the badge's number alone says nothing.
                       label: unread == 1 ? '1 conversation non lue' : '$unread conversations non lues',
-                      child: Badge(label: Text('$unread'), child: Icon(tab.icon)),
+                      child: Badge(
+                        label: Text('$unread'),
+                        backgroundColor: AppColors.accent,
+                        textColor: AppColors.accentInk,
+                        child: Icon(tab.icon),
+                      ),
                     )
                   : Icon(tab.icon),
               label: tab.label,
             ),
         ],
+      ),
+    ),
+  );
+}
+
+/// The tab bar as a rounded pill floating over the page's grey, clear of the screen's edges.
+///
+/// Its labels follow the system font size up to [maxTextScale]: past that, four labels no longer
+/// fit a phone's width, and the icons, with TalkBack reading each tab's name, still say which is
+/// which.
+class FloatingTabBar extends StatelessWidget {
+  const FloatingTabBar({super.key, required this.child});
+
+  final Widget child;
+
+  static const double maxTextScale = 1.3;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    minimum: const EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, AppSpace.tabBarGap),
+    child: DecoratedBox(
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+        boxShadow: AppShadows.floating,
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.all(Radius.circular(AppRadius.pill)),
+        child: MediaQuery.withClampedTextScaling(maxScaleFactor: maxTextScale, child: child),
       ),
     ),
   );
