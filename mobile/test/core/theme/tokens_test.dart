@@ -98,6 +98,13 @@ void main() {
       ('warn', AppColors.warn, [('surface', AppColors.surface)]),
       ('danger', AppColors.danger, [('surface', AppColors.surface), ('dangerSoft', AppColors.dangerSoft)]),
       ('surface on scrim', AppColors.surface, [('scrim on ink', AppColors.ink)]),
+      // The back, share and heart buttons over a photo: their disc on the darkest photo there is.
+      for (final (name, icon) in [('ink', AppColors.ink), ('accent (a saved heart)', AppColors.accent)])
+        (
+          '$name over a photo',
+          icon,
+          [('the disc on a black photo', Color.alphaBlend(AppColors.overPhoto, const Color(0xFF000000)))],
+        ),
     ];
 
     for (final (name, text, grounds) in pairs) {

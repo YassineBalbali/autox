@@ -590,10 +590,45 @@ nothing in the backend, the web or the app's behaviour changed.
   price, the verdict bar, facts as chips, place and seller). The toolbar scrolls with the list,
   so large text cannot squeeze the results out. The Neuf page uses the same cards; the listing
   page's similar listings and the dealer page keep `ListingRow` until phase 2.
-- **Not done, on purpose**: no favourite heart on the cards (favourites do not exist yet, the
+- **Not done, on purpose** (the heart and the rows came in phase 2, 9h): no favourite heart on the cards (favourites do not exist yet, the
   tab says "Bientôt disponible"; a heart that does nothing would be a behaviour change) and no
   list/grid view button (there is one view). No golden tests: the project has none; layout is
   covered by widget tests at 360 dp and 200 % text instead.
+
+## 9h. v1.1 visual refresh, phase 2 — favourites and the remaining screens (2026-11-18)
+
+App only; no backend change. Same tokens file and constraints as phase 1.
+
+- **Search home tweak**: the Acheter / Louer / Neuf tiles centre their icon above their title.
+- **Favourites** (`lib/features/favourites/`), on the phone only, like the web keeps them in
+  the browser: `shared_preferences` under the web's key `autox.favourites`, newest first,
+  capped at the web's `FAVOURITES_LIMIT` (200; a test reads it from `favourites.ts`), the oldest
+  dropped past it. Each entry keeps the listing as it was saved (`{id, savedAt, listing}`), so
+  the tab shows at once and offline. Each card then asks for the listing as it is now (the
+  listing page's own provider, a card at a time as it comes on screen): a 404 shows it washed
+  out, "Annonce retirée", with "Retirer"; any other failure keeps the saved version. The heart
+  is on every result card's photo and over a listing's photos: a TalkBack toggle named after
+  the listing ("Ajouter Peugeot 208 aux favoris"), a short snackbar on each change. Lucide's
+  heart is drawn by a painter, because the font has no filled version.
+- **Listing page**: the photos fill a collapsing header edge to edge, with a "1/N" counter and
+  round back, share and heart buttons (40 dp discs, 48 dp targets); the bar turns white with
+  its title once they scroll away. Then rounded cards: title, price and the verdict bar with a
+  56 dp "Contacter le vendeur" pill (the owner, unverified and sent states unchanged); key
+  facts as a two-column grid of rounded tiles; Crit'Air, description, specification,
+  equipment, financing and the seller. Share sends the site's address
+  (`AUTOX_SITE_URL/annonces/:id`) to the Android share sheet (`textSharerProvider`).
+- **Rows gone everywhere**: similar listings and a dealer's listings use `ListingCard`;
+  `listing_row.dart` became `listing_tags.dart` (the badges the cards still use).
+- **Messages**: the inbox under a big title, each conversation a rounded card. A conversation
+  opens on a card with the listing's photo, title and price; bubbles are round but for the
+  corner by the writer's edge; the composer is a grey pill with a round send button. The
+  listing card and the safety advice scroll with the messages: at 200 % text on a small phone
+  fixed ones left the thread no room.
+- **Compte**: big title, the profile's card, the verification notices, then "Données
+  personnelles" and "Compte" as grouped cards. Sign-in, registration and the forgotten
+  password put their form on a card with fully round fields (`AppTheme.pillFields()`) and
+  56 dp buttons.
+- `test/refresh_layout_test.dart` walks every screen above at 360 dp with the text doubled.
 
 ## 10. Decisions (settled 2026-11-12)
 
