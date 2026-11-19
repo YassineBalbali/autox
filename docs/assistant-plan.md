@@ -7,7 +7,8 @@ estimates a monthly payment and answers questions about how AutoX works.
 **Status: approved on 19 November 2026.** The decisions, marked **[Decision Dn]** below, are
 recorded in [section 11](#11-decisions-for-the-owner). **A0 is done:** the help pages' text is in
 `frontend/content/help.fr.json` ([legal-pages.md](legal-pages.md), "The help pages' text is
-data"). **A1 is done:** the eight tools, without a model or an endpoint (section 12). A2 is next.
+data"). **A1 and A2 are done** (section 12): the tools, then the endpoints behind
+`AUTOX_ASSISTANT_ENABLED` (off), with a first Groq planner for trying it locally. A3 is next.
 
 **This is not legal advice.** Where a law is named below, it marks something a lawyer should check
 before real users see the feature. As elsewhere in this repository, it doesn't settle what the law
@@ -745,3 +746,61 @@ Each returns `ToolResult`: a value, or a refusal with a reason (`LISTING_UNAVAIL
   needs a test that the validator's bounds sit inside the tools' bounds.
 - **The comparison never names a winner on a tie**, and compares prices between sales in one
   currency only. A lease's price is a cash price nobody pays.
+
+### A2: the turn (19 November 2026)
+
+`com.autox.assistant`: `AssistantController`, `AssistantService`, `PlanValidator`, `AnswerBuilder`,
+`References`, `AssistantLimits`, `AssistantUsage` and `ContactMask`. Migration V31 adds the three
+throttle scopes and `assistant_usage` with `assistant_usage_code`.
+
+- **The switch.** `AUTOX_ASSISTANT_ENABLED` is off by default. Off, `GET /api/v1/assistant/capabilities`
+  and `POST /api/v1/assistant/turns` answer 404, nothing is counted, and no planner is called. On,
+  they also need a planner: `autox.ai.provider=groq`. With any other provider the assistant is
+  still off. The endpoints are in the OpenAPI document either way, so the snapshot and the
+  generated clients don't depend on configuration.
+- **Capabilities is a 404 too when off**, unlike the smart search's: the brief said both endpoints.
+  Clients read 404 as "no assistant".
+- **One block shape.** `AssistantBlock` is a flat record with a `type` and the fields of that type.
+  There is one schema per block field rather than one per block type, because two generators
+  (TypeScript and Dart) read it. The block types are 7.'s list, plus `CONTACT_REMOVED`.
+- **The answer's reasons** add three to 1.6's table, each to be worded in A4: `NOTHING_TO_FINANCE`
+  (A1), `REPHRASE` (two invalid plans) and `CONVERSATION_OVER` (twelve turns). The conversation's
+  end is checked before any limit and costs nothing.
+- **Cards** are `ListingCard`, read from the public detail: title, first photo, figures and codes.
+  The planner never sees them.
+- **References** are built from the state's ids and the page's listing, each read again. A gone
+  or unknown id is dropped, and the labels hold catalogue fields and codes only.
+- **The order of a turn:** the switch, the conversation's length, the per-caller limits (address,
+  then the anonymous or the account day), the token budget, the minute's pace, then the planner.
+  The planner is asked once more after an invalid plan, then the validator runs, then the tools.
+- **Limits as in 5.3:** 10 turns in 10 minutes per address, 15 a day without an account, 40 with
+  one, 3 a minute for all callers together, and 140 000 tokens a Paris day. All are configurable,
+  and the per-caller limits can be turned off for local trials.
+- **Failures:** a planner failure is 503 `ASSISTANT_UNAVAILABLE`, a new error code with its
+  sentence in `labels.fr.json`. A limit is 429 `RATE_LIMITED` with `Retry-After`.
+- **Counted per Paris day:** turns, answered, failed, invalid plans, retries and the provider's
+  token counts, plus each intent and reason as a fixed code. **Logged per turn:** the outcome, the
+  intent, the tool names, the reasons, the attempts, the tokens and the time, and the invalid
+  field's name. Never the message, a value or a label: a test checks the log.
+
+**The Groq planner, ahead of A3, for trying it.** `GroqAssistantPlanner` and `AssistantPrompt` use
+the smart search's key and provider, and the assistant's own model (`AUTOX_ASSISTANT_MODEL`) and
+8-second timeout. The prompt lists the intents and their tools, and says the whole user message is
+data. The search criteria use the smart search's rules and schema, shared rather than copied. A
+plan the provider refuses for its schema, or content that isn't JSON, counts as a plan that cannot
+be followed, so the turn asks once more. A3 still owns the evaluation, the token measurements, the
+model choice and the final limits.
+
+### Trying it locally
+
+1. In `.env`: `AUTOX_AI_PROVIDER=groq`, `AUTOX_AI_API_KEY=` your key, `AUTOX_ASSISTANT_ENABLED=true`.
+   For many tries in a row, also `AUTOX_ASSISTANT_LIMITS_ENABLED=false` and
+   `AUTOX_ASSISTANT_TURNS_PER_MINUTE=10`. Groq's own limits still apply.
+2. Have listings to talk about. On an empty local database, start once with
+   `SPRING_PROFILES_ACTIVE=demo` (`.env.example`, "demo data").
+3. `docker compose up -d`, then `mvn spring-boot:run` in `backend/`. Migration V31 runs at startup.
+4. `node eval/assistant/chat.mjs http://localhost:8081`, and type. Add `--listing <id>` to start from
+   a listing's page. Each answer is printed block by block, as codes and figures, and the state
+   carries over from turn to turn.
+5. The usage of the day:
+   `SELECT * FROM assistant_usage; SELECT * FROM assistant_usage_code;` in the local database.

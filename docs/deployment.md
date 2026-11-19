@@ -228,6 +228,10 @@ hand (New → Web Service → the repository), these are all of them:
 | `AUTOX_AI_API_KEY` | from console.groq.com → API Keys — **secret** | Required when the provider is `groq`; the API refuses to start without it |
 | `AUTOX_AI_MODEL` | `openai/gpt-oss-120b` | Optional: this is the default, chosen on the evaluation in docs/ai-search.md |
 
+**`AUTOX_ASSISTANT_ENABLED` is not set**, and must stay unset until the assistant's milestone A6
+(`docs/assistant-plan.md`). Unset, Assistant AutoX's two endpoints answer 404 and nothing is
+counted or sent to Groq, even with `AUTOX_AI_PROVIDER=groq`.
+
 `AUTOX_SCHEDULE_STORAGE_CHECK` is not set, so its default applies: twelve hours (see step 2).
 `PORT` is set by Render, and the image listens on it. Do not set `AUTOX_PORT`.
 
