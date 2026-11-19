@@ -7,7 +7,7 @@ estimates a monthly payment and answers questions about how AutoX works.
 **Status: approved on 19 November 2026.** The decisions, marked **[Decision Dn]** below, are
 recorded in [section 11](#11-decisions-for-the-owner). **A0 is done:** the help pages' text is in
 `frontend/content/help.fr.json` ([legal-pages.md](legal-pages.md), "The help pages' text is
-data"). A1 is next.
+data"). **A1 is done:** the eight tools, without a model or an endpoint (section 12). A2 is next.
 
 **This is not legal advice.** Where a law is named below, it marks something a lawyer should check
 before real users see the feature. As elsewhere in this repository, it doesn't settle what the law
@@ -683,3 +683,65 @@ Smaller choices already made in this plan, open to change: the name and subtitle
 5.3 (to be re-set from A3's measurements); 12 turns a conversation and 500 characters a message;
 up to 5 results a search and 3 listings a comparison; no recommendation of which car to buy; no
 streaming.
+
+---
+
+## 12. As built
+
+### A1: the tools (19 November 2026)
+
+The tools are Spring components in `com.autox.assistant.tools`, called in-process. There is no
+endpoint, no model call and nothing a user can reach, so there is no switch yet:
+`AUTOX_ASSISTANT_ENABLED` comes with the endpoints in A2.
+
+| Tool (1.2) | Class | Built on |
+|---|---|---|
+| `get_listing` | `ListingFactsReader` | `ListingSearchService.detail`: the public 404 rule, unchanged |
+| `search_listings` | `SearchListingsTool` | `InterpretationValidator`, now public and reused as it is, then the public search; 5 results and the count |
+| `compare_listings` | `CompareListingsTool` | The facts of 2 or 3 listings, and the differences |
+| `similar_listings` | `SimilarListingsTool` | `ListingSearchService.similar`, 5 at most |
+| `estimate_value` | `ValuationTool` | `CatalogueMatcher`, now public, then `LaCote.value` |
+| `simulate_financing` | `FinancingTool`, `CreditFormula` | A port of `simulateCredit`, held to `frontend/fixtures/listing.json` |
+| `crit_air` | `CritAirTool` | The `crit_air` column, or `crit_air_class` (V30) for a described car |
+| `search_help` | `HelpIndex` | A copy of `frontend/content/help.fr.json`, indexed in memory |
+
+Each returns `ToolResult`: a value, or a refusal with a reason (`LISTING_UNAVAILABLE`,
+`NOT_COMPUTABLE`, `NOT_FINANCEABLE`, `NOTHING_TO_FINANCE`, `NOT_IN_HELP`).
+
+**What differs from sections 1 to 3, or settles what they left open:**
+
+- **`ListingFacts` leaves out more than 1.2 listed.** The plan already excluded the title, the
+  description, the seller's identity and the VIN. This also leaves out the version text, a make or
+  model typed as text rather than chosen from the catalogue (null then), the damage description,
+  and the photos: the cards in A2 will use the public summary. The city stays, for the cards, but it
+  can be typed text, so like the title it must never go into a prompt. `ListingFactsTest` holds the
+  fields to an allow-list.
+- **The assistant's searches are not counted** in the dashboard's search usage, which counts the
+  results page's searches.
+- **The help index is in memory.** Each section is scored by BM25 over its page title and heading
+  (each counted twice) and its text. Words are folded, French stopwords dropped, and words cut to a
+  six-letter stem after a plural *s*. A section qualifies only if it holds at least half of the
+  question's words, and the best three are returned. The rule is conservative on purpose: « combien
+  de photos dans une annonce » finds nothing, because « combien » and « annonce » aren't in the
+  photo section. The answer is then `NOT_IN_HELP`, with a link to the help centre, rather than a
+  wrong passage. `HelpIndexTest` lists the questions it answers and the ones it refuses.
+- **The help text is copied.** The API's image is built from `backend/` alone, so the API keeps
+  `src/main/resources/assistant/help.fr.json`, and `HelpContentCopyTest` fails when it differs from
+  the frontend's. `backend.yml` now watches that file, the financing fixture and the two TypeScript
+  files `CreditFormulaTest` reads. On `main`, an edit to any of them also redeploys an otherwise
+  unchanged API.
+- **A new refusal, `NOTHING_TO_FINANCE`:** a down payment that covers the price. It is the web
+  simulator's « Avec cet apport, il n'y a rien à financer », and needs a line in 1.6's table and a
+  label in A4.
+- **Crit'Air says why it has no class.** `NEEDS_MONTH` means the year spans two classes and the
+  month would settle it. `NOT_SETTLED_BY_DATE` means the date is inside a change of Euro standard,
+  or the fuel isn't covered.
+- **La Cote below five comparables is an answer, not a refusal:** no estimate, with the count and
+  the wider scopes, which is what `/la-cote` shows. A2 maps it to `NOT_COMPUTABLE` with those
+  loosenings. A car the catalogue lacks is `NOT_COMPUTABLE` straight away.
+- **Arguments out of bounds throw.** Durations by whole years from 12 to 84 months, rates from 0 to
+  30 %, power from 20 to 1 500 ch, years from 1950 to next year: the tools trust A2's validator to
+  have refused anything else, and treat a value outside these bounds as a programming error. A2
+  needs a test that the validator's bounds sit inside the tools' bounds.
+- **The comparison never names a winner on a tie**, and compares prices between sales in one
+  currency only. A lease's price is a cash price nobody pays.
