@@ -6,12 +6,18 @@ name: backend
 # curated list of branches somebody has to remember to update.
 #
 # Path-filtered now that frontend/ exists: an Angular-only change should not pay for the
-# backend's integration tests and five minutes of containers. Two of the paths are deliberately not
+# backend's integration tests and five minutes of containers. Some of the paths are deliberately not
 # under backend/:
 #
 #   frontend/openapi.json — the committed API contract the frontend generates its client
 #     from. OpenApiSnapshotTest compares it against the live document, so a snapshot
 #     refreshed without the backend change behind it has to fail here.
+#   frontend/content/help.fr.json — the help pages' text, of which the API keeps a copy for the
+#     assistant (backend/src/main/resources/assistant/). HelpContentCopyTest fails when one changes
+#     without the other, so an edit to the site's help text cannot leave the copy behind.
+#   frontend/fixtures/listing.json, and the web's financing.ts and financing-simulator.ts — the
+#     simulator's test vectors and constants. CreditFormulaTest holds the API's copy of the formula
+#     to them. On main these redeploy an unchanged API; that is the price of the check.
 #   this workflow file    — so a change to the job that runs the tests is itself tested.
 #
 # Branches only, never a tag: path filters do not apply to tags (GitHub's rule), so without
@@ -23,12 +29,20 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/openapi.json'
+      - 'frontend/content/help.fr.json'
+      - 'frontend/fixtures/listing.json'
+      - 'frontend/src/app/shared/listing/financing.ts'
+      - 'frontend/src/app/features/listing/financing-simulator.ts'
       - '.github/workflows/backend.yml'
   pull_request:
     branches: [main, master]
     paths:
       - 'backend/**'
       - 'frontend/openapi.json'
+      - 'frontend/content/help.fr.json'
+      - 'frontend/fixtures/listing.json'
+      - 'frontend/src/app/shared/listing/financing.ts'
+      - 'frontend/src/app/features/listing/financing-simulator.ts'
       - '.github/workflows/backend.yml'
   # Weekly, whatever has been pushed: an advisory published on Tuesday about a dependency
   # nobody touched should not wait for the next commit to be noticed.

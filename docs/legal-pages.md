@@ -28,7 +28,8 @@ The seven pages from `/a-propos` to `/signalement` in the table (all but the fou
 (each with a stable `id`) and blocks (`p`, `ul`, `ol`). One component, `GuidePage`
 (`features/info/guide-page.ts`), renders any of them inside `InfoPage`. Each page's component is
 a one-line wrapper that names its page, so the routes and the specs are unchanged. The file is
-the single source the assistant will read later (`docs/assistant-plan.md`, A0 and A1).
+also what the assistant searches (`docs/assistant-plan.md`, A1). The API's image is built from
+`backend/` alone, so the API keeps a copy at `backend/src/main/resources/assistant/help.fr.json`.
 
 Markup inside a text:
 
@@ -37,8 +38,10 @@ Markup inside a text:
 - `**words**` is bold, and may contain a link;
 - `{contact}` is the contact address, or its placeholder while `CONTACT_EMAIL` is `null`.
 
-To change a help page, edit the JSON. `guide.spec.ts` fails on a link to a path the router doesn't
-have, on unclosed markup, or on a duplicate section id. The legal pages stay as templates: the
+To change a help page, edit the JSON, then copy it over the API's copy. `guide.spec.ts` fails on
+a link to a path the router doesn't have, on unclosed markup, or on a duplicate section id. The
+backend's `HelpContentCopyTest` fails when the two files differ. Its workflow watches the frontend
+file for that reason, so on `main` an edit to the help text also redeploys the API. The legal pages stay as templates: the
 assistant links to them and never quotes them.
 
 The move changed nothing on screen. Each page's HTML, rendered before and after and normalised,
