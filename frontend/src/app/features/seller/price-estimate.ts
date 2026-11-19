@@ -9,6 +9,9 @@ import { PRICE_LEVEL_LABELS } from '../../shared/listing/labels.fr';
 import { formatPrice } from '../../shared/listing/price';
 import { PriceBadge } from '../../shared/listing/price-badge';
 
+/** How long the seller's typing has to pause before La Cote is asked again. */
+export const ESTIMATE_DEBOUNCE_MS = 300;
+
 /** The car being priced, as the vehicle step has it. */
 export interface EstimatedCar {
   /** A catalogue model's id, or null when the model was typed: La Cote needs the catalogue's. */
@@ -203,7 +206,7 @@ export class PriceEstimate {
     }),
   ).pipe(
     distinctUntilChanged(),
-    debounceTime(300),
+    debounceTime(ESTIMATE_DEBOUNCE_MS),
     switchMap((key): Observable<Answer> => {
       if (key === null) {
         return of({ state: 'loading' });

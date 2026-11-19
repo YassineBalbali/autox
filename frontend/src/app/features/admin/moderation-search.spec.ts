@@ -3,7 +3,7 @@ import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@a
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   BASE_PATH,
@@ -68,9 +68,26 @@ describe('ModerationPage, finding a listing', () => {
   let root: HTMLElement;
 
   beforeEach(() => localStorage.removeItem(LAYOUT_KEY));
-  afterEach(() => localStorage.removeItem(LAYOUT_KEY));
+  afterEach(() => {
+    localStorage.removeItem(LAYOUT_KEY);
+    vi.useRealTimers();
+  });
 
-  const settle = () => harness.fixture.whenStable();
+  /**
+   * Rendered and settled. Under the fake clock one test uses, Angular's render timer is fake too,
+   * so the timers due now are run until the fixture is stable, without moving the clock.
+   */
+  const settle = async () => {
+    if (!vi.isFakeTimers()) {
+      return harness.fixture.whenStable();
+    }
+    let stable = false;
+    const done = harness.fixture.whenStable().then(() => (stable = true));
+    for (let turn = 0; turn < 100 && !stable; turn++) {
+      await vi.advanceTimersByTimeAsync(0);
+    }
+    return done;
+  };
   const open = (url: string): TestRequest[] =>
     backend.match((request) => request.url === url).filter((request) => !request.cancelled);
   const last = () => {
@@ -213,11 +230,16 @@ describe('ModerationPage, finding a listing', () => {
 
     it('follows typing after a pause, not at every letter', async () => {
       await show([item('a')]);
+      // A fake clock: with a real one, a busy machine can stall longer than the pause between
+      // the two keystrokes, or past the sleep that was meant to outlast the delay.
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
       await type('pe');
       await type('peu');
+      await vi.advanceTimersByTimeAsync(SEARCH_DELAY_MS - 1);
+      await settle();
       expect(query()['q']).toBeUndefined();
 
-      await new Promise((done) => setTimeout(done, SEARCH_DELAY_MS + 50));
+      await vi.advanceTimersByTimeAsync(1);
       await settle();
 
       expect(query()['q']).toBe('peu');

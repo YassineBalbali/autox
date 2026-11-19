@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { BASE_PATH } from '../../core/api';
 import { SearchBar, yearsDownTo } from './search-bar';
@@ -269,14 +269,21 @@ describe('SearchBar', () => {
   });
 
   describe('a suggestion picked under the text field', () => {
+    afterEach(() => vi.useRealTimers());
+
     async function suggest(typed: string, suggestions: object[]): Promise<void> {
+      // The debounce is the typeahead's to test; here it only has to pass, on a fake clock, since a
+      // real wait past it is a race the debounce can lose on a busy machine. Only setInterval and Date
+      // are faked, which RxJS's debounceTime runs on and checks; Angular renders on setTimeout,
+      // which stays real.
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
       await type('b-q', typed);
-      // Real time: the debounce is the typeahead's to test, here it only has to pass.
-      await new Promise((resolve) => setTimeout(resolve, SUGGEST_DEBOUNCE_MS + 50));
+      await vi.advanceTimersByTimeAsync(SUGGEST_DEBOUNCE_MS);
       backend
         .expectOne((request) => request.url === `${BASE}/api/v1/catalogue/suggestions` && decodeURIComponent(request.params.get('q') ?? '') === typed)
         .flush(suggestions);
       await fixture.whenStable();
+      vi.useRealTimers();
     }
 
     const A3 = {

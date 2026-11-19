@@ -2,10 +2,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BASE_PATH, PriceLevel, Valuation, ValuationScope } from '../../core/api';
-import { EstimatedCar, PriceEstimate, levelForPrice, notEstimated } from './price-estimate';
+import { ESTIMATE_DEBOUNCE_MS, EstimatedCar, PriceEstimate, levelForPrice, notEstimated } from './price-estimate';
 
 const BASE = 'http://api.test';
 const VALUATION = `${BASE}/api/v1/valuation`;
@@ -37,7 +37,14 @@ describe('PriceEstimate', () => {
   let root: HTMLElement;
 
   const words = (selector: string) => root.querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-  const debounce = () => new Promise((resolve) => setTimeout(resolve, 350));
+  // The debounce on a fake clock: a real wait past it is a race the debounce can lose on a busy
+  // machine, when the request is not made yet at the moment the test looks. Only setInterval and Date
+  // are faked, which RxJS's debounceTime runs on and checks; Angular renders on setTimeout, which
+  // stays real.
+  const debounce = () => vi.advanceTimersByTimeAsync(ESTIMATE_DEBOUNCE_MS);
+
+  beforeEach(() => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] }));
+  afterEach(() => vi.useRealTimers());
 
   async function show(car: EstimatedCar, price = ''): Promise<void> {
     TestBed.resetTestingModule();
