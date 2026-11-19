@@ -4,9 +4,8 @@ A conversational assistant for buyers, on the website and in the Android app. It
 a description, compares listings, explains a listing (price verdict, Crit'Air, leasing and damage),
 estimates a monthly payment and answers questions about how AutoX works.
 
-**Status: proposal.** No code, no migration. Decisions the owner has to make are marked
-**[Decision Dn]** and gathered in [section 11](#11-decisions-for-the-owner). Each has a
-recommendation.
+**Status: approved on 19 November 2026.** The decisions, marked **[Decision Dn]** below, are
+recorded in [section 11](#11-decisions-for-the-owner).
 
 **This is not legal advice.** Where a law is named below, it marks something a lawyer should check
 before real users see the feature. As elsewhere in this repository, it doesn't settle what the law
@@ -393,8 +392,8 @@ All counted before any spend, as the smart search does, in new throttle scopes:
 - **The global budget, or Groq's own 429:** 503 `ASSISTANT_UNAVAILABLE`, the same single failure
   as the smart search. `GET /assistant/capabilities` then answers `available: false` with reason
   `BUSY`. The entry point stays visible but disabled, saying « L'assistant est très demandé
-  aujourd'hui. » It offers the three things that don't need it: the ordinary search, La Cote and
-  the help centre. The conversation already on screen stays readable.
+  aujourd'hui. » with a link to the classic search (decided under D2). The conversation already on
+  screen stays readable.
 - **Any provider failure** (timeout, 5xx, refusal): 503, and the same message for this turn only.
 
 ### 5.4 The length of a conversation
@@ -647,6 +646,25 @@ days.
 ---
 
 ## 11. Decisions for the owner
+
+### Decided, 19 November 2026
+
+The plan was approved with these decisions. Where one differs from the recommendation in the
+table below it, the decision applies.
+
+| | Decision |
+|---|---|
+| **D1** | **A.** Planner only: the server writes every answer, in typed blocks with the French from the labels. |
+| **D2** | **A, then B if the eval qualifies a second model.** Free tier with a daily token budget, and no paid plan. When the budget is spent, the assistant shows a fixed message and a link to the classic search (5.3). |
+| **D3** | **A.** Anonymous use is allowed, with a lower limit than for a signed-in account. |
+| **D4** | **A.** No conversation is stored. |
+| **D5** | **A.** The non-legal help pages are quoted, and the legal pages are only linked. |
+| **D6** | **A.** No seller description in v1. |
+| **D7** | **Deferred.** Groq's retention terms are checked before the milestone that changes the privacy page (A4), and the findings go to the owner before that page is written. |
+| **D8** | **A** in the app. On the website, the floating button of 8.2. |
+| Legal review | **Not for this demo.** The disclosure (section 4) and the AI Act article 50 point would need a lawyer before a real launch: `docs/weaknesses.md`, R12. |
+
+### The questions as they were put
 
 | | Question | Options | Recommended |
 |---|---|---|---|

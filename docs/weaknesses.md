@@ -236,6 +236,26 @@ ahead, and requires each exception to be explained here.
 delete the exception. Otherwise, check the reasoning above again and set a new date at most
 30 days ahead.
 
+### R12. The assistant's AI disclosure has had no legal review — open, by decision
+
+The planned Assistant AutoX (`docs/assistant-plan.md`) tells users they are talking to an
+automated system and what happens to their messages (section 4 of the plan). The AI Act
+(Regulation (EU) 2024/1689, article 50(1)) requires people to be informed that they are
+interacting with an AI system, and that obligation applies from 2 August 2026. The French wording
+of the notice, the labels on each answer, the privacy page section and the CGU clause were written
+by a developer from a reading of the text.
+
+**Decided on 19 November 2026: no legal review for this demo.** Before a real launch with real
+users, a lawyer has to review the following:
+
+- the disclosure and its placement against article 50 and any guidance issued under it;
+- the privacy page's account of what goes to Groq, once Groq's retention terms are known (plan,
+  D7);
+- the CGU clause that the assistant's answers are indicative;
+- the financing and leasing mentions as the assistant shows them. They are the simulator's and the
+  listing page's own texts (`docs/financing-simulator.md`, `docs/leasing.md`), which have had no
+  review either.
+
 ### Checked and found sound
 
 Stated so they are not re-examined for nothing: ADMIN cannot be self-assigned at
