@@ -41,7 +41,7 @@ import org.springframework.stereotype.Component;
  * only ever describe filters that are actually applied.
  */
 @Component
-class InterpretationValidator {
+public class InterpretationValidator {
 
     /** Older than this is a collector's car, which the classifieds market is not. */
     static final int MIN_YEAR = 1950;
@@ -98,7 +98,7 @@ class InterpretationValidator {
      * @param currentYear the upper bound on a model year is next year's models
      * @param minorUnit   decimal places of the euro, for the criteria's minor-unit prices
      */
-    InterpretResponse validate(JsonNode answer, String query, int currentYear, int minorUnit) {
+    public InterpretResponse validate(JsonNode answer, String query, int currentYear, int minorUnit) {
         Set<String> notUnderstood = new LinkedHashSet<>();
         String foldedQuery = fold(query);
 

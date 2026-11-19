@@ -29,12 +29,12 @@ import org.springframework.stereotype.Repository;
  * <p>Inactive entries are never matched: the search cannot be filtered on them either.
  */
 @Repository
-class CatalogueMatcher {
+public class CatalogueMatcher {
 
-    record Make(UUID id, String slug, String name) {
+    public record Make(UUID id, String slug, String name) {
     }
 
-    record Model(UUID id, String slug, String name, Make make) {
+    public record Model(UUID id, String slug, String name, Make make) {
     }
 
     private record Keyed<T>(T entry, String key) {
@@ -46,7 +46,7 @@ class CatalogueMatcher {
         this.jdbc = jdbc;
     }
 
-    Optional<Make> make(String written) {
+    public Optional<Make> make(String written) {
         String key = key(written);
         if (compact(key).isEmpty()) {
             return Optional.empty();
@@ -72,7 +72,7 @@ class CatalogueMatcher {
     }
 
     /** A model of {@code make}. */
-    Optional<Model> model(Make make, String written) {
+    public Optional<Model> model(Make make, String written) {
         String key = key(written);
         if (compact(key).isEmpty()) {
             return Optional.empty();
@@ -113,7 +113,7 @@ class CatalogueMatcher {
      * compact equality only, and only when one model in the whole catalogue has that name: two
      * makes' "Série 1"-alikes are a question, not an answer.
      */
-    Optional<Model> modelAlone(String written) {
+    public Optional<Model> modelAlone(String written) {
         String key = key(written);
         if (compact(key).isEmpty()) {
             return Optional.empty();
