@@ -11,6 +11,7 @@ import java.util.OptionalLong;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 /**
@@ -40,11 +41,12 @@ public class AssistantService {
     private final AssistantUsage usage;
     private final CurrencyRepository currencies;
 
-    public AssistantService(AssistantProperties properties, AssistantPlanner planner, PlanValidator validator,
+    public AssistantService(AssistantProperties properties, ObjectProvider<AssistantPlanner> planners, PlanValidator validator,
                             References references, AnswerBuilder answers, AssistantLimits limits,
                             AssistantUsage usage, CurrencyRepository currencies) {
         this.properties = properties;
-        this.planner = planner;
+        // None configured (a provider other than none or groq, as in tests that do not need one): off.
+        this.planner = planners.getIfUnique(DisabledAssistantPlanner::new);
         this.validator = validator;
         this.references = references;
         this.answers = answers;
