@@ -30,6 +30,7 @@ import java.util.UUID;
  *                     when the postal code is not in it, so like the title it is never put in a prompt
  * @param sellerRole   {@code PARTICULIER} or {@code PROFESSIONNEL}, nothing more about the seller
  */
+@io.swagger.v3.oas.annotations.media.Schema(name = "AssistantListingFacts")
 public record ListingFacts(
         UUID id,
         String make,

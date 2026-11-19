@@ -29,6 +29,7 @@ public class FinancingTool {
     public static final long MAX_AMOUNT = 1_000_000_000L;
     static final String CURRENCY = "EUR";
 
+    @io.swagger.v3.oas.annotations.media.Schema(name = "AssistantFinancingMention", enumAsRef = true)
     public enum Mention {
         /** « Un crédit vous engage et doit être remboursé… » (Code de la consommation, L. 312-5). */
         CREDIT_WARNING,
@@ -106,6 +107,7 @@ public class FinancingTool {
      * @param listingId    null for a price the user gave
      * @param rateIsExample the rate is the example, not one the user was quoted: the answer says so
      */
+    @io.swagger.v3.oas.annotations.media.Schema(name = "AssistantFinancing")
     public record Simulation(UUID listingId, long priceAmount, long downPayment, long borrowedAmount, int months,
                              double annualRatePercent, boolean rateIsExample, long monthlyAmount,
                              long totalRepaid, long creditCost, String currencyCode, List<Mention> mentions) {

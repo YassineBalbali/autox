@@ -109,6 +109,10 @@ public class SecurityConfig {
                         // only because the description is a body, not because it changes anything.
                         .requestMatchers(HttpMethod.GET, "/api/v1/search/capabilities").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/search/interpret").permitAll()
+                        // Assistant AutoX: anonymous use is allowed, with a lower limit; a bearer
+                        // token, when sent, is still read, for the signed-in limit. 404 while it is off.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/assistant/capabilities").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/assistant/turns").permitAll()
                         // The API's own description. Public because a closed spec on a public
                         // API protects nothing: the endpoints are discoverable by using them.
                         // "/v3/api-docs/**" does not cover "/v3/api-docs.yaml" — the YAML form is

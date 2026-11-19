@@ -198,6 +198,22 @@ autox:
       requests-per-window: 10
       window: PT10M
 
+  # Assistant AutoX (docs/assistant-plan.md). Off by default, and off it answers 404. On, it also
+  # needs autox.ai.provider=groq: it reuses the smart search's provider and key. The budget and the
+  # pace come from Groq's free tier, shared with the smart search (docs/assistant-plan.md, 5).
+  assistant:
+    enabled: ${AUTOX_ASSISTANT_ENABLED:false}
+    model: ${AUTOX_ASSISTANT_MODEL:openai/gpt-oss-120b}
+    timeout: PT8S
+    daily-token-budget: ${AUTOX_ASSISTANT_DAILY_TOKEN_BUDGET:140000}
+    turns-per-minute: ${AUTOX_ASSISTANT_TURNS_PER_MINUTE:3}
+    limits:
+      enabled: ${AUTOX_ASSISTANT_LIMITS_ENABLED:true}
+      per-address: 10
+      address-window: PT10M
+      anonymous-per-day: 15
+      account-per-day: 40
+
   # How often the background sweeps run. Each touches the database, so on a database that
   # scales to zero each run is a wake-up; a demo with nothing to expire can run them a few
   # times a day. Durations for the two interval sweeps, a Spring cron for the hourly one.

@@ -28,7 +28,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         ImageProperties.class,
         PublicRateLimitProperties.class,
         com.autox.messaging.MessagingThrottleProperties.class,
-        com.autox.search.interpret.AiProperties.class})
+        com.autox.search.interpret.AiProperties.class,
+        com.autox.assistant.AssistantProperties.class})
 public class AutoxApplication {
 
     public static void main(String[] args) {

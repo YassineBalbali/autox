@@ -1,0 +1,210 @@
+package com.autox.assistant;
+
+import com.autox.api.error.ApiException;
+import com.autox.assistant.tools.CompareListingsTool;
+import com.autox.assistant.tools.CritAirTool;
+import com.autox.assistant.tools.FinancingTool;
+import com.autox.assistant.tools.HelpIndex;
+import com.autox.assistant.tools.ListingFacts;
+import com.autox.assistant.tools.ListingFactsReader;
+import com.autox.assistant.tools.SearchListingsTool;
+import com.autox.assistant.tools.SimilarListingsTool;
+import com.autox.assistant.tools.ToolResult;
+import com.autox.assistant.tools.ValuationTool;
+import com.autox.search.ListingSearchService;
+import com.autox.search.dto.Valuation;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+
+/**
+ * Runs a checked plan's tools and builds the answer from their results (docs/assistant-plan.md,
+ * 1.2 and 1.6). Every block is the server's: listing cards from the public detail, figures from the
+ * tools, help text from the help pages, and for anything that has no answer a reason code the
+ * clients word from the labels.
+ */
+@Component
+public class AnswerBuilder {
+
+    private final SearchListingsTool search;
+    private final ListingFactsReader reader;
+    private final CompareListingsTool compare;
+    private final SimilarListingsTool similar;
+    private final FinancingTool financing;
+    private final CritAirTool critAir;
+    private final ValuationTool valuation;
+    private final HelpIndex help;
+    private final ListingSearchService listings;
+
+    public AnswerBuilder(SearchListingsTool search, ListingFactsReader reader, CompareListingsTool compare,
+                         SimilarListingsTool similar, FinancingTool financing, CritAirTool critAir,
+                         ValuationTool valuation, HelpIndex help, ListingSearchService listings) {
+        this.search = search;
+        this.reader = reader;
+        this.compare = compare;
+        this.similar = similar;
+        this.financing = financing;
+        this.critAir = critAir;
+        this.valuation = valuation;
+        this.help = help;
+        this.listings = listings;
+    }
+
+    /**
+     * @param shown the listings this answer shows, which the next turn can point at
+     * @param reasons the reasons of its {@code NO_ANSWER} blocks, for the usage counts
+     */
+    public record Answer(List<AssistantBlock> blocks, List<UUID> shown, List<Plan.Reason> reasons) {
+    }
+
+    public Answer build(Plan plan, String message) {
+        Building answer = new Building();
+        switch (plan.intent()) {
+            case NO_ANSWER -> answer.noAnswer(plan.noAnswer(), null);
+            case CLARIFY -> answer.blocks.add(AssistantBlock.clarify(plan.clarify()));
+            default -> plan.calls().forEach(call -> run(call, message, answer));
+        }
+        if (!plan.notUnderstood().isEmpty()) {
+            answer.notUnderstood.addAll(plan.notUnderstood());
+        }
+        if (!answer.notUnderstood.isEmpty()) {
+            answer.blocks.add(AssistantBlock.notUnderstood(List.copyOf(answer.notUnderstood)));
+        }
+        return new Answer(List.copyOf(answer.blocks), List.copyOf(answer.shown), List.copyOf(answer.reasons));
+    }
+
+    private void run(Plan.Call call, String message, Building answer) {
+        switch (call) {
+            case Plan.Search s -> {
+                SearchListingsTool.Outcome outcome = search.search(s.criteria(), message, s.sort());
+                List<ListingCard> cards = answer.cards(outcome.results().stream().map(ListingFacts::id).toList());
+                if (cards.isEmpty()) {
+                    answer.noAnswer(Plan.Reason.NO_RESULTS, null);
+                } else {
+                    answer.blocks.add(AssistantBlock.listings(cards));
+                }
+                answer.blocks.add(AssistantBlock.searchLink(new AssistantBlock.SearchLink(outcome.criteria(),
+                        outcome.sort(), outcome.count().count(), outcome.count().capped())));
+                answer.notUnderstood.addAll(outcome.notUnderstood());
+            }
+            case Plan.OneListing one when one.tool() == Plan.Tool.GET_LISTING -> {
+                switch (reader.read(one.listingId())) {
+                    case ToolResult.Answer<ListingFacts> found -> answer.card(found.value().id())
+                            .ifPresentOrElse(card -> answer.blocks.add(AssistantBlock.facts(card, found.value())),
+                                    () -> answer.noAnswer(Plan.Reason.LISTING_UNAVAILABLE, one.listingId()));
+                    case ToolResult.Refusal<ListingFacts> refusal -> answer.refusal(refusal);
+                }
+            }
+            case Plan.OneListing one -> {
+                switch (similar.similar(one.listingId())) {
+                    case ToolResult.Answer<List<ListingFacts>> found -> {
+                        List<ListingCard> cards = answer.cards(found.value().stream().map(ListingFacts::id).toList());
+                        if (cards.isEmpty()) {
+                            answer.noAnswer(Plan.Reason.NO_RESULTS, one.listingId());
+                        } else {
+                            answer.blocks.add(AssistantBlock.listings(cards));
+                        }
+                    }
+                    case ToolResult.Refusal<List<ListingFacts>> refusal -> answer.refusal(refusal);
+                }
+            }
+            case Plan.Compare c -> {
+                switch (compare.compare(c.listingIds())) {
+                    case ToolResult.Answer<CompareListingsTool.Comparison> found -> answer.blocks.add(
+                            AssistantBlock.comparison(answer.cards(c.listingIds()), found.value().differences()));
+                    case ToolResult.Refusal<CompareListingsTool.Comparison> refusal -> answer.refusal(refusal);
+                }
+            }
+            case Plan.Finance f -> {
+                ToolResult<FinancingTool.Simulation> result = f.listingId() != null
+                        ? financing.forListing(f.listingId(), f.downPayment(), f.months(), f.ratePercent())
+                        : financing.forAmount(f.amount(), f.downPayment(), f.months(), f.ratePercent());
+                switch (result) {
+                    case ToolResult.Answer<FinancingTool.Simulation> found ->
+                            answer.blocks.add(AssistantBlock.financing(found.value()));
+                    case ToolResult.Refusal<FinancingTool.Simulation> refusal -> answer.refusal(refusal);
+                }
+            }
+            case Plan.CritAirOf c -> {
+                ToolResult<CritAirTool.Estimate> result = c.listingId() != null
+                        ? critAir.forListing(c.listingId())
+                        : critAir.forCar(c.fuel(), c.year(), c.month());
+                switch (result) {
+                    case ToolResult.Answer<CritAirTool.Estimate> found ->
+                            answer.blocks.add(AssistantBlock.critAir(found.value(), c.listingId()));
+                    case ToolResult.Refusal<CritAirTool.Estimate> refusal -> answer.refusal(refusal);
+                }
+            }
+            case Plan.Value v -> {
+                switch (valuation.value(v.make(), v.model(), v.fuel(), v.powerHp(), v.year(), v.month(),
+                        v.mileageKm(), v.scope())) {
+                    case ToolResult.Answer<Valuation> found -> {
+                        // Below five comparables there is no figure: said so, with the count and the
+                        // loosenings that would reach five, as /la-cote shows them.
+                        if (found.value().estimate() == null) {
+                            answer.noAnswer(Plan.Reason.NOT_COMPUTABLE, null);
+                        }
+                        answer.blocks.add(AssistantBlock.valuation(found.value()));
+                    }
+                    case ToolResult.Refusal<Valuation> refusal -> answer.refusal(refusal);
+                }
+            }
+            case Plan.Help h -> {
+                switch (help.search(h.query())) {
+                    case ToolResult.Answer<List<HelpIndex.Passage>> found ->
+                            answer.blocks.add(AssistantBlock.help(found.value()));
+                    case ToolResult.Refusal<List<HelpIndex.Passage>> refusal -> answer.refusal(refusal);
+                }
+            }
+        }
+    }
+
+    /** The answer as it is built: blocks in order, the listings shown, the reasons given. */
+    private final class Building {
+
+        final List<AssistantBlock> blocks = new ArrayList<>();
+        final Set<UUID> shown = new LinkedHashSet<>();
+        final Set<String> notUnderstood = new LinkedHashSet<>();
+        final List<Plan.Reason> reasons = new ArrayList<>();
+
+        void noAnswer(Plan.Reason reason, UUID listingId) {
+            blocks.add(AssistantBlock.noAnswer(reason, listingId));
+            reasons.add(reason);
+        }
+
+        void refusal(ToolResult.Refusal<?> refusal) {
+            noAnswer(switch (refusal.reason()) {
+                case LISTING_UNAVAILABLE -> Plan.Reason.LISTING_UNAVAILABLE;
+                case NOT_COMPUTABLE -> Plan.Reason.NOT_COMPUTABLE;
+                case NOT_FINANCEABLE -> Plan.Reason.NOT_FINANCEABLE;
+                case NOTHING_TO_FINANCE -> Plan.Reason.NOTHING_TO_FINANCE;
+                case NOT_IN_HELP -> Plan.Reason.NOT_IN_HELP;
+            }, refusal.listingId());
+        }
+
+        /** Cards for these listings, in order; one gone since is left out. */
+        List<ListingCard> cards(List<UUID> ids) {
+            List<ListingCard> cards = ids.stream().map(this::card).flatMap(Optional::stream).toList();
+            cards.forEach(card -> shown.add(card.id()));
+            return cards;
+        }
+
+        Optional<ListingCard> card(UUID id) {
+            try {
+                ListingCard card = ListingCard.from(listings.detail(id));
+                shown.add(card.id());
+                return Optional.of(card);
+            } catch (ApiException e) {
+                if (e.getStatus() == HttpStatus.NOT_FOUND) {
+                    return Optional.empty();
+                }
+                throw e;
+            }
+        }
+    }
+}

@@ -101,10 +101,12 @@ public class CompareListingsTool {
      * @param mileageSpread between the most and the least driven, in km
      * @param monthlyAtExample each financeable sale's monthly payment on the simulator's defaults
      */
+    @io.swagger.v3.oas.annotations.media.Schema(name = "AssistantComparisonDifferences")
     public record Differences(UUID cheapest, Long priceSpread, UUID leastDriven, Long mileageSpread,
                               UUID mostRecent, UUID lowestMonthlyLease, List<MonthlyExample> monthlyAtExample) {
     }
 
+    @io.swagger.v3.oas.annotations.media.Schema(name = "AssistantMonthlyExample")
     public record MonthlyExample(UUID listingId, long monthlyAmount) {
     }
 }

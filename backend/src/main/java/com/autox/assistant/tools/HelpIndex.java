@@ -162,6 +162,7 @@ public class HelpIndex {
      * @param plainText the same without markup, one paragraph or item a line
      * @param path      the page; {@code sectionId} names the section within it
      */
+    @io.swagger.v3.oas.annotations.media.Schema(name = "AssistantHelpPassage")
     public record Passage(String pageId, String sectionId, String pageTitle, String heading, String path,
                           List<String> texts, String plainText) {
     }

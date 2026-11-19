@@ -40,6 +40,10 @@
       "description": "The directory of professionals and their public pages. Reading needs no authentication; writing to a dealer does."
     },
     {
+      "name": "Assistant",
+      "description": "Assistant AutoX: a conversation answered from the site's own data. 404 when the assistant is off. Anonymous use allowed, with a lower limit."
+    },
+    {
       "name": "La Cote",
       "description": "Public valuation of a described car against live listings. No authentication."
     },
@@ -4294,6 +4298,80 @@
                   "items": {
                     "$ref": "#/components/schemas/MakeMatchCount"
                   }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assistant/turns": {
+      "post": {
+        "tags": [
+          "Assistant"
+        ],
+        "summary": "One turn: the user's message, and the state the previous answer returned",
+        "description": "One turn: the user's message, and the state the previous answer returned. The answer is a\n list of blocks built by the server from its own tools, and the state to send next.\n\n <p>404 when the assistant is off. 400 for a message over 500 characters or a malformed state.\n 429 <code>RATE_LIMITED</code> past the per-address or daily limit, or when the server is pacing its\n turns. 503 <code>ASSISTANT_UNAVAILABLE</code> when the planner fails, times out or the day's budget\n is spent: then use the ordinary search. Not retried by the client: a retry spends quota.",
+        "operationId": "assistantTurn",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantTurnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantTurnResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error. RFC 9457 problem+json; branch on `code`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assistant/capabilities": {
+      "get": {
+        "tags": [
+          "Assistant"
+        ],
+        "summary": "Whether the assistant can answer now.",
+        "description": "Whether the assistant can answer now. 404 when it is off; <code>available</code> false with reason\n <code>BUSY</code> when today's budget is spent. Asked when the panel opens, not with the page, so a\n visitor who never opens it wakes nothing.",
+        "operationId": "assistantCapabilities",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantCapabilities"
                 }
               }
             }
@@ -8855,6 +8933,7 @@
           "PHOTO_REQUIRED",
           "INVALID_CURSOR",
           "INTERPRETER_UNAVAILABLE",
+          "ASSISTANT_UNAVAILABLE",
           "INTERNAL_ERROR"
         ]
       },
@@ -9142,6 +9221,596 @@
           "count",
           "name",
           "slug"
+        ]
+      },
+      "AssistantTurnContext": {
+        "type": "object",
+        "properties": {
+          "listingId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "the listing whose page the user is on"
+          }
+        }
+      },
+      "AssistantTurnRequest": {
+        "type": "object",
+        "description": "One turn of a conversation with Assistant AutoX.",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "what the user wrote, at most 500 characters",
+            "example": "Une 208 essence de moins de 5 ans, moins de 12 000 €",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "state": {
+            "$ref": "#/components/schemas/AssistantTurnState",
+            "description": "what the previous answer returned, sent back unchanged; absent on the first turn"
+          },
+          "context": {
+            "$ref": "#/components/schemas/AssistantTurnContext",
+            "description": "the page the conversation was started from, if a listing's"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "AssistantTurnState": {
+        "type": "object",
+        "description": "The conversation so far, as the server returned it. Nothing is stored on the server: the\n client holds this and sends it back. It is checked like any input: each listing is read\n again, and there is no field a figure or a tool's result could be put in.",
+        "properties": {
+          "earlier": {
+            "type": "array",
+            "description": "the previous messages, oldest first",
+            "items": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 0
+            },
+            "maxItems": 4,
+            "minItems": 0
+          },
+          "shown": {
+            "type": "array",
+            "description": "the listings already shown, oldest first, which the user can point at",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          },
+          "turns": {
+            "type": "integer",
+            "format": "int32",
+            "description": "how many turns the conversation has had",
+            "maximum": 12,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "earlier",
+          "shown"
+        ]
+      },
+      "AssistantBlock": {
+        "type": "object",
+        "description": "One part of an answer. The server builds every block from its own tools; the clients render it\n with the French of the shared labels. There is no text written by a model in any block\n (docs/assistant-plan.md, D1), only codes, figures and the site's own help text.\n\n <p>One shape with a <code>type</code>, the other fields present according to it, rather than one schema\n per type: two generated clients read it, and a flat record is what both generators handle alike.",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/AssistantBlockType"
+          },
+          "listings": {
+            "type": "array",
+            "description": "<code>LISTINGS</code>, <code>COMPARISON</code>, <code>LISTING_FACTS</code>: the cards",
+            "items": {
+              "$ref": "#/components/schemas/AssistantListingCard"
+            }
+          },
+          "facts": {
+            "$ref": "#/components/schemas/AssistantListingFacts",
+            "description": "<code>LISTING_FACTS</code>: what the answer says about the one listing"
+          },
+          "differences": {
+            "$ref": "#/components/schemas/AssistantComparisonDifferences",
+            "description": "<code>COMPARISON</code>"
+          },
+          "search": {
+            "$ref": "#/components/schemas/AssistantSearchLink",
+            "description": "<code>SEARCH_LINK</code>: the filters to open on the ordinary results page"
+          },
+          "financing": {
+            "$ref": "#/components/schemas/AssistantFinancing",
+            "description": "<code>FINANCING</code>, with its mandatory mentions as codes"
+          },
+          "critAir": {
+            "$ref": "#/components/schemas/AssistantCritAir",
+            "description": "<code>CRIT_AIR</code>"
+          },
+          "listingId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "<code>CRIT_AIR</code>, <code>FINANCING</code>, <code>NO_ANSWER</code>: the listing it is about"
+          },
+          "valuation": {
+            "$ref": "#/components/schemas/Valuation",
+            "description": "<code>VALUATION</code>: La Cote's answer, with or without an estimate"
+          },
+          "help": {
+            "type": "array",
+            "description": "<code>HELP_PASSAGE</code>: the sections of the help pages that answer",
+            "items": {
+              "$ref": "#/components/schemas/AssistantHelpPassage"
+            }
+          },
+          "notUnderstood": {
+            "type": "array",
+            "description": "<code>NOT_UNDERSTOOD</code>: the user's words that became nothing",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason": {
+            "$ref": "#/components/schemas/AssistantNoAnswerReason",
+            "description": "<code>NO_ANSWER</code>"
+          },
+          "question": {
+            "$ref": "#/components/schemas/AssistantQuestion",
+            "description": "<code>CLARIFY</code>"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "AssistantBlockType": {
+        "type": "string",
+        "enum": [
+          "LISTINGS",
+          "LISTING_FACTS",
+          "COMPARISON",
+          "SEARCH_LINK",
+          "FINANCING",
+          "CRIT_AIR",
+          "VALUATION",
+          "HELP_PASSAGE",
+          "NOT_UNDERSTOOD",
+          "NO_ANSWER",
+          "CLARIFY",
+          "CONTACT_REMOVED"
+        ]
+      },
+      "AssistantComparisonDifferences": {
+        "type": "object",
+        "description": "Each id is one of the compared listings; null when the comparison does not apply (fewer\n than two sales in one currency for the price) or when two are equal.",
+        "properties": {
+          "cheapest": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "priceSpread": {
+            "type": "integer",
+            "format": "int64",
+            "description": "between the dearest and the cheapest sale, in minor units"
+          },
+          "leastDriven": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mileageSpread": {
+            "type": "integer",
+            "format": "int64",
+            "description": "between the most and the least driven, in km"
+          },
+          "mostRecent": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lowestMonthlyLease": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monthlyAtExample": {
+            "type": "array",
+            "description": "each financeable sale's monthly payment on the simulator's defaults",
+            "items": {
+              "$ref": "#/components/schemas/AssistantMonthlyExample"
+            }
+          }
+        }
+      },
+      "AssistantCritAir": {
+        "type": "object",
+        "properties": {
+          "critAir": {
+            "$ref": "#/components/schemas/CritAir",
+            "description": "null exactly when <code>unsettled</code> says why"
+          },
+          "unsettled": {
+            "$ref": "#/components/schemas/AssistantCritAirUnsettled"
+          }
+        }
+      },
+      "AssistantCritAirUnsettled": {
+        "type": "string",
+        "enum": [
+          "NEEDS_MONTH",
+          "NOT_SETTLED_BY_DATE"
+        ]
+      },
+      "AssistantFinancing": {
+        "type": "object",
+        "properties": {
+          "listingId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "null for a price the user gave"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "downPayment": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "borrowedAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "months": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "annualRatePercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "rateIsExample": {
+            "type": "boolean",
+            "description": "the rate is the example, not one the user was quoted: the answer says so"
+          },
+          "monthlyAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalRepaid": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "creditCost": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssistantFinancingMention"
+            }
+          }
+        }
+      },
+      "AssistantFinancingMention": {
+        "type": "string",
+        "enum": [
+          "CREDIT_WARNING",
+          "INDICATIVE_SIMULATION"
+        ]
+      },
+      "AssistantHelpPassage": {
+        "type": "object",
+        "description": "One section, as the answer shows it.",
+        "properties": {
+          "pageId": {
+            "type": "string"
+          },
+          "sectionId": {
+            "type": "string"
+          },
+          "pageTitle": {
+            "type": "string"
+          },
+          "heading": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "description": "the page; <code>sectionId</code> names the section within it"
+          },
+          "texts": {
+            "type": "array",
+            "description": "the section's paragraphs and list items, with the file's markup, which the\n                  clients render as the help page does (links included)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "plainText": {
+            "type": "string",
+            "description": "the same without markup, one paragraph or item a line"
+          }
+        }
+      },
+      "AssistantListingCard": {
+        "type": "object",
+        "description": "A listing as a card in an answer, linking to its page. What the listing page shows of it anyway,\n for the user to see; it is never part of what the planner receives (docs/assistant-plan.md, 1.2).",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string",
+            "description": "the first photo's card size, or null"
+          },
+          "make": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fuelType": {
+            "type": "string"
+          },
+          "gearbox": {
+            "type": "string"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/OfferType"
+          },
+          "leasingType": {
+            "$ref": "#/components/schemas/LeasingType"
+          },
+          "leasingMonthly": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "damaged": {
+            "type": "boolean"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/PriceLevel"
+          },
+          "critAir": {
+            "$ref": "#/components/schemas/CritAir"
+          },
+          "city": {
+            "type": "string"
+          },
+          "sellerRole": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "currencyCode",
+          "id",
+          "offer",
+          "title"
+        ]
+      },
+      "AssistantListingFacts": {
+        "type": "object",
+        "description": "A listing as the assistant may know it: catalogue fields, codes and figures, and nothing a\n seller typed freely.\n\n <p><b>Left out on purpose</b> (docs/assistant-plan.md, 1.2 and 3.2): the title, the description,\n the version text, a make or model typed as text instead of chosen from the catalogue, the\n damage description, the seller's name and any other detail about them, the VIN and the\n photos. Seller-written text is how a listing could carry instructions to a model, and the\n seller's identity is not the assistant's to repeat. <code>ListingFactsTest</code> holds the fields\n to an allow-list, so adding one is a decision made in review.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "make": {
+            "type": "string",
+            "description": "the catalogue make; null when the seller typed it as text"
+          },
+          "model": {
+            "type": "string",
+            "description": "the catalogue model; null when typed as text"
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "month": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fuelType": {
+            "type": "string"
+          },
+          "gearbox": {
+            "type": "string"
+          },
+          "bodyType": {
+            "type": "string"
+          },
+          "powerHp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "priceAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/OfferType"
+          },
+          "leasing": {
+            "$ref": "#/components/schemas/LeasingView",
+            "description": "null on a sale; the offer's own terms, all computed or chosen, on a lease"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "soldNew": {
+            "type": "boolean"
+          },
+          "damageTypes": {
+            "type": "array",
+            "description": "null when the car is not declared damaged",
+            "items": {
+              "$ref": "#/components/schemas/DamageType"
+            }
+          },
+          "damageRunning": {
+            "type": "boolean"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/PriceLevel",
+            "description": "the price indicator; null without enough comparables, on a lease or new car"
+          },
+          "critAir": {
+            "$ref": "#/components/schemas/CritAir",
+            "description": "estimated from fuel and first registration; null when that cannot settle it"
+          },
+          "city": {
+            "type": "string",
+            "description": "for a card under the listing; the gazetteer's name, or what the seller typed\n                     when the postal code is not in it, so like the title it is never put in a prompt"
+          },
+          "sellerRole": {
+            "type": "string",
+            "description": "<code>PARTICULIER</code> or <code>PROFESSIONNEL</code>, nothing more about the seller"
+          }
+        }
+      },
+      "AssistantMonthlyExample": {
+        "type": "object",
+        "properties": {
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monthlyAmount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AssistantNoAnswerReason": {
+        "type": "string",
+        "description": "Why a turn has no answer, shown as fixed text with a way forward (1.6). The planner may give\n the first four; the others are the server's, from the tools or the turn itself.",
+        "enum": [
+          "OUT_OF_SCOPE",
+          "ADVICE",
+          "ONLY_IN_DESCRIPTION",
+          "UNCLEAR",
+          "NO_RESULTS",
+          "NOT_IN_HELP",
+          "NOT_COMPUTABLE",
+          "NOT_FINANCEABLE",
+          "NOTHING_TO_FINANCE",
+          "LISTING_UNAVAILABLE",
+          "REPHRASE",
+          "CONVERSATION_OVER"
+        ]
+      },
+      "AssistantQuestion": {
+        "type": "string",
+        "description": "A clarifying question, from a fixed list: the planner chooses one, the labels word it.",
+        "enum": [
+          "BUDGET",
+          "OFFER_TYPE",
+          "WHICH_LISTING",
+          "VEHICLE",
+          "FINANCING_TERMS"
+        ]
+      },
+      "AssistantSearchLink": {
+        "type": "object",
+        "description": "The validated filters, for \"Voir les N résultats\" on the ordinary results page.",
+        "properties": {
+          "criteria": {
+            "$ref": "#/components/schemas/ListingSearchCriteria"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SearchSort"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "exact up to the search's cap; <code>capped</code> past it"
+          },
+          "capped": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AssistantTurnResponse": {
+        "type": "object",
+        "description": "An answer: its blocks, in the order they are shown, and the state to send with the next turn.",
+        "properties": {
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssistantBlock"
+            }
+          },
+          "state": {
+            "$ref": "#/components/schemas/AssistantTurnState"
+          }
+        },
+        "required": [
+          "blocks",
+          "state"
+        ]
+      },
+      "AssistantCapabilities": {
+        "type": "object",
+        "description": "Whether Assistant AutoX can take a turn now. Only answered when the assistant is switched on:\n off, the endpoint is a 404, which a client reads as \"no assistant\".",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "false when today's budget is spent: the entry point is shown disabled, with a\n                  link to the ordinary search (docs/assistant-plan.md, D2)"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/AssistantUnavailableReason",
+            "description": "why not, when not available"
+          },
+          "maxMessageLength": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxTurns": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "available",
+          "maxMessageLength",
+          "maxTurns"
+        ]
+      },
+      "AssistantUnavailableReason": {
+        "type": "string",
+        "enum": [
+          "BUSY"
         ]
       }
     },

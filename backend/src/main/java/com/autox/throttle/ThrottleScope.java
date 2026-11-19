@@ -57,5 +57,11 @@ public enum ThrottleScope {
     DATA_EXPORT,
 
     /** Listings reported by one account. Keyed by user id. */
-    LISTING_REPORT
+    LISTING_REPORT,
+    /** Assistant turns from one client address in a short window: each one spends a shared model quota. */
+    ASSISTANT_ADDRESS,
+    /** Assistant turns a day from one client address, without an account. */
+    ASSISTANT_ANON_DAY,
+    /** Assistant turns a day for one signed-in account. Keyed by user id. */
+    ASSISTANT_ACCOUNT_DAY
 }

@@ -74,9 +74,11 @@ public class CritAirTool {
     }
 
     /** @param critAir null exactly when {@code unsettled} says why */
+    @io.swagger.v3.oas.annotations.media.Schema(name = "AssistantCritAir")
     public record Estimate(CritAir critAir, Unsettled unsettled) {
     }
 
+    @io.swagger.v3.oas.annotations.media.Schema(name = "AssistantCritAirUnsettled", enumAsRef = true)
     public enum Unsettled {
         /** The year alone spans two classes; with the month of first registration there would be one. */
         NEEDS_MONTH,

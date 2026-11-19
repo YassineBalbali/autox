@@ -111,5 +111,7 @@ public enum ErrorCode {
      * request was wrong, and the same request may work later.
      */
     INTERPRETER_UNAVAILABLE,
+    /** Assistant AutoX could not answer: its planner timed out, failed, or today's budget is spent. */
+    ASSISTANT_UNAVAILABLE,
     INTERNAL_ERROR
 }

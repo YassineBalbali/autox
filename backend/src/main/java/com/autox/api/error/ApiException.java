@@ -94,6 +94,11 @@ public class ApiException extends RuntimeException {
     }
 
     /** Natural-language search could not answer; the ordinary search still can. */
+    public static ApiException assistantUnavailable() {
+        return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.ASSISTANT_UNAVAILABLE,
+                "The assistant is unavailable right now. Use the ordinary search.");
+    }
+
     public static ApiException interpreterUnavailable() {
         return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.INTERPRETER_UNAVAILABLE,
                 "Natural-language search is unavailable right now. Use the ordinary search.");

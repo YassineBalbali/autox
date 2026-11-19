@@ -28,7 +28,7 @@ public class ListingFactsReader {
     }
 
     /** The facts, or empty when the public API answers 404 for this id. */
-    Optional<ListingFacts> find(UUID listingId) {
+    public Optional<ListingFacts> find(UUID listingId) {
         try {
             return Optional.of(ListingFacts.from(search.detail(listingId)));
         } catch (ApiException e) {
