@@ -5,7 +5,9 @@ a description, compares listings, explains a listing (price verdict, Crit'Air, l
 estimates a monthly payment and answers questions about how AutoX works.
 
 **Status: approved on 19 November 2026.** The decisions, marked **[Decision Dn]** below, are
-recorded in [section 11](#11-decisions-for-the-owner).
+recorded in [section 11](#11-decisions-for-the-owner). **A0 is done:** the help pages' text is in
+`frontend/content/help.fr.json` ([legal-pages.md](legal-pages.md), "The help pages' text is
+data"). A1 is next.
 
 **This is not legal advice.** Where a law is named below, it marks something a lawyer should check
 before real users see the feature. As elsewhere in this repository, it doesn't settle what the law

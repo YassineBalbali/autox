@@ -21,6 +21,30 @@ note "Ce texte n'est pas un avis juridique." and links to the others).
 "Nous contacter" and "Presse" were removed from the footer: there is no contact form and no
 press.
 
+## The help pages' text is data
+
+The seven pages from `/a-propos` to `/signalement` in the table (all but the four legal pages and
+`/compte-supprime`) take their text from **`frontend/content/help.fr.json`**: pages, sections
+(each with a stable `id`) and blocks (`p`, `ul`, `ol`). One component, `GuidePage`
+(`features/info/guide-page.ts`), renders any of them inside `InfoPage`. Each page's component is
+a one-line wrapper that names its page, so the routes and the specs are unchanged. The file is
+the single source the assistant will read later (`docs/assistant-plan.md`, A0 and A1).
+
+Markup inside a text:
+
+- `[words](/path)` is a link to a site path, the same notation as `labels.fr.json`, read by the
+  same `linkedSegments`;
+- `**words**` is bold, and may contain a link;
+- `{contact}` is the contact address, or its placeholder while `CONTACT_EMAIL` is `null`.
+
+To change a help page, edit the JSON. `guide.spec.ts` fails on a link to a path the router doesn't
+have, on unclosed markup, or on a duplicate section id. The legal pages stay as templates: the
+assistant links to them and never quotes them.
+
+The move changed nothing on screen. Each page's HTML, rendered before and after and normalised,
+was identical, apart from two invisible details: the static `routerlink` attribute Angular used to
+reflect, and one bold run with a link inside that is now two adjacent `<strong>` elements.
+
 ## To fill in
 
 - **The contact address**: `CONTACT_EMAIL` in `features/info/info-page.ts`. While it is `null`,

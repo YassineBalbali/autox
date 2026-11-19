@@ -1,0 +1,410 @@
+{
+  "$comment": [
+    "The text of the help pages linked from the footer (not the legal ones), one source for the site",
+    "and, later, for the assistant (docs/assistant-plan.md, A0). Markup inside a text: [words](/path)",
+    "is a link to one of the site's paths, as in labels.fr.json; **words** is bold; {contact} is the",
+    "contact address, or its placeholder while there is none. Rendered by features/info/guide-page.ts."
+  ],
+  "pages": [
+    {
+      "id": "aide",
+      "path": "/aide",
+      "title": "Centre d’aide",
+      "lede": "Les questions les plus fréquentes.",
+      "sections": [
+        {
+          "id": "les-annonces-sont-elles-reelles",
+          "heading": "Les annonces sont-elles réelles ?",
+          "blocks": [
+            {
+              "p": "Non. AutoX est un site de démonstration : les annonces publiées par AutoX lui-même sont inventées, et leurs vendeurs ne répondent pas. Rien n’est à vendre."
+            }
+          ]
+        },
+        {
+          "id": "je-n-ai-pas-recu-l",
+          "heading": "Je n’ai pas reçu l’e-mail de vérification.",
+          "blocks": [
+            {
+              "p": "Regardez dans les indésirables. Sinon, demandez-en un nouveau avec « Renvoyer le lien », dans [Mon compte](/mon-compte). Le lien est valable 24 heures."
+            }
+          ]
+        },
+        {
+          "id": "j-ai-oublie-mon-mot-de",
+          "heading": "J’ai oublié mon mot de passe.",
+          "blocks": [
+            {
+              "p": "Utilisez [Mot de passe oublié](/mot-de-passe-oublie). Le lien reçu est valable 30 minutes ; changer de mot de passe déconnecte vos autres appareils."
+            }
+          ]
+        },
+        {
+          "id": "pourquoi-ne-puis-je-pas-publier",
+          "heading": "Pourquoi ne puis-je pas publier ou écrire ?",
+          "blocks": [
+            {
+              "p": "Il faut d’abord vérifier votre adresse e-mail. Un particulier peut aussi avoir 5 annonces en ligne au plus ; et l’envoi de messages est limité pour freiner le démarchage. Le message affiché dit lequel s’applique."
+            }
+          ]
+        },
+        {
+          "id": "pourquoi-mon-annonce-a-t-elle",
+          "heading": "Pourquoi mon annonce a-t-elle disparu ?",
+          "blocks": [
+            {
+              "p": "Une annonce expire au bout de 60 jours ; prolongez-la depuis [Mes annonces](/mes-annonces). Elle a pu aussi être refusée ou retirée par la modération : le motif est indiqué sur l’annonce, dans Mes annonces."
+            }
+          ]
+        },
+        {
+          "id": "comment-arreter-les-alertes",
+          "heading": "Comment arrêter les alertes ?",
+          "blocks": [
+            {
+              "p": "Par le lien de désabonnement en bas de chaque alerte, ou dans [Mes recherches](/mes-recherches), où vous pouvez aussi les suspendre ou les supprimer."
+            }
+          ]
+        },
+        {
+          "id": "un-appareil-que-je-ne-reconnais",
+          "heading": "Un appareil que je ne reconnais pas est connecté.",
+          "blocks": [
+            {
+              "p": "Déconnectez-le dans [Appareils connectés](/mon-compte/sessions), puis changez votre mot de passe."
+            }
+          ]
+        },
+        {
+          "id": "comment-signaler-un-message-ou-une",
+          "heading": "Comment signaler un message ou une annonce ?",
+          "blocks": [
+            {
+              "p": "Un message se signale depuis la conversation, avec le bouton « Signaler » : arnaque, propos abusifs ou démarchage. Une annonce se signale avec « Signaler cette annonce », sous sa description ; voir [Signaler une annonce](/signalement)."
+            }
+          ]
+        },
+        {
+          "id": "comment-supprimer-mon-compte-ou-obtenir",
+          "heading": "Comment supprimer mon compte ou obtenir mes données ?",
+          "blocks": [
+            {
+              "p": "Dans [Mes données](/mon-compte/donnees) : « Télécharger mes données » pour une copie, et « Supprimer mon compte », avec votre mot de passe. Voir la [politique de confidentialité](/confidentialite) pour ce qui est effacé et ce qui reste. Une question : {contact}."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comment-ca-marche",
+      "path": "/comment-ca-marche",
+      "title": "Comment ça marche",
+      "lede": "Chercher, comparer, contacter ; ou publier, répondre, vendre.",
+      "sections": [
+        {
+          "id": "pour-acheter",
+          "heading": "Pour acheter",
+          "blocks": [
+            {
+              "ol": [
+                "**Cherchez** depuis l’[accueil](/) ou la [recherche](/recherche) : marque, modèle, prix, année, kilométrage, énergie, boîte, carrosserie, lieu, et plus. Vous pouvez aussi décrire ce que vous cherchez en une phrase ; la recherche intelligente la traduit en filtres, que vous pouvez ensuite corriger.",
+                "**Comparez.** Chaque annonce indique « Bonne affaire », « Prix du marché » ou « Au-dessus du marché » quand le site a assez d’annonces comparables pour en juger. Une annonce montre aussi des véhicules similaires.",
+                "**Gardez** une annonce en favori, ou enregistrez votre recherche pour recevoir chaque matin par e-mail les nouvelles annonces qui y répondent.",
+                "**Contactez le vendeur** par la messagerie du site, après avoir créé un compte et vérifié votre adresse e-mail. Vous êtes prévenu par e-mail de sa réponse."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pour-vendre",
+          "heading": "Pour vendre",
+          "blocks": [
+            {
+              "ol": [
+                "**Créez un compte**, particulier ou professionnel, et vérifiez votre adresse e-mail.",
+                "**Déposez l’annonce** : le véhicule, son état, ses équipements, ses photos, son prix. Vous pouvez aussi proposer une location (LOA ou LLD), ou déclarer un véhicule endommagé.",
+                "**Elle est en ligne aussitôt**, pour 60 jours, et relue ensuite par un administrateur. Vous la retrouvez dans [Mes annonces](/mes-annonces) pour la modifier, la prolonger, la marquer vendue ou la retirer.",
+                "**Répondez** aux acheteurs depuis vos [messages](/messages)."
+              ]
+            },
+            {
+              "p": "Pour estimer votre voiture avant de fixer un prix, utilisez [La Cote](/la-cote)."
+            }
+          ]
+        },
+        {
+          "id": "ce-qui-est-gratuit",
+          "heading": "Ce qui est gratuit",
+          "blocks": [
+            {
+              "p": "Tout. AutoX ne vend rien et ne prend aucune commission : c’est un site de démonstration."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "conseils-achat",
+      "path": "/conseils-achat",
+      "title": "Conseils pour acheter",
+      "lede": "Ce qu’il faut regarder avant de s’engager.",
+      "sections": [
+        {
+          "id": "avant-de-contacter-le-vendeur",
+          "heading": "Avant de contacter le vendeur",
+          "blocks": [
+            {
+              "ul": [
+                "Regardez l’indicateur de prix. Un prix très en dessous du marché n’est pas toujours une affaire : demandez pourquoi.",
+                "Comparez avec les véhicules similaires affichés sous l’annonce, et avec [La Cote](/la-cote).",
+                "Lisez la déclaration de dommages quand il y en a une : un véhicule endommagé est vendu en l’état, et l’annonce dit s’il roule.",
+                "Pour une location (LOA ou LLD), regardez le coût total, pas seulement la mensualité."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pendant-la-visite",
+          "heading": "Pendant la visite",
+          "blocks": [
+            {
+              "ul": [
+                "Voyez le véhicule en personne, de jour, et essayez-le.",
+                "Vérifiez la carte grise : le nom du vendeur, le numéro d’identification (VIN) gravé sur le véhicule, la date de première immatriculation.",
+                "Demandez le contrôle technique de moins de six mois, obligatoire pour une voiture de plus de quatre ans.",
+                "Demandez les factures d’entretien, et vérifiez la cohérence du kilométrage.",
+                "Consultez l’historique du véhicule sur le service officiel HistoVec, avec le lien que le vendeur vous donne."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pour-payer",
+          "heading": "Pour payer",
+          "blocks": [
+            {
+              "ul": [
+                "Ne versez jamais d’acompte avant d’avoir vu le véhicule.",
+                "Méfiez-vous d’un vendeur à l’étranger, pressé, qui propose une livraison ou un paiement par un service qu’il choisit.",
+                "Préférez un virement au moment de la remise des clés, ou un chèque de banque vérifié auprès de la banque.",
+                "Repartez avec la carte grise barrée et signée, le certificat de cession et le code de cession."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "un-doute",
+          "heading": "Un doute ?",
+          "blocks": [
+            {
+              "p": "Gardez les échanges dans la messagerie du site, et signalez un message suspect avec le bouton prévu. Voir aussi le [centre d’aide](/aide)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "conseils-vente",
+      "path": "/conseils-vente",
+      "title": "Conseils pour vendre",
+      "lede": "Une annonce complète se vend plus vite, et sans mauvaise surprise.",
+      "sections": [
+        {
+          "id": "le-prix",
+          "heading": "Le prix",
+          "blocks": [
+            {
+              "ul": [
+                "Estimez votre voiture avec [La Cote](/la-cote), qui la compare aux annonces en ligne.",
+                "Une fois l’annonce publiée, l’indicateur de prix dit aux acheteurs où vous vous situez. Vous pouvez baisser le prix à tout moment ; l’historique des prix est conservé."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "les-photos",
+          "heading": "Les photos",
+          "blocks": [
+            {
+              "ul": [
+                "Jusqu’à 20 photos, en JPEG ou PNG, de 400 pixels au moins de côté et de 10 Mo au plus.",
+                "De jour, voiture propre : les quatre côtés, l’intérieur, le tableau de bord allumé, le compteur, les pneus.",
+                "Montrez les défauts : un acheteur qui les découvre à la visite repart.",
+                "Les métadonnées des photos, dont la position GPS, sont retirées à l’envoi."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "la-description",
+          "heading": "La description",
+          "blocks": [
+            {
+              "ul": [
+                "Remplissez les caractéristiques : version, puissance, équipements, nombre de propriétaires, entretien. Ce sont elles que les filtres de recherche lisent.",
+                "Dites l’état réel. Un véhicule accidenté ou en panne se déclare comme tel dans l’annonce.",
+                "Ne mettez ni téléphone ni e-mail dans le texte : l’annonce serait refusée. Les acheteurs vous écrivent par la messagerie, sans voir votre adresse."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "apres-la-publication",
+          "heading": "Après la publication",
+          "blocks": [
+            {
+              "ul": [
+                "L’annonce est en ligne aussitôt, pour 60 jours, puis relue par un administrateur.",
+                "Une modification du texte, du véhicule ou des photos la fait relire ; un changement de prix, non.",
+                "Vendu ? Marquez-la vendue dans [Mes annonces](/mes-annonces) : elle disparaît des résultats."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "la-vente",
+          "heading": "La vente",
+          "blocks": [
+            {
+              "p": "Remettez la carte grise barrée avec la mention « vendu le … », signée, un certificat de cession (cerfa 15776), un contrôle technique de moins de six mois si la voiture a plus de quatre ans, et déclarez la cession en ligne sur le site de l’ANTS."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pro",
+      "path": "/pro",
+      "title": "Espace professionnel",
+      "lede": "Pour les garages et les concessions.",
+      "sections": [
+        {
+          "id": "ce-qu-un-compte-professionnel-apporte",
+          "heading": "Ce qu’un compte professionnel apporte",
+          "blocks": [
+            {
+              "ul": [
+                "**Pas de limite d’annonces en ligne** : un particulier en a 5.",
+                "**Votre entreprise sur vos annonces** : raison sociale et informations que vous renseignez dans [Informations de l’entreprise](/mon-compte/entreprise).",
+                "**Votre page dans l’[annuaire des professionnels](/professionnels)** : votre présentation, vos horaires, votre site, votre logo et toutes vos annonces, avec les filtres de la recherche. Les visiteurs vous écrivent depuis la page par la messagerie d’AutoX ; votre téléphone n’y figure que si vous le choisissez. Elle se règle dans [Informations de l’entreprise](/mon-compte/entreprise).",
+                "**Les offres de location** : publiez une LOA ou une LLD avec sa mensualité et ses conditions.",
+                "**Le même outil pour tout gérer** : vos annonces dans [Mes annonces](/mes-annonces), vos échanges dans les [messages](/messages)."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ouvrir-un-compte",
+          "heading": "Ouvrir un compte",
+          "blocks": [
+            {
+              "p": "[Créez un compte](/inscription) en choisissant « professionnel », avec la raison sociale et le numéro SIRET de l’entreprise, puis vérifiez votre adresse e-mail."
+            }
+          ]
+        },
+        {
+          "id": "ce-qui-n-existe-pas",
+          "heading": "Ce qui n’existe pas",
+          "blocks": [
+            {
+              "p": "AutoX est un site de démonstration : pas d’abonnement, pas de mise en avant payante, pas d’import de stock ni de statistiques par annonce. Tout est gratuit."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "signalement",
+      "path": "/signalement",
+      "title": "Signaler une annonce",
+      "lede": "Une annonce vous paraît frauduleuse, trompeuse ou déplacée ? Dites-le aux modérateurs.",
+      "sections": [
+        {
+          "id": "ou-est-le-bouton",
+          "heading": "Où est le bouton",
+          "blocks": [
+            {
+              "p": "Sur la page de l’annonce, sous la description : **« Signaler cette annonce »**. Il faut être [connecté](/connexion), avec une adresse e-mail vérifiée."
+            }
+          ]
+        },
+        {
+          "id": "ce-que-vous-indiquez",
+          "heading": "Ce que vous indiquez",
+          "blocks": [
+            {
+              "ul": [
+                "un motif : arnaque, annonce trompeuse, contenu inapproprié, ou autre ;",
+                "une précision si vous le souhaitez, obligatoire pour « autre »."
+              ]
+            },
+            {
+              "p": "Une annonce ne se signale qu’une fois par personne, et pas plus de cinq annonces par heure. Le vendeur ne sait pas qui l’a signalée."
+            }
+          ]
+        },
+        {
+          "id": "ce-qui-se-passe-ensuite",
+          "heading": "Ce qui se passe ensuite",
+          "blocks": [
+            {
+              "p": "Un administrateur lit le signalement et décide : l’annonce reste en ligne, ou elle est retirée, avec un motif que le vendeur voit. Vous n’êtes pas prévenu de la décision."
+            }
+          ]
+        },
+        {
+          "id": "un-message-suspect",
+          "heading": "Un message suspect ?",
+          "blocks": [
+            {
+              "p": "Il se signale dans la conversation, avec le bouton « Signaler » sous le message. Voir aussi les [conseils pour acheter](/conseils-achat)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-propos",
+      "path": "/a-propos",
+      "title": "Qui sommes-nous",
+      "lede": "Une personne, et un projet de portfolio.",
+      "sections": [
+        {
+          "id": "intro",
+          "heading": null,
+          "blocks": [
+            {
+              "p": "AutoX est le projet personnel de Yassine Balbali, développeur. Ce n’est pas une entreprise : c’est un site d’annonces de voitures d’occasion construit de bout en bout pour montrer ce que demande un vrai produit, du serveur à l’écran de téléphone."
+            },
+            {
+              "p": "Tout y fonctionne pour de vrai : comptes, annonces et photos, recherche, messagerie, alertes par e-mail, modération. Mais les annonces publiées par AutoX lui-même sont inventées, et rien n’y est à vendre."
+            }
+          ]
+        },
+        {
+          "id": "ce-qui-compte-ici",
+          "heading": "Ce qui compte ici",
+          "blocks": [
+            {
+              "ul": [
+                "**Des annonces lisibles**, denses et comparables d’une ligne à l’autre, sur ordinateur comme sur téléphone.",
+                "**Le prix situé par rapport au marché** : chaque annonce indique si elle est une bonne affaire, au prix du marché ou au-dessus, à partir des annonces comparables du site.",
+                "**Vos coordonnées protégées** : on se contacte par la messagerie du site, sans jamais voir l’adresse e-mail de l’autre.",
+                "**Pas de publicité, pas de suivi** : voir la page [cookies](/cookies)."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "en-savoir-plus",
+          "heading": "En savoir plus",
+          "blocks": [
+            {
+              "p": "[Comment ça marche](/comment-ca-marche) · [Mentions légales](/mentions-legales) · [Politique de confidentialité](/confidentialite)"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
