@@ -40,6 +40,18 @@
           ]
         },
         {
+          "id": "comment-contacter-un-vendeur",
+          "heading": "Comment contacter un vendeur ?",
+          "blocks": [
+            {
+              "p": "Avec le bouton « Contacter le vendeur » de l’annonce. Votre message passe par la messagerie d’AutoX, et vous êtes prévenu par e-mail de la réponse. Il faut un compte et une adresse e-mail vérifiée."
+            },
+            {
+              "p": "L’adresse e-mail et le téléphone du vendeur ne sont jamais affichés, et les vôtres non plus : la messagerie vous met en relation sans eux. Seul un professionnel peut choisir d’afficher son téléphone sur sa page de l’[annuaire des professionnels](/professionnels)."
+            }
+          ]
+        },
+        {
           "id": "pourquoi-ne-puis-je-pas-publier",
           "heading": "Pourquoi ne puis-je pas publier ou écrire ?",
           "blocks": [

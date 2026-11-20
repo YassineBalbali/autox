@@ -27,6 +27,8 @@ class HelpIndexTest {
             "que faut-il vérifier sur la carte grise à la visite | conseils-achat#pendant-la-visite",
             "ouvrir un compte professionnel avec un SIRET        | pro#ouvrir-un-compte",
             "est-ce que c'est payant ?                           | pro#ce-qui-n-existe-pas",
+            "Comment contacter le vendeur ?                      | aide#comment-contacter-un-vendeur",
+            "je veux le téléphone du vendeur                     | aide#comment-contacter-un-vendeur",
     })
     @DisplayName("finds the section that answers, first")
     void answers(String question, String section) {
