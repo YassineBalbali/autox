@@ -14,6 +14,7 @@ import com.autox.assistant.tools.ValuationTool;
 import com.autox.search.ListingSearchService;
 import com.autox.search.dto.Valuation;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -64,6 +65,14 @@ public class AnswerBuilder {
 
     public Answer build(Plan plan, String message) {
         Building answer = new Building();
+        if (asksForSellerDetails(message)) {
+            // Before anything the plan says, and instead of it when it has no listing to show: the
+            // seller is reached through the listing's "Contacter le vendeur", never through us.
+            answer.noAnswer(Plan.Reason.SELLER_CONTACT, listingOf(plan));
+            if (EnumSet.of(Plan.Intent.NO_ANSWER, Plan.Intent.HELP, Plan.Intent.CLARIFY).contains(plan.intent())) {
+                return answer.done();
+            }
+        }
         switch (plan.intent()) {
             case NO_ANSWER -> {
                 if (plan.noAnswer() == Plan.Reason.OUT_OF_SCOPE) {
@@ -81,8 +90,36 @@ public class AnswerBuilder {
         if (!answer.notUnderstood.isEmpty()) {
             answer.blocks.add(AssistantBlock.notUnderstood(List.copyOf(answer.notUnderstood)));
         }
-        return new Answer(List.copyOf(answer.blocks), List.copyOf(answer.shown), List.copyOf(answer.reasons));
+        return answer.done();
     }
+
+    /** The listing the plan is about, if it names exactly one: the one whose contact button to show. */
+    private static UUID listingOf(Plan plan) {
+        List<UUID> ids = plan.calls().stream().map(call -> switch (call) {
+            case Plan.OneListing one -> one.listingId();
+            case Plan.Finance f -> f.listingId();
+            case Plan.CritAirOf c -> c.listingId();
+            default -> null;
+        }).filter(java.util.Objects::nonNull).distinct().toList();
+        return ids.size() == 1 ? ids.getFirst() : null;
+    }
+
+    /**
+     * A request for a seller's phone, e-mail, address or identity (docs/assistant-plan.md, 3.3).
+     * The masked contact details of the user's own message are left out first: they are the user's.
+     */
+    static boolean asksForSellerDetails(String message) {
+        String folded = PlanValidator.fold(message.replace(ContactMask.REPLACEMENT, " "));
+        return SELLER_DETAILS.matcher(folded).find();
+    }
+
+    private static final String DETAIL = "(telephones?|tel|numeros?|portable|e-?mails?|mails?|courriels?|adresses?|"
+            + "coordonnees|noms?|prenoms?|identite|qui est|whatsapp)";
+    private static final String SELLER = "(vendeu(r|se|rs|ses)|proprietaires?|annonceurs?)";
+    /** A detail and the seller within a few words of each other, in either order, folded. */
+    private static final java.util.regex.Pattern SELLER_DETAILS = java.util.regex.Pattern.compile(
+            "\\b" + DETAIL + "\\b(\\W+\\w+){0,4}?\\W+" + SELLER + "\\b|\\b" + SELLER + "\\b(\\W+\\w+){0,4}?\\W+"
+                    + DETAIL + "\\b");
 
     private void run(Plan.Call call, String message, Building answer) {
         switch (call) {
@@ -207,6 +244,10 @@ public class AnswerBuilder {
         final Set<UUID> shown = new LinkedHashSet<>();
         final Set<String> notUnderstood = new LinkedHashSet<>();
         final List<Plan.Reason> reasons = new ArrayList<>();
+
+        Answer done() {
+            return new Answer(List.copyOf(blocks), List.copyOf(shown), List.copyOf(reasons));
+        }
 
         void noAnswer(Plan.Reason reason, UUID listingId) {
             blocks.add(AssistantBlock.noAnswer(reason, listingId));

@@ -83,6 +83,8 @@ public record Plan(Intent intent, List<Call> calls, Reason noAnswer, Question cl
         NO_RESULTS, NOT_IN_HELP, NOT_COMPUTABLE, NOT_FINANCEABLE, NOTHING_TO_FINANCE, LISTING_UNAVAILABLE,
         /** A comparison with fewer than two listings known: the one shown, and a way to find another. */
         NOT_ENOUGH_LISTINGS,
+        /** A seller's phone, e-mail, address or name asked for: never given, the listing's contact button instead. */
+        SELLER_CONTACT,
         /** Two invalid plans in a row: « Je n'ai pas compris, pouvez-vous reformuler ? » */
         REPHRASE,
         /** The conversation has had its twelve turns. */

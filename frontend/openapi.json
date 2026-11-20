@@ -9728,6 +9728,7 @@
           "NOTHING_TO_FINANCE",
           "LISTING_UNAVAILABLE",
           "NOT_ENOUGH_LISTINGS",
+          "SELLER_CONTACT",
           "REPHRASE",
           "CONVERSATION_OVER"
         ]
