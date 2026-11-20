@@ -87,7 +87,8 @@ public class AnswerBuilder {
         if (!plan.notUnderstood().isEmpty()) {
             answer.notUnderstood.addAll(plan.notUnderstood());
         }
-        if (!answer.notUnderstood.isEmpty()) {
+        // « les deux premières » with one listing known is what NOT_ENOUGH_LISTINGS already explains.
+        if (!answer.notUnderstood.isEmpty() && !answer.reasons.contains(Plan.Reason.NOT_ENOUGH_LISTINGS)) {
             answer.blocks.add(AssistantBlock.notUnderstood(List.copyOf(answer.notUnderstood)));
         }
         return answer.done();

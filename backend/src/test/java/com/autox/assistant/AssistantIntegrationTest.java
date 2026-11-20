@@ -442,6 +442,21 @@ class AssistantIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        @DisplayName("2. adds no NOT_UNDERSTOOD block when NOT_ENOUGH_LISTINGS already explains the words")
+        void notEnoughExplains() throws Exception {
+            UUID id = listing(Map.of());
+            planner.plans(json("""
+                    {"intent": "COMPARE", "calls": [{"tool": "compare_listings", "refs": ["L1", "L2"]}],
+                     "notUnderstood": ["les deux premières"]}"""));
+
+            turn(Map.of("message", "Compare les deux premières",
+                    "state", Map.of("earlier", List.of("Une 208"), "shown", List.of(id.toString()), "turns", 1)))
+                    .andExpect(jsonPath("$.blocks", hasSize(2)))
+                    .andExpect(jsonPath("$.blocks[0].reason").value("NOT_ENOUGH_LISTINGS"))
+                    .andExpect(jsonPath("$.blocks[1].type").value("LISTINGS"));
+        }
+
+        @Test
         @DisplayName("3. answers « Comment supprimer mon compte ? » with its one passage, not the alerts and the pro account")
         void oneRelevantPassage() throws Exception {
             planner.plans(json("{\"intent\": \"HELP\", \"calls\": [{\"tool\": \"search_help\", \"query\": \"supprimer mon compte\"}]}"));
