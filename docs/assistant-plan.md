@@ -8,7 +8,9 @@ estimates a monthly payment and answers questions about how AutoX works.
 recorded in [section 11](#11-decisions-for-the-owner). **A0 is done:** the help pages' text is in
 `frontend/content/help.fr.json` ([legal-pages.md](legal-pages.md), "The help pages' text is
 data"). **A1 and A2 are done** (section 12): the tools, then the endpoints behind
-`AUTOX_ASSISTANT_ENABLED` (off), with a first Groq planner for trying it locally. A3 is next.
+`AUTOX_ASSISTANT_ENABLED` (off), with a first Groq planner for trying it locally. **A3's tooling
+is built** (section 12): the evaluation set, its runner and its CI check. The first measured run
+is the owner's, against Groq; the model choice and the limits follow from it.
 
 **This is not legal advice.** Where a law is named below, it marks something a lawyer should check
 before real users see the feature. As elsewhere in this repository, it doesn't settle what the law
@@ -650,6 +652,10 @@ The measures are exact plan match, per-tool argument precision and recall, the r
 off-topic queries, the invalid-plan rate, latency and **tokens per turn**, which is what sets the
 daily capacity.
 
+**In CI, the set itself:** `AssistantEvalSetTest` checks every expected plan of
+`eval/assistant/cases.json` against `PlanValidator`, with the case's listings in memory, and the
+set's coverage. No model is involved.
+
 ---
 
 ## 10. Milestones
@@ -860,3 +866,50 @@ test with the stub planner:
    carries over from turn to turn.
 5. The usage of the day:
    `SELECT * FROM assistant_usage; SELECT * FROM assistant_usage_code;` in the local database.
+
+### A3: the evaluation (20 November 2026)
+
+Built for the owner to run against Groq; nothing in CI calls it.
+
+- **The set**, `eval/assistant/cases.json`, version 1: 74 cases and 85 turns, of which ten
+  conversations have several turns where the earlier ones matter. Each turn has the outcome a
+  careful human expects, in the planner's own terms: intent, tools, the key arguments (listing
+  codes, whole euros, `now-N` for relative years), or the refusal. Where the server decides
+  (seller contact, removed contact details, "not in the help pages"), the answer's reason or block
+  is what's expected. `anyOf` lists acceptable alternatives where two readings are right
+  (« bonjour »). It covers every intent, refusal and clarifying question, searches with varied
+  criteria, listings in memory, Crit'Air around its date boundaries, valuations, help, off-topic
+  and advice, seller-contact requests, injections (one inside a search), contact details, typos
+  and informal French. It's the development set. The held-out set of 9 is still to be written, by
+  someone who has seen neither the prompt nor this set.
+- **Listings in memory** come from the local database's public search, so seeding them costs no
+  planner call. They need the demo data. A case whose listings aren't there is reported as not
+  run, not as wrong.
+- **What a turn decided** comes back in the `X-Assistant-Eval` response header: the checked plan in
+  the planner's terms, the answer's reasons and block types, the attempts and Groq's token counts.
+  It's sent only with `AUTOX_ASSISTANT_EVAL_TRACE=true`, off by default and never set in
+  production, and the server warns at startup when it's on. It's a header rather than a field, so
+  the API's contract and the clients are unchanged.
+- **Scoring:** a turn is right when every expected element matches. Only the arguments written are
+  compared, lists as sets, strings without case or accents, and a `null` means "absent".
+  `search_help`'s query isn't compared, since the words are the model's choice among the user's.
+  Extra calls fail a turn unless the case allows them (an explanation may add its Crit'Air).
+- **The runner**, `eval/assistant/run-eval.mjs`, paces itself at three turns a minute and waits out
+  a "busy" with its `Retry-After`. Groq's daily limit, a spent budget or Ctrl+C stop it after the
+  current case, and the same command resumes. The report is
+  `eval/assistant/results/<date>-<label>.md`: accuracy overall, by intent and by category, the
+  failing turns with expected and actual, tokens a turn (min, average, max), the turns a day the
+  free tier allows, and latency.
+- **The help pages** gained « Comment contacter un vendeur ? », so that question has an answer.
+
+### Running the evaluation
+
+1. In `.env`, as for trying it (above), plus `AUTOX_ASSISTANT_EVAL_TRACE=true`,
+   `AUTOX_ASSISTANT_LIMITS_ENABLED=false` and `AUTOX_ASSISTANT_DAILY_TOKEN_BUDGET=195000`. A full run
+   is about 85 turns at about 1 900 tokens, some 160 000 tokens, which is over the default budget
+   of 140 000 and most of Groq's 200 000 a day. Run it on a day when the key has done little else.
+2. The demo data loaded, and the API restarted.
+3. `node eval/assistant/run-eval.mjs http://localhost:8081 --label gpt-oss-120b`. It takes about
+   30 minutes. If it stops for the day's quota, the same command resumes the next day.
+4. Paste `eval/assistant/results/<date>-gpt-oss-120b.md` back. Then remove the three variables, so
+   the next local start is back to normal.
