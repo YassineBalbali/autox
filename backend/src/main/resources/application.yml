@@ -214,6 +214,9 @@ autox:
       address-window: PT10M
       anonymous-per-day: 15
       account-per-day: 40
+    # Each turn's checked plan and tokens in a response header, for eval/assistant/run-eval.mjs on a
+    # local machine. Never set in production.
+    eval-trace: ${AUTOX_ASSISTANT_EVAL_TRACE:false}
 
   # How often the background sweeps run. Each touches the database, so on a database that
   # scales to zero each run is a wake-up; a demo with nothing to expire can run them a few

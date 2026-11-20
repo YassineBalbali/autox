@@ -82,7 +82,7 @@ class GroqAssistantPlannerTest {
     private GroqAssistantPlanner planner(Duration timeout) {
         String base = "http://localhost:" + server.getAddress().getPort() + "/openai/v1";
         return new GroqAssistantPlanner(new AiProperties("groq", "gsk_test-key", "openai/gpt-oss-120b", base, null, null),
-                new AssistantProperties(true, "openai/gpt-oss-20b", timeout, 0, 0, null), json);
+                new AssistantProperties(true, "openai/gpt-oss-20b", timeout, 0, 0, null, false), json);
     }
 
     private String completion(String content) throws IOException {

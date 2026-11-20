@@ -16,7 +16,7 @@ class AssistantPacingTest {
 
     private final MutableClock clock = new MutableClock(Instant.parse("2026-11-19T10:00:00Z"));
     private final AssistantPacing pacing = new AssistantPacing(
-            new AssistantProperties(true, null, null, 0, 7_000, null), clock);
+            new AssistantProperties(true, null, null, 0, 7_000, null, false), clock);
 
     @Test
     @DisplayName("reserves each call at what calls have cost lately, and refuses one that would not fit the minute")
@@ -45,7 +45,7 @@ class AssistantPacingTest {
     @DisplayName("starts from an estimate, and lets a first call through whatever it is expected to cost")
     void firstCall() {
         assertThat(pacing.estimate()).isEqualTo(AssistantPacing.FIRST_ESTIMATE);
-        AssistantPacing small = new AssistantPacing(new AssistantProperties(true, null, null, 0, 500, null), clock);
+        AssistantPacing small = new AssistantPacing(new AssistantProperties(true, null, null, 0, 500, null, false), clock);
         assertThat(small.reserve().granted()).isTrue();
         assertThat(small.reserve().granted()).isFalse();
     }

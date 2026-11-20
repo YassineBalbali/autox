@@ -3,6 +3,7 @@ package com.autox.assistant;
 import com.autox.user.CurrentUser;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -55,8 +56,9 @@ public class AssistantController {
     @io.swagger.v3.oas.annotations.Operation(operationId = "assistantTurn")
     @PostMapping("/turns")
     public TurnResponse turn(@Valid @RequestBody TurnRequest request, @AuthenticationPrincipal Jwt token,
-                             HttpServletRequest http) {
+                             HttpServletRequest http, HttpServletResponse response) {
         UUID account = token == null ? null : CurrentUser.id(token);
-        return service.turn(request, http.getRemoteAddr(), account);
+        return service.turn(request, http.getRemoteAddr(), account,
+                trace -> response.setHeader(EvalTrace.HEADER, trace));
     }
 }

@@ -16,6 +16,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param tokensPerMinute   the planner's tokens per minute, for every visitor together, below the
  *                          free tier's 8 000 so the smart search's calls fit too (AssistantPacing)
  * @param limits            per caller, counted before any spend
+ * @param evalTrace         {@code AUTOX_ASSISTANT_EVAL_TRACE}, off by default: each turn's checked plan
+ *                          and token counts in a response header, for eval/assistant/ on a local
+ *                          machine. Never on in production
  */
 @ConfigurationProperties(prefix = "autox.assistant")
 public record AssistantProperties(
@@ -24,7 +27,8 @@ public record AssistantProperties(
         Duration timeout,
         long dailyTokenBudget,
         long tokensPerMinute,
-        Limits limits) {
+        Limits limits,
+        boolean evalTrace) {
 
     public AssistantProperties {
         model = model == null || model.isBlank() ? "openai/gpt-oss-120b" : model;

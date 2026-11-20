@@ -514,6 +514,14 @@ class AssistantIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        @DisplayName("sends no eval header: that is a local evaluation's switch, off by default")
+        void noEvalTrace() throws Exception {
+            planner.plans(json("{\"intent\": \"NO_ANSWER\", \"noAnswer\": \"UNCLEAR\"}"));
+            turn(Map.of("message", "Bonjour")).andExpect(status().isOk())
+                    .andExpect(header().doesNotExist(EvalTrace.HEADER));
+        }
+
+        @Test
         @DisplayName("never writes the message to the log")
         void notLogged(CapturedOutput output) throws Exception {
             planner.plans(json("{\"intent\": \"NO_ANSWER\", \"noAnswer\": \"OUT_OF_SCOPE\"}"));

@@ -3,12 +3,14 @@ package com.autox.assistant;
 import com.autox.api.error.ApiException;
 import com.autox.reference.Currency;
 import com.autox.reference.CurrencyRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -42,10 +44,12 @@ public class AssistantService {
     private final AssistantPacing pacing;
     private final AssistantUsage usage;
     private final CurrencyRepository currencies;
+    private final ObjectMapper json;
 
     public AssistantService(AssistantProperties properties, ObjectProvider<AssistantPlanner> planners, PlanValidator validator,
                             References references, AnswerBuilder answers, AssistantLimits limits,
-                            AssistantPacing pacing, AssistantUsage usage, CurrencyRepository currencies) {
+                            AssistantPacing pacing, AssistantUsage usage, CurrencyRepository currencies,
+                            ObjectMapper json) {
         this.pacing = pacing;
         this.properties = properties;
         // None configured (a provider other than none or groq, as in tests that do not need one): off.
@@ -56,6 +60,11 @@ public class AssistantService {
         this.limits = limits;
         this.usage = usage;
         this.currencies = currencies;
+        this.json = json;
+        if (properties.evalTrace()) {
+            log.warn("Assistant eval trace on: every turn's plan is sent back in {}. For a local evaluation only.",
+                    EvalTrace.HEADER);
+        }
     }
 
     /** On only when switched on and a planner is configured. */
@@ -71,7 +80,16 @@ public class AssistantService {
     }
 
     public TurnResponse turn(TurnRequest request, String address, UUID accountId) {
+        return turn(request, address, accountId, null);
+    }
+
+    /**
+     * @param trace given {@link EvalTrace}'s header value when {@code autox.assistant.eval-trace} is on;
+     *              null, or the switch off, and nothing is traced
+     */
+    public TurnResponse turn(TurnRequest request, String address, UUID accountId, Consumer<String> trace) {
         requireEnabled();
+        Consumer<String> traced = properties.evalTrace() && trace != null ? trace : ignored -> { };
         TurnRequest.State state = request.state() == null ? TurnRequest.State.empty() : request.state();
         if (state.turns() >= TurnRequest.MAX_TURNS) {
             return new TurnResponse(List.of(AssistantBlock.noAnswer(Plan.Reason.CONVERSATION_OVER, null)), state);
@@ -147,6 +165,9 @@ public class AssistantService {
             blocks.add(AssistantBlock.noAnswer(Plan.Reason.REPHRASE, null));
             usage.record(AssistantUsage.Outcome.INVALID, null, List.of(Plan.Reason.REPHRASE), attempts - 1, tokensIn, tokensOut);
             log.info("Assistant turn: two invalid plans, tokens={}/{}, {} ms", tokensIn, tokensOut, elapsed(started));
+            if (properties.evalTrace()) {
+                traced.accept(EvalTrace.invalid(attempts, tokensIn, tokensOut, json));
+            }
             return new TurnResponse(blocks, next(state, message.text(), List.of()));
         }
 
@@ -157,6 +178,9 @@ public class AssistantService {
         log.info("Assistant turn: intent={} tools={} reasons={} attempts={} tokens={}/{} {} ms",
                 plan.intent(), plan.calls().stream().map(call -> call.tool().wireName()).toList(), answer.reasons(),
                 attempts, tokensIn, tokensOut, elapsed(started));
+        if (properties.evalTrace()) {
+            traced.accept(EvalTrace.of(plan, answer, blocks, table, minorUnit, attempts, tokensIn, tokensOut, json));
+        }
         return new TurnResponse(blocks, next(state, message.text(), answer.shown()));
     }
 
