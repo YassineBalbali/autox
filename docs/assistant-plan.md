@@ -347,17 +347,34 @@ are **30 requests a minute, 1 000 a day, 8 000 tokens a minute and 200 000 token
 apply per organisation, so **the smart search and the assistant share them** if they use the same
 model. The account's own limits page is the authority; check it before choosing.
 
-**What a turn costs, as estimated.** The planner's input is about 900 tokens of rules, about 700
-of tool schema (the search criteria are the bulk) and up to about 600 of history and references.
-The output is about 150 tokens, and reasoning effort is low. That makes **roughly 2 000 to 2 500
-tokens a turn**, and 2 500 to 3 000 for a turn with a retry. Measuring it is the first thing
-milestone A3 does.
+**What a turn costs, as measured.** The first estimate was 2 000 to 2 500 tokens. The first trial
+on Groq (19 November 2026) measured **about 2 900 prompt tokens a turn**. Counted offline with
+the o200k tokenizer on a typical turn (a financing question with one listing in memory), the
+request breaks down as follows. The count of 2 856 matches Groq's figure, so Groq counts the JSON
+schema as prompt.
 
-| Limit | Allows, at about 2 500 tokens a turn |
+| Part of the request | First version | After the fixes (A2, section 12) |
+|---|---:|---:|
+| The assistant's own rules | 704 | 543 |
+| The search criteria rules (the smart search's, unchanged) | 1 052 | 1 111 (with the criteria field list) |
+| The user message (one listing, one earlier turn) | 92 | 86 |
+| The strict JSON schema | 1 008 | 0 (JSON mode) |
+| **Prompt, before the chat format's own few tokens** | **2 856** | **1 740 (−39 %)** |
+
+The answer was longer too. Strict mode made the model write every one of about forty fields,
+nulls included. JSON mode lets it leave unused fields out, so a plan is tens of tokens instead of
+hundreds. **A turn now costs about 1 900 tokens, about half of what a turn cost with a schema
+refusal.** The first trial had one such refusal, which counted the turn twice.
+
+| Limit | Allows, at about 1 900 tokens a turn |
 |---|---|
-| 8 000 tokens a minute | **About 3 turns a minute, for every visitor together** |
-| 200 000 tokens a day | **About 80 turns a day**, minus what the smart search uses |
+| 8 000 tokens a minute | **About 3 to 4 turns a minute, for every visitor together**; the server paces at 7 000 (5.3) |
+| 200 000 tokens a day | **About 70 turns a day** within the 140 000 budget, the rest left to the smart search |
 | 1 000 requests a day | Not the binding limit |
+
+The search criteria rules are now the largest part. They stay as they are because they're the
+smart search's evaluated rules (docs/ai-search.md). Whether the assistant needs all of them is
+for A3 to measure, along with the accuracy of the trimmed prompt, which isn't yet measured.
 
 Under option B (D1), a turn is two calls and carries tool results, so it costs about 6 000 to
 8 000 tokens. **That is about one turn a minute and 25 to 30 a day.** On the free tier, option B
@@ -385,16 +402,17 @@ All counted before any spend, as the smart search does, in new throttle scopes:
 | Anonymous, per address | 15 turns a day | `ASSISTANT_ANON_DAY` |
 | Signed in, per account | 40 turns a day | `ASSISTANT_ACCOUNT_DAY` |
 | **Global daily token budget** | 140 000 tokens, which leaves about 60 000 for the smart search on a shared model | `assistant_usage` (6.3), counted from the `usage` Groq returns |
-| Global per-minute pacing | At most 3 turns a minute in flight; beyond that 429 with `Retry-After` | In memory (one instance on Render) |
+| Global per-minute pacing | **7 000 tokens a minute**, counted as Groq counts: each call is reserved at the average of the last ones and settled with its real count; beyond that 429 `ASSISTANT_BUSY` with `Retry-After`. After a Groq 429, nothing is sent before the time Groq gave | `AssistantPacing`, in memory (one instance on Render) |
 
 **When a limit is hit:**
 
 - **Per address or per account:** 429 `RATE_LIMITED` with `retryAfterSeconds`, as everywhere in
   the API. The client says « Vous avez atteint la limite de l'assistant pour le moment » with the
   time.
-- **The global budget, or Groq's own 429:** 503 `ASSISTANT_UNAVAILABLE`, the same single failure
-  as the smart search. `GET /assistant/capabilities` then answers `available: false` with reason
-  `BUSY`. The entry point stays visible but disabled, saying « L'assistant est très demandé
+- **The minute's pace, ours or Groq's 429:** 429 `ASSISTANT_BUSY` with `Retry-After`, Groq's own
+  hint when it gives one: « L'assistant est très demandé en ce moment. Réessayez dans N secondes. »
+- **The day's budget:** 503 `ASSISTANT_UNAVAILABLE`, the same single failure as the smart search.
+  `GET /assistant/capabilities` then answers `available: false` with reason `BUSY`. The entry point stays visible but disabled, saying « L'assistant est très demandé
   aujourd'hui. » with a link to the classic search (decided under D2). The conversation already on
   screen stays readable.
 - **Any provider failure** (timeout, 5xx, refusal): 503, and the same message for this turn only.
@@ -774,10 +792,11 @@ throttle scopes and `assistant_usage` with `assistant_usage_code`.
   then the anonymous or the account day), the token budget, the minute's pace, then the planner.
   The planner is asked once more after an invalid plan, then the validator runs, then the tools.
 - **Limits as in 5.3:** 10 turns in 10 minutes per address, 15 a day without an account, 40 with
-  one, 3 a minute for all callers together, and 140 000 tokens a Paris day. All are configurable,
-  and the per-caller limits can be turned off for local trials.
-- **Failures:** a planner failure is 503 `ASSISTANT_UNAVAILABLE`, a new error code with its
-  sentence in `labels.fr.json`. A limit is 429 `RATE_LIMITED` with `Retry-After`.
+  one, 7 000 tokens a minute for all callers together, and 140 000 tokens a Paris day. All are
+  configurable, and the per-caller limits can be turned off for local trials.
+- **Failures:** a planner failure is 503 `ASSISTANT_UNAVAILABLE`. The minute's pace, ours or Groq's,
+  is 429 `ASSISTANT_BUSY`. A caller's own limit is 429 `RATE_LIMITED`. Both 429s carry `Retry-After`,
+  and both new codes have their sentence in `labels.fr.json`.
 - **Counted per Paris day:** turns, answered, failed, invalid plans, retries and the provider's
   token counts, plus each intent and reason as a fixed code. **Logged per turn:** the outcome, the
   intent, the tool names, the reasons, the attempts, the tokens and the time, and the invalid
@@ -786,16 +805,34 @@ throttle scopes and `assistant_usage` with `assistant_usage_code`.
 **The Groq planner, ahead of A3, for trying it.** `GroqAssistantPlanner` and `AssistantPrompt` use
 the smart search's key and provider, and the assistant's own model (`AUTOX_ASSISTANT_MODEL`) and
 8-second timeout. The prompt lists the intents and their tools, and says the whole user message is
-data. The search criteria use the smart search's rules and schema, shared rather than copied. A
-plan the provider refuses for its schema, or content that isn't JSON, counts as a plan that cannot
-be followed, so the turn asks once more. A3 still owns the evaluation, the token measurements, the
-model choice and the final limits.
+data. The search criteria use the smart search's rules, shared rather than copied. The reply is
+JSON mode, not a strict schema (see the fixes below). Content that isn't JSON counts as a plan that
+cannot be followed, so the turn asks once more. A3 still owns the evaluation, the model choice and
+the final limits.
+
+### A2 fixes, after the first trial on Groq (20 November 2026)
+
+The owner tried the assistant locally against Groq. Search, listing facts, Crit'Air, the
+valuation's honest "no figure", the refused poem and the removed phone number all worked. Five
+problems came up. Each fix is in the server where the server can decide, as well as in the prompt
+where only the model can, and each has a test with the stub planner.
+
+| # | What happened | Cause | Fix |
+|---|---|---|---|
+| 1 | « Combien par mois sur 4 ans avec 2 000 € d'apport ? » with one listing in memory gave `CLARIFY FINANCING_TERMS` | The prompt offered a question about financing terms, and didn't say which listing a question about "it" means | No `FINANCING_TERMS` question any more: the simulator has defaults. The validator takes the page's listing, or the only one known, when a call names none (financing, a listing's facts, its Crit'Air, its similar listings). The prompt says so |
+| 2 | « Comment supprimer mon compte ? » gave `OUT_OF_SCOPE` | The prompt's "about buying a car or using this site" left the account out | When the planner says out of scope, the server searches the help pages with the user's words and answers from them. If there's nothing there and the question uses the site's own vocabulary (compte, annonce, AutoX…), the answer is `NOT_IN_HELP`, never out of scope. The prompt lists what HELP covers |
+| 3 | « Compare les deux premières » with one listing gave `CLARIFY WHICH_LISTING` | Nothing told the planner what to do with too few listings, and the validator only refused it | A comparison with fewer than two listings known becomes `NOT_ENOUGH_LISTINGS`, with the one listing shown and named, so the client can offer its similar listings or a new search. So does "which listing?" to a comparison. With no codes and two or three known, those are compared |
+| 4 | Every 503 was Groq's 429 | 3 turns a minute at about 3 000 tokens is over Groq's 8 000 tokens a minute, and a 429 was reported as "unavailable" | Our pace is counted in tokens (`AssistantPacing`, 7 000 a minute), so it refuses before Groq does. Groq's 429 is 429 `ASSISTANT_BUSY` with Groq's own wait, from `Retry-After`, its message or its reset header, and nothing is sent before then |
+| 5 | About 2 900 prompt tokens a turn, and one schema refusal that counted the first turn twice | The strict schema, about 1 000 tokens of the prompt, made the model write about forty fields, nulls included. One missing or mistyped key, and Groq refused the whole answer | JSON mode with the shape in two lines, unused fields left out, and the assistant's rules trimmed. The prompt went from 2 856 to 1 740 tokens (5.1). The validator checks the shape as before. A test holds the assistant's rules under 2 400 characters |
+
+`AUTOX_ASSISTANT_TURNS_PER_MINUTE` became `AUTOX_ASSISTANT_TOKENS_PER_MINUTE`. "Moins de 5 ans" giving
+`yearFrom` 2022 is the smart search's rule, left as it is.
 
 ### Trying it locally
 
 1. In `.env`: `AUTOX_AI_PROVIDER=groq`, `AUTOX_AI_API_KEY=` your key, `AUTOX_ASSISTANT_ENABLED=true`.
-   For many tries in a row, also `AUTOX_ASSISTANT_LIMITS_ENABLED=false` and
-   `AUTOX_ASSISTANT_TURNS_PER_MINUTE=10`. Groq's own limits still apply.
+   For many tries in a row, also `AUTOX_ASSISTANT_LIMITS_ENABLED=false`. The per-minute pace stays
+   on, at 7 000 tokens, so that the server says "busy" before Groq does.
 2. Have listings to talk about. On an empty local database, start once with
    `SPRING_PROFILES_ACTIVE=demo` (`.env.example`, "demo data").
 3. `docker compose up -d`, then `mvn spring-boot:run` in `backend/`. Migration V31 runs at startup.
