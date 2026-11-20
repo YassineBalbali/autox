@@ -65,7 +65,13 @@ public class AnswerBuilder {
     public Answer build(Plan plan, String message) {
         Building answer = new Building();
         switch (plan.intent()) {
-            case NO_ANSWER -> answer.noAnswer(plan.noAnswer(), null);
+            case NO_ANSWER -> {
+                if (plan.noAnswer() == Plan.Reason.OUT_OF_SCOPE) {
+                    outOfScope(message, answer);
+                } else {
+                    answer.noAnswer(plan.noAnswer(), null);
+                }
+            }
             case CLARIFY -> answer.blocks.add(AssistantBlock.clarify(plan.clarify()));
             default -> plan.calls().forEach(call -> run(call, message, answer));
         }
@@ -111,6 +117,14 @@ public class AnswerBuilder {
                         }
                     }
                     case ToolResult.Refusal<List<ListingFacts>> refusal -> answer.refusal(refusal);
+                }
+            }
+            case Plan.TooFewToCompare few -> {
+                // The one there is, if any, so the user sees what was found; the reason names it.
+                List<ListingCard> cards = answer.cards(few.listingIds());
+                answer.noAnswer(Plan.Reason.NOT_ENOUGH_LISTINGS, cards.isEmpty() ? null : cards.getFirst().id());
+                if (!cards.isEmpty()) {
+                    answer.blocks.add(AssistantBlock.listings(cards));
                 }
             }
             case Plan.Compare c -> {
@@ -163,6 +177,28 @@ public class AnswerBuilder {
             }
         }
     }
+
+    /**
+     * Never out of scope for a question about AutoX itself (A2 fixes, docs/assistant-plan.md, 12):
+     * the help pages are searched with the user's words, and a question in the site's own vocabulary
+     * that they do not answer is `NOT_IN_HELP`, which points to the help centre.
+     */
+    private void outOfScope(String message, Building answer) {
+        String query = message.length() > HelpIndex.MAX_QUERY ? message.substring(0, HelpIndex.MAX_QUERY) : message;
+        if (help.search(query) instanceof ToolResult.Answer<List<HelpIndex.Passage>> found) {
+            answer.blocks.add(AssistantBlock.help(found.value()));
+        } else if (ABOUT_THE_SITE.matcher(PlanValidator.fold(message)).find()) {
+            answer.noAnswer(Plan.Reason.NOT_IN_HELP, null);
+        } else {
+            answer.noAnswer(Plan.Reason.OUT_OF_SCOPE, null);
+        }
+    }
+
+    /** Words that put a question on AutoX itself, folded: its name, an account, a listing, a message… */
+    private static final java.util.regex.Pattern ABOUT_THE_SITE = java.util.regex.Pattern.compile(
+            "\\b(autox|site|compte|annonces?|messager\\w*|messages?|alertes?|favoris?|signal\\w*|mot de passe|"
+                    + "connexion|connecter|inscri\\w*|identifiant|vendeurs?|publier|publication|donnees|moderat\\w*|"
+                    + "professionnel|pro|la cote|recherche)\\b");
 
     /** The answer as it is built: blocks in order, the listings shown, the reasons given. */
     private final class Building {

@@ -81,6 +81,8 @@ public record Plan(Intent intent, List<Call> calls, Reason noAnswer, Question cl
     public enum Reason {
         OUT_OF_SCOPE, ADVICE, ONLY_IN_DESCRIPTION, UNCLEAR,
         NO_RESULTS, NOT_IN_HELP, NOT_COMPUTABLE, NOT_FINANCEABLE, NOTHING_TO_FINANCE, LISTING_UNAVAILABLE,
+        /** A comparison with fewer than two listings known: the one shown, and a way to find another. */
+        NOT_ENOUGH_LISTINGS,
         /** Two invalid plans in a row: « Je n'ai pas compris, pouvez-vous reformuler ? » */
         REPHRASE,
         /** The conversation has had its twelve turns. */
@@ -93,7 +95,7 @@ public record Plan(Intent intent, List<Call> calls, Reason noAnswer, Question cl
     /** A clarifying question, from a fixed list: the planner chooses one, the labels word it. */
     @io.swagger.v3.oas.annotations.media.Schema(name = "AssistantQuestion", enumAsRef = true)
     public enum Question {
-        BUDGET, OFFER_TYPE, WHICH_LISTING, VEHICLE, FINANCING_TERMS
+        BUDGET, OFFER_TYPE, WHICH_LISTING, VEHICLE
     }
 
     /** One checked tool call. */
@@ -113,6 +115,13 @@ public record Plan(Intent intent, List<Call> calls, Reason noAnswer, Question cl
     }
 
     public record Compare(List<UUID> listingIds) implements Call {
+        public Tool tool() {
+            return Tool.COMPARE_LISTINGS;
+        }
+    }
+
+    /** A comparison asked for with fewer than two listings known: those there are, none or one. */
+    public record TooFewToCompare(List<UUID> listingIds) implements Call {
         public Tool tool() {
             return Tool.COMPARE_LISTINGS;
         }

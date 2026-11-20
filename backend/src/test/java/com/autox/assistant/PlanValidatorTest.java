@@ -161,7 +161,9 @@ class PlanValidatorTest {
         @DisplayName("refuses neither a listing nor a price, a price out of bounds, and an unknown listing")
         void refused() throws Exception {
             String base = "{\"intent\": \"FINANCE\", \"calls\": [{\"tool\": \"simulate_financing\", %s}]}";
-            assertThat(invalid(base.formatted("\"months\": 48"), "x")).isEqualTo("calls[0].amountEuros");
+            // Neither a price nor a code, and no page's or single listing to fall back on.
+            assertThat(validator.validate(JSON.readTree(base.formatted("\"months\": 48")), "x",
+                    new References.Table(TABLE.references(), null), 2)).isEqualTo(new PlanValidator.Invalid("calls[0].amountEuros"));
             assertThat(invalid(base.formatted("\"amountEuros\": 50"), "x")).isEqualTo("calls[0].amountEuros");
             assertThat(invalid(base.formatted("\"amountEuros\": 20000000"), "x")).isEqualTo("calls[0].amountEuros");
             assertThat(invalid(base.formatted("\"ref\": \"L7\", \"amountEuros\": 10000"), "x")).isEqualTo("calls[0].ref");
@@ -226,6 +228,74 @@ class PlanValidatorTest {
                     .isEqualTo("calls[0].query");
             assertThat(invalid(base.formatted("\"" + "a ".repeat(101) + "\""), "a")).isEqualTo("calls[0].query");
             assertThat(invalid(base.formatted("null"), "x")).isEqualTo("calls[0].query");
+        }
+    }
+
+    /** The fixes after the first trial on Groq (docs/assistant-plan.md, 12). */
+    @Nested
+    class AfterTheFirstTrial {
+
+        private final UUID only = UUID.randomUUID();
+        private final References.Table one = new References.Table(List.of(
+                new References.Reference("L1", only, "Peugeot 208, 2021, 38000 km, 11890 EUR, PETROL, MANUAL")), null);
+        private final References.Table none = new References.Table(List.of(), null);
+
+        private PlanValidator.Result check(String plan, String message, References.Table table) throws Exception {
+            return validator.validate(JSON.readTree(plan), message, table, 2);
+        }
+
+        @Test
+        @DisplayName("finances the only listing known, or the page's, when no listing is named (bug 1)")
+        void implicitListing() throws Exception {
+            String finance = "{\"intent\": \"FINANCE\", \"calls\": [{\"tool\": \"simulate_financing\", \"downPaymentEuros\": 2000, \"months\": 48}]}";
+
+            assertThat(check(finance, "Combien par mois sur 4 ans avec 2 000 € d'apport ?", one))
+                    .isEqualTo(new PlanValidator.Valid(new Plan(Plan.Intent.FINANCE,
+                            List.of(new Plan.Finance(only, null, 200_000L, 48, null)), null, null, List.of())));
+            // Two listings and no page: which one is not for the server to guess.
+            assertThat(check(finance, "x", new References.Table(TABLE.references(), null)))
+                    .isEqualTo(new PlanValidator.Invalid("calls[0].amountEuros"));
+            // The page's listing, among several.
+            assertThat(((PlanValidator.Valid) check(finance, "x", TABLE)).plan().calls())
+                    .containsExactly(new Plan.Finance(FIRST, null, 200_000L, 48, null));
+            assertThat(((PlanValidator.Valid) check("{\"intent\": \"EXPLAIN\", \"calls\": [{\"tool\": \"get_listing\"}]}", "x", one))
+                    .plan().calls()).containsExactly(new Plan.OneListing(Plan.Tool.GET_LISTING, only));
+            assertThat(((PlanValidator.Valid) check("{\"intent\": \"CRIT_AIR\", \"calls\": [{\"tool\": \"crit_air\"}]}", "x", one))
+                    .plan().calls()).containsExactly(new Plan.CritAirOf(only, null, null, null));
+        }
+
+        @Test
+        @DisplayName("has no clarifying question about financing terms: the simulator has defaults (bug 1)")
+        void noFinancingQuestion() throws Exception {
+            assertThat(check("{\"intent\": \"CLARIFY\", \"clarify\": \"FINANCING_TERMS\"}", "x", one))
+                    .isEqualTo(new PlanValidator.Invalid("clarify"));
+        }
+
+        @Test
+        @DisplayName("turns a comparison with fewer than two listings known into the 'only one' answer (bug 3)")
+        void tooFewToCompare() throws Exception {
+            String compare = "{\"intent\": \"COMPARE\", \"calls\": [{\"tool\": \"compare_listings\", \"refs\": [\"L1\", \"L2\"]}]}";
+            assertThat(((PlanValidator.Valid) check(compare, "Compare les deux premières", one)).plan().calls())
+                    .containsExactly(new Plan.TooFewToCompare(List.of(only)));
+            assertThat(((PlanValidator.Valid) check(compare, "Compare les deux premières", none)).plan().calls())
+                    .containsExactly(new Plan.TooFewToCompare(List.of()));
+
+            // And when the planner asks "which listing?" to a comparison it cannot make.
+            Plan asked = ((PlanValidator.Valid) check("{\"intent\": \"CLARIFY\", \"clarify\": \"WHICH_LISTING\"}",
+                    "Compare les deux premières", one)).plan();
+            assertThat(asked.intent()).isEqualTo(Plan.Intent.COMPARE);
+            assertThat(asked.calls()).containsExactly(new Plan.TooFewToCompare(List.of(only)));
+            // Not a comparison: the question stands.
+            assertThat(((PlanValidator.Valid) check("{\"intent\": \"CLARIFY\", \"clarify\": \"WHICH_LISTING\"}",
+                    "Et celle en diesel ?", one)).plan().clarify()).isEqualTo(Plan.Question.WHICH_LISTING);
+        }
+
+        @Test
+        @DisplayName("compares the two or three listings known when the planner names none")
+        void compareTheKnown() throws Exception {
+            assertThat(((PlanValidator.Valid) check("{\"intent\": \"COMPARE\", \"calls\": [{\"tool\": \"compare_listings\"}]}",
+                    "Compare-les", new References.Table(TABLE.references(), null))).plan().calls())
+                    .containsExactly(new Plan.Compare(List.of(FIRST, SECOND)));
         }
     }
 

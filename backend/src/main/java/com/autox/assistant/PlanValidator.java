@@ -49,6 +49,8 @@ public class PlanValidator {
     public static final int MAX_MILEAGE_KM = 1_000_000;
 
     private static final Pattern NOT_A_WORD = Pattern.compile("[^a-z0-9]+");
+    /** Asking for a comparison, in the folded message. */
+    private static final Pattern COMPARING = Pattern.compile("compar|differen|\\bversus\\b|\\bvs\\b|laquelle (est|des)");
 
     /** The outcome: a plan to follow, or the first field that made it impossible to follow. */
     public sealed interface Result {
@@ -87,8 +89,17 @@ public class PlanValidator {
             if (question == null) {
                 return new Invalid("clarify");
             }
-            return noCalls(answer) ? new Valid(new Plan(intent, List.of(), null, question, notUnderstood))
-                    : new Invalid("calls");
+            if (!noCalls(answer)) {
+                return new Invalid("calls");
+            }
+            // "Which listing?" to a comparison with fewer than two known has no good answer: the
+            // user is told how many there are instead, and how to find another.
+            if (question == Plan.Question.WHICH_LISTING && references.references().size() < CompareListingsTool.MIN_LISTINGS
+                    && COMPARING.matcher(fold(message)).find()) {
+                return new Valid(new Plan(Plan.Intent.COMPARE,
+                        List.of(new Plan.TooFewToCompare(references.ids())), null, null, notUnderstood));
+            }
+            return new Valid(new Plan(intent, List.of(), null, question, notUnderstood));
         }
 
         JsonNode calls = answer.get("calls");
@@ -127,7 +138,7 @@ public class PlanValidator {
                         : new Invalid(at + ".criteria");
             }
             case GET_LISTING, SIMILAR_LISTINGS -> {
-                Optional<UUID> id = reference(call, references);
+                Optional<UUID> id = call.hasNonNull("ref") ? reference(call, references) : implicit(references);
                 yield id.<Object>map(found -> new Plan.OneListing(tool, found)).orElse(new Invalid(at + ".ref"));
             }
             case COMPARE_LISTINGS -> compare(call, at, references);
@@ -138,8 +149,19 @@ public class PlanValidator {
         };
     }
 
+    /**
+     * Two or three known listings. With fewer than two known there is nothing to compare, whatever
+     * the codes say: {@link Plan.TooFewToCompare}. With no codes, and two or three known, those.
+     */
     private Object compare(JsonNode call, String at, References.Table references) {
+        if (references.references().size() < CompareListingsTool.MIN_LISTINGS) {
+            return new Plan.TooFewToCompare(references.ids());
+        }
         JsonNode refs = call.get("refs");
+        if ((refs == null || refs.isNull() || (refs.isArray() && refs.isEmpty()))
+                && references.references().size() <= CompareListingsTool.MAX_LISTINGS) {
+            return new Plan.Compare(references.ids());
+        }
         if (refs == null || !refs.isArray() || refs.size() < CompareListingsTool.MIN_LISTINGS
                 || refs.size() > CompareListingsTool.MAX_LISTINGS) {
             return new Invalid(at + ".refs");
@@ -162,10 +184,18 @@ public class PlanValidator {
                 return new Invalid(at + ".ref");
             }
             Long euros = integer(call, "amountEuros");
-            if (euros == null || euros < MIN_AMOUNT_EUROS || euros > MAX_AMOUNT_EUROS) {
+            if (euros == null && !call.hasNonNull("amountEuros")) {
+                // No price and no code: the listing meant is the page's, or the only one known.
+                // A price written wrong is not that: it stays an error.
+                listing = implicit(references);
+                if (listing.isEmpty()) {
+                    return new Invalid(at + ".amountEuros");
+                }
+            } else if (euros == null || euros < MIN_AMOUNT_EUROS || euros > MAX_AMOUNT_EUROS) {
                 return new Invalid(at + ".amountEuros");
+            } else {
+                amount = euros * scale;
             }
-            amount = euros * scale;
         }
         Long down = integer(call, "downPaymentEuros");
         Long downPayment = down != null && down >= 0 && down <= MAX_AMOUNT_EUROS ? down * scale : null;
@@ -187,6 +217,12 @@ public class PlanValidator {
         }
         FuelType fuel = fuel(call);
         Long year = integer(call, "year");
+        if (fuel == null && year == null) {
+            Optional<UUID> meant = implicit(references);
+            if (meant.isPresent()) {
+                return new Plan.CritAirOf(meant.get(), null, null, null);
+            }
+        }
         if (fuel == null) {
             return new Invalid(at + ".fuel");
         }
@@ -233,6 +269,18 @@ public class PlanValidator {
             return new Invalid(at + ".query");
         }
         return new Plan.Help(query);
+    }
+
+    /**
+     * The listing meant when none is named (docs/assistant-plan.md, 12, A2 fixes): the page's, or the
+     * only one the user has seen. "Combien par mois ?" after one result is about that one.
+     */
+    private static Optional<UUID> implicit(References.Table references) {
+        if (references.pageListing() != null) {
+            return references.resolve(references.pageListing());
+        }
+        return references.references().size() == 1
+                ? Optional.of(references.references().getFirst().listingId()) : Optional.empty();
     }
 
     private static Optional<UUID> reference(JsonNode call, References.Table references) {
