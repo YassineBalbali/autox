@@ -34,7 +34,10 @@ class GroqAssistantPlannerTest {
     private final List<String> bodies = new ArrayList<>();
     private final List<String> authorizations = new ArrayList<>();
 
-    private record Reply(int status, String body, Duration delay) {
+    private record Reply(int status, String body, Duration delay, java.util.Map<String, String> headers) {
+        Reply(int status, String body, Duration delay) {
+            this(status, body, delay, java.util.Map.of());
+        }
     }
 
     private static final UUID LISTING = UUID.randomUUID();
@@ -59,6 +62,7 @@ class GroqAssistantPlannerTest {
             }
             byte[] body = next.body().getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
+            next.headers().forEach((name, value) -> exchange.getResponseHeaders().add(name, value));
             try {
                 exchange.sendResponseHeaders(next.status(), body.length);
                 exchange.getResponseBody().write(body);
@@ -105,7 +109,7 @@ class GroqAssistantPlannerTest {
     }
 
     @Test
-    @DisplayName("sends the assistant's model, the key, temperature 0, the strict schema and one JSON user message")
+    @DisplayName("sends the assistant's model, the key, temperature 0, JSON mode and one JSON user message")
     void request() throws Exception {
         answer(200, completion("{}"));
 
@@ -115,7 +119,9 @@ class GroqAssistantPlannerTest {
         JsonNode sent = json.readTree(bodies.getFirst());
         assertThat(sent.path("model").asText()).isEqualTo("openai/gpt-oss-20b");
         assertThat(sent.path("temperature").asInt()).isZero();
-        assertThat(sent.at("/response_format/json_schema/strict").asBoolean()).isTrue();
+        // JSON mode, no schema: the schema cost ~1 000 prompt tokens and refusals (docs/assistant-plan.md, 12).
+        assertThat(sent.at("/response_format/type").asText()).isEqualTo("json_object");
+        assertThat(sent.at("/response_format/json_schema").isMissingNode()).isTrue();
         assertThat(sent.path("messages")).hasSize(2);
         assertThat(sent.at("/messages/0/content").asText()).contains("You never write the answer")
                 .contains(InterpretationPrompt.rules(2026));
@@ -131,28 +137,31 @@ class GroqAssistantPlannerTest {
     }
 
     @Test
-    @DisplayName("has a strict schema: every object lists all its properties as required, and no others")
-    void strictSchema() {
-        assertStrict(AssistantPrompt.schema(json), "$");
-    }
-
-    private void assertStrict(JsonNode node, String path) {
-        if (node.isObject() && node.has("properties")) {
-            List<String> properties = new ArrayList<>();
-            node.get("properties").fieldNames().forEachRemaining(properties::add);
-            List<String> required = new ArrayList<>();
-            node.get("required").forEach(name -> required.add(name.asText()));
-            assertThat(required).as(path).containsExactlyElementsOf(properties);
-            assertThat(node.path("additionalProperties").asBoolean(true)).as(path).isFalse();
-            node.get("properties").fields().forEachRemaining(field -> assertStrict(field.getValue(), path + "." + field.getKey()));
+    @DisplayName("describes every intent, tool, reason and question the validator accepts, and nothing else")
+    void promptMatchesTheValidator() {
+        String prompt = AssistantPrompt.system(2026);
+        for (Plan.Intent intent : Plan.Intent.values()) {
+            assertThat(prompt).as(intent.name()).containsPattern("(?m)^" + intent.name() + "[ :]").doesNotContain("FINANCING_TERMS");
         }
-        if (node.isObject() && node.has("items")) {
-            assertStrict(node.get("items"), path + "[]");
+        for (Plan.Tool tool : Plan.Tool.values()) {
+            assertThat(prompt).contains(tool.wireName());
+        }
+        Plan.PLANNER_REASONS.forEach(reason -> assertThat(prompt).contains(reason.name()));
+        for (Plan.Question question : Plan.Question.values()) {
+            assertThat(prompt).contains(question.name());
         }
     }
 
     @Test
-    @DisplayName("hands back a plan the provider refused for its schema as one that cannot be followed")
+    @DisplayName("keeps the assistant's own rules under 2 400 characters, about 550 tokens: every token is quota")
+    void promptSize() {
+        String prompt = AssistantPrompt.system(2026);
+        String own = prompt.substring(0, prompt.indexOf(InterpretationPrompt.rules(2026)));
+        assertThat(own.length()).isLessThan(2_400);
+    }
+
+    @Test
+    @DisplayName("hands back an answer the provider refused as not JSON as a plan that cannot be followed")
     void schemaRefused() {
         answer(400, "{\"error\":{\"code\":\"json_validate_failed\",\"message\":\"... the user said ...\"}}");
 
@@ -173,10 +182,42 @@ class GroqAssistantPlannerTest {
     }
 
     @Test
-    @DisplayName("is unavailable on a spent quota, a provider error and a timeout")
+    @DisplayName("is busy on Groq's 429, for as long as its Retry-After, its message or its reset header says")
+    void busy() {
+        reply.set(new Reply(429, "{\"error\":{\"code\":\"rate_limit_exceeded\"}}", Duration.ZERO, java.util.Map.of("retry-after", "7")));
+        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT))
+                .isInstanceOfSatisfying(PlannerBusyException.class, e -> assertThat(e.retryAfterSeconds()).isEqualTo(7));
+
+        answer(429, "{\"error\":{\"code\":\"rate_limit_exceeded\",\"message\":\"Rate limit reached on tokens per minute (TPM): "
+                + "Limit 8000, Used 7000, Requested 2900. Please try again in 14.25s. Need more tokens?\"}}");
+        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT))
+                .isInstanceOfSatisfying(PlannerBusyException.class, e -> assertThat(e.retryAfterSeconds()).isEqualTo(15));
+
+        reply.set(new Reply(429, "{}", Duration.ZERO, java.util.Map.of("x-ratelimit-reset-tokens", "1m2.5s")));
+        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT))
+                .isInstanceOfSatisfying(PlannerBusyException.class, e -> assertThat(e.retryAfterSeconds()).isEqualTo(63));
+
+        answer(429, "{}");
+        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT))
+                .isInstanceOfSatisfying(PlannerBusyException.class,
+                        e -> assertThat(e.retryAfterSeconds()).isEqualTo(GroqAssistantPlanner.DEFAULT_RETRY_SECONDS));
+    }
+
+    @Test
+    @DisplayName("reads Groq's durations as whole seconds, rounded up")
+    void durations() {
+        assertThat(GroqAssistantPlanner.durationSeconds("17")).isEqualTo(17);
+        assertThat(GroqAssistantPlanner.durationSeconds("7.66s")).isEqualTo(8);
+        assertThat(GroqAssistantPlanner.durationSeconds("1m3.5s")).isEqualTo(64);
+        assertThat(GroqAssistantPlanner.durationSeconds("2h1m")).isEqualTo(7260);
+        assertThat(GroqAssistantPlanner.durationSeconds("620ms")).isEqualTo(1);
+        assertThat(GroqAssistantPlanner.durationSeconds("soon")).isNull();
+        assertThat(GroqAssistantPlanner.durationSeconds(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("is unavailable on a provider error and a timeout")
     void failures() {
-        answer(429, "{\"error\":{\"code\":\"rate_limit_exceeded\"}}");
-        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT)).isInstanceOf(PlannerUnavailableException.class);
 
         answer(500, "oops");
         assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT)).isInstanceOf(PlannerUnavailableException.class);

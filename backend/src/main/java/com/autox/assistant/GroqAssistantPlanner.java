@@ -74,8 +74,13 @@ public class GroqAssistantPlanner implements AssistantPlanner {
                     .body(String.class);
         } catch (HttpStatusCodeException e) {
             String code = errorCode(e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 429) {
+                long wait = retryAfter(e);
+                log.warn("Assistant planner: Groq is rate limiting ({}), retry in {}s", code.isEmpty() ? "429" : code, wait);
+                throw new PlannerBusyException(wait);
+            }
             if (e.getStatusCode().value() == 400 && code.equals("json_validate_failed")) {
-                log.info("Assistant planner: the provider refused an answer outside the schema");
+                log.info("Assistant planner: the provider refused an answer that was not JSON");
                 return new Answer(null, 0, 0);
             }
             throw unavailable("Groq answered " + e.getStatusCode().value() + (code.isEmpty() ? "" : " (" + code + ")"), e);
@@ -99,12 +104,8 @@ public class GroqAssistantPlanner implements AssistantPlanner {
         var messages = body.putArray("messages");
         messages.addObject().put("role", "system").put("content", AssistantPrompt.system(input.currentYear()));
         messages.addObject().put("role", "user").put("content", AssistantPrompt.user(input, json));
-        ObjectNode schema = body.putObject("response_format")
-                .put("type", "json_schema")
-                .putObject("json_schema")
-                .put("name", "assistant_plan")
-                .put("strict", true);
-        schema.set("schema", AssistantPrompt.schema(json));
+        // JSON mode: valid JSON, its shape described in the prompt and checked by PlanValidator.
+        body.putObject("response_format").put("type", "json_object");
         return body;
     }
 
@@ -128,6 +129,62 @@ public class GroqAssistantPlanner implements AssistantPlanner {
         } catch (JsonProcessingException e) {
             throw unavailable("Groq's answer is not JSON", e);
         }
+    }
+
+    /** When Groq says it can be asked again: whole seconds, rounded up; 10 when it does not say. */
+    long retryAfter(HttpStatusCodeException e) {
+        HttpHeaders headers = e.getResponseHeaders();
+        if (headers != null) {
+            Long seconds = durationSeconds(headers.getFirst(HttpHeaders.RETRY_AFTER));
+            if (seconds != null) {
+                return seconds;
+            }
+        }
+        try {
+            String message = json.readTree(e.getResponseBodyAsString()).path("error").path("message").asText("");
+            java.util.regex.Matcher hint = TRY_AGAIN.matcher(message);
+            if (hint.find()) {
+                Long seconds = durationSeconds(hint.group(1));
+                if (seconds != null) {
+                    return seconds;
+                }
+            }
+        } catch (JsonProcessingException ignored) {
+            // No body to read: the default below.
+        }
+        if (headers != null) {
+            Long seconds = durationSeconds(headers.getFirst("x-ratelimit-reset-tokens"));
+            if (seconds != null) {
+                return seconds;
+            }
+        }
+        return DEFAULT_RETRY_SECONDS;
+    }
+
+    static final long DEFAULT_RETRY_SECONDS = 10;
+    private static final java.util.regex.Pattern TRY_AGAIN =
+            java.util.regex.Pattern.compile("try again in ((?:\\d+h)?(?:\\d+m(?!s))?(?:[\\d.]+s|\\d+ms)?)");
+    private static final java.util.regex.Pattern DURATION =
+            java.util.regex.Pattern.compile("(?:(\\d+)h)?(?:(\\d+)m(?!s))?(?:([\\d.]+)s|(\\d+)ms)?");
+
+    /** "17", "17.25s", "1m3.5s", "2h1m", "620ms" as whole seconds, rounded up, at least 1. */
+    static Long durationSeconds(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String value = text.strip();
+        if (value.matches("[\\d.]+")) {
+            return Math.max(1, (long) Math.ceil(Double.parseDouble(value)));
+        }
+        java.util.regex.Matcher parts = DURATION.matcher(value);
+        if (!parts.matches() || value.isEmpty()) {
+            return null;
+        }
+        double seconds = (parts.group(1) == null ? 0 : Long.parseLong(parts.group(1)) * 3600)
+                + (parts.group(2) == null ? 0 : Long.parseLong(parts.group(2)) * 60)
+                + (parts.group(3) == null ? 0 : Double.parseDouble(parts.group(3)))
+                + (parts.group(4) == null ? 0 : Long.parseLong(parts.group(4)) / 1000.0);
+        return Math.max(1, (long) Math.ceil(seconds));
     }
 
     private String errorCode(String body) {
