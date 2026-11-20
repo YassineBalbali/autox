@@ -18,6 +18,9 @@ name: backend
 #   frontend/fixtures/listing.json, and the web's financing.ts and financing-simulator.ts — the
 #     simulator's test vectors and constants. CreditFormulaTest holds the API's copy of the formula
 #     to them. On main these redeploy an unchanged API; that is the price of the check.
+#   eval/assistant/cases.json — the assistant's evaluation set. AssistantEvalSetTest checks every
+#     expected plan against the validator, so an edit to the set is checked as one to the code is.
+#     On main this too redeploys an unchanged API.
 #   this workflow file    — so a change to the job that runs the tests is itself tested.
 #
 # Branches only, never a tag: path filters do not apply to tags (GitHub's rule), so without
@@ -33,6 +36,7 @@ on:
       - 'frontend/fixtures/listing.json'
       - 'frontend/src/app/shared/listing/financing.ts'
       - 'frontend/src/app/features/listing/financing-simulator.ts'
+      - 'eval/assistant/cases.json'
       - '.github/workflows/backend.yml'
   pull_request:
     branches: [main, master]
@@ -43,6 +47,7 @@ on:
       - 'frontend/fixtures/listing.json'
       - 'frontend/src/app/shared/listing/financing.ts'
       - 'frontend/src/app/features/listing/financing-simulator.ts'
+      - 'eval/assistant/cases.json'
       - '.github/workflows/backend.yml'
   # Weekly, whatever has been pushed: an advisory published on Tuesday about a dependency
   # nobody touched should not wait for the next commit to be noticed.
