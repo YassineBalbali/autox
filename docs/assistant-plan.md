@@ -740,7 +740,8 @@ Each returns `ToolResult`: a value, or a refusal with a reason (`LISTING_UNAVAIL
 - **The help index is in memory.** Each section is scored by BM25 over its page title and heading
   (each counted twice) and its text. Words are folded, French stopwords dropped, and words cut to a
   six-letter stem after a plural *s*. A section qualifies only if it holds at least half of the
-  question's words, and the best three are returned. The rule is conservative on purpose: « combien
+  question's words. The best one is returned, and a second only if it scores at least 0.6 of the
+  best: « supprimer mon compte » no longer brings the alerts and the pro account along. The rule is conservative on purpose: « combien
   de photos dans une annonce » finds nothing, because « combien » and « annonce » aren't in the
   photo section. The answer is then `NOT_IN_HELP`, with a link to the help centre, rather than a
   wrong passage. `HelpIndexTest` lists the questions it answers and the ones it refuses.

@@ -57,8 +57,26 @@ class HelpIndexTest {
         assertThat(index.search("")).isEqualTo(ToolResult.refusal(ToolResult.Reason.NOT_IN_HELP));
     }
 
+    @ParameterizedTest(name = "« {0} » → {1}")
+    @CsvSource(delimiter = '|', value = {
+            "Comment supprimer mon compte ?       | aide#comment-supprimer-mon-compte-ou-obtenir",
+            "J'ai oublié mon mot de passe          | aide#j-ai-oublie-mon-mot-de",
+            "comment arrêter les alertes par e-mail | aide#comment-arreter-les-alertes",
+    })
+    @DisplayName("leaves out a passage far below the best one: it answers another question")
+    void onlyTheRelevant(String question, String section) {
+        assertThat(keys(index.search(question))).containsExactly(section);
+    }
+
     @Test
-    @DisplayName("returns at most three passages, with the text as written and without its markup")
+    @DisplayName("keeps a second passage on the same subject, close to the best one")
+    void aSecondOnTheSameSubject() {
+        assertThat(keys(index.search("où est le bouton pour signaler une annonce")))
+                .containsExactly("signalement#ou-est-le-bouton", "signalement#un-message-suspect");
+    }
+
+    @Test
+    @DisplayName("returns at most two passages, with the text as written and without its markup")
     void passages() {
         ToolResult.Answer<List<HelpIndex.Passage>> answer =
                 (ToolResult.Answer<List<HelpIndex.Passage>>) index.search("annonce supprimer données compte");

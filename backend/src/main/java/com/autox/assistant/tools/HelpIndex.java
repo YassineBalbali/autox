@@ -32,14 +32,23 @@ import org.springframework.stereotype.Component;
  * (each counted twice: they say what the section is about) and its text. Words are folded (case,
  * accents), common French words are dropped, and a word is cut to its first six letters after a
  * plural {@code s}, so that "photos" finds "photo" and "vérifier" finds "vérification". A section is
- * a candidate only when it holds at least half of the question's words; the best three are returned.
- * Nothing qualifying is {@code NOT_IN_HELP}, which the user sees as "not found in our help pages".
+ * a candidate only when it holds at least half of the question's words. The best is returned, and
+ * one more only if it scores at least {@link #RELATIVE_SCORE} of the best: a passage far below the
+ * best one answers another question (« supprimer mon compte » also finds the alerts, which a
+ * passage tells how to stop from the account). Nothing qualifying is {@code NOT_IN_HELP}, which the user sees as "not found in our help pages".
  */
 @Component
 public class HelpIndex {
 
     public static final String RESOURCE = "assistant/help.fr.json";
-    public static final int MAX_PASSAGES = 3;
+    public static final int MAX_PASSAGES = 2;
+    /**
+     * A second passage's score, at least, as a share of the best one's. Measured on the questions
+     * of HelpIndexTest: a second section on the same subject (two ways to report, what is free)
+     * scores 0.85 of the best or more; the alerts after « supprimer mon compte » score 0.51, the
+     * new-device e-mail after « mot de passe oublié », 0.42.
+     */
+    public static final double RELATIVE_SCORE = 0.6;
     /** As for the smart search's query: a question, not a document. */
     public static final int MAX_QUERY = 200;
 
@@ -105,10 +114,14 @@ public class HelpIndex {
             return ToolResult.refusal(ToolResult.Reason.NOT_IN_HELP);
         }
         int needed = (asked.size() + 1) / 2;
-        List<Passage> found = sections.stream()
+        List<Map.Entry<Section, Double>> ranked = sections.stream()
                 .filter(section -> asked.stream().filter(section.terms()::contains).count() >= needed)
                 .map(section -> Map.entry(section, score(section, asked)))
                 .sorted(Map.Entry.<Section, Double>comparingByValue(Comparator.reverseOrder()))
+                .toList();
+        double floor = ranked.isEmpty() ? 0 : ranked.getFirst().getValue() * RELATIVE_SCORE;
+        List<Passage> found = ranked.stream()
+                .filter(entry -> entry.getValue() >= floor)
                 .limit(MAX_PASSAGES)
                 .map(entry -> entry.getKey().passage())
                 .toList();
