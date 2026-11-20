@@ -31,6 +31,12 @@ class StubAssistantPlanner implements AssistantPlanner {
         next.add(new PlannerUnavailableException("stub: unavailable", null, 50));
     }
 
+    /** The next call is refused for the provider's rate limit, as Groq's 429 would. */
+    synchronized void busy(long retryAfterSeconds) {
+        next.clear();
+        next.add(new PlannerBusyException(retryAfterSeconds));
+    }
+
     synchronized List<Input> inputs() {
         return List.copyOf(inputs);
     }
@@ -51,6 +57,9 @@ class StubAssistantPlanner implements AssistantPlanner {
         Object answer = next.pollFirst();
         if (answer instanceof PlannerUnavailableException failure) {
             throw failure;
+        }
+        if (answer instanceof PlannerBusyException busy) {
+            throw busy;
         }
         if (answer == null) {
             throw new IllegalStateException("The test queued no plan for this call");

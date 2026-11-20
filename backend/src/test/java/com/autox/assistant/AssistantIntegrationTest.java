@@ -49,7 +49,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
         "autox.ai.provider = stub",
         "autox.assistant.enabled = true",
         "autox.assistant.daily-token-budget = 100000",
-        "autox.assistant.turns-per-minute = 1000",
+        "autox.assistant.tokens-per-minute = 100000000",
         "autox.assistant.limits.enabled = true",
         "autox.assistant.limits.per-address = 5",
         "autox.assistant.limits.anonymous-per-day = 3",
@@ -89,6 +89,7 @@ class AssistantIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Autowired StubAssistantPlanner planner;
+    @Autowired AssistantPacing pacing;
     @Autowired ListingTestFixtures fixtures;
     @Autowired JdbcTemplate jdbc;
 
@@ -99,6 +100,7 @@ class AssistantIntegrationTest extends AbstractIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         planner.reset();
+        pacing.clear();
         catalogue = fixtures.ensureCatalogue();
         seller = register(uniqueEmail("assistant-seller"), UserRole.PROFESSIONNEL);
         address = "203.0.113." + ADDRESSES.getAndIncrement() % 250;
@@ -315,6 +317,83 @@ class AssistantIntegrationTest extends AbstractIntegrationTest {
             turn(Map.of("message", "x", "state", Map.of("earlier", List.of(), "shown", List.of("pas-un-id"), "turns", 1)))
                     .andExpect(status().isBadRequest());
             assertThat(planner.inputs()).isEmpty();
+        }
+    }
+
+    /** The four bugs of the first trial on Groq, each as the planner gave it (docs/assistant-plan.md, 12). */
+    @Nested
+    class AfterTheFirstTrial {
+
+        @Test
+        @DisplayName("1. finances the one listing in memory when the planner names none: 48 months, 2 000 € down")
+        void financeTheOnlyListing() throws Exception {
+            UUID id = listing(Map.of("priceAmount", 1_189_000L));
+            planner.plans(json("""
+                    {"intent": "FINANCE", "calls": [{"tool": "simulate_financing", "downPaymentEuros": 2000, "months": 48}]}"""));
+
+            turn(Map.of("message", "Combien par mois sur 4 ans avec 2 000 € d'apport ?",
+                    "state", Map.of("earlier", List.of("Une 208"), "shown", List.of(id.toString()), "turns", 1)))
+                    .andExpect(jsonPath("$.blocks[0].type").value("FINANCING"))
+                    .andExpect(jsonPath("$.blocks[0].financing.listingId").value(id.toString()))
+                    .andExpect(jsonPath("$.blocks[0].financing.downPayment").value(200_000))
+                    .andExpect(jsonPath("$.blocks[0].financing.borrowedAmount").value(989_000))
+                    .andExpect(jsonPath("$.blocks[0].financing.months").value(48));
+        }
+
+        @Test
+        @DisplayName("2. answers a question about AutoX from the help pages even when the planner calls it out of scope")
+        void neverOutOfScopeForAutoX() throws Exception {
+            planner.plans(json("{\"intent\": \"NO_ANSWER\", \"noAnswer\": \"OUT_OF_SCOPE\"}"));
+            turn(Map.of("message", "Comment supprimer mon compte ?"))
+                    .andExpect(jsonPath("$.blocks[0].type").value("HELP_PASSAGE"))
+                    .andExpect(jsonPath("$.blocks[0].help[0].sectionId").value("comment-supprimer-mon-compte-ou-obtenir"));
+
+            // About AutoX, and not in the help pages: "not found there", with the way to the help centre.
+            planner.plans(json("{\"intent\": \"NO_ANSWER\", \"noAnswer\": \"OUT_OF_SCOPE\"}"));
+            turn(Map.of("message", "Où se trouve le siège social d'AutoX ?"))
+                    .andExpect(jsonPath("$.blocks[0].reason").value("NOT_IN_HELP"));
+
+            // About neither cars nor AutoX: out of scope it stays.
+            planner.plans(json("{\"intent\": \"NO_ANSWER\", \"noAnswer\": \"OUT_OF_SCOPE\"}"));
+            turn(Map.of("message", "Écris-moi un poème sur la mer"))
+                    .andExpect(jsonPath("$.blocks[0].reason").value("OUT_OF_SCOPE"));
+        }
+
+        @Test
+        @DisplayName("3. says plainly that only one listing was found when asked to compare two, and shows it")
+        void onlyOneToCompare() throws Exception {
+            UUID id = listing(Map.of());
+            Map<String, Object> state = Map.of("earlier", List.of("Une 208"), "shown", List.of(id.toString()), "turns", 1);
+
+            planner.plans(json("{\"intent\": \"CLARIFY\", \"clarify\": \"WHICH_LISTING\"}"));
+            turn(Map.of("message", "Compare les deux premières", "state", state))
+                    .andExpect(jsonPath("$.blocks[0].type").value("NO_ANSWER"))
+                    .andExpect(jsonPath("$.blocks[0].reason").value("NOT_ENOUGH_LISTINGS"))
+                    .andExpect(jsonPath("$.blocks[0].listingId").value(id.toString()))
+                    .andExpect(jsonPath("$.blocks[1].type").value("LISTINGS"))
+                    .andExpect(jsonPath("$.blocks[1].listings[0].id").value(id.toString()));
+
+            planner.plans(json("{\"intent\": \"COMPARE\", \"calls\": [{\"tool\": \"compare_listings\", \"refs\": [\"L1\", \"L2\"]}]}"));
+            turn(Map.of("message", "Compare-les"))
+                    .andExpect(jsonPath("$.blocks", hasSize(1)))
+                    .andExpect(jsonPath("$.blocks[0].reason").value("NOT_ENOUGH_LISTINGS"));
+        }
+
+        @Test
+        @DisplayName("4. tells the user the assistant is busy and when to retry on Groq's 429, then waits that long itself")
+        void busy() throws Exception {
+            planner.busy(17);
+
+            turn(Map.of("message", "Une 208")).andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.code").value("ASSISTANT_BUSY"))
+                    .andExpect(header().string(HttpHeaders.RETRY_AFTER, "17"));
+
+            // Within those seconds, refused at once, without calling the provider again.
+            address = "192.0.2." + ADDRESSES.getAndIncrement() % 250;
+            turn(Map.of("message", "Une Clio")).andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.code").value("ASSISTANT_BUSY"));
+            assertThat(planner.inputs()).hasSize(1);
+            assertThat(jdbc.queryForMap("SELECT * FROM assistant_usage")).containsEntry("failed", 1);
         }
     }
 

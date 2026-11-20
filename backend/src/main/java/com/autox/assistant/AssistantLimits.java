@@ -6,8 +6,6 @@ import com.autox.throttle.ThrottleScope;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.OptionalLong;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -18,8 +16,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * What a turn has to pass before it may spend any quota (docs/assistant-plan.md, 5.3): its caller's
- * limits, then the pace of all callers together.
+ * What a caller may spend (docs/assistant-plan.md, 5.3): turns per address and per day. The pace
+ * of all callers together is {@link AssistantPacing}'s.
  *
  * <p>Returns decisions rather than throwing, for the reason {@code PublicRateLimitService} gives: an
  * exception inside the transaction would roll back the count it just wrote.
@@ -29,13 +27,10 @@ public class AssistantLimits {
 
     private static final Logger log = LoggerFactory.getLogger(AssistantLimits.class);
     private static final Duration DAY = Duration.ofHours(24);
-    private static final Duration MINUTE = Duration.ofMinutes(1);
 
     private final ThrottleCounters counters;
     private final AssistantProperties properties;
     private final Clock clock;
-    /** When the turns of the last minute reached the planner. One instance on Render: memory is enough. */
-    private final Deque<Instant> recentTurns = new ArrayDeque<>();
 
     @Autowired
     public AssistantLimits(ThrottleCounters counters, AssistantProperties properties) {
@@ -71,23 +66,6 @@ public class AssistantLimits {
         }
         return key == null ? OptionalLong.empty()
                 : count(ThrottleScope.ASSISTANT_ANON_DAY, key, now, DAY, limits.anonymousPerDay());
-    }
-
-    /**
-     * Takes one of the minute's turns for all callers together: the free tier's tokens per minute,
-     * divided by a turn's cost. Empty if taken, else the seconds until one is free.
-     */
-    public synchronized OptionalLong takeTurn() {
-        Instant now = clock.instant();
-        while (!recentTurns.isEmpty() && !recentTurns.peekFirst().isAfter(now.minus(MINUTE))) {
-            recentTurns.removeFirst();
-        }
-        if (recentTurns.size() >= properties.turnsPerMinute()) {
-            Instant freeAt = recentTurns.peekFirst().plus(MINUTE);
-            return OptionalLong.of(Math.max(1, Duration.between(now, freeAt).toSeconds() + 1));
-        }
-        recentTurns.addLast(now);
-        return OptionalLong.empty();
     }
 
     private OptionalLong count(ThrottleScope scope, String key, Instant now, Duration window, int allowed) {

@@ -13,8 +13,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param timeout           one planner call, end to end
  * @param dailyTokenBudget  tokens the assistant may spend per Paris day, the planner's own count,
  *                          leaving the rest of the free tier's daily tokens to the smart search
- * @param turnsPerMinute    turns reaching the planner per minute, for every visitor together: the
- *                          free tier's tokens per minute, divided by a turn's cost
+ * @param tokensPerMinute   the planner's tokens per minute, for every visitor together, below the
+ *                          free tier's 8 000 so the smart search's calls fit too (AssistantPacing)
  * @param limits            per caller, counted before any spend
  */
 @ConfigurationProperties(prefix = "autox.assistant")
@@ -23,14 +23,14 @@ public record AssistantProperties(
         String model,
         Duration timeout,
         long dailyTokenBudget,
-        int turnsPerMinute,
+        long tokensPerMinute,
         Limits limits) {
 
     public AssistantProperties {
         model = model == null || model.isBlank() ? "openai/gpt-oss-120b" : model;
         timeout = timeout == null || timeout.isNegative() || timeout.isZero() ? Duration.ofSeconds(8) : timeout;
         dailyTokenBudget = dailyTokenBudget <= 0 ? 140_000 : dailyTokenBudget;
-        turnsPerMinute = turnsPerMinute <= 0 ? 3 : turnsPerMinute;
+        tokensPerMinute = tokensPerMinute <= 0 ? 7_000 : tokensPerMinute;
         limits = limits == null ? new Limits(true, 0, null, 0, 0) : limits;
     }
 

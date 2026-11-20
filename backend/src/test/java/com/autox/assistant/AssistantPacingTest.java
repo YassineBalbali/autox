@@ -5,30 +5,69 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.autox.support.MutableClock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.OptionalLong;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** The minute's turns for every caller together: the free tier's tokens per minute (docs/assistant-plan.md, 5.3). */
+/**
+ * The pace of all callers together, in tokens as the provider counts them, so the server says
+ * "busy" before Groq does (docs/assistant-plan.md, 5.3 and 12).
+ */
 class AssistantPacingTest {
 
     private final MutableClock clock = new MutableClock(Instant.parse("2026-11-19T10:00:00Z"));
-    private final AssistantLimits limits = new AssistantLimits(null,
-            new AssistantProperties(true, null, null, 0, 3, null), clock);
+    private final AssistantPacing pacing = new AssistantPacing(
+            new AssistantProperties(true, null, null, 0, 7_000, null), clock);
 
     @Test
-    @DisplayName("lets three turns through in a minute, then says how long until the first is a minute old")
-    void threeAMinute() {
-        assertThat(limits.takeTurn()).isEmpty();
+    @DisplayName("reserves each call at what calls have cost lately, and refuses one that would not fit the minute")
+    void tokens() {
+        AssistantPacing.Reservation first = pacing.reserve();
+        assertThat(first.granted()).isTrue();
+        pacing.settle(first.call(), 3_000);
+
         clock.advance(Duration.ofSeconds(10));
-        assertThat(limits.takeTurn()).isEmpty();
-        assertThat(limits.takeTurn()).isEmpty();
+        AssistantPacing.Reservation second = pacing.reserve();
+        assertThat(second.granted()).isTrue();
+        pacing.settle(second.call(), 3_000);
+        assertThat(pacing.estimate()).isEqualTo(3_000);
 
-        OptionalLong wait = limits.takeTurn();
-        assertThat(wait).hasValue(51);
+        // 6 000 spent in the minute, 3 000 more expected: over 7 000 until the first is a minute old.
+        clock.advance(Duration.ofSeconds(5));
+        AssistantPacing.Reservation third = pacing.reserve();
+        assertThat(third.granted()).isFalse();
+        assertThat(third.waitSeconds()).isEqualTo(46);
 
-        clock.advance(Duration.ofSeconds(50));
-        assertThat(limits.takeTurn()).isEmpty();
-        assertThat(limits.takeTurn()).isPresent();
+        clock.advance(Duration.ofSeconds(46));
+        assertThat(pacing.reserve().granted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("starts from an estimate, and lets a first call through whatever it is expected to cost")
+    void firstCall() {
+        assertThat(pacing.estimate()).isEqualTo(AssistantPacing.FIRST_ESTIMATE);
+        AssistantPacing small = new AssistantPacing(new AssistantProperties(true, null, null, 0, 500, null), clock);
+        assertThat(small.reserve().granted()).isTrue();
+        assertThat(small.reserve().granted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("keeps a call's reservation when the provider did not count it")
+    void uncounted() {
+        AssistantPacing.Reservation call = pacing.reserve();
+        pacing.settle(call.call(), 0);
+        assertThat(pacing.estimate()).isEqualTo(AssistantPacing.FIRST_ESTIMATE);
+    }
+
+    @Test
+    @DisplayName("sends nothing before the time the provider gave in its 429")
+    void providerBusy() {
+        pacing.providerBusyFor(17);
+
+        AssistantPacing.Reservation refused = pacing.reserve();
+        assertThat(refused.granted()).isFalse();
+        assertThat(refused.waitSeconds()).isEqualTo(18);
+
+        clock.advance(Duration.ofSeconds(17));
+        assertThat(pacing.reserve().granted()).isTrue();
     }
 }

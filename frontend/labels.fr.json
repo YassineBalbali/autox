@@ -161,6 +161,7 @@
       "INVALID_CURSOR": "Cette page de résultats n’est plus valable. Relancez la recherche.",
       "INTERPRETER_UNAVAILABLE": "La recherche intelligente est indisponible pour le moment.",
       "ASSISTANT_UNAVAILABLE": "L’assistant est indisponible pour le moment. Vous pouvez utiliser la recherche classique.",
+      "ASSISTANT_BUSY": "L’assistant est très demandé en ce moment. Réessayez dans quelques secondes.",
       "INTERNAL_ERROR": "Une erreur inattendue s’est produite. Réessayez dans un instant."
     },
     "ListingReportReason": {

@@ -19,8 +19,9 @@ import org.springframework.stereotype.Service;
  *
  * <p>Order matters, as in the smart search. The switch first, so a server with the assistant off
  * answers 404 and counts nothing. The conversation's length next, which costs nothing. Then the
- * caller's limits, the day's budget and the minute's pace, all before the planner is called, so a
- * refused turn spends no quota. Then the planner, once, or twice if its first plan cannot be
+ * caller's limits, the day's budget and the minute's pace in tokens ({@link AssistantPacing}), all
+ * before the planner is called, so a refused turn spends no quota. The provider's own 429 makes the
+ * server wait as long as the provider asks. Then the planner, once, or twice if its first plan cannot be
  * followed; the validator; the tools; the answer.
  *
  * <p><b>Logged per turn:</b> the outcome, the intent, the tools, the tokens and the time, and the
@@ -38,12 +39,14 @@ public class AssistantService {
     private final References references;
     private final AnswerBuilder answers;
     private final AssistantLimits limits;
+    private final AssistantPacing pacing;
     private final AssistantUsage usage;
     private final CurrencyRepository currencies;
 
     public AssistantService(AssistantProperties properties, ObjectProvider<AssistantPlanner> planners, PlanValidator validator,
                             References references, AnswerBuilder answers, AssistantLimits limits,
-                            AssistantUsage usage, CurrencyRepository currencies) {
+                            AssistantPacing pacing, AssistantUsage usage, CurrencyRepository currencies) {
+        this.pacing = pacing;
         this.properties = properties;
         // None configured (a provider other than none or groq, as in tests that do not need one): off.
         this.planner = planners.getIfUnique(DisabledAssistantPlanner::new);
@@ -82,9 +85,10 @@ public class AssistantService {
             log.info("Assistant turn refused: today's token budget of {} is spent", properties.dailyTokenBudget());
             throw ApiException.assistantUnavailable();
         }
-        OptionalLong pace = limits.takeTurn();
-        if (pace.isPresent()) {
-            throw ApiException.rateLimited(pace.getAsLong());
+        AssistantPacing.Reservation first = pacing.reserve();
+        if (!first.granted()) {
+            log.info("Assistant turn refused: busy for {}s", first.waitSeconds());
+            throw ApiException.assistantBusy(first.waitSeconds());
         }
 
         long started = System.nanoTime();
@@ -99,10 +103,21 @@ public class AssistantService {
         long tokensOut = 0;
         PlanValidator.Result result = null;
         int attempts = 0;
+        AssistantPacing.Reservation reservation = first;
         try {
             while (attempts < 2 && !(result instanceof PlanValidator.Valid)) {
+                if (attempts > 0) {
+                    // The second call is paced like the first: if it does not fit, the user is asked to
+                    // rephrase now rather than the turn waiting, or the provider refusing it.
+                    reservation = pacing.reserve();
+                    if (!reservation.granted()) {
+                        log.info("Assistant plan retry skipped: busy for {}s", reservation.waitSeconds());
+                        break;
+                    }
+                }
                 attempts++;
                 AssistantPlanner.Answer planned = planner.plan(input);
+                pacing.settle(reservation.call(), planned.tokensIn() + planned.tokensOut());
                 tokensIn += planned.tokensIn();
                 tokensOut += planned.tokensOut();
                 result = validator.validate(planned.plan(), message.text(), table, minorUnit);
@@ -110,8 +125,16 @@ public class AssistantService {
                     log.info("Assistant plan invalid (attempt {}): field={}", attempts, invalid.field());
                 }
             }
+        } catch (PlannerBusyException e) {
+            // The provider's own limit: wait as long as it says, and so does every caller after.
+            pacing.providerBusyFor(e.retryAfterSeconds());
+            usage.record(AssistantUsage.Outcome.FAILED, null, List.of(), Math.max(0, attempts - 1), tokensIn, tokensOut);
+            log.info("Assistant turn refused by the provider's rate limit: retry in {}s", e.retryAfterSeconds());
+            throw ApiException.assistantBusy(e.retryAfterSeconds());
         } catch (PlannerUnavailableException e) {
-            usage.record(AssistantUsage.Outcome.FAILED, null, List.of(), attempts - 1, tokensIn + e.tokensSpent(), tokensOut);
+            pacing.settle(reservation.call(), e.tokensSpent());
+            usage.record(AssistantUsage.Outcome.FAILED, null, List.of(), Math.max(0, attempts - 1),
+                    tokensIn + e.tokensSpent(), tokensOut);
             log.info("Assistant turn failed: planner unavailable after {} ms", elapsed(started));
             throw ApiException.assistantUnavailable();
         }

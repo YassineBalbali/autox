@@ -113,5 +113,7 @@ public enum ErrorCode {
     INTERPRETER_UNAVAILABLE,
     /** Assistant AutoX could not answer: its planner timed out, failed, or today's budget is spent. */
     ASSISTANT_UNAVAILABLE,
+    /** Assistant AutoX is at its pace for every caller together, or its provider is: try again later. */
+    ASSISTANT_BUSY,
     INTERNAL_ERROR
 }

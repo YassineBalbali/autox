@@ -99,6 +99,12 @@ public class ApiException extends RuntimeException {
                 "The assistant is unavailable right now. Use the ordinary search.");
     }
 
+    /** 429 with Retry-After: the assistant's pace, for every caller together, or its provider's. */
+    public static ApiException assistantBusy(long retryAfterSeconds) {
+        return new ApiException(HttpStatus.TOO_MANY_REQUESTS, ErrorCode.ASSISTANT_BUSY,
+                "The assistant is busy. Try again in " + retryAfterSeconds + " seconds.", retryAfterSeconds);
+    }
+
     public static ApiException interpreterUnavailable() {
         return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.INTERPRETER_UNAVAILABLE,
                 "Natural-language search is unavailable right now. Use the ordinary search.");

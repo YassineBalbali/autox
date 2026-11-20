@@ -8934,6 +8934,7 @@
           "INVALID_CURSOR",
           "INTERPRETER_UNAVAILABLE",
           "ASSISTANT_UNAVAILABLE",
+          "ASSISTANT_BUSY",
           "INTERNAL_ERROR"
         ]
       },
@@ -9726,6 +9727,7 @@
           "NOT_FINANCEABLE",
           "NOTHING_TO_FINANCE",
           "LISTING_UNAVAILABLE",
+          "NOT_ENOUGH_LISTINGS",
           "REPHRASE",
           "CONVERSATION_OVER"
         ]
@@ -9737,8 +9739,7 @@
           "BUDGET",
           "OFFER_TYPE",
           "WHICH_LISTING",
-          "VEHICLE",
-          "FINANCING_TERMS"
+          "VEHICLE"
         ]
       },
       "AssistantSearchLink": {
