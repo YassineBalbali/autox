@@ -97,3 +97,6 @@ logs/
 /data/
 docker-compose.override.yml
 
+
+# The evaluation runner's resumable progress; the reports next to it are kept.
+eval/assistant/results/*.progress.jsonl
