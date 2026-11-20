@@ -880,7 +880,7 @@ Built for the owner to run against Groq; nothing in CI calls it.
   (« bonjour »). It covers every intent, refusal and clarifying question, searches with varied
   criteria, listings in memory, Crit'Air around its date boundaries, valuations, help, off-topic
   and advice, seller-contact requests, injections (one inside a search), contact details, typos
-  and informal French. It's the development set. The held-out set of 9 is still to be written, by
+  and informal French. It's the development set. The held-out set (section 9) is still to be written, by
   someone who has seen neither the prompt nor this set.
 - **Listings in memory** come from the local database's public search, so seeding them costs no
   planner call. They need the demo data. A case whose listings aren't there is reported as not
