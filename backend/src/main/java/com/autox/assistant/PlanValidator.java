@@ -138,11 +138,11 @@ public class PlanValidator {
                         : new Invalid(at + ".criteria");
             }
             case GET_LISTING, SIMILAR_LISTINGS -> {
-                Optional<UUID> id = call.hasNonNull("ref") ? reference(call, references) : implicit(references);
+                Optional<UUID> id = code(call.get("ref")) != null ? reference(call, references) : implicit(references);
                 yield id.<Object>map(found -> new Plan.OneListing(tool, found)).orElse(new Invalid(at + ".ref"));
             }
             case COMPARE_LISTINGS -> compare(call, at, references);
-            case SIMULATE_FINANCING -> finance(call, at, references, scale);
+            case SIMULATE_FINANCING -> finance(call, at, message, references, scale);
             case CRIT_AIR -> critAir(call, at, references);
             case ESTIMATE_VALUE -> value(call, at);
             case SEARCH_HELP -> help(call, at, message);
@@ -168,7 +168,8 @@ public class PlanValidator {
         }
         Set<UUID> ids = new LinkedHashSet<>();
         for (JsonNode ref : refs) {
-            Optional<UUID> id = ref.isTextual() ? references.resolve(ref.asText()) : Optional.empty();
+            String code = code(ref);
+            Optional<UUID> id = code == null ? Optional.empty() : references.resolve(code);
             if (id.isEmpty() || !ids.add(id.get())) {
                 return new Invalid(at + ".refs");
             }
@@ -176,14 +177,20 @@ public class PlanValidator {
         return new Plan.Compare(List.copyOf(ids));
     }
 
-    private Object finance(JsonNode call, String at, References.Table references, long scale) {
+    private Object finance(JsonNode call, String at, String message, References.Table references, long scale) {
         Optional<UUID> listing = reference(call, references);
         Long amount = null;
         if (listing.isEmpty()) {
-            if (call.hasNonNull("ref")) {
+            if (code(call.get("ref")) != null) {
                 return new Invalid(at + ".ref");
             }
             Long euros = integer(call, "amountEuros");
+            if (euros != null && copiedFromLabel(euros, message, references)) {
+                // The listing meant's own price, which the user never wrote: the model copied it
+                // from the label. The listing is what was asked about, and the tool reads its price.
+                listing = implicit(references);
+                euros = null;
+            }
             if (euros == null && !call.hasNonNull("amountEuros")) {
                 // No price and no code: the listing meant is the page's, or the only one known.
                 // A price written wrong is not that: it stays an error.
@@ -191,6 +198,8 @@ public class PlanValidator {
                 if (listing.isEmpty()) {
                     return new Invalid(at + ".amountEuros");
                 }
+            } else if (listing.isPresent()) {
+                // The listing above: its price is the tool's to read.
             } else if (euros == null || euros < MIN_AMOUNT_EUROS || euros > MAX_AMOUNT_EUROS) {
                 return new Invalid(at + ".amountEuros");
             } else {
@@ -212,7 +221,7 @@ public class PlanValidator {
         if (listing.isPresent()) {
             return new Plan.CritAirOf(listing.get(), null, null, null);
         }
-        if (call.hasNonNull("ref")) {
+        if (code(call.get("ref")) != null) {
             return new Invalid(at + ".ref");
         }
         FuelType fuel = fuel(call);
@@ -283,8 +292,41 @@ public class PlanValidator {
                 ? Optional.of(references.references().getFirst().listingId()) : Optional.empty();
     }
 
+    /**
+     * A listing code as the model may write it: "L2", "l2", "L 2". Blank or null is no code at all,
+     * which lets the listing meant apply. Anything else, a number or an id among them, is kept
+     * as written and fails to resolve.
+     */
+    static String code(JsonNode ref) {
+        if (ref == null || ref.isNull()) {
+            return null;
+        }
+        if (!ref.isTextual()) {
+            return "?";
+        }
+        String code = ref.asText().replaceAll("\\s+", "").toUpperCase(Locale.ROOT);
+        return code.isEmpty() ? null : code;
+    }
+
+    /** A digit anywhere in the message: the user wrote an amount, a year or a count. */
+    private static final Pattern NUMBER = Pattern.compile("\\d");
+
+    /**
+     * An amount that is the listing meant's price, as its label writes it, in a message with no
+     * number at all: not the user's, who wrote none, but the label's.
+     */
+    private static boolean copiedFromLabel(long euros, String message, References.Table references) {
+        if (NUMBER.matcher(message).find()) {
+            return false;
+        }
+        Optional<UUID> meant = implicit(references);
+        return meant.isPresent() && references.references().stream()
+                .filter(reference -> reference.listingId().equals(meant.get()))
+                .anyMatch(reference -> Pattern.compile("(^|\\D)" + euros + " EUR").matcher(reference.label()).find());
+    }
+
     private static Optional<UUID> reference(JsonNode call, References.Table references) {
-        String ref = text(call, "ref");
+        String ref = code(call.get("ref"));
         return ref == null ? Optional.empty() : references.resolve(ref);
     }
 

@@ -265,6 +265,41 @@ class PlanValidatorTest {
         }
 
         @Test
+        @DisplayName("reads a listing code written loosely, and a blank one as none (first evaluation)")
+        void looseCodes() throws Exception {
+            for (String ref : List.of("\"l1\"", "\" L 1 \"")) {
+                assertThat(((PlanValidator.Valid) check("{\"intent\": \"EXPLAIN\", \"calls\": [{\"tool\": \"get_listing\", \"ref\": "
+                        + ref + "}]}", "x", one)).plan().calls()).as(ref).containsExactly(new Plan.OneListing(Plan.Tool.GET_LISTING, only));
+            }
+            // Blank: no code, so the listing meant, here the only one.
+            assertThat(((PlanValidator.Valid) check("{\"intent\": \"SIMILAR\", \"calls\": [{\"tool\": \"similar_listings\", \"ref\": \" \"}]}",
+                    "x", one)).plan().calls()).containsExactly(new Plan.OneListing(Plan.Tool.SIMILAR_LISTINGS, only));
+            // A code that names nothing is still refused.
+            assertThat(check("{\"intent\": \"EXPLAIN\", \"calls\": [{\"tool\": \"get_listing\", \"ref\": \"L2\"}]}", "x", one))
+                    .isEqualTo(new PlanValidator.Invalid("calls[0].ref"));
+            assertThat(((PlanValidator.Valid) check("{\"intent\": \"COMPARE\", \"calls\": [{\"tool\": \"compare_listings\", \"refs\": [\"l1\", \"L2 \"]}]}",
+                    "x", TABLE)).plan().calls()).containsExactly(new Plan.Compare(List.of(FIRST, SECOND)));
+        }
+
+        @Test
+        @DisplayName("finances the listing meant, not a price the user never wrote (first evaluation)")
+        void priceNotWritten() throws Exception {
+            String copied = "{\"intent\": \"FINANCE\", \"calls\": [{\"tool\": \"simulate_financing\", \"amountEuros\": 11890}]}";
+            // « Ça ferait combien par mois ? » on the listing's page: the model copied its price from the label.
+            assertThat(((PlanValidator.Valid) check(copied, "Ça ferait combien par mois ?", one)).plan().calls())
+                    .containsExactly(new Plan.Finance(only, null, null, null, null));
+            // A price the user wrote is theirs, listing or not.
+            assertThat(((PlanValidator.Valid) check(copied, "Et pour 11 890 € ?", one)).plan().calls())
+                    .containsExactly(new Plan.Finance(null, 1_189_000L, null, null, null));
+            // No listing meant: the amount stands, whoever wrote it.
+            assertThat(((PlanValidator.Valid) check(copied, "Combien par mois ?", none)).plan().calls())
+                    .containsExactly(new Plan.Finance(null, 1_189_000L, null, null, null));
+            // An amount in words is not the listing's price: it stands.
+            assertThat(((PlanValidator.Valid) check(copied.replace("11890", "15000"), "Pour quinze mille euros ?", one)).plan().calls())
+                    .containsExactly(new Plan.Finance(null, 1_500_000L, null, null, null));
+        }
+
+        @Test
         @DisplayName("has no clarifying question about financing terms: the simulator has defaults (bug 1)")
         void noFinancingQuestion() throws Exception {
             assertThat(check("{\"intent\": \"CLARIFY\", \"clarify\": \"FINANCING_TERMS\"}", "x", one))
