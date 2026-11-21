@@ -157,7 +157,8 @@ class GroqAssistantPlannerTest {
     void promptSize() {
         String prompt = AssistantPrompt.system(2026);
         String own = prompt.substring(0, prompt.indexOf(InterpretationPrompt.rules(2026)));
-        assertThat(own.length()).isLessThan(2_400);
+        // 2 310 before the five rules of the first evaluation (docs/assistant-plan.md, 12).
+        assertThat(own.length()).isLessThan(2_750);
     }
 
     @Test
