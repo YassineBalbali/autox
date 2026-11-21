@@ -32,7 +32,7 @@
  *
  * Interrupted (Ctrl+C, a stop for the day's quota), the same command resumes: every finished case
  * is in results/<label>.progress.jsonl. The report is results/<date>-<label>.md, to paste back,
- * and results/<date>-<label>.json with every turn.
+ * and results/<date>-<label>.json with every turn; -2, -3… when that day already has one.
  *
  * A turn is right, wrong, or unanswered: a turn the API could not answer (503: the planner timed
  * out twice, or failed) says nothing about the planner, and is left out of the accuracy, listed
@@ -355,9 +355,12 @@ function writeReport() {
     return;
   }
   const date = new Date().toISOString().slice(0, 10);
-  const md = join(resultsDir, `${date}-${label}.md`);
+  // A report already there (a run earlier the same day, perhaps committed) is kept: -2, -3…
+  let name = `${date}-${label}`;
+  for (let n = 2; existsSync(join(resultsDir, `${name}.md`)); n += 1) name = `${date}-${label}-${n}`;
+  const md = join(resultsDir, `${name}.md`);
   writeFileSync(md, report(results));
-  writeFileSync(join(resultsDir, `${date}-${label}.json`), `${JSON.stringify({ label, base, version: set.version, results }, null, 2)}\n`);
+  writeFileSync(join(resultsDir, `${name}.json`), `${JSON.stringify({ label, base, version: set.version, results }, null, 2)}\n`);
   console.log(`\nReport: ${md}`);
 }
 
