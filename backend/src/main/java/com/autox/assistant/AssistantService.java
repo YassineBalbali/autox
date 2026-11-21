@@ -121,26 +121,48 @@ public class AssistantService {
         long tokensOut = 0;
         PlanValidator.Result result = null;
         int attempts = 0;
+        List<EvalTrace.Rejected> rejected = new ArrayList<>();
         AssistantPacing.Reservation reservation = first;
         try {
+            // At most two planner calls: the second for a plan that cannot be followed, or a timeout.
             while (attempts < 2 && !(result instanceof PlanValidator.Valid)) {
                 if (attempts > 0) {
-                    // The second call is paced like the first: if it does not fit, the user is asked to
-                    // rephrase now rather than the turn waiting, or the provider refusing it.
-                    reservation = pacing.reserve();
+                    // Paced like the first, but never dropped for it: it waits for the minute's room,
+                    // a bounded time, and past that the turn is "busy", not "rephrase".
+                    reservation = pacing.reserveWithin(properties.retryWait());
                     if (!reservation.granted()) {
-                        log.info("Assistant plan retry skipped: busy for {}s", reservation.waitSeconds());
-                        break;
+                        usage.record(AssistantUsage.Outcome.FAILED, null, List.of(), attempts, tokensIn, tokensOut);
+                        log.info("Assistant turn refused: the second planner call would wait {}s, over {}",
+                                reservation.waitSeconds(), properties.retryWait());
+                        throw ApiException.assistantBusy(reservation.waitSeconds());
                     }
                 }
                 attempts++;
-                AssistantPlanner.Answer planned = planner.plan(input);
+                AssistantPlanner.Answer planned;
+                try {
+                    planned = planner.plan(input);
+                } catch (PlannerUnavailableException e) {
+                    if (e.kind() != PlannerUnavailableException.Kind.TIMEOUT) {
+                        throw e;
+                    }
+                    pacing.settle(reservation.call(), e.tokensSpent());
+                    tokensIn += e.tokensSpent();
+                    if (attempts >= 2) {
+                        usage.record(AssistantUsage.Outcome.FAILED, null, List.of(), attempts - 1, tokensIn, tokensOut);
+                        log.info("Assistant turn failed: the planner timed out twice, {} ms", elapsed(started));
+                        throw ApiException.assistantSlow();
+                    }
+                    log.info("Assistant planner timed out (attempt {}): asking once more", attempts);
+                    rejected.add(new EvalTrace.Rejected("timeout", null));
+                    continue;
+                }
                 pacing.settle(reservation.call(), planned.tokensIn() + planned.tokensOut());
                 tokensIn += planned.tokensIn();
                 tokensOut += planned.tokensOut();
                 result = validator.validate(planned.plan(), message.text(), table, minorUnit);
                 if (result instanceof PlanValidator.Invalid invalid) {
                     log.info("Assistant plan invalid (attempt {}): field={}", attempts, invalid.field());
+                    rejected.add(new EvalTrace.Rejected(invalid.field(), planned.plan()));
                 }
             }
         } catch (PlannerBusyException e) {
@@ -153,7 +175,7 @@ public class AssistantService {
             pacing.settle(reservation.call(), e.tokensSpent());
             usage.record(AssistantUsage.Outcome.FAILED, null, List.of(), Math.max(0, attempts - 1),
                     tokensIn + e.tokensSpent(), tokensOut);
-            log.info("Assistant turn failed: planner unavailable after {} ms", elapsed(started));
+            log.info("Assistant turn failed: planner unavailable ({}) after {} ms, attempt {}", e.kind(), elapsed(started), attempts);
             throw ApiException.assistantUnavailable();
         }
 
@@ -166,7 +188,7 @@ public class AssistantService {
             usage.record(AssistantUsage.Outcome.INVALID, null, List.of(Plan.Reason.REPHRASE), attempts - 1, tokensIn, tokensOut);
             log.info("Assistant turn: two invalid plans, tokens={}/{}, {} ms", tokensIn, tokensOut, elapsed(started));
             if (properties.evalTrace()) {
-                traced.accept(EvalTrace.invalid(attempts, tokensIn, tokensOut, json));
+                traced.accept(EvalTrace.invalid(rejected, attempts, tokensIn, tokensOut, json));
             }
             return new TurnResponse(blocks, next(state, message.text(), List.of()));
         }
@@ -179,7 +201,7 @@ public class AssistantService {
                 plan.intent(), plan.calls().stream().map(call -> call.tool().wireName()).toList(), answer.reasons(),
                 attempts, tokensIn, tokensOut, elapsed(started));
         if (properties.evalTrace()) {
-            traced.accept(EvalTrace.of(plan, answer, blocks, table, minorUnit, attempts, tokensIn, tokensOut, json));
+            traced.accept(EvalTrace.of(plan, answer, blocks, table, minorUnit, rejected, attempts, tokensIn, tokensOut, json));
         }
         return new TurnResponse(blocks, next(state, message.text(), answer.shown()));
     }

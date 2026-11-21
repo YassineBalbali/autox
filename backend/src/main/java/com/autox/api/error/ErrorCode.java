@@ -111,8 +111,10 @@ public enum ErrorCode {
      * request was wrong, and the same request may work later.
      */
     INTERPRETER_UNAVAILABLE,
-    /** Assistant AutoX could not answer: its planner timed out, failed, or today's budget is spent. */
+    /** Assistant AutoX could not answer: its planner failed, or today's budget is spent. */
     ASSISTANT_UNAVAILABLE,
+    /** Assistant AutoX's planner did not answer in time, asked twice. 503 with Retry-After: try again in a moment. */
+    ASSISTANT_SLOW,
     /** Assistant AutoX is at its pace for every caller together, or its provider is: try again later. */
     ASSISTANT_BUSY,
     INTERNAL_ERROR

@@ -8934,6 +8934,7 @@
           "INVALID_CURSOR",
           "INTERPRETER_UNAVAILABLE",
           "ASSISTANT_UNAVAILABLE",
+          "ASSISTANT_SLOW",
           "ASSISTANT_BUSY",
           "INTERNAL_ERROR"
         ]

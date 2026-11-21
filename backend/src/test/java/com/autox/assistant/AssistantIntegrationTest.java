@@ -472,6 +472,56 @@ class AssistantIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Nested
+    @DisplayName("after the first evaluation on Groq")
+    class AfterTheFirstEval {
+
+        @Test
+        @DisplayName("asks the planner once more after a timeout, and answers")
+        void timeoutThenAnswer() throws Exception {
+            planner.steps(StubAssistantPlanner.timeout(), json("{\"intent\": \"NO_ANSWER\", \"noAnswer\": \"OUT_OF_SCOPE\"}"));
+            turn(Map.of("message", "Écris-moi un poème")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.blocks[0].reason").value("OUT_OF_SCOPE"));
+            assertThat(planner.inputs()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("answers 503 ASSISTANT_SLOW with Retry-After after two timeouts")
+        void twoTimeouts() throws Exception {
+            planner.steps(StubAssistantPlanner.timeout(), StubAssistantPlanner.timeout());
+            turn(Map.of("message", "Une 208")).andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.code").value("ASSISTANT_SLOW"))
+                    .andExpect(header().string(HttpHeaders.RETRY_AFTER, "30"));
+            assertThat(planner.inputs()).hasSize(2);
+            assertThat(jdbc.queryForMap("SELECT * FROM assistant_usage")).containsEntry("failed", 1);
+        }
+
+        @Test
+        @DisplayName("waits for the pace to ask again after an invalid plan, rather than dropping the retry")
+        void retryWaitsForThePace() throws Exception {
+            // During the first call the pace becomes busy for 2 s: the retry waits them out.
+            planner.steps((Runnable) () -> pacing.providerBusyFor(2), json("{\"intent\": \"SEARCH\"}"),
+                    json("{\"intent\": \"NO_ANSWER\", \"noAnswer\": \"OUT_OF_SCOPE\"}"));
+            long started = System.nanoTime();
+
+            turn(Map.of("message", "Écris-moi un poème")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.blocks[0].reason").value("OUT_OF_SCOPE"));
+
+            assertThat(planner.inputs()).hasSize(2);
+            assertThat(java.time.Duration.ofNanos(System.nanoTime() - started)).isGreaterThanOrEqualTo(java.time.Duration.ofSeconds(2));
+        }
+
+        @Test
+        @DisplayName("is busy, not « reformuler », when the retry would wait longer than its bound")
+        void retryBeyondTheBound() throws Exception {
+            planner.steps((Runnable) () -> pacing.providerBusyFor(120), json("{\"intent\": \"SEARCH\"}"));
+            turn(Map.of("message", "Une 208")).andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.code").value("ASSISTANT_BUSY"))
+                    .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+            assertThat(planner.inputs()).hasSize(1);
+        }
+    }
+
+    @Nested
     class Limits {
 
         @Test

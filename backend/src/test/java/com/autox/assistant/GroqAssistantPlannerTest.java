@@ -82,7 +82,7 @@ class GroqAssistantPlannerTest {
     private GroqAssistantPlanner planner(Duration timeout) {
         String base = "http://localhost:" + server.getAddress().getPort() + "/openai/v1";
         return new GroqAssistantPlanner(new AiProperties("groq", "gsk_test-key", "openai/gpt-oss-120b", base, null, null),
-                new AssistantProperties(true, "openai/gpt-oss-20b", timeout, 0, 0, null, false), json);
+                new AssistantProperties(true, "openai/gpt-oss-20b", timeout, 0, 0, null, false, null), json);
     }
 
     private String completion(String content) throws IOException {
@@ -216,15 +216,23 @@ class GroqAssistantPlannerTest {
     }
 
     @Test
-    @DisplayName("is unavailable on a provider error and a timeout")
+    @DisplayName("is unavailable on a provider error and a timeout, each with its kind and reason")
     void failures() {
+        answer(500, "{\"error\": {\"type\": \"server_error\", \"code\": \"internal_error\", \"message\": \"the user wrote…\"}}");
+        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT))
+                .isInstanceOfSatisfying(PlannerUnavailableException.class, e -> assertThat(e.kind())
+                        .isEqualTo(PlannerUnavailableException.Kind.HTTP_ERROR))
+                .hasMessage("Groq answered HTTP 500, error type server_error, code internal_error");
 
-        answer(500, "oops");
-        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT)).isInstanceOf(PlannerUnavailableException.class);
+        answer(200, "not json");
+        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT))
+                .isInstanceOfSatisfying(PlannerUnavailableException.class, e -> assertThat(e.kind())
+                        .isEqualTo(PlannerUnavailableException.Kind.MALFORMED));
 
         reply.set(new Reply(200, "{}", Duration.ofSeconds(2)));
         assertThatThrownBy(() -> planner(Duration.ofMillis(300)).plan(INPUT))
-                .isInstanceOf(PlannerUnavailableException.class)
-                .hasMessageContaining("did not answer");
+                .isInstanceOfSatisfying(PlannerUnavailableException.class, e -> assertThat(e.kind())
+                        .isEqualTo(PlannerUnavailableException.Kind.TIMEOUT))
+                .hasMessageContaining("did not answer within PT0.3S");
     }
 }

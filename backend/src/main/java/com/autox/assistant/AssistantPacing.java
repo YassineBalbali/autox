@@ -29,8 +29,14 @@ public class AssistantPacing {
     static final int AVERAGE_OVER = 5;
     private static final Duration MINUTE = Duration.ofMinutes(1);
 
+    /** How the caller waits: the thread sleeps; a test's advances its clock. */
+    interface Sleeper {
+        void sleep(Duration duration) throws InterruptedException;
+    }
+
     private final AssistantProperties properties;
     private final Clock clock;
+    private final Sleeper sleeper;
     private final Deque<Call> lastMinute = new ArrayDeque<>();
     private final Deque<Long> lastCosts = new ArrayDeque<>();
     private Instant providerBusyUntil = Instant.MIN;
@@ -41,8 +47,13 @@ public class AssistantPacing {
     }
 
     AssistantPacing(AssistantProperties properties, Clock clock) {
+        this(properties, clock, duration -> Thread.sleep(duration.toMillis()));
+    }
+
+    AssistantPacing(AssistantProperties properties, Clock clock, Sleeper sleeper) {
         this.properties = properties;
         this.clock = clock;
+        this.sleeper = sleeper;
     }
 
     /** One planner call's place in the minute. */
@@ -86,6 +97,27 @@ public class AssistantPacing {
         Call call = new Call(now, estimate);
         lastMinute.addLast(call);
         return new Reservation(call, 0);
+    }
+
+    /**
+     * A reservation, waiting for the minute's room while the wait fits in {@code max}: for the
+     * turn's second planner call, which a pace already granted to its first should not cancel. A
+     * wait beyond {@code max}, or one interrupted, is returned refused, with its time.
+     */
+    public Reservation reserveWithin(Duration max) {
+        Instant deadline = clock.instant().plus(max);
+        for (;;) {
+            Reservation reservation = reserve();
+            if (reservation.granted() || clock.instant().plusSeconds(reservation.waitSeconds()).isAfter(deadline)) {
+                return reservation;
+            }
+            try {
+                sleeper.sleep(Duration.ofSeconds(reservation.waitSeconds()));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return reservation;
+            }
+        }
     }
 
     /** The provider's count for a call; a call it did not count keeps its reservation. */

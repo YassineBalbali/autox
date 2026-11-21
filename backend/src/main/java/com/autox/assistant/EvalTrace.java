@@ -2,6 +2,7 @@ package com.autox.assistant;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.json.JsonWriteFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -23,21 +24,33 @@ final class EvalTrace {
 
     static final String HEADER = "X-Assistant-Eval";
 
+    /** The longest raw plan the trace carries: a header is not a body. */
+    static final int MAX_RAW = 1_500;
+
     private EvalTrace() {
     }
 
+    /**
+     * A planner call that gave nothing to follow: the validator's field, or "timeout"; and the
+     * model's own JSON when there was some, so a failing case can be read without the log.
+     */
+    record Rejected(String field, JsonNode plan) {
+    }
+
     /** A turn whose plans could not be followed: no plan, the « reformuler » answer. */
-    static String invalid(int attempts, long tokensIn, long tokensOut, ObjectMapper json) {
+    static String invalid(List<Rejected> rejected, int attempts, long tokensIn, long tokensOut, ObjectMapper json) {
         ObjectNode trace = json.createObjectNode();
         trace.putNull("intent");
         trace.putArray("calls");
         trace.putArray("reasons").add(Plan.Reason.REPHRASE.name());
         trace.putArray("blocks").add(AssistantBlock.Type.NO_ANSWER.name());
+        rejected(trace, rejected, json);
         return write(counts(trace, attempts, tokensIn, tokensOut), json);
     }
 
     static String of(Plan plan, AnswerBuilder.Answer answer, List<AssistantBlock> blocks, References.Table table,
-                     int minorUnit, int attempts, long tokensIn, long tokensOut, ObjectMapper json) {
+                     int minorUnit, List<Rejected> rejected, int attempts, long tokensIn, long tokensOut,
+                     ObjectMapper json) {
         ObjectNode trace = json.createObjectNode();
         trace.put("intent", plan.intent().name());
         ArrayNode calls = trace.putArray("calls");
@@ -99,7 +112,26 @@ final class EvalTrace {
         answer.reasons().forEach(reason -> reasons.add(reason.name()));
         ArrayNode types = trace.putArray("blocks");
         blocks.forEach(block -> types.add(block.type().name()));
+        rejected(trace, rejected, json);
         return write(counts(trace, attempts, tokensIn, tokensOut), json);
+    }
+
+    private static void rejected(ObjectNode trace, List<Rejected> rejected, ObjectMapper json) {
+        if (rejected.isEmpty()) {
+            return;
+        }
+        ArrayNode out = trace.putArray("rejected");
+        for (Rejected r : rejected) {
+            ObjectNode one = out.addObject().put("field", r.field());
+            if (r.plan() != null) {
+                String raw = r.plan().toString();
+                if (raw.length() <= MAX_RAW) {
+                    one.set("plan", r.plan());
+                } else {
+                    one.put("plan", raw.substring(0, MAX_RAW) + "…");
+                }
+            }
+        }
     }
 
     private static ObjectNode counts(ObjectNode trace, int attempts, long tokensIn, long tokensOut) {

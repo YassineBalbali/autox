@@ -25,6 +25,20 @@ class StubAssistantPlanner implements AssistantPlanner {
         next.addAll(List.of(plans));
     }
 
+    /**
+     * The next calls, in order: a plan (JsonNode), a failure to throw, or an action to run during
+     * the call before taking the next step, such as making the pace busy mid-turn.
+     */
+    synchronized void steps(Object... steps) {
+        next.clear();
+        next.addAll(List.of(steps));
+    }
+
+    /** What Groq's planner throws when it does not answer within the timeout. */
+    static PlannerUnavailableException timeout() {
+        return new PlannerUnavailableException(PlannerUnavailableException.Kind.TIMEOUT, "stub: timeout", null, 0);
+    }
+
     /** The next call fails, as a timeout or a spent quota would. */
     synchronized void fail() {
         next.clear();
@@ -55,6 +69,10 @@ class StubAssistantPlanner implements AssistantPlanner {
     public synchronized Answer plan(Input input) {
         inputs.add(input);
         Object answer = next.pollFirst();
+        while (answer instanceof Runnable action) {
+            action.run();
+            answer = next.pollFirst();
+        }
         if (answer instanceof PlannerUnavailableException failure) {
             throw failure;
         }

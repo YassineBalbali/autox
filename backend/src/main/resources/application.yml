@@ -205,7 +205,9 @@ autox:
   assistant:
     enabled: ${AUTOX_ASSISTANT_ENABLED:false}
     model: ${AUTOX_ASSISTANT_MODEL:openai/gpt-oss-120b}
-    timeout: PT8S
+    timeout: ${AUTOX_ASSISTANT_TIMEOUT:PT10S}
+    # The second planner call of a turn waits this long at most for the minute's pace.
+    retry-wait: PT30S
     daily-token-budget: ${AUTOX_ASSISTANT_DAILY_TOKEN_BUDGET:140000}
     tokens-per-minute: ${AUTOX_ASSISTANT_TOKENS_PER_MINUTE:7000}
     limits:

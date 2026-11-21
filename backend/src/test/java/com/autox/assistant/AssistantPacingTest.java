@@ -16,7 +16,7 @@ class AssistantPacingTest {
 
     private final MutableClock clock = new MutableClock(Instant.parse("2026-11-19T10:00:00Z"));
     private final AssistantPacing pacing = new AssistantPacing(
-            new AssistantProperties(true, null, null, 0, 7_000, null, false), clock);
+            new AssistantProperties(true, null, null, 0, 7_000, null, false, null), clock);
 
     @Test
     @DisplayName("reserves each call at what calls have cost lately, and refuses one that would not fit the minute")
@@ -42,10 +42,35 @@ class AssistantPacingTest {
     }
 
     @Test
+    @DisplayName("waits for the minute's room when the wait fits the bound, and refuses with the wait beyond it")
+    void reserveWithin() {
+        java.util.List<Duration> slept = new java.util.ArrayList<>();
+        AssistantPacing waiting = new AssistantPacing(new AssistantProperties(true, null, null, 0, 7_000, null, false, null),
+                clock, duration -> {
+                    slept.add(duration);
+                    clock.advance(duration);
+                });
+        waiting.settle(waiting.reserve().call(), 3_000);
+        waiting.settle(waiting.reserve().call(), 3_000);
+
+        // 6 000 in the minute, 3 000 expected: 61 s to wait, more than 30.
+        AssistantPacing.Reservation refused = waiting.reserveWithin(Duration.ofSeconds(30));
+        assertThat(refused.granted()).isFalse();
+        assertThat(refused.waitSeconds()).isEqualTo(61);
+        assertThat(slept).isEmpty();
+
+        // 40 s later the same wait is 21 s, within 30: it waits, then goes ahead.
+        clock.advance(Duration.ofSeconds(40));
+        AssistantPacing.Reservation granted = waiting.reserveWithin(Duration.ofSeconds(30));
+        assertThat(granted.granted()).isTrue();
+        assertThat(slept).containsExactly(Duration.ofSeconds(21));
+    }
+
+    @Test
     @DisplayName("starts from an estimate, and lets a first call through whatever it is expected to cost")
     void firstCall() {
         assertThat(pacing.estimate()).isEqualTo(AssistantPacing.FIRST_ESTIMATE);
-        AssistantPacing small = new AssistantPacing(new AssistantProperties(true, null, null, 0, 500, null, false), clock);
+        AssistantPacing small = new AssistantPacing(new AssistantProperties(true, null, null, 0, 500, null, false, null), clock);
         assertThat(small.reserve().granted()).isTrue();
         assertThat(small.reserve().granted()).isFalse();
     }

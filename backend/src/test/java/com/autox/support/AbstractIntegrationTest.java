@@ -42,10 +42,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 // environment variables, which outrank configuration files, so AUTOX_AI_PROVIDER=groq there put
 // the real provider, and its key, behind every test, and a real mail provider would have sent
 // real email. A test property outranks both. Tests that need a provider set a stub over these
-// (SearchInterpretIntegrationTest, AccountOperationsIntegrationTest).
+// (SearchInterpretIntegrationTest, AccountOperationsIntegrationTest). The assistant is off, and
+// its eval trace too, for the same reason: a .env set up for an evaluation turns both on. Tests
+// of the assistant switch them on over these (AssistantIntegrationTest).
 @org.springframework.test.context.TestPropertySource(properties = {
         "autox.ai.provider = none",
-        "autox.mail.provider = log"})
+        "autox.mail.provider = log",
+        "autox.assistant.enabled = false",
+        "autox.assistant.eval-trace = false"})
 public abstract class AbstractIntegrationTest {
 
     /**

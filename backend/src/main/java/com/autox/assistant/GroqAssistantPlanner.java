@@ -24,12 +24,15 @@ import org.springframework.web.client.RestClientException;
  * model and timeout ({@code autox.assistant.*}). Structured output in strict mode, temperature 0,
  * reasoning effort low and left out of the response, as the smart search's client.
  *
- * <p>Every failure is a {@link PlannerUnavailableException}, and the turn a 503, except one: an
- * answer the provider itself refused for not matching the schema ({@code json_validate_failed}) is
- * a plan that cannot be followed, which the turn may ask for once more.
+ * <p>Every failure is a {@link PlannerUnavailableException} of a {@link PlannerUnavailableException.Kind},
+ * except two: the provider's 429 ({@link PlannerBusyException}), and an answer the provider refused
+ * for not being JSON ({@code json_validate_failed}), which is a plan that cannot be followed and
+ * may be asked for once more.
  *
- * <p>Nothing from the provider's error bodies is logged but their machine-readable code: their
- * message can quote the model's output, which is made from the user's text.
+ * <p><b>Each failure is logged with its reason:</b> the timeout and its value, the HTTP status with
+ * the provider's error type and code, the exception that stopped the connection, or where the
+ * answer stopped being JSON. Nothing else from the provider's bodies: their message can quote the
+ * model's output, which is made from the user's text.
  */
 @Component
 @ConditionalOnProperty(name = "autox.ai.provider", havingValue = AiProperties.GROQ)
@@ -74,6 +77,7 @@ public class GroqAssistantPlanner implements AssistantPlanner {
                     .body(String.class);
         } catch (HttpStatusCodeException e) {
             String code = errorCode(e.getResponseBodyAsString());
+            String type = errorField(e.getResponseBodyAsString(), "type");
             if (e.getStatusCode().value() == 429) {
                 long wait = retryAfter(e);
                 log.warn("Assistant planner: Groq is rate limiting ({}), retry in {}s", code.isEmpty() ? "429" : code, wait);
@@ -83,12 +87,17 @@ public class GroqAssistantPlanner implements AssistantPlanner {
                 log.info("Assistant planner: the provider refused an answer that was not JSON");
                 return new Answer(null, 0, 0);
             }
-            throw unavailable("Groq answered " + e.getStatusCode().value() + (code.isEmpty() ? "" : " (" + code + ")"), e);
+            throw unavailable(PlannerUnavailableException.Kind.HTTP_ERROR, "Groq answered HTTP " + e.getStatusCode().value()
+                    + ", error type " + (type.isEmpty() ? "none" : type) + ", code " + (code.isEmpty() ? "none" : code), e, 0);
         } catch (ResourceAccessException e) {
-            throw unavailable(causedBy(e, HttpTimeoutException.class)
-                    ? "Groq did not answer within " + assistant.timeout() : "Groq could not be reached", e);
+            boolean timedOut = causedBy(e, HttpTimeoutException.class) || causedBy(e, java.net.SocketTimeoutException.class);
+            throw timedOut
+                    ? unavailable(PlannerUnavailableException.Kind.TIMEOUT,
+                            "Groq did not answer within " + assistant.timeout(), e, 0)
+                    : unavailable(PlannerUnavailableException.Kind.UNREACHABLE,
+                            "Groq could not be reached (" + rootType(e) + ")", e, 0);
         } catch (RestClientException e) {
-            throw unavailable("Groq call failed", e);
+            throw unavailable(PlannerUnavailableException.Kind.HTTP_ERROR, "Groq call failed (" + rootType(e) + ")", e, 0);
         }
         return read(answer);
     }
@@ -116,18 +125,24 @@ public class GroqAssistantPlanner implements AssistantPlanner {
             long tokensOut = completion.path("usage").path("completion_tokens").asLong(0);
             JsonNode content = completion.path("choices").path(0).path("message").path("content");
             if (!content.isTextual()) {
-                throw unavailable("Groq answered without message content", null, tokensIn + tokensOut);
+                throw unavailable(PlannerUnavailableException.Kind.MALFORMED,
+                        "Groq answered without message content, finish reason "
+                                + completion.path("choices").path(0).path("finish_reason").asText("none"),
+                        null, tokensIn + tokensOut);
             }
             JsonNode plan;
             try {
                 plan = json.readTree(content.asText());
             } catch (JsonProcessingException e) {
                 // Not JSON at all: a plan that cannot be followed, which the turn may ask for again.
+                log.info("Assistant planner: the plan is not JSON (line {}, column {}, of {} characters)",
+                        e.getLocation() == null ? "?" : e.getLocation().getLineNr(),
+                        e.getLocation() == null ? "?" : e.getLocation().getColumnNr(), content.asText().length());
                 plan = null;
             }
             return new Answer(plan, tokensIn, tokensOut);
         } catch (JsonProcessingException e) {
-            throw unavailable("Groq's answer is not JSON", e);
+            throw unavailable(PlannerUnavailableException.Kind.MALFORMED, "Groq's answer is not JSON", e, 0);
         }
     }
 
@@ -187,24 +202,34 @@ public class GroqAssistantPlanner implements AssistantPlanner {
         return Math.max(1, (long) Math.ceil(seconds));
     }
 
+    /** The provider's machine-readable error code, or its type when it gives no code. */
     private String errorCode(String body) {
+        String code = errorField(body, "code");
+        return !code.isEmpty() ? code : errorField(body, "type");
+    }
+
+    /** A field of the error body, kept only when it looks like a code: never free text. */
+    private String errorField(String body, String field) {
         try {
-            JsonNode error = json.readTree(body == null ? "" : body).path("error");
-            String code = error.path("code").asText("");
-            String known = !code.isEmpty() ? code : error.path("type").asText("");
-            return known.matches("[a-z_]{1,64}") ? known : "";
+            String value = json.readTree(body == null ? "" : body).path("error").path(field).asText("");
+            return value.matches("[a-z_]{1,64}") ? value : "";
         } catch (JsonProcessingException e) {
             return "";
         }
     }
 
-    private static PlannerUnavailableException unavailable(String message, Throwable cause) {
-        return unavailable(message, cause, 0);
+    private static PlannerUnavailableException unavailable(PlannerUnavailableException.Kind kind, String message,
+                                                           Throwable cause, long tokens) {
+        log.warn("Assistant planner unavailable, {}: {}", kind, message);
+        return new PlannerUnavailableException(kind, message, cause, tokens);
     }
 
-    private static PlannerUnavailableException unavailable(String message, Throwable cause, long tokens) {
-        log.warn("Assistant planner unavailable: {}", message);
-        return new PlannerUnavailableException(message, cause, tokens);
+    private static String rootType(Throwable error) {
+        Throwable root = error;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        return root.getClass().getSimpleName();
     }
 
     private static boolean causedBy(Throwable error, Class<? extends Throwable> type) {

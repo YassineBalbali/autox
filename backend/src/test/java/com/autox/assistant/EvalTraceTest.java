@@ -28,7 +28,7 @@ class EvalTraceTest {
         List<AssistantBlock> blocks = List.of(AssistantBlock.noAnswer(Plan.Reason.SELLER_CONTACT, second));
         AnswerBuilder.Answer answer = new AnswerBuilder.Answer(blocks, List.of(second), List.of(Plan.Reason.SELLER_CONTACT));
 
-        JsonNode trace = json.readTree(EvalTrace.of(plan, answer, blocks, table, 2, 1, 1_700, 90, json));
+        JsonNode trace = json.readTree(EvalTrace.of(plan, answer, blocks, table, 2, List.of(), 1, 1_700, 90, json));
 
         assertThat(trace.get("intent").asText()).isEqualTo("FINANCE");
         assertThat(trace.at("/calls/0/tool").asText()).isEqualTo("simulate_financing");
@@ -49,7 +49,7 @@ class EvalTraceTest {
                 50_000, ValuationScope.EXACT)), null, null, List.of());
         AnswerBuilder.Answer answer = new AnswerBuilder.Answer(List.of(), List.of(), List.of());
 
-        String header = EvalTrace.of(plan, answer, List.of(), table, 2, 1, 0, 0, json);
+        String header = EvalTrace.of(plan, answer, List.of(), table, 2, List.of(), 1, 0, 0, json);
 
         assertThat(header).matches("\\p{ASCII}+").contains("Citro\\u00EBn");
         assertThat(json.readTree(header).at("/calls/0/make").asText()).isEqualTo("Citroën");
@@ -58,9 +58,13 @@ class EvalTraceTest {
     @Test
     @DisplayName("writes two refused plans as the « reformuler » answer, with no intent")
     void invalid() throws Exception {
-        JsonNode trace = json.readTree(EvalTrace.invalid(2, 3_000, 200, json));
+        JsonNode trace = json.readTree(EvalTrace.invalid(List.of(new EvalTrace.Rejected("intent", json.readTree("{\"intent\": \"search\"}")), new EvalTrace.Rejected("timeout", null)), 2, 3_000, 200, json));
         assertThat(trace.get("intent").isNull()).isTrue();
         assertThat(trace.get("reasons").get(0).asText()).isEqualTo("REPHRASE");
         assertThat(trace.get("attempts").asInt()).isEqualTo(2);
+        assertThat(trace.at("/rejected/0/field").asText()).isEqualTo("intent");
+        assertThat(trace.at("/rejected/0/plan/intent").asText()).isEqualTo("search");
+        assertThat(trace.at("/rejected/1/field").asText()).isEqualTo("timeout");
+        assertThat(trace.at("/rejected/1").has("plan")).isFalse();
     }
 }

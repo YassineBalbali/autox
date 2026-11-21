@@ -10,7 +10,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *                          endpoints answer 404 and nothing is counted or called. On, it also needs
  *                          a planner: the Groq one, chosen by {@code autox.ai.provider=groq}.
  * @param model             the planner's model id; the smart search's key and provider are reused
- * @param timeout           one planner call, end to end
+ * @param timeout           one planner call, end to end: {@code AUTOX_ASSISTANT_TIMEOUT}, 10 seconds,
+ *                          twice the slowest answer of the first evaluation (5.2 s). A call that
+ *                          times out is made once more.
  * @param dailyTokenBudget  tokens the assistant may spend per Paris day, the planner's own count,
  *                          leaving the rest of the free tier's daily tokens to the smart search
  * @param tokensPerMinute   the planner's tokens per minute, for every visitor together, below the
@@ -19,6 +21,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param evalTrace         {@code AUTOX_ASSISTANT_EVAL_TRACE}, off by default: each turn's checked plan
  *                          and token counts in a response header, for eval/assistant/ on a local
  *                          machine. Never on in production
+ * @param retryWait         how long the turn's second planner call may wait for the minute's pace,
+ *                          30 seconds; past that the turn is "busy", never answered without it
  */
 @ConfigurationProperties(prefix = "autox.assistant")
 public record AssistantProperties(
@@ -28,11 +32,13 @@ public record AssistantProperties(
         long dailyTokenBudget,
         long tokensPerMinute,
         Limits limits,
-        boolean evalTrace) {
+        boolean evalTrace,
+        Duration retryWait) {
 
     public AssistantProperties {
         model = model == null || model.isBlank() ? "openai/gpt-oss-120b" : model;
-        timeout = timeout == null || timeout.isNegative() || timeout.isZero() ? Duration.ofSeconds(8) : timeout;
+        timeout = timeout == null || timeout.isNegative() || timeout.isZero() ? Duration.ofSeconds(10) : timeout;
+        retryWait = retryWait == null || retryWait.isNegative() ? Duration.ofSeconds(30) : retryWait;
         dailyTokenBudget = dailyTokenBudget <= 0 ? 140_000 : dailyTokenBudget;
         tokensPerMinute = tokensPerMinute <= 0 ? 7_000 : tokensPerMinute;
         limits = limits == null ? new Limits(true, 0, null, 0, 0) : limits;

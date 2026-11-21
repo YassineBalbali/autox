@@ -99,6 +99,14 @@ public class ApiException extends RuntimeException {
                 "The assistant is unavailable right now. Use the ordinary search.");
     }
 
+    /** 503 with Retry-After: the planner did not answer in time, asked twice. The same message may work in a moment. */
+    public static ApiException assistantSlow() {
+        return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.ASSISTANT_SLOW,
+                "The assistant is slow to answer right now. Try again in a moment.", ASSISTANT_SLOW_RETRY_SECONDS);
+    }
+
+    public static final long ASSISTANT_SLOW_RETRY_SECONDS = 30;
+
     /** 429 with Retry-After: the assistant's pace, for every caller together, or its provider's. */
     public static ApiException assistantBusy(long retryAfterSeconds) {
         return new ApiException(HttpStatus.TOO_MANY_REQUESTS, ErrorCode.ASSISTANT_BUSY,
