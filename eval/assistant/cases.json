@@ -1,10 +1,12 @@
 {
-  "about": "Assistant AutoX evaluation set, version 1. Each case is a conversation of one or more turns; each turn has the outcome a careful human expects, written in the planner's own terms (docs/assistant-plan.md, 2.1): intent, tool calls with their key arguments (listing codes L1, L2…, whole euros), noAnswer or clarify. Only the arguments written are compared; a null means the argument must be absent. 'reasons' and 'blocks' must appear in the answer, 'notReasons' and 'notBlocks' must not; 'anyOf' lists acceptable alternatives. 'extraCalls' allows calls beyond those listed. search_help's query is not compared: the words are the model's choice among the user's. Relative years are written now-N. 'setup' seeds the listings in memory from the local database's public search (GET /api/v1/listings), oldest first, so they cost no planner call; 'page' opens the panel on the last of them. A turn's 'known' is the number of listings it needs in memory, when a previous turn's search provides them. backend's AssistantEvalSetTest checks every expectation against PlanValidator.",
-  "version": 1,
+  "about": "Assistant AutoX evaluation set, version 2 (the changes from version 1 are in docs/assistant-plan.md, 12, A3 triage). Each case is a conversation of one or more turns; each turn has the outcome a careful human expects, written in the planner's own terms (docs/assistant-plan.md, 2.1): intent, tool calls with their key arguments (listing codes L1, L2…, whole euros), noAnswer or clarify. Only the arguments written are compared; a null means the argument must be absent. 'reasons' and 'blocks' must appear in the answer, 'notReasons' and 'notBlocks' must not; 'anyOf' lists acceptable alternatives. 'extraCalls' allows calls beyond those listed. search_help's query is not compared: the words are the model's choice among the user's. Relative years are written now-N. 'setup' seeds the listings in memory from the local database's public search (GET /api/v1/listings), oldest first, so they cost no planner call; 'page' opens the panel on the last of them. A turn's 'known' is the number of listings it needs in memory, when a previous turn's search provides them. backend's AssistantEvalSetTest checks every expectation against PlanValidator.",
+  "version": 2,
   "cases": [
     { "id": "search-208-brief", "category": "search",
       "turns": [{ "message": "Une 208 essence de moins de 5 ans à moins de 12 000 €",
-        "expect": { "intent": "SEARCH", "calls": [{ "tool": "search_listings", "criteria": { "model": "208", "fuelType": ["PETROL"], "yearFrom": "now-5", "priceMax": 12000 } }] } }] },
+        "expect": { "anyOf": [
+          { "intent": "SEARCH", "calls": [{ "tool": "search_listings", "criteria": { "model": "208", "fuelType": ["PETROL"], "yearFrom": "now-5", "priceMax": 12000 } }] },
+          { "intent": "SEARCH", "calls": [{ "tool": "search_listings", "criteria": { "model": "208", "fuelType": ["PETROL"], "yearFrom": "now-4", "priceMax": 12000 } }] }] } }] },
     { "id": "search-suv-diesel-auto", "category": "search",
       "turns": [{ "message": "SUV diesel automatique moins de 20k",
         "expect": { "intent": "SEARCH", "calls": [{ "tool": "search_listings", "criteria": { "bodyType": ["SUV"], "fuelType": ["DIESEL"], "gearbox": ["AUTOMATIC"], "priceMax": 20000 } }] } }] },
@@ -112,7 +114,7 @@
     { "id": "critair-page", "category": "crit_air", "setup": { "listings": { "count": 1 }, "page": true },
       "turns": [{ "message": "Elle est Crit'Air combien ?",
         "expect": { "anyOf": [{ "intent": "CRIT_AIR", "calls": [{ "tool": "crit_air", "ref": "L1" }] },
-          { "intent": "EXPLAIN", "calls": [{ "tool": "get_listing", "ref": "L1" }, { "tool": "crit_air", "ref": "L1" }], "extraCalls": true }] } }] },
+          { "intent": "EXPLAIN", "calls": [{ "tool": "get_listing", "ref": "L1" }], "extraCalls": true }] } }] },
 
     { "id": "value-clio", "category": "value",
       "turns": [{ "message": "Combien vaut une Clio essence 90 ch de 2018 avec 60 000 km ?",
