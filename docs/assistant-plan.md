@@ -409,7 +409,7 @@ All counted before any spend, as the smart search does, in new throttle scopes:
 | Per address | 10 turns in 10 minutes | `ASSISTANT_ADDRESS` |
 | Anonymous, per address | 15 turns a day | `ASSISTANT_ANON_DAY` |
 | Signed in, per account | 40 turns a day | `ASSISTANT_ACCOUNT_DAY` |
-| **Global daily token budget** | 140 000 tokens, which leaves about 60 000 for the smart search on a shared model | `assistant_usage` (6.3), counted from the `usage` Groq returns |
+| **Global daily token budget** | 140 000 tokens over the last 24 hours (rolling, as Groq counts its daily quota; V32, after the third evaluation), which leaves about 60 000 for the smart search on a shared model. Spent: 503 `ASSISTANT_QUOTA` with `Retry-After` until it frees | `assistant_token_hour`, by the hour, counted from the `usage` Groq returns |
 | Global per-minute pacing | **7 000 tokens a minute**, counted as Groq counts: each call is reserved at the average of the last ones and settled with its real count; beyond that 429 `ASSISTANT_BUSY` with `Retry-After`. After a Groq 429, nothing is sent before the time Groq gave | `AssistantPacing`, in memory (one instance on Render) |
 
 **When a limit is hit:**
@@ -1076,3 +1076,40 @@ runner's three turns a minute; with the plans above read as they are, none of th
   `AUTOX_ASSISTANT_DAILY_TOKEN_BUDGET=195000`, with the API restarted on this code.
 - If it stops, the same command resumes; turns left unanswered: add `--only-failed`. The target
   stays 90 % overall and 100 % on safety.
+
+### A3: the third run stopped by the quota (23 November 2026)
+
+From its seventh case on, every turn was "today's token budget of 195000 is spent", answered as a
+plain 503 `ASSISTANT_UNAVAILABLE`, and the runner went on through the rest of the set, each case
+recorded as unanswered. The budget was spent because the third run started the same Paris day as
+the second, which had used about 184 000 tokens.
+
+**A spent quota is its own answer.** Our budget spent, or Groq's 429 for its daily limits (its
+message says "tokens per day (TPD)" or "requests per day (RPD)"), is 503 `ASSISTANT_QUOTA` with
+`Retry-After`, the seconds until it frees. After Groq's, every turn until then is refused at once,
+without calling it. The French sentence is the client's (`labels.fr.json`): « L’assistant a atteint
+sa limite pour aujourd’hui. En attendant, vous pouvez utiliser la recherche classique. », then
+« Réessayez dans 7 heures. »: waits of an hour or more are now worded in hours. `ASSISTANT_UNAVAILABLE`
+is now only the planner failing.
+
+**The reset time.** Groq's daily quota is a rolling 24 hours, so our budget now is too: it counts
+the tokens of the last 24 hours, by the hour (`assistant_token_hour`, V32), not the Paris day. A
+reset at midnight would have let a run start again into Groq's own refusal. The time the runner
+prints is the `Retry-After` of the answer that stopped it: for our budget, when the hour that
+brings the last 24 hours under it leaves the window (up to an hour later than Groq's own count,
+never earlier); for Groq's, the wait Groq gave. Our budget (195 000) is under Groq's (200 000), so
+it is ours that stops a run, at about the time Groq's would free too. The per-day counts of V31
+stay, for the usage figures.
+
+**The runner** stops at the first `ASSISTANT_QUOTA` with "Daily quota reached, resume after
+<Paris time> (<UTC>)", and does not record the case it was on: the same command resumes from it.
+`node --test eval/assistant/run-eval.test.mjs` checks both, against a stand-in API.
+
+**Resuming the third run.** Its 6 first cases are kept; the others were recorded as unanswered
+by the old runner, so they are run again with `--only-failed`:
+
+    node eval/assistant/run-eval.mjs http://localhost:8081 --label gpt-oss-120b-r3 --only-failed
+
+About 68 cases and 79 turns, about 165 000 tokens, once the second run's hours have left the
+window: about 24 hours after it, from the morning of 24 November (the first turn tells the time,
+and costs nothing if it is too early).
