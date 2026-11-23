@@ -67,6 +67,15 @@ public class AssistantService {
         }
     }
 
+    /**
+     * The seconds until a turn can be planned again, when the daily quota is spent: the provider's,
+     * when it refused for it, else our budget over the last 24 hours.
+     */
+    private OptionalLong quotaSeconds() {
+        OptionalLong provider = pacing.providerQuotaSeconds();
+        return provider.isPresent() ? provider : usage.budgetFreesInSeconds(properties.dailyTokenBudget());
+    }
+
     /** On only when switched on and a planner is configured. */
     public boolean enabled() {
         return properties.enabled() && planner.available();
@@ -74,7 +83,7 @@ public class AssistantService {
 
     public AssistantCapabilities capabilities() {
         requireEnabled();
-        boolean busy = usage.tokensToday() >= properties.dailyTokenBudget();
+        boolean busy = quotaSeconds().isPresent();
         return new AssistantCapabilities(!busy, busy ? AssistantCapabilities.Unavailable.BUSY : null,
                 TurnRequest.MAX_MESSAGE, TurnRequest.MAX_TURNS);
     }
@@ -99,9 +108,11 @@ public class AssistantService {
         if (wait.isPresent()) {
             throw ApiException.rateLimited(wait.getAsLong());
         }
-        if (usage.tokensToday() >= properties.dailyTokenBudget()) {
-            log.info("Assistant turn refused: today's token budget of {} is spent", properties.dailyTokenBudget());
-            throw ApiException.assistantUnavailable();
+        OptionalLong quota = quotaSeconds();
+        if (quota.isPresent()) {
+            log.info("Assistant turn refused: the daily quota is spent (budget {} over 24 hours, or the provider's), "
+                    + "frees in {}s", properties.dailyTokenBudget(), quota.getAsLong());
+            throw ApiException.assistantQuota(quota.getAsLong());
         }
         AssistantPacing.Reservation first = pacing.reserve();
         if (!first.granted()) {
@@ -166,6 +177,13 @@ public class AssistantService {
                 }
             }
         } catch (PlannerBusyException e) {
+            if (e.daily()) {
+                // The provider's daily quota: every turn until it frees is told so, without a call.
+                pacing.providerQuotaFor(e.retryAfterSeconds());
+                usage.record(AssistantUsage.Outcome.FAILED, null, List.of(), Math.max(0, attempts - 1), tokensIn, tokensOut);
+                log.info("Assistant turn refused by the provider's daily quota: retry in {}s", e.retryAfterSeconds());
+                throw ApiException.assistantQuota(e.retryAfterSeconds());
+            }
             // The provider's own limit: wait as long as it says, and so does every caller after.
             pacing.providerBusyFor(e.retryAfterSeconds());
             usage.record(AssistantUsage.Outcome.FAILED, null, List.of(), Math.max(0, attempts - 1), tokensIn, tokensOut);

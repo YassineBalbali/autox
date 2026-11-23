@@ -51,6 +51,12 @@ class StubAssistantPlanner implements AssistantPlanner {
         next.add(new PlannerBusyException(retryAfterSeconds));
     }
 
+    /** Groq's 429 for its daily quota. */
+    synchronized void dailyQuota(long retryAfterSeconds) {
+        next.clear();
+        next.add(new PlannerBusyException(retryAfterSeconds, true));
+    }
+
     synchronized List<Input> inputs() {
         return List.copyOf(inputs);
     }

@@ -206,6 +206,28 @@ class GroqAssistantPlannerTest {
     }
 
     @Test
+    @DisplayName("tells Groq's daily quota from its minute's limit, by its message, with the wait it gives")
+    void dailyQuota() {
+        answer(429, "{\"error\":{\"code\":\"rate_limit_exceeded\",\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` "
+                + "on tokens per day (TPD): Limit 200000, Used 199500, Requested 2100. Please try again in 7m12.5s.\"}}");
+        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT))
+                .isInstanceOfSatisfying(PlannerBusyException.class, e -> {
+                    assertThat(e.daily()).isTrue();
+                    assertThat(e.retryAfterSeconds()).isEqualTo(433);
+                });
+
+        answer(429, "{\"error\":{\"code\":\"rate_limit_exceeded\",\"message\":\"Rate limit reached on requests per day (RPD): "
+                + "Limit 1000, Used 1000. Please try again in 1h2m.\"}}");
+        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT))
+                .isInstanceOfSatisfying(PlannerBusyException.class, e -> assertThat(e.daily()).isTrue());
+
+        answer(429, "{\"error\":{\"code\":\"rate_limit_exceeded\",\"message\":\"Rate limit reached on tokens per minute (TPM): "
+                + "Limit 8000, Used 7000, Requested 2900. Please try again in 14.25s.\"}}");
+        assertThatThrownBy(() -> planner(Duration.ofSeconds(5)).plan(INPUT))
+                .isInstanceOfSatisfying(PlannerBusyException.class, e -> assertThat(e.daily()).isFalse());
+    }
+
+    @Test
     @DisplayName("reads Groq's durations as whole seconds, rounded up")
     void durations() {
         assertThat(GroqAssistantPlanner.durationSeconds("17")).isEqualTo(17);

@@ -40,6 +40,7 @@ public class AssistantPacing {
     private final Deque<Call> lastMinute = new ArrayDeque<>();
     private final Deque<Long> lastCosts = new ArrayDeque<>();
     private Instant providerBusyUntil = Instant.MIN;
+    private Instant providerQuotaUntil = Instant.MIN;
 
     @Autowired
     public AssistantPacing(AssistantProperties properties) {
@@ -132,6 +133,26 @@ public class AssistantPacing {
         }
     }
 
+    /**
+     * Groq answered 429 for its daily quota: nothing is sent before the time it gave, and the turns
+     * until then are told the day's quota is spent, not that the assistant is busy.
+     */
+    public synchronized void providerQuotaFor(long seconds) {
+        providerBusyFor(seconds);
+        Instant until = clock.instant().plusSeconds(seconds);
+        if (until.isAfter(providerQuotaUntil)) {
+            providerQuotaUntil = until;
+        }
+    }
+
+    /** The seconds until the provider's daily quota frees, when it refused for it. */
+    public synchronized java.util.OptionalLong providerQuotaSeconds() {
+        Instant now = clock.instant();
+        return now.isBefore(providerQuotaUntil)
+                ? java.util.OptionalLong.of(Math.max(1, (Duration.between(now, providerQuotaUntil).toMillis() + 999) / 1000))
+                : java.util.OptionalLong.empty();
+    }
+
     /** Groq answered 429: nothing is sent before the time it gave. */
     public synchronized void providerBusyFor(long seconds) {
         Instant until = clock.instant().plusSeconds(seconds);
@@ -145,6 +166,7 @@ public class AssistantPacing {
         lastMinute.clear();
         lastCosts.clear();
         providerBusyUntil = Instant.MIN;
+        providerQuotaUntil = Instant.MIN;
     }
 
     synchronized long estimate() {

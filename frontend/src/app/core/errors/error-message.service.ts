@@ -118,8 +118,13 @@ export function waitSentenceFr(seconds: number): string {
   if (seconds < 60) {
     return fill(LABELS.messages.waitSeconds, { seconds: String(Math.ceil(seconds)) });
   }
-  const minutes = Math.ceil(seconds / 60);
-  return minutes === 1
-    ? LABELS.messages.waitMinute
-    : fill(LABELS.messages.waitMinutes, { minutes: String(minutes) });
+  if (seconds < 3600) {
+    const minutes = Math.ceil(seconds / 60);
+    return minutes === 1
+      ? LABELS.messages.waitMinute
+      : fill(LABELS.messages.waitMinutes, { minutes: String(minutes) });
+  }
+  // The assistant's daily quota frees in hours: "Réessayez dans 420 minutes" is arithmetic again.
+  const hours = Math.ceil(seconds / 3600);
+  return hours === 1 ? LABELS.messages.waitHour : fill(LABELS.messages.waitHours, { hours: String(hours) });
 }

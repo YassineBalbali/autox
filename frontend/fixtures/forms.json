@@ -377,6 +377,22 @@
     {
       "seconds": 900,
       "text": "Réessayez dans 15 minutes."
+    },
+    {
+      "seconds": 3540,
+      "text": "Réessayez dans 59 minutes."
+    },
+    {
+      "seconds": 3600,
+      "text": "Réessayez dans une heure."
+    },
+    {
+      "seconds": 3601,
+      "text": "Réessayez dans 2 heures."
+    },
+    {
+      "seconds": 25000,
+      "text": "Réessayez dans 7 heures."
     }
   ],
   "api": [

@@ -4321,7 +4321,7 @@
           "Assistant"
         ],
         "summary": "One turn: the user's message, and the state the previous answer returned",
-        "description": "One turn: the user's message, and the state the previous answer returned. The answer is a\n list of blocks built by the server from its own tools, and the state to send next.\n\n <p>404 when the assistant is off. 400 for a message over 500 characters or a malformed state.\n 429 <code>RATE_LIMITED</code> past the per-address or daily limit, or when the server is pacing its\n turns. 503 <code>ASSISTANT_UNAVAILABLE</code> when the planner fails, times out or the day's budget\n is spent: then use the ordinary search. Not retried by the client: a retry spends quota.",
+        "description": "One turn: the user's message, and the state the previous answer returned. The answer is a\n list of blocks built by the server from its own tools, and the state to send next.\n\n <p>404 when the assistant is off. 400 for a message over 500 characters or a malformed state.\n 429 <code>RATE_LIMITED</code> past the per-address or daily limit, or when the server is pacing its\n turns. 503 <code>ASSISTANT_UNAVAILABLE</code> when the planner fails: then use the ordinary search.\n 503 <code>ASSISTANT_QUOTA</code> with Retry-After when the daily quota is spent, the budget over the\n last 24 hours or the provider's: the seconds until it frees. Not retried by the client: a\n retry spends quota.",
         "operationId": "assistantTurn",
         "requestBody": {
           "content": {
@@ -4363,7 +4363,7 @@
           "Assistant"
         ],
         "summary": "Whether the assistant can answer now.",
-        "description": "Whether the assistant can answer now. 404 when it is off; <code>available</code> false with reason\n <code>BUSY</code> when today's budget is spent. Asked when the panel opens, not with the page, so a\n visitor who never opens it wakes nothing.",
+        "description": "Whether the assistant can answer now. 404 when it is off; <code>available</code> false with reason\n <code>BUSY</code> when the daily quota is spent. Asked when the panel opens, not with the page, so a\n visitor who never opens it wakes nothing.",
         "operationId": "assistantCapabilities",
         "responses": {
           "200": {
@@ -8934,6 +8934,7 @@
           "INVALID_CURSOR",
           "INTERPRETER_UNAVAILABLE",
           "ASSISTANT_UNAVAILABLE",
+          "ASSISTANT_QUOTA",
           "ASSISTANT_SLOW",
           "ASSISTANT_BUSY",
           "INTERNAL_ERROR"

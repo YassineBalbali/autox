@@ -13,7 +13,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param timeout           one planner call, end to end: {@code AUTOX_ASSISTANT_TIMEOUT}, 10 seconds,
  *                          twice the slowest answer of the first evaluation (5.2 s). A call that
  *                          times out is made once more.
- * @param dailyTokenBudget  tokens the assistant may spend per Paris day, the planner's own count,
+ * @param dailyTokenBudget  tokens the assistant may spend over the last 24 hours, as Groq counts its
+ *                          daily quota (V32), the planner's own count,
  *                          leaving the rest of the free tier's daily tokens to the smart search
  * @param tokensPerMinute   the planner's tokens per minute, for every visitor together, below the
  *                          free tier's 8 000 so the smart search's calls fit too (AssistantPacing)

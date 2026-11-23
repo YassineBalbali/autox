@@ -13,8 +13,11 @@ import com.autox.support.AbstractIntegrationTest;
 import com.autox.support.ListingTestFixtures;
 import com.autox.user.UserRole;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,17 +126,60 @@ class AssistantIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
-        @DisplayName("is BUSY once today's token budget is spent, and a turn is then 503 without calling the planner")
+        @DisplayName("is BUSY once the last 24 hours' budget is spent, and a turn is then 503 ASSISTANT_QUOTA until it frees")
         void budgetSpent() throws Exception {
-            jdbc.update("INSERT INTO assistant_usage (day, turns, answered, tokens_in, tokens_out) VALUES (?, 1, 1, 99000, 1000)",
-                    LocalDate.now(ZoneId.of("Europe/Paris")));
+            Instant hour = Instant.now().truncatedTo(ChronoUnit.HOURS);
+            spent(hour.minus(23, ChronoUnit.HOURS), 60_000);
+            spent(hour.minus(1, ChronoUnit.HOURS), 40_000);
 
             mockMvc.perform(get("/api/v1/assistant/capabilities"))
                     .andExpect(jsonPath("$.available").value(false))
                     .andExpect(jsonPath("$.reason").value("BUSY"));
-            turn(Map.of("message", "Une 208")).andExpect(status().isServiceUnavailable())
-                    .andExpect(jsonPath("$.code").value("ASSISTANT_UNAVAILABLE"));
+            // 100 000 of 100 000: it frees when the hour of 23 hours ago leaves the window, within the hour.
+            String retryAfter = turn(Map.of("message", "Une 208")).andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.code").value("ASSISTANT_QUOTA"))
+                    .andReturn().getResponse().getHeader(HttpHeaders.RETRY_AFTER);
+            assertThat(Long.parseLong(retryAfter)).isBetween(1L, 3600L);
             assertThat(planner.inputs()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("counts only the last 24 hours, as Groq does, not the Paris day")
+        void rollingWindow() throws Exception {
+            Instant hour = Instant.now().truncatedTo(ChronoUnit.HOURS);
+            spent(hour.minus(25, ChronoUnit.HOURS), 100_000);
+
+            mockMvc.perform(get("/api/v1/assistant/capabilities")).andExpect(jsonPath("$.available").value(true));
+
+            planner.plans(json("{\"intent\": \"SEARCH\", \"calls\": [{\"tool\": \"search_listings\", \"criteria\": {\"model\": \"208\"}}]}"));
+            turn(Map.of("message", "Une 208")).andExpect(status().isOk());
+            assertThat(jdbc.queryForObject("SELECT tokens FROM assistant_token_hour WHERE hour = ?", Long.class,
+                    Instant.now().truncatedTo(ChronoUnit.HOURS).atOffset(ZoneOffset.UTC)))
+                    .isEqualTo(StubAssistantPlanner.TOKENS_IN + StubAssistantPlanner.TOKENS_OUT);
+        }
+
+        @Test
+        @DisplayName("is 503 ASSISTANT_QUOTA on Groq's daily quota, with its wait, and refuses until then without calling it")
+        void providerDailyQuota() throws Exception {
+            planner.dailyQuota(25_000);
+
+            turn(Map.of("message", "Une 208")).andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.code").value("ASSISTANT_QUOTA"))
+                    .andExpect(header().string(HttpHeaders.RETRY_AFTER, "25000"));
+
+            address = "198.51.100." + ADDRESSES.getAndIncrement() % 250;
+            String retryAfter = turn(Map.of("message", "Une Clio")).andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.code").value("ASSISTANT_QUOTA"))
+                    .andReturn().getResponse().getHeader(HttpHeaders.RETRY_AFTER);
+            assertThat(Long.parseLong(retryAfter)).isBetween(24_990L, 25_000L);
+            mockMvc.perform(get("/api/v1/assistant/capabilities"))
+                    .andExpect(jsonPath("$.available").value(false))
+                    .andExpect(jsonPath("$.reason").value("BUSY"));
+            assertThat(planner.inputs()).hasSize(1);
+        }
+
+        private void spent(Instant hour, long tokens) {
+            jdbc.update("INSERT INTO assistant_token_hour (hour, tokens) VALUES (?, ?)", hour.atOffset(ZoneOffset.UTC), tokens);
         }
     }
 

@@ -64,8 +64,13 @@ String waitSentence(num seconds) {
   if (seconds < 60) {
     return fill(clientMessages['waitSeconds']!, {'seconds': '${seconds.ceil()}'});
   }
-  final minutes = (seconds / 60).ceil();
-  return minutes == 1 ? clientMessages['waitMinute']! : fill(clientMessages['waitMinutes']!, {'minutes': '$minutes'});
+  if (seconds < 3600) {
+    final minutes = (seconds / 60).ceil();
+    return minutes == 1 ? clientMessages['waitMinute']! : fill(clientMessages['waitMinutes']!, {'minutes': '$minutes'});
+  }
+  // The assistant's daily quota frees in hours.
+  final hours = (seconds / 3600).ceil();
+  return hours == 1 ? clientMessages['waitHour']! : fill(clientMessages['waitHours']!, {'hours': '$hours'});
 }
 
 /// The message for a validator key and its details, as the web's `firstErrorFr` words one.

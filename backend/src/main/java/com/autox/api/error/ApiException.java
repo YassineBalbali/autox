@@ -99,6 +99,16 @@ public class ApiException extends RuntimeException {
                 "The assistant is unavailable right now. Use the ordinary search.");
     }
 
+    /**
+     * 503 with Retry-After: the day's quota is spent, ours or the provider's, until the time it
+     * frees. Not "unavailable": a client says when to come back, and the evaluation stops.
+     */
+    public static ApiException assistantQuota(long retryAfterSeconds) {
+        return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.ASSISTANT_QUOTA,
+                "The assistant's daily quota is spent. Try again in " + retryAfterSeconds
+                        + " seconds, or use the ordinary search.", retryAfterSeconds);
+    }
+
     /** 503 with Retry-After: the planner did not answer in time, asked twice. The same message may work in a moment. */
     public static ApiException assistantSlow() {
         return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.ASSISTANT_SLOW,

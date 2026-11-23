@@ -1,8 +1,15 @@
 package com.autox.assistant;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
+import java.util.OptionalLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -14,8 +21,9 @@ import org.springframework.stereotype.Component;
  * times each intent and each reason came up. Counts only: no table here has a column a message, a
  * plan or an argument could be put in (docs/assistant-plan.md, 6.3).
  *
- * <p>The day's tokens are also the budget's measure. Counting is best-effort: a failure to count is
- * logged, and never fails the turn.
+ * <p>The budget is measured on the tokens of the last 24 hours, counted by the hour (V32), as Groq
+ * measures its daily quota: a budget reset at midnight would let turns start again into Groq's own
+ * refusal. Counting is best-effort: a failure to count is logged, and never fails the turn.
  */
 @Component
 public class AssistantUsage {
@@ -34,23 +42,56 @@ public class AssistantUsage {
         INVALID
     }
 
-    private final JdbcTemplate jdbc;
+    /** The budget's window, as Groq's daily quota. */
+    static final Duration WINDOW = Duration.ofHours(24);
 
-    public AssistantUsage(JdbcTemplate jdbc) {
+    private final JdbcTemplate jdbc;
+    private final Clock clock;
+
+    public AssistantUsage(JdbcTemplate jdbc, Clock clock) {
         this.jdbc = jdbc;
+        this.clock = clock;
     }
 
-    /** Tokens spent today, for the budget. */
-    public long tokensToday() {
+    /**
+     * The seconds until the tokens of the last 24 hours fall under the budget, when they are not
+     * under it now: the hour whose tokens bring it under leaves the window 24 hours after it began.
+     * An hour counts while it began within the last 24 hours, so a turn is refused up to an hour
+     * longer than Groq would, never shorter.
+     */
+    public OptionalLong budgetFreesInSeconds(long budget) {
+        Instant now = clock.instant();
+        List<Map<String, Object>> hours;
         try {
-            Long spent = jdbc.queryForObject(
-                    "SELECT COALESCE(SUM(tokens_in + tokens_out), 0) FROM assistant_usage WHERE day = ?",
-                    Long.class, today());
-            return spent == null ? 0 : spent;
+            hours = jdbc.queryForList(
+                    "SELECT hour, tokens FROM assistant_token_hour WHERE hour > ? ORDER BY hour",
+                    now.minus(WINDOW).atOffset(ZoneOffset.UTC));
         } catch (DataAccessException e) {
             log.warn("Could not read the assistant's token count: {}", e.getMessage());
-            return 0;
+            return OptionalLong.empty();
         }
+        long spent = hours.stream().mapToLong(row -> ((Number) row.get("tokens")).longValue()).sum();
+        for (Map<String, Object> row : hours) {
+            if (spent < budget) {
+                break;
+            }
+            spent -= ((Number) row.get("tokens")).longValue();
+            if (spent < budget) {
+                Instant frees = instant(row.get("hour")).plus(WINDOW);
+                return OptionalLong.of(Math.max(1, (Duration.between(now, frees).toMillis() + 999) / 1000));
+            }
+        }
+        return OptionalLong.empty();
+    }
+
+    private static Instant instant(Object value) {
+        if (value instanceof java.sql.Timestamp timestamp) {
+            return timestamp.toInstant();
+        }
+        if (value instanceof java.time.OffsetDateTime offset) {
+            return offset.toInstant();
+        }
+        return ((java.time.temporal.TemporalAccessor) value).query(Instant::from);
     }
 
     /**
@@ -62,6 +103,14 @@ public class AssistantUsage {
                        long tokensIn, long tokensOut) {
         LocalDate day = today();
         try {
+            if (tokensIn + tokensOut > 0) {
+                java.time.OffsetDateTime hour = clock.instant().truncatedTo(ChronoUnit.HOURS).atOffset(ZoneOffset.UTC);
+                jdbc.update("INSERT INTO assistant_token_hour (hour, tokens) VALUES (?, ?) "
+                        + "ON CONFLICT (hour) DO UPDATE SET tokens = assistant_token_hour.tokens + EXCLUDED.tokens",
+                        hour, tokensIn + tokensOut);
+                // A day is kept past the window, for a look at the log; older hours say nothing.
+                jdbc.update("DELETE FROM assistant_token_hour WHERE hour < ?", hour.minus(WINDOW.multipliedBy(2)));
+            }
             jdbc.update("""
                     INSERT INTO assistant_usage (day, turns, answered, failed, invalid_plans, retries, tokens_in, tokens_out)
                     VALUES (?, 1, ?, ?, ?, ?, ?, ?)
@@ -93,7 +142,7 @@ public class AssistantUsage {
                 """, day, code);
     }
 
-    private static LocalDate today() {
-        return LocalDate.now(SITE_ZONE);
+    private LocalDate today() {
+        return LocalDate.now(clock.withZone(SITE_ZONE));
     }
 }

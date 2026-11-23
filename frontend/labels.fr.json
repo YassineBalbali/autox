@@ -163,6 +163,7 @@
       "ASSISTANT_UNAVAILABLE": "L’assistant est indisponible pour le moment. Vous pouvez utiliser la recherche classique.",
       "ASSISTANT_SLOW": "L’assistant met trop de temps à répondre. Réessayez dans un instant.",
       "ASSISTANT_BUSY": "L’assistant est très demandé en ce moment. Réessayez dans quelques secondes.",
+      "ASSISTANT_QUOTA": "L’assistant a atteint sa limite pour aujourd’hui. En attendant, vous pouvez utiliser la recherche classique.",
       "INTERNAL_ERROR": "Une erreur inattendue s’est produite. Réessayez dans un instant."
     },
     "ListingReportReason": {
@@ -430,7 +431,9 @@
     "waitInstant": "Réessayez dans un instant.",
     "waitSeconds": "Réessayez dans {seconds} secondes.",
     "waitMinute": "Réessayez dans une minute.",
-    "waitMinutes": "Réessayez dans {minutes} minutes."
+    "waitMinutes": "Réessayez dans {minutes} minutes.",
+    "waitHour": "Réessayez dans une heure.",
+    "waitHours": "Réessayez dans {hours} heures."
   },
   "notices": {
     "registerConsent": "En créant un compte, vous acceptez les [CGU](/conditions-generales) et la [politique de confidentialité](/confidentialite)."

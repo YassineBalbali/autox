@@ -80,8 +80,10 @@ public class GroqAssistantPlanner implements AssistantPlanner {
             String type = errorField(e.getResponseBodyAsString(), "type");
             if (e.getStatusCode().value() == 429) {
                 long wait = retryAfter(e);
-                log.warn("Assistant planner: Groq is rate limiting ({}), retry in {}s", code.isEmpty() ? "429" : code, wait);
-                throw new PlannerBusyException(wait);
+                boolean daily = dailyQuota(e.getResponseBodyAsString());
+                log.warn("Assistant planner: Groq is rate limiting ({}{}), retry in {}s", code.isEmpty() ? "429" : code,
+                        daily ? ", daily quota" : "", wait);
+                throw new PlannerBusyException(wait, daily);
             }
             if (e.getStatusCode().value() == 400 && code.equals("json_validate_failed")) {
                 log.info("Assistant planner: the provider refused an answer that was not JSON");
@@ -177,6 +179,9 @@ public class GroqAssistantPlanner implements AssistantPlanner {
     }
 
     static final long DEFAULT_RETRY_SECONDS = 10;
+    /** Groq's message for its daily limits: "on tokens per day (TPD)", "on requests per day (RPD)". */
+    private static final java.util.regex.Pattern PER_DAY =
+            java.util.regex.Pattern.compile("per day|\\((TPD|RPD)\\)", java.util.regex.Pattern.CASE_INSENSITIVE);
     private static final java.util.regex.Pattern TRY_AGAIN =
             java.util.regex.Pattern.compile("try again in ((?:\\d+h)?(?:\\d+m(?!s))?(?:[\\d.]+s|\\d+ms)?)");
     private static final java.util.regex.Pattern DURATION =
@@ -209,6 +214,15 @@ public class GroqAssistantPlanner implements AssistantPlanner {
     }
 
     /** A field of the error body, kept only when it looks like a code: never free text. */
+    /** Whether Groq's 429 is for its daily quota, by its message; never logged, only matched. */
+    private boolean dailyQuota(String body) {
+        try {
+            return PER_DAY.matcher(json.readTree(body == null ? "" : body).path("error").path("message").asText("")).find();
+        } catch (JsonProcessingException e) {
+            return false;
+        }
+    }
+
     private String errorField(String body, String field) {
         try {
             String value = json.readTree(body == null ? "" : body).path("error").path(field).asText("");

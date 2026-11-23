@@ -35,7 +35,7 @@ public class AssistantController {
 
     /**
      * Whether the assistant can answer now. 404 when it is off; {@code available} false with reason
-     * {@code BUSY} when today's budget is spent. Asked when the panel opens, not with the page, so a
+     * {@code BUSY} when the daily quota is spent. Asked when the panel opens, not with the page, so a
      * visitor who never opens it wakes nothing.
      */
     @io.swagger.v3.oas.annotations.Operation(operationId = "assistantCapabilities")
@@ -50,8 +50,10 @@ public class AssistantController {
      *
      * <p>404 when the assistant is off. 400 for a message over 500 characters or a malformed state.
      * 429 {@code RATE_LIMITED} past the per-address or daily limit, or when the server is pacing its
-     * turns. 503 {@code ASSISTANT_UNAVAILABLE} when the planner fails, times out or the day's budget
-     * is spent: then use the ordinary search. Not retried by the client: a retry spends quota.
+     * turns. 503 {@code ASSISTANT_UNAVAILABLE} when the planner fails: then use the ordinary search.
+     * 503 {@code ASSISTANT_QUOTA} with Retry-After when the daily quota is spent, the budget over the
+     * last 24 hours or the provider's: the seconds until it frees. Not retried by the client: a
+     * retry spends quota.
      */
     @io.swagger.v3.oas.annotations.Operation(operationId = "assistantTurn")
     @PostMapping("/turns")
