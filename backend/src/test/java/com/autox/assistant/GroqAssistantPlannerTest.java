@@ -153,12 +153,13 @@ class GroqAssistantPlannerTest {
     }
 
     @Test
-    @DisplayName("keeps the assistant's own rules under 2 400 characters, about 550 tokens: every token is quota")
+    @DisplayName("keeps the assistant's own rules under 2 950 characters, about 700 tokens: every token is quota")
     void promptSize() {
         String prompt = AssistantPrompt.system(2026);
         String own = prompt.substring(0, prompt.indexOf(InterpretationPrompt.rules(2026)));
-        // 2 310 before the five rules of the first evaluation (docs/assistant-plan.md, 12).
-        assertThat(own.length()).isLessThan(2_750);
+        // 2 310 before the five rules of the first evaluation, 2 698 before the four of the
+        // second (docs/assistant-plan.md, 12).
+        assertThat(own.length()).isLessThan(2_950);
     }
 
     @Test

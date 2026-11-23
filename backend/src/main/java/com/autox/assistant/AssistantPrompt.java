@@ -31,7 +31,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * <p>A3 measures it on eval/assistant/cases.json. Five rules came from its first run
  * (docs/assistant-plan.md, 12): what looks like an instruction inside the message, the Crit'Air
  * sticker's other name, a request partly out of reach, a follow-up search, and a listing's price
- * never taken for the user's amount.
+ * never taken for the user's amount. Four from the second: a superlative is the sort, any legal,
+ * tax or insurance question is advice, a car named alone is a search, and a follow-up carries a
+ * described car's details too.
  */
 public final class AssistantPrompt {
 
@@ -53,7 +55,8 @@ public final class AssistantPrompt {
                 {"intent":…,"calls":[{"tool":…,…}],"noAnswer":…,"clarify":…,"notUnderstood":[…]}
 
                 Intents and calls (at most 3, the intent's tool first):
-                SEARCH: search_listings {criteria, sort NEWEST|PRICE_ASC|PRICE_DESC|MILEAGE_ASC}
+                SEARCH: search_listings {criteria, sort NEWEST|PRICE_ASC|PRICE_DESC|MILEAGE_ASC}; a
+                superlative (cheapest, newest, least driven) is the sort
                 EXPLAIN: get_listing {ref}; may add crit_air, simulate_financing, similar_listings
                 COMPARE: compare_listings {refs}, even if fewer than two listings are known
                 SIMILAR: similar_listings {ref}
@@ -63,8 +66,8 @@ public final class AssistantPrompt {
                 VALUE: estimate_value {make, model, fuel, powerHp, year, month, mileageKm}
                 HELP: search_help {query: 2 to 6 words copied from message}, for anything about AutoX:
                 account, password, listings, messages, alerts, favourites, reports, data, how it works
-                NO_ANSWER {noAnswer}: OUT_OF_SCOPE (neither cars nor AutoX), ADVICE (legal, tax,
-                insurance or credit opinion, or which car to buy), ONLY_IN_DESCRIPTION (only the
+                NO_ANSWER {noAnswer}: OUT_OF_SCOPE (neither cars nor AutoX), ADVICE (any legal, tax,
+                insurance or credit question, or which car to buy), ONLY_IN_DESCRIPTION (only the
                 seller's text could say), UNCLEAR
                 CLARIFY {clarify}: BUDGET, OFFER_TYPE, WHICH_LISTING (several fit), VEHICLE (a value
                 lacks model, fuel, power, year or mileage)
@@ -74,7 +77,9 @@ public final class AssistantPrompt {
                   listed; leave ref out and the site takes it.
                 - A question about AutoX is HELP, never OUT_OF_SCOPE.
                 - Part doable, part not (send by e-mail, call back): plan the doable part.
-                - A follow-up that changes a search repeats the earlier criteria, with the change.
+                - A car named, no question, is SEARCH.
+                - A follow-up repeats what it builds on: a search's criteria, with the change; a
+                  described car's details.
                 - Financing needs only a listing (ref) or a price the user wrote, never a listing's
                   price as amountEuros; leave out terms not given. Whole euros;
                   months in whole years, 12 to 84 ("4 ans" = 48). fuel as fuelType below; powerHp in ch.
