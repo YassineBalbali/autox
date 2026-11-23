@@ -27,8 +27,13 @@
  *               not run, and keep the others' results: the passed cases spend no quota again
  *   --fresh     forget the progress of this label and start again
  *   --max-wait  the longest wait the run accepts for the API's or Groq's "busy" (default 300 s);
- *               a longer one (Groq's daily limit) stops the run, which resumes where it was
+ *               a longer one stops the run, which resumes where it was
  *   --report    write the report from the progress so far, without calling the API
+ *   --results   where the progress and reports go (default: eval/assistant/results)
+ *
+ * The daily quota spent, ours over the last 24 hours or Groq's (503 ASSISTANT_QUOTA, with
+ * Retry-After), stops the run at once: it prints when to resume, and the case it was on is not
+ * recorded, so the same command then goes on from there.
  *
  * Interrupted (Ctrl+C, a stop for the day's quota), the same command resumes: every finished case
  * is in results/<label>.progress.jsonl. The report is results/<date>-<label>.md, to paste back,
@@ -62,6 +67,7 @@ const only = option('--only', null)?.split(',').map((id) => id.trim()).filter(Bo
 const fresh = flag('--fresh');
 const onlyFailed = flag('--only-failed');
 const reportOnly = flag('--report');
+const resultsOption = option('--results', null);
 const base = (args[0] ?? 'http://localhost:8081').replace(/\/$/, '');
 
 /** Groq's free tier for the models the assistant may use, and the assistant's own defaults (docs/assistant-plan.md, 5). */
@@ -84,7 +90,7 @@ const set = JSON.parse(readFileSync(join(here, 'cases.json'), 'utf8'));
 const cases = set.cases.filter((c) => !only || only.includes(c.id));
 if (only && cases.length !== only.length) throw new Error(`--only: unknown case among ${only.join(', ')}`);
 
-const resultsDir = join(here, 'results');
+const resultsDir = resultsOption ?? join(here, 'results');
 mkdirSync(resultsDir, { recursive: true });
 const progressFile = join(resultsDir, `${label}.progress.jsonl`);
 if (fresh && existsSync(progressFile)) rmSync(progressFile);
@@ -259,14 +265,27 @@ async function turn(message, state, context) {
       await sleep((seconds + 1) * 1000);
       continue;
     }
-    if (response.status === 503) {
-      const capabilities = await fetch(`${base}/api/v1/assistant/capabilities`).then((r) => r.json()).catch(() => ({}));
-      if (capabilities.unavailable === 'BUSY') {
-        throw new Stop("Today's assistant token budget is spent. Raise AUTOX_ASSISTANT_DAILY_TOKEN_BUDGET, or run the same command tomorrow to resume.");
-      }
+    if (body.code === 'ASSISTANT_QUOTA') {
+      throw new Stop(quotaReached(Number(response.headers.get('retry-after'))));
     }
     return { error: `${response.status} ${body.code ?? ''}`.trim(), ms };
   }
+}
+
+/**
+ * When to resume after the daily quota: now plus the server's Retry-After, which is the time the
+ * quota that refused frees. Ours is counted over the last 24 hours, as Groq counts its own, so
+ * either way it is a time, not "tomorrow".
+ */
+function quotaReached(seconds, now = new Date()) {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return 'Daily quota reached, resume later: the API gave no time. Run the same command to resume.';
+  }
+  const at = new Date(now.getTime() + seconds * 1000);
+  const paris = at.toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' });
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.ceil((seconds % 3600) / 60);
+  return `Daily quota reached, resume after ${paris} Paris time (${at.toISOString().slice(0, 16)}Z, in ${hours} h ${minutes} min). Run the same command then.`;
 }
 
 async function runCase(c) {
