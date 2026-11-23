@@ -12,6 +12,7 @@ import java.text.Normalizer;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -19,6 +20,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,6 +33,13 @@ import org.springframework.stereotype.Component;
  * reference that is not in the turn's table, a help query with words the user did not write, a
  * required argument missing. <b>A value out of bounds</b> in an otherwise sound call is dropped, and
  * the tool's default applies: a 30-month loan becomes the default 48, a 45 % rate the example rate.
+ *
+ * <p>Three plans are read for what they mean rather than refused (docs/assistant-plan.md, 12, the
+ * second run): a plan whose calls are another intent's own, with that intent's own tool missing
+ * ({@code EXPLAIN} with a lone {@code crit_air}: the Crit'Air); an intent about one listing with no
+ * call, which is its tool on the listing meant; and a valuation or a described car's Crit'Air with a
+ * detail absent, which is the question {@code VEHICLE}: a second call cannot invent what the user
+ * did not say.
  *
  * <p>The search criteria are not checked here: the {@code search_listings} tool runs them through
  * the smart search's own validator, which reports what it dropped.
@@ -102,32 +111,79 @@ public class PlanValidator {
             return new Valid(new Plan(intent, List.of(), null, question, notUnderstood));
         }
 
+        long scale = Math.round(Math.pow(10, minorUnit));
         JsonNode calls = answer.get("calls");
+        if (noCalls(answer) && ON_THE_LISTING_MEANT.contains(intent)) {
+            // « Ça ferait combien par mois ? » planned as FINANCE with no call: the tool, on the
+            // listing meant. With none meant, the planner's own question, if it asked one.
+            calls = JSON.arrayNode().add(JSON.objectNode().put("tool", Plan.PRIMARY.get(intent).wireName()));
+            if (call(Plan.PRIMARY.get(intent), calls.get(0), "calls[0]", message, references, scale) instanceof Invalid) {
+                Plan.Question asked = enumOf(Plan.Question.class, text(answer, "clarify"));
+                return asked != null ? new Valid(new Plan(Plan.Intent.CLARIFY, List.of(), null, asked, notUnderstood))
+                        : new Invalid("calls");
+            }
+        }
         if (calls == null || !calls.isArray() || calls.isEmpty() || calls.size() > MAX_CALLS) {
             return new Invalid("calls");
         }
-        long scale = Math.round(Math.pow(10, minorUnit));
+        Plan.Intent planned = intentOfCalls(intent, calls);
         List<Plan.Call> checked = new ArrayList<>();
         for (int i = 0; i < calls.size(); i++) {
             String at = "calls[" + i + "]";
             JsonNode call = calls.get(i);
             Plan.Tool tool = call != null && call.isObject() ? Plan.Tool.fromWire(text(call, "tool")) : null;
-            if (tool == null || !Plan.ALLOWED.get(intent).contains(tool)) {
+            if (tool == null || !Plan.ALLOWED.get(planned).contains(tool)) {
                 return new Invalid(at + ".tool");
             }
             Object read = call(tool, call, at, message, references, scale);
             if (read instanceof Invalid invalid) {
                 return invalid;
             }
+            if (read instanceof DetailsMissing) {
+                return new Valid(new Plan(Plan.Intent.CLARIFY, List.of(), null, Plan.Question.VEHICLE, notUnderstood));
+            }
             checked.add((Plan.Call) read);
         }
-        if (checked.stream().noneMatch(call -> call.tool() == Plan.PRIMARY.get(intent))) {
+        if (checked.stream().noneMatch(call -> call.tool() == Plan.PRIMARY.get(planned))) {
             return new Invalid("calls");
         }
-        return new Valid(new Plan(intent, List.copyOf(checked), null, null, notUnderstood));
+        return new Valid(new Plan(planned, List.copyOf(checked), null, null, notUnderstood));
     }
 
-    /** A checked call, or {@link Invalid}. */
+    /** The intents whose tool can run with no argument, on the listing meant. */
+    private static final Set<Plan.Intent> ON_THE_LISTING_MEANT = EnumSet.of(Plan.Intent.EXPLAIN, Plan.Intent.COMPARE,
+            Plan.Intent.SIMILAR, Plan.Intent.FINANCE, Plan.Intent.CRIT_AIR);
+    private static final com.fasterxml.jackson.databind.node.JsonNodeFactory JSON =
+            com.fasterxml.jackson.databind.node.JsonNodeFactory.instance;
+
+    /** A detail of a described car the user has not given: asked, not guessed. */
+    private record DetailsMissing() {
+    }
+
+    /**
+     * The intent the calls are: when none is the intent's own tool, though the intent may add them,
+     * and the first is another intent's own, which takes them all. {@code EXPLAIN} with a lone
+     * {@code crit_air} is the Crit'Air.
+     */
+    private static Plan.Intent intentOfCalls(Plan.Intent intent, JsonNode calls) {
+        List<Plan.Tool> tools = new ArrayList<>();
+        for (JsonNode call : calls) {
+            Plan.Tool tool = call != null && call.isObject() ? Plan.Tool.fromWire(text(call, "tool")) : null;
+            if (tool == null || !Plan.ALLOWED.get(intent).contains(tool)) {
+                return intent;
+            }
+            tools.add(tool);
+        }
+        if (tools.contains(Plan.PRIMARY.get(intent))) {
+            return intent;
+        }
+        return Plan.PRIMARY.entrySet().stream()
+                .filter(entry -> entry.getValue() == tools.getFirst() && Plan.ALLOWED.get(entry.getKey()).containsAll(tools))
+                .map(java.util.Map.Entry::getKey)
+                .findFirst().orElse(intent);
+    }
+
+    /** A checked call, {@link Invalid}, or {@link DetailsMissing}. */
     private Object call(Plan.Tool tool, JsonNode call, String at, String message, References.Table references,
                         long scale) {
         return switch (tool) {
@@ -185,10 +241,11 @@ public class PlanValidator {
                 return new Invalid(at + ".ref");
             }
             Long euros = integer(call, "amountEuros");
-            if (euros != null && copiedFromLabel(euros, message, references)) {
-                // The listing meant's own price, which the user never wrote: the model copied it
-                // from the label. The listing is what was asked about, and the tool reads its price.
-                listing = implicit(references);
+            Optional<UUID> copied = euros == null ? Optional.empty() : copiedFromLabel(euros, message, references);
+            if (copied.isPresent()) {
+                // A listing's own price, which the user never wrote: the model copied it from the
+                // label. That listing is what was asked about, and the tool reads its price.
+                listing = copied;
                 euros = null;
             }
             if (euros == null && !call.hasNonNull("amountEuros")) {
@@ -232,6 +289,9 @@ public class PlanValidator {
                 return new Plan.CritAirOf(meant.get(), null, null, null);
             }
         }
+        if (absent(call, "fuel") || absent(call, "year")) {
+            return new DetailsMissing();
+        }
         if (fuel == null) {
             return new Invalid(at + ".fuel");
         }
@@ -242,6 +302,9 @@ public class PlanValidator {
     }
 
     private Object value(JsonNode call, String at) {
+        if (Stream.of("model", "fuel", "powerHp", "year", "mileageKm").anyMatch(field -> absent(call, field))) {
+            return new DetailsMissing();
+        }
         String model = text(call, "model");
         if (model == null || model.length() > 60) {
             return new Invalid(at + ".model");
@@ -273,11 +336,27 @@ public class PlanValidator {
         if (query == null || query.length() > HelpIndex.MAX_QUERY) {
             return new Invalid(at + ".query");
         }
-        Set<String> written = Set.copyOf(words(message));
-        if (words(query).isEmpty() || !written.containsAll(words(query))) {
+        List<String> written = words(message);
+        if (words(query).isEmpty()
+                || !words(query).stream().allMatch(word -> written.stream().anyMatch(own -> formOf(word, own)))) {
             return new Invalid(at + ".query");
         }
         return new Plan.Help(query);
+    }
+
+    /**
+     * The same word, or another form of it: « arrêter » for « arrête », « disparue » for « disparu »,
+     * « mails » for « mail ». Both of four letters or more, differing only in their last two.
+     */
+    static boolean formOf(String word, String written) {
+        if (word.equals(written)) {
+            return true;
+        }
+        int common = 0;
+        while (common < Math.min(word.length(), written.length()) && word.charAt(common) == written.charAt(common)) {
+            common++;
+        }
+        return common >= 4 && common >= Math.max(word.length(), written.length()) - 2;
     }
 
     /**
@@ -308,26 +387,54 @@ public class PlanValidator {
         return code.isEmpty() ? null : code;
     }
 
-    /** A digit anywhere in the message: the user wrote an amount, a year or a count. */
-    private static final Pattern NUMBER = Pattern.compile("\\d");
+    /** A number as a user writes it: « 24990 », « 24 990 », « 24.990 », « 25k ». */
+    private static final Pattern NUMBER = Pattern.compile("\\d+(?:[ .\\u00a0\\u202f]\\d{3})*(?:[,.]\\d+)?\\s*(k\\b)?",
+            Pattern.CASE_INSENSITIVE);
 
     /**
-     * An amount that is the listing meant's price, as its label writes it, in a message with no
-     * number at all: not the user's, who wrote none, but the label's.
+     * The one listing whose label carries this amount as its price, when the message does not hold
+     * that amount: the model copied it from the label, and the user asked about that listing
+     * (« la première sur 5 ans »). A message that holds it is the user's amount.
      */
-    private static boolean copiedFromLabel(long euros, String message, References.Table references) {
-        if (NUMBER.matcher(message).find()) {
-            return false;
+    private static Optional<UUID> copiedFromLabel(long euros, String message, References.Table references) {
+        if (written(message).contains(euros)) {
+            return Optional.empty();
         }
-        Optional<UUID> meant = implicit(references);
-        return meant.isPresent() && references.references().stream()
-                .filter(reference -> reference.listingId().equals(meant.get()))
-                .anyMatch(reference -> Pattern.compile("(^|\\D)" + euros + " EUR").matcher(reference.label()).find());
+        Pattern price = Pattern.compile("(^|\\D)" + euros + " EUR");
+        List<UUID> carrying = references.references().stream()
+                .filter(reference -> price.matcher(reference.label()).find())
+                .map(References.Reference::listingId)
+                .distinct()
+                .toList();
+        return carrying.size() == 1 ? Optional.of(carrying.getFirst()) : Optional.empty();
+    }
+
+    /** The whole-euro amounts written in the message. */
+    private static Set<Long> written(String message) {
+        Set<Long> amounts = new java.util.HashSet<>();
+        var numbers = NUMBER.matcher(message);
+        while (numbers.find()) {
+            String digits = numbers.group().replaceAll("(?i)[\\sk\\u00a0\\u202f]", "").replaceAll("[,.]\\d{1,2}$", "")
+                    .replaceAll("[.,]", "");
+            try {
+                long value = Long.parseLong(digits);
+                amounts.add(numbers.group(1) != null ? value * 1000 : value);
+            } catch (NumberFormatException e) {
+                // Too long to be an amount.
+            }
+        }
+        return amounts;
     }
 
     private static Optional<UUID> reference(JsonNode call, References.Table references) {
         String ref = code(call.get("ref"));
         return ref == null ? Optional.empty() : references.resolve(ref);
+    }
+
+    /** Not there, or null: not given, which is not the same as given wrong. */
+    private static boolean absent(JsonNode call, String field) {
+        JsonNode value = call.get(field);
+        return value == null || value.isNull() || (value.isTextual() && value.asText().isBlank());
     }
 
     private static boolean noCalls(JsonNode answer) {

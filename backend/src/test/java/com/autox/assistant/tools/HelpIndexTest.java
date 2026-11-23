@@ -29,6 +29,9 @@ class HelpIndexTest {
             "est-ce que c'est payant ?                           | pro#ce-qui-n-existe-pas",
             "Comment contacter le vendeur ?                      | aide#comment-contacter-un-vendeur",
             "je veux le téléphone du vendeur                     | aide#comment-contacter-un-vendeur",
+            // The planner's queries in the second evaluation, a few words of the question.
+            "arrêter les mails d'alerte                          | aide#comment-arreter-les-alertes",
+            "annonce disparue                                    | aide#pourquoi-mon-annonce-a-t-elle",
     })
     @DisplayName("finds the section that answers, first")
     void answers(String question, String section) {
@@ -40,8 +43,10 @@ class HelpIndexTest {
             "Quelle est la capitale du Pérou ?",
             "Écris-moi un poème sur les voitures",
             "?",
+            "siège social AutoX",
+            "Où se trouve le siège social d'AutoX ?",
     })
-    @DisplayName("answers NOT_IN_HELP when no section holds half the question's words, or there are none")
+    @DisplayName("answers NOT_IN_HELP when no section holds half the question's words, two at least, or there are none")
     void notInHelp(String question) {
         assertThat(index.search(question))
                 .isEqualTo(ToolResult.refusal(ToolResult.Reason.NOT_IN_HELP));

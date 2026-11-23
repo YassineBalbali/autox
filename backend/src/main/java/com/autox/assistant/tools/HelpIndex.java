@@ -32,7 +32,9 @@ import org.springframework.stereotype.Component;
  * (each counted twice: they say what the section is about) and its text. Words are folded (case,
  * accents), common French words are dropped, and a word is cut to its first six letters after a
  * plural {@code s}, so that "photos" finds "photo" and "vérifier" finds "vérification". A section is
- * a candidate only when it holds at least half of the question's words. The best is returned, and
+ * a candidate only when it holds at least half of the question's words, and two of them when it has
+ * two or more: one word in common is chance (« siège social » and a company's « raison sociale »,
+ * second evaluation). The best is returned, and
  * one more only if it scores at least {@link #RELATIVE_SCORE} of the best: a passage far below the
  * best one answers another question (« supprimer mon compte » also finds the alerts, which a
  * passage tells how to stop from the account). Nothing qualifying is {@code NOT_IN_HELP}, which the user sees as "not found in our help pages".
@@ -60,7 +62,7 @@ public class HelpIndex {
 
     /** Words that say nothing about which section answers. "autox" is on every page. */
     private static final Set<String> STOPWORDS = Set.of(
-            "a", "ai", "as", "au", "aux", "avec", "ce", "ces", "cet", "cette", "comment", "d", "dans", "de", "des",
+            "a", "ai", "as", "au", "aux", "avec", "c", "ce", "ces", "cet", "cette", "comment", "d", "dans", "de", "des",
             "du", "elle", "elles", "en", "est", "et", "etre", "faire", "faut", "il", "ils", "j", "je", "l", "la",
             "le", "les", "leur", "leurs", "lui", "m", "ma", "me", "mes", "moi", "mon", "n", "ne", "nos", "notre",
             "nous", "on", "ou", "par", "pas", "peut", "peux", "plus", "pour", "pourquoi", "puis", "qu", "quand",
@@ -113,7 +115,8 @@ public class HelpIndex {
         if (asked.isEmpty()) {
             return ToolResult.refusal(ToolResult.Reason.NOT_IN_HELP);
         }
-        int needed = (asked.size() + 1) / 2;
+        // Half the words, and two at least when there are two: « siège social » is not « raison sociale ».
+        int needed = Math.max((asked.size() + 1) / 2, Math.min(asked.size(), 2));
         List<Map.Entry<Section, Double>> ranked = sections.stream()
                 .filter(section -> asked.stream().filter(section.terms()::contains).count() >= needed)
                 .map(section -> Map.entry(section, score(section, asked)))
