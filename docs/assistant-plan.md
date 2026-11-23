@@ -1111,5 +1111,5 @@ by the old runner, so they are run again with `--only-failed`:
     node eval/assistant/run-eval.mjs http://localhost:8081 --label gpt-oss-120b-r3 --only-failed
 
 About 68 cases and 79 turns, about 165 000 tokens, once the second run's hours have left the
-window: about 24 hours after it, from the morning of 24 November (the first turn tells the time,
+window: about 24 hours after it, early afternoon of 24 November, Paris time (the first turn tells the time,
 and costs nothing if it is too early).
