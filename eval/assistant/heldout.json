@@ -1,0 +1,5 @@
+{
+  "about": "Assistant AutoX held-out set: questions written by the site's owner, never by whoever tunes the prompt or the server, and never used to change them. Same format as cases.json; how to fill it is in docs/assistant-plan.md, 12, \"The held-out set\". Run it alone: node eval/assistant/run-eval.mjs http://localhost:8081 --cases heldout.json --label heldout-1",
+  "version": 1,
+  "cases": []
+}

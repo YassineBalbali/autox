@@ -28,10 +28,14 @@ import org.junit.jupiter.params.provider.MethodSource;
  * every code it names is one of ours. A plan the server would refuse could never be matched, so an
  * expectation like that would only measure the set. The model itself is evaluated by hand, by
  * eval/assistant/run-eval.mjs against a local API (docs/assistant-plan.md, 9); never here.
+ *
+ * <p>eval/assistant/heldout.json, the owner's own questions, is checked the same way, case by case,
+ * once it has some: empty, it only has to be a set.
  */
 class AssistantEvalSetTest {
 
     static final Path CASES = Path.of("..", "eval", "assistant", "cases.json");
+    static final Path HELDOUT = Path.of("..", "eval", "assistant", "heldout.json");
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final PlanValidator VALIDATOR = new PlanValidator();
     private static final Set<String> EXPECT_FIELDS = Set.of("intent", "calls", "extraCalls", "noAnswer", "clarify",
@@ -56,9 +60,16 @@ class AssistantEvalSetTest {
         return JSON.readTree(Files.readString(CASES));
     }
 
+    static JsonNode heldOut() throws IOException {
+        return JSON.readTree(Files.readString(HELDOUT));
+    }
+
     static Stream<Expectation> expectations() throws IOException {
         List<Expectation> all = new ArrayList<>();
-        for (JsonNode c : set().get("cases")) {
+        List<JsonNode> cases = new ArrayList<>();
+        set().get("cases").forEach(cases::add);
+        heldOut().get("cases").forEach(cases::add);
+        for (JsonNode c : cases) {
             JsonNode setup = c.path("setup");
             int seeded = setup.path("listings").path("count").asInt(0);
             boolean page = setup.path("page").asBoolean(false);
@@ -85,7 +96,22 @@ class AssistantEvalSetTest {
     void shape() throws IOException {
         JsonNode cases = set().get("cases");
         assertThat(cases.size()).isGreaterThanOrEqualTo(60);
+        shape(cases, new HashSet<>());
+    }
+
+    @Test
+    @DisplayName("has a held-out set of the same shape, empty until the owner fills it, with ids of its own")
+    void heldOutShape() throws IOException {
+        JsonNode set = heldOut();
+        assertThat(set.path("version").isInt()).isTrue();
+        assertThat(set.get("cases").isArray()).isTrue();
         Set<String> ids = new HashSet<>();
+        set().get("cases").forEach(c -> ids.add(c.path("id").asText()));
+        shape(set.get("cases"), ids);
+    }
+
+    /** @param ids taken already: a case's id must be new to them */
+    private static void shape(JsonNode cases, Set<String> ids) {
         for (JsonNode c : cases) {
             String id = c.path("id").asText();
             assertThat(id).matches("[a-z0-9]+(-[a-z0-9]+)*");

@@ -17,9 +17,12 @@
  *   AUTOX_ASSISTANT_EVAL_TRACE=true, AUTOX_ASSISTANT_LIMITS_ENABLED=false,
  *   AUTOX_ASSISTANT_DAILY_TOKEN_BUDGET=195000, and the demo data loaded.
  *
- * Usage: node eval/assistant/run-eval.mjs [api base url] [--label name] [--pace turns-a-minute]
- *          [--only id,id…] [--only-failed] [--fresh] [--max-wait seconds] [--report]
- *   --label     names the run; its progress and report files carry it (default: run)
+ * Usage: node eval/assistant/run-eval.mjs [api base url] [--cases file] [--label name]
+ *          [--pace turns-a-minute] [--only id,id…] [--only-failed] [--fresh] [--max-wait seconds] [--report]
+ *   --cases     the set to run, in eval/assistant/ or a path (default: cases.json); heldout.json
+ *               is the owner's own questions, run alone (docs/assistant-plan.md, 12)
+ *   --label     names the run; its progress and report files carry it (default: run, or the
+ *               set's name for another set, so a held-out run never mixes with the main one)
  *   --pace      turns a minute at most (default 3), below the server's own pace in tokens, so the
  *               run waits instead of being refused; a refusal is waited out all the same
  *   --only      these cases only
@@ -45,7 +48,7 @@
  * cases.json as it is now, so a corrected expectation needs no new call.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 
@@ -59,7 +62,10 @@ const flag = (name) => {
   const index = args.indexOf(name);
   return index >= 0 ? (args.splice(index, 1), true) : false;
 };
-const label = option('--label', 'run');
+const casesOption = option('--cases', 'cases.json');
+const casesFile = existsSync(casesOption) ? casesOption : join(here, casesOption);
+const casesName = basename(casesFile);
+const label = option('--label', casesName === 'cases.json' ? 'run' : casesName.replace(/\.json$/, ''));
 if (!/^[a-z0-9-]+$/.test(label)) throw new Error(`--label: lower-case letters, digits and dashes, not ${label}`);
 const pace = Number(option('--pace', '3'));
 const maxWait = Number(option('--max-wait', '300'));
@@ -86,7 +92,12 @@ const SAFETY_CATEGORIES = new Set(['seller_contact', 'injection', 'contact_detai
 const isSafety = (t) =>
   SAFETY_CATEGORIES.has(t.category) || ['SELLER_CONTACT', 'CONTACT_REMOVED'].includes(t.group);
 
-const set = JSON.parse(readFileSync(join(here, 'cases.json'), 'utf8'));
+if (!existsSync(casesFile)) throw new Error(`--cases: no file ${casesFile}`);
+const set = JSON.parse(readFileSync(casesFile, 'utf8'));
+if (!set.cases?.length) {
+  console.error(`${casesName} has no case yet: fill it first (docs/assistant-plan.md, 12, "The held-out set").`);
+  process.exit(2);
+}
 const cases = set.cases.filter((c) => !only || only.includes(c.id));
 if (only && cases.length !== only.length) throw new Error(`--only: unknown case among ${only.join(', ')}`);
 
@@ -366,7 +377,7 @@ function report(results) {
 
   return `# Assistant AutoX evaluation: ${label}
 
-${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC, ${base}, cases.json version ${set.version}. ${results.length} of ${total} cases run${
+${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC, ${base}, ${casesName} version ${set.version}. ${results.length} of ${total} cases run${
     results.length < total ? ' (incomplete)' : ''
   }.
 
