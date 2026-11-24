@@ -53,6 +53,14 @@ class HelpIndexTest {
     }
 
     @Test
+    @DisplayName("reads a short form the pages never write as the words it begins: « pro », the professional pages")
+    void shortForm() {
+        // The planner's query in the third evaluation, for « c koi un compte pro, ça sert a quoi ».
+        assertThat(keys(index.search("compte pro"))).first().asString().startsWith("pro#");
+        // « siège social » stays NOT_IN_HELP (notInHelp): « siege » begins no word of the pages.
+    }
+
+    @Test
     @DisplayName("answers a question that is a page's title with that page")
     void pageTitle() {
         assertThat(keys(index.search("Comment ça marche ?"))).first().asString().startsWith("comment-ca-marche#");

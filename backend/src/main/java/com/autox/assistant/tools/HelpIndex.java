@@ -34,7 +34,9 @@ import org.springframework.stereotype.Component;
  * plural {@code s}, so that "photos" finds "photo" and "vérifier" finds "vérification". A section is
  * a candidate only when it holds at least half of the question's words, and two of them when it has
  * two or more: one word in common is chance (« siège social » and a company's « raison sociale »,
- * second evaluation). The best is returned, and
+ * second evaluation). A word no section has, of three to five letters, is a short form: it is in
+ * common with the words it begins (« compte pro » and « compte professionnel », third
+ * evaluation); a word the pages use is only itself. The best is returned, and
  * one more only if it scores at least {@link #RELATIVE_SCORE} of the best: a passage far below the
  * best one answers another question (« supprimer mon compte » also finds the alerts, which a
  * passage tells how to stop from the account). Nothing qualifying is {@code NOT_IN_HELP}, which the user sees as "not found in our help pages".
@@ -118,7 +120,7 @@ public class HelpIndex {
         // Half the words, and two at least when there are two: « siège social » is not « raison sociale ».
         int needed = Math.max((asked.size() + 1) / 2, Math.min(asked.size(), 2));
         List<Map.Entry<Section, Double>> ranked = sections.stream()
-                .filter(section -> asked.stream().filter(section.terms()::contains).count() >= needed)
+                .filter(section -> asked.stream().filter(term -> frequency(section, term) > 0).count() >= needed)
                 .map(section -> Map.entry(section, score(section, asked)))
                 .sorted(Map.Entry.<Section, Double>comparingByValue(Comparator.reverseOrder()))
                 .toList();
@@ -140,16 +142,30 @@ public class HelpIndex {
         double score = 0;
         int length = section.terms().size();
         for (String term : asked) {
-            long frequency = section.terms().stream().filter(term::equals).count();
+            long frequency = frequency(section, term);
             if (frequency == 0) {
                 continue;
             }
-            int containing = documentFrequency.getOrDefault(term, 0);
+            int containing = documentFrequency.containsKey(term) ? documentFrequency.get(term)
+                    : (int) sections.stream().filter(other -> frequency(other, term) > 0).count();
             double idf = Math.log(1 + (sections.size() - containing + 0.5) / (containing + 0.5));
             score += idf * frequency * (K1 + 1) / (frequency + K1 * (1 - B + B * length / averageLength));
         }
         return score;
     }
+
+    /** How often a section has the word: itself, or for a short form no section has, the words it begins. */
+    private long frequency(Section section, String term) {
+        boolean shortForm = !documentFrequency.containsKey(term) && term.length() >= MIN_SHORT_FORM
+                && term.length() <= MAX_SHORT_FORM;
+        return section.terms().stream()
+                .filter(word -> word.equals(term) || (shortForm && word.length() > term.length() && word.startsWith(term)))
+                .count();
+    }
+
+    /** The lengths of a short form: « pro », « appli », « info ». */
+    static final int MIN_SHORT_FORM = 3;
+    static final int MAX_SHORT_FORM = 5;
 
     /** Folded, split, stopwords dropped, cut to the stem. */
     static List<String> terms(String text) {
