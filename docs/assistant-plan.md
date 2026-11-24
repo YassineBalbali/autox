@@ -1141,6 +1141,16 @@ fills and a client sends back unchanged, like the rest. Both are read again on e
 the smart search's criteria fields are kept, short values only, and the criteria go through its
 validator when the search runs. No client uses the assistant yet; `frontend/openapi.json` is updated.
 
+**A tampered state** is read like user input, since it is one. `search`: a field that is not a
+criterion, a value that is an object, a list of anything but values, a text over 60 characters
+are dropped; what is left is data to the planner and, when a search takes it, goes through the
+smart search's validator like the planner's own criteria (a price under its bound or a place
+nobody wrote is dropped there). `car`: each field bounded (model and make 60 characters, power
+20 to 1 500 ch, year 1950 to 2100, month 1 to 12, mileage 0 to 1 000 000 km, fuel one of ours),
+a state out of them refused with 400 before any planner call, an unknown field ignored; a detail
+taken from it is then checked again as the plan's own (a year after next year is refused).
+`AssistantIntegrationTest`'s `tamperedSearch`, `tamperedCar` and `tamperedCarRechecked`.
+
 ### The server's guards, so far
 
 Everything the server does with a plan beyond running it, in the order a turn meets them. Each is
