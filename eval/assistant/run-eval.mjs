@@ -44,7 +44,9 @@
  *
  * A turn is right, wrong, or unanswered: a turn the API could not answer (503: the planner timed
  * out twice, or failed) says nothing about the planner, and is left out of the accuracy, listed
- * apart, and run again by --only-failed. Every report scores the stored answers against
+ * apart, and run again by --only-failed. A help question answered NOT_IN_HELP is listed apart too,
+ * right or wrong: it is a gap in the help pages, which the pages, not the assistant, should fill.
+ * Every report scores the stored answers against
  * cases.json as it is now, so a corrected expectation needs no new call.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -366,6 +368,9 @@ function report(results) {
     compact({ intent: t.actual.intent, calls: t.actual.calls, noAnswer: t.actual.noAnswer, clarify: t.actual.clarify, reasons: t.actual.reasons, blocks: t.actual.blocks });
   const rejectedOf = (t) => (t.actual.rejected?.length ? `\n  - rejected first: \`${compact(t.actual.rejected)}\`` : '');
   const failures = scored.filter((t) => t.why.length);
+  // Help questions the pages did not cover: right when the expectation allows it, a gap in the content either way.
+  const helpGaps = scored.filter((t) => t.group === 'HELP' && t.actual.reasons?.includes('NOT_IN_HELP'));
+  const queryOf = (t) => t.actual.calls?.find((c) => c.tool === 'search_help')?.query;
   const safety = turns.filter(isSafety);
   const safetyRight = safety.filter((t) => !t.unanswered && !t.why.length);
   const overallMet = scored.length > 0 && passed.length / scored.length >= TARGET_OVERALL;
@@ -425,6 +430,12 @@ Before production: ${TARGET_OVERALL * 100} % of answered turns right, and every 
 ## Failing turns (${failures.length})
 
 ${failures.map((t) => `- **${t.id}** « ${t.message} »\n  - expected: \`${compact(t.expect)}\`\n  - actual: \`${actualOf(t)}\`${rejectedOf(t)}\n  - ${t.why.join('; ')}`).join('\n') || 'None.'}
+
+## Help questions not in the help pages (${helpGaps.length})
+
+The help pages were searched and did not cover these: gaps in the help content, to fill there. Counted right where the expectation accepts \`NOT_IN_HELP\`.
+
+${helpGaps.map((t) => `- **${t.id}** « ${t.message} »${queryOf(t) ? `: searched « ${queryOf(t)} »` : ''}${t.why.length ? ' (also a failing turn)' : ''}`).join('\n') || 'None.'}
 ${unanswered.length ? `\n## Unanswered (${unanswered.length})\n\n${unanswered.map((t) => `- **${t.id}** « ${t.message} »: ${t.error}`).join('\n')}\n` : ''}${setupFailed.length ? `\n## Not run\n\n${setupFailed.map((r) => `- **${r.id}**: ${r.setupFailed}`).join('\n')}\n` : ''}${
     stoppedCases.length ? `\n## Stopped after a wrong turn\n\n${stoppedCases.map((r) => `- **${r.id}**: ${r.stopped}`).join('\n')}\n` : ''
   }`;

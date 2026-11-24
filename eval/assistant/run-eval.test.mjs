@@ -1,7 +1,7 @@
 // node --test eval/assistant/run-eval.test.mjs
 //
 // The runner against a stand-in API, never Groq: what it does with the daily quota spent, and a
-// set other than cases.json (--cases).
+// set other than cases.json (--cases), and the help questions the pages did not cover.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -14,8 +14,11 @@ import { fileURLToPath } from 'node:url';
 const RUNNER = join(dirname(fileURLToPath(import.meta.url)), 'run-eval.mjs');
 const CASES = ['search-208-brief', 'search-suv-diesel-auto', 'search-clio-cheap-lyon'];
 
-/** A stand-in API whose every turn gets this status, code and Retry-After; counts the turns. */
-async function api(status, code, retryAfter) {
+/**
+ * A stand-in API whose every turn gets this status, code and Retry-After; counts the turns. With
+ * a trace, every turn is answered 200 with it, as the API's evaluation header.
+ */
+async function api(status, code, retryAfter, trace) {
   const seen = { turns: 0 };
   const server = createServer((request, response) => {
     if (request.url.endsWith('/capabilities')) {
@@ -24,6 +27,11 @@ async function api(status, code, retryAfter) {
       return;
     }
     seen.turns += 1;
+    if (trace) {
+      response.writeHead(200, { 'Content-Type': 'application/json', 'X-Assistant-Eval': JSON.stringify(trace) });
+      response.end(JSON.stringify({ blocks: [], state: { earlier: [], shown: [], turns: 1 } }));
+      return;
+    }
     response.writeHead(status, { 'Content-Type': 'application/problem+json', ...(retryAfter ? { 'Retry-After': String(retryAfter) } : {}) });
     response.end(JSON.stringify({ code }));
   });
@@ -76,7 +84,9 @@ test('refuses to run a set with no case yet, as heldout.json is until it is fill
   const stand = await api(503, 'ASSISTANT_UNAVAILABLE');
   const results = mkdtempSync(join(tmpdir(), 'eval-'));
   try {
-    const { code, output } = await run(stand.url, results, ['--cases', 'heldout.json']);
+    const empty = join(results, 'heldout.json');
+    writeFileSync(empty, JSON.stringify({ version: 1, cases: [] }));
+    const { code, output } = await run(stand.url, results, ['--cases', empty]);
     assert.equal(code, 2);
     assert.match(output, /heldout\.json has no case yet/);
     assert.equal(stand.seen.turns, 0);
@@ -101,6 +111,32 @@ test('runs another set alone, under its own name, and says which set the report 
     assert.deepEqual(progress.map((r) => r.id), ['my-first']);
     const report = readdirSync(results).find((name) => name.endsWith('-mine.md'));
     assert.match(readFileSync(join(results, report), 'utf8'), /mine\.json version 1\. 1 of 1 cases run/);
+  } finally {
+    stand.close();
+    rmSync(results, { recursive: true, force: true });
+  }
+});
+
+test('counts NOT_IN_HELP right where a help case accepts it, and lists it apart as a gap in the pages', async () => {
+  const trace = { intent: 'HELP', calls: [{ tool: 'search_help', query: 'modifier le prix annonce' }], reasons: ['NOT_IN_HELP'],
+    blocks: ['NO_ANSWER'], attempts: 1, tokensIn: 2000, tokensOut: 40 };
+  const stand = await api(200, null, null, trace);
+  const results = mkdtempSync(join(tmpdir(), 'eval-'));
+  const set = join(results, 'gaps.json');
+  const query = 'modifier le prix annonce';
+  writeFileSync(set, JSON.stringify({ version: 1, cases: [
+    { id: 'ho-help-change-price', category: 'help', turns: [{ message: 'Comment modifier le prix de mon annonce ?', expect: { anyOf: [
+      { intent: 'HELP', calls: [{ tool: 'search_help', query }], blocks: ['HELP_PASSAGE'] },
+      { intent: 'HELP', calls: [{ tool: 'search_help', query }], reasons: ['NOT_IN_HELP'] },
+    ] } }] },
+  ] }));
+  try {
+    const { code } = await run(stand.url, results, ['--cases', set]);
+    assert.equal(code, 0);
+    const report = readFileSync(join(results, readdirSync(results).find((name) => name.endsWith('-gaps.md'))), 'utf8');
+    assert.match(report, /Turns answered and right:\*\* 1\/1/);
+    assert.match(report, /## Help questions not in the help pages \(1\)/);
+    assert.match(report, /- \*\*ho-help-change-price\*\* « Comment modifier le prix de mon annonce \? »: searched « modifier le prix annonce »/);
   } finally {
     stand.close();
     rmSync(results, { recursive: true, force: true });

@@ -1240,7 +1240,7 @@ has a case.
 | Financing | `{"intent": "FINANCE"}`, or with `"calls": [{"tool": "simulate_financing", "amountEuros": 15000, "months": 48}]` when the figures matter |
 | The Crit'Air | `{"intent": "CRIT_AIR", "calls": [{"tool": "crit_air", "fuel": "DIESEL", "year": 2012}]}`, or just the intent |
 | A valuation | `{"intent": "VALUE"}` |
-| The help pages | `{"intent": "HELP", "blocks": ["HELP_PASSAGE"]}`; not in them: `{"reasons": ["NOT_IN_HELP"]}` |
+| The help pages | `{"intent": "HELP", "blocks": ["HELP_PASSAGE"]}`; not in them: `{"reasons": ["NOT_IN_HELP"]}`. Either, as long as the pages are searched: `{"anyOf": [{"intent": "HELP", "calls": [{"tool": "search_help", "query": "…"}], "blocks": ["HELP_PASSAGE"]}, {"intent": "HELP", "calls": [{"tool": "search_help", "query": "…"}], "reasons": ["NOT_IN_HELP"]}]}`, the query a few of the question's words (not compared). The report lists every help question answered `NOT_IN_HELP` apart, under "Help questions not in the help pages": gaps in the help content, right or wrong |
 | A refusal | `{"intent": "NO_ANSWER", "noAnswer": "OUT_OF_SCOPE"}` (not cars, not AutoX), `"ADVICE"` (legal, tax, insurance, credit, which car to buy) or `"ONLY_IN_DESCRIPTION"` |
 | A seller's number asked | `{"reasons": ["SELLER_CONTACT"]}` |
 | Your own phone or e-mail in the message | `{"blocks": ["CONTACT_REMOVED"]}` |

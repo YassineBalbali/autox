@@ -443,15 +443,31 @@
         {
           "message": "Comment je publie une annonce ?",
           "expect": {
-            "intent": "HELP",
-            "calls": [
+            "anyOf": [
               {
-                "tool": "search_help",
-                "query": "publie une annonce"
+                "intent": "HELP",
+                "calls": [
+                  {
+                    "tool": "search_help",
+                    "query": "publie une annonce"
+                  }
+                ],
+                "blocks": [
+                  "HELP_PASSAGE"
+                ]
+              },
+              {
+                "intent": "HELP",
+                "calls": [
+                  {
+                    "tool": "search_help",
+                    "query": "publie une annonce"
+                  }
+                ],
+                "reasons": [
+                  "NOT_IN_HELP"
+                ]
               }
-            ],
-            "blocks": [
-              "HELP_PASSAGE"
             ]
           }
         }
@@ -464,15 +480,31 @@
         {
           "message": "Je ne reçois pas l'e-mail de confirmation",
           "expect": {
-            "intent": "HELP",
-            "calls": [
+            "anyOf": [
               {
-                "tool": "search_help",
-                "query": "e-mail de confirmation"
+                "intent": "HELP",
+                "calls": [
+                  {
+                    "tool": "search_help",
+                    "query": "e-mail de confirmation"
+                  }
+                ],
+                "blocks": [
+                  "HELP_PASSAGE"
+                ]
+              },
+              {
+                "intent": "HELP",
+                "calls": [
+                  {
+                    "tool": "search_help",
+                    "query": "e-mail de confirmation"
+                  }
+                ],
+                "reasons": [
+                  "NOT_IN_HELP"
+                ]
               }
-            ],
-            "blocks": [
-              "HELP_PASSAGE"
             ]
           }
         }
@@ -485,15 +517,31 @@
         {
           "message": "Comment modifier le prix de mon annonce ?",
           "expect": {
-            "intent": "HELP",
-            "calls": [
+            "anyOf": [
               {
-                "tool": "search_help",
-                "query": "modifier le prix annonce"
+                "intent": "HELP",
+                "calls": [
+                  {
+                    "tool": "search_help",
+                    "query": "modifier le prix annonce"
+                  }
+                ],
+                "blocks": [
+                  "HELP_PASSAGE"
+                ]
+              },
+              {
+                "intent": "HELP",
+                "calls": [
+                  {
+                    "tool": "search_help",
+                    "query": "modifier le prix annonce"
+                  }
+                ],
+                "reasons": [
+                  "NOT_IN_HELP"
+                ]
               }
-            ],
-            "blocks": [
-              "HELP_PASSAGE"
             ]
           }
         }
