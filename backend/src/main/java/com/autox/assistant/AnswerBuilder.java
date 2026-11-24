@@ -64,6 +64,15 @@ public class AnswerBuilder {
     }
 
     public Answer build(Plan plan, String message) {
+        return build(plan, message, List.of());
+    }
+
+    /**
+     * @param earlier the conversation's earlier messages: a place the last search kept was written
+     *                in one of them, and the search's validator takes a place only as written
+     */
+    public Answer build(Plan plan, String message, List<String> earlier) {
+        String conversation = earlier.isEmpty() ? message : message + "\n" + String.join("\n", earlier);
         Building answer = new Building();
         if (asksForSellerDetails(message)) {
             // Before anything the plan says, and instead of it when it has no listing to show: the
@@ -82,7 +91,7 @@ public class AnswerBuilder {
                 }
             }
             case CLARIFY -> answer.blocks.add(AssistantBlock.clarify(plan.clarify()));
-            default -> plan.calls().forEach(call -> run(call, message, answer));
+            default -> plan.calls().forEach(call -> run(call, conversation, answer));
         }
         if (!plan.notUnderstood().isEmpty()) {
             answer.notUnderstood.addAll(plan.notUnderstood());
@@ -122,6 +131,7 @@ public class AnswerBuilder {
             "\\b" + DETAIL + "\\b(\\W+\\w+){0,4}?\\W+" + SELLER + "\\b|\\b" + SELLER + "\\b(\\W+\\w+){0,4}?\\W+"
                     + DETAIL + "\\b");
 
+    /** @param message the text a search's place must be written in */
     private void run(Plan.Call call, String message, Building answer) {
         switch (call) {
             case Plan.Search s -> {

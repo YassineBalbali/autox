@@ -7,7 +7,9 @@ import com.autox.assistant.tools.ValuationTool;
 import com.autox.catalog.FuelType;
 import com.autox.search.SearchSort;
 import com.autox.search.ValuationScope;
+import com.autox.search.interpret.CatalogueMatcher;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.text.Normalizer;
 import java.time.Year;
 import java.util.ArrayList;
@@ -19,8 +21,10 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -40,6 +44,12 @@ import org.springframework.stereotype.Component;
  * call, which is its tool on the listing meant; and a valuation or a described car's Crit'Air with a
  * detail absent, which is the question {@code VEHICLE}: a second call cannot invent what the user
  * did not say.
+ *
+ * <p>Two more read what a follow-up leaves out from the conversation's memory
+ * ({@link ConversationMemory}, the third run): a described car's details absent are the car last
+ * described, when there is one and the call names no other model; and a search with no criteria at
+ * all is the model the message names, when the catalogue knows exactly one of its words as a
+ * model, else the last search, re-sorted (« la moins chère d'abord »).
  *
  * <p>The search criteria are not checked here: the {@code search_listings} tool runs them through
  * the smart search's own validator, which reports what it dropped.
@@ -61,6 +71,23 @@ public class PlanValidator {
     /** Asking for a comparison, in the folded message. */
     private static final Pattern COMPARING = Pattern.compile("compar|differen|\\bversus\\b|\\bvs\\b|laquelle (est|des)");
 
+    /** A word of a message to the catalogue's model of that name, when exactly one has it. */
+    private final Function<String, Optional<String>> modelNamed;
+
+    /** With no catalogue: a message names no model. For the tests that need none. */
+    public PlanValidator() {
+        this(word -> Optional.empty());
+    }
+
+    @Autowired
+    public PlanValidator(CatalogueMatcher catalogue) {
+        this(word -> catalogue.modelAlone(word).map(CatalogueMatcher.Model::name));
+    }
+
+    PlanValidator(Function<String, Optional<String>> modelNamed) {
+        this.modelNamed = modelNamed;
+    }
+
     /** The outcome: a plan to follow, or the first field that made it impossible to follow. */
     public sealed interface Result {
     }
@@ -76,6 +103,12 @@ public class PlanValidator {
      * @param minorUnit decimal places of the euro, for amounts the planner writes in euros
      */
     public Result validate(JsonNode answer, String message, References.Table references, int minorUnit) {
+        return validate(answer, message, references, minorUnit, ConversationMemory.Memory.NONE);
+    }
+
+    /** @param memory the last search and the car last described, which a follow-up may leave out */
+    public Result validate(JsonNode answer, String message, References.Table references, int minorUnit,
+                           ConversationMemory.Memory memory) {
         if (answer == null || !answer.isObject()) {
             return new Invalid("plan");
         }
@@ -117,7 +150,8 @@ public class PlanValidator {
             // « Ça ferait combien par mois ? » planned as FINANCE with no call: the tool, on the
             // listing meant. With none meant, the planner's own question, if it asked one.
             calls = JSON.arrayNode().add(JSON.objectNode().put("tool", Plan.PRIMARY.get(intent).wireName()));
-            if (call(Plan.PRIMARY.get(intent), calls.get(0), "calls[0]", message, references, scale) instanceof Invalid) {
+            if (call(Plan.PRIMARY.get(intent), calls.get(0), "calls[0]", message, references, scale, memory)
+                    instanceof Invalid) {
                 Plan.Question asked = enumOf(Plan.Question.class, text(answer, "clarify"));
                 return asked != null ? new Valid(new Plan(Plan.Intent.CLARIFY, List.of(), null, asked, notUnderstood))
                         : new Invalid("calls");
@@ -135,7 +169,7 @@ public class PlanValidator {
             if (tool == null || !Plan.ALLOWED.get(planned).contains(tool)) {
                 return new Invalid(at + ".tool");
             }
-            Object read = call(tool, call, at, message, references, scale);
+            Object read = call(tool, call, at, message, references, scale, memory);
             if (read instanceof Invalid invalid) {
                 return invalid;
             }
@@ -185,12 +219,12 @@ public class PlanValidator {
 
     /** A checked call, {@link Invalid}, or {@link DetailsMissing}. */
     private Object call(Plan.Tool tool, JsonNode call, String at, String message, References.Table references,
-                        long scale) {
+                        long scale, ConversationMemory.Memory memory) {
         return switch (tool) {
             case SEARCH_LISTINGS -> {
                 JsonNode criteria = call.get("criteria");
                 yield criteria != null && criteria.isObject()
-                        ? new Plan.Search(criteria, enumOf(SearchSort.class, text(call, "sort")))
+                        ? new Plan.Search(emptyRead(criteria, message, memory), enumOf(SearchSort.class, text(call, "sort")))
                         : new Invalid(at + ".criteria");
             }
             case GET_LISTING, SIMILAR_LISTINGS -> {
@@ -199,8 +233,8 @@ public class PlanValidator {
             }
             case COMPARE_LISTINGS -> compare(call, at, references);
             case SIMULATE_FINANCING -> finance(call, at, message, references, scale);
-            case CRIT_AIR -> critAir(call, at, references);
-            case ESTIMATE_VALUE -> value(call, at);
+            case CRIT_AIR -> critAir(call, at, references, memory.car());
+            case ESTIMATE_VALUE -> value(described(call, memory.car()), at);
             case SEARCH_HELP -> help(call, at, message);
         };
     }
@@ -273,7 +307,64 @@ public class PlanValidator {
         return new Plan.Finance(listing.orElse(null), amount, downPayment, duration, ratePercent);
     }
 
-    private Object critAir(JsonNode call, String at, References.Table references) {
+    /**
+     * Search criteria with nothing in them, read: the model the message names, when one of its words
+     * is exactly one catalogue model (« Une Golf » planned with no criteria); else the last search,
+     * which a message naming no car only re-sorts or repeats; else nothing, every listing.
+     */
+    private JsonNode emptyRead(JsonNode criteria, String message, ConversationMemory.Memory memory) {
+        if (ConversationMemory.criteria(criteria) != null) {
+            return criteria;
+        }
+        Set<String> named = words(message).stream()
+                .filter(word -> word.length() >= 3 || (word.length() == 2 && word.matches(".*\\d.*")))
+                .distinct()
+                .limit(MAX_WORDS_LOOKED_UP)
+                .map(modelNamed)
+                .flatMap(Optional::stream)
+                .collect(java.util.stream.Collectors.toSet());
+        if (named.size() == 1) {
+            return JSON.objectNode().put("model", named.iterator().next());
+        }
+        return named.isEmpty() && memory.search() != null ? memory.search().deepCopy() : criteria;
+    }
+
+    /** The words of a message looked up in the catalogue, at most: a message is short. */
+    static final int MAX_WORDS_LOOKED_UP = 12;
+
+    /**
+     * A call with the details it leaves out taken from the car last described, when it names no
+     * other model: « Et avec 80 000 km ? » after a valuation is that car. The month goes with the
+     * year it is of.
+     */
+    private static JsonNode described(JsonNode call, TurnRequest.Car car) {
+        if (car == null || !call.isObject()) {
+            return call;
+        }
+        String model = text(call, "model");
+        if (model != null && (car.model() == null || !fold(model).equals(fold(car.model())))) {
+            return call;
+        }
+        ObjectNode filled = ((ObjectNode) call).deepCopy();
+        fill(filled, "make", car.make() == null ? null : JSON.textNode(car.make()));
+        fill(filled, "model", car.model() == null ? null : JSON.textNode(car.model()));
+        fill(filled, "fuel", car.fuel() == null ? null : JSON.textNode(car.fuel().name()));
+        fill(filled, "powerHp", car.powerHp() == null ? null : JSON.numberNode(car.powerHp()));
+        if (absent(call, "year") && car.year() != null) {
+            filled.put("year", car.year());
+            fill(filled, "month", car.month() == null ? null : JSON.numberNode(car.month()));
+        }
+        fill(filled, "mileageKm", car.mileageKm() == null ? null : JSON.numberNode(car.mileageKm()));
+        return filled;
+    }
+
+    private static void fill(ObjectNode call, String field, JsonNode value) {
+        if (value != null && absent(call, field)) {
+            call.set(field, value);
+        }
+    }
+
+    private Object critAir(JsonNode call, String at, References.Table references, TurnRequest.Car car) {
         Optional<UUID> listing = reference(call, references);
         if (listing.isPresent()) {
             return new Plan.CritAirOf(listing.get(), null, null, null);
@@ -281,15 +372,17 @@ public class PlanValidator {
         if (code(call.get("ref")) != null) {
             return new Invalid(at + ".ref");
         }
-        FuelType fuel = fuel(call);
-        Long year = integer(call, "year");
-        if (fuel == null && year == null) {
+        if (fuel(call) == null && integer(call, "year") == null) {
             Optional<UUID> meant = implicit(references);
             if (meant.isPresent()) {
                 return new Plan.CritAirOf(meant.get(), null, null, null);
             }
         }
-        if (absent(call, "fuel") || absent(call, "year")) {
+        // « Et sa Crit'Air ? » after a valuation: the car described, for what the call leaves out.
+        JsonNode read = described(call, car);
+        FuelType fuel = fuel(read);
+        Long year = integer(read, "year");
+        if (absent(read, "fuel") || absent(read, "year")) {
             return new DetailsMissing();
         }
         if (fuel == null) {
@@ -298,7 +391,7 @@ public class PlanValidator {
         if (year == null || year < MIN_YEAR || year > Year.now().getValue() + 1) {
             return new Invalid(at + ".year");
         }
-        return new Plan.CritAirOf(null, fuel, year.intValue(), month(call));
+        return new Plan.CritAirOf(null, fuel, year.intValue(), month(read));
     }
 
     private Object value(JsonNode call, String at) {

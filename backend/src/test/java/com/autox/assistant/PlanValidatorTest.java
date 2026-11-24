@@ -448,4 +448,98 @@ class PlanValidatorTest {
                 {"intent": "FINANCE", "calls": [{"tool": "simulate_financing", "amountEuros": "15000"}]}""");
         assertThat(validator.validate(plan, "x", TABLE, 2)).isEqualTo(new PlanValidator.Invalid("calls[0].amountEuros"));
     }
+
+    /** What a follow-up leaves out, read from the conversation's memory: the third evaluation. */
+    @Nested
+    class FromTheMemory {
+
+        private static final References.Table NONE = new References.Table(List.of(), null);
+        private static final TurnRequest.Car CAR_208 = new TurnRequest.Car(null, "208", FuelType.PETROL, 100, 2020,
+                null, 40_000);
+
+        private final PlanValidator catalogue = new PlanValidator(word -> switch (word) {
+            case "golf" -> java.util.Optional.of("Golf");
+            case "3008" -> java.util.Optional.of("3008");
+            default -> java.util.Optional.empty();
+        });
+
+        private Plan read(PlanValidator with, String plan, String message, ConversationMemory.Memory memory)
+                throws Exception {
+            PlanValidator.Result result = with.validate(JSON.readTree(plan), message, NONE, 2, memory);
+            assertThat(result).isInstanceOf(PlanValidator.Valid.class);
+            return ((PlanValidator.Valid) result).plan();
+        }
+
+        private static ConversationMemory.Memory searched(String criteria) throws Exception {
+            return new ConversationMemory.Memory((com.fasterxml.jackson.databind.node.ObjectNode) JSON.readTree(criteria),
+                    null);
+        }
+
+        @Test
+        @DisplayName("reads a search with no criteria as the one model the message names, when the catalogue knows it")
+        void emptySearchNamedModel() throws Exception {
+            Plan.Search search = (Plan.Search) read(catalogue, """
+                    {"intent": "SEARCH", "calls": [{"tool": "search_listings", "criteria": {}, "sort": "NEWEST"}]}""",
+                    "Une Golf", searched("{\"model\": \"3008\", \"gearbox\": [\"AUTOMATIC\"]}")).calls().getFirst();
+            assertThat(search.criteria()).isEqualTo(JSON.readTree("{\"model\": \"Golf\"}"));
+            assertThat(search.sort()).isEqualTo(SearchSort.NEWEST);
+        }
+
+        @Test
+        @DisplayName("reads a search with no criteria, naming no model, as the last search with the order asked")
+        void emptySearchResorted() throws Exception {
+            Plan.Search search = (Plan.Search) read(catalogue, """
+                    {"intent": "SEARCH", "calls": [{"tool": "search_listings", "criteria": {"model": null, "gearbox": []},
+                     "sort": "PRICE_ASC"}]}""",
+                    "la moins chère d'abord", searched("{\"model\": \"3008\", \"gearbox\": [\"AUTOMATIC\"]}"))
+                    .calls().getFirst();
+            assertThat(search.criteria()).isEqualTo(JSON.readTree("{\"model\": \"3008\", \"gearbox\": [\"AUTOMATIC\"]}"));
+            assertThat(search.sort()).isEqualTo(SearchSort.PRICE_ASC);
+        }
+
+        @Test
+        @DisplayName("keeps criteria the planner wrote, and an empty search with nothing remembered, as they are")
+        void criteriaKept() throws Exception {
+            Plan.Search written = (Plan.Search) read(catalogue, """
+                    {"intent": "SEARCH", "calls": [{"tool": "search_listings", "criteria": {"priceMax": 15000}}]}""",
+                    "moins de 15 000 €", searched("{\"model\": \"Golf\"}")).calls().getFirst();
+            assertThat(written.criteria()).isEqualTo(JSON.readTree("{\"priceMax\": 15000}"));
+            Plan.Search everything = (Plan.Search) read(catalogue, """
+                    {"intent": "SEARCH", "calls": [{"tool": "search_listings", "criteria": {}}]}""",
+                    "Montre-moi les annonces", ConversationMemory.Memory.NONE).calls().getFirst();
+            assertThat(everything.criteria()).isEqualTo(JSON.readTree("{}"));
+        }
+
+        @Test
+        @DisplayName("takes a Crit'Air's absent fuel and year from the car last described, not the question VEHICLE")
+        void critAirOfTheCar() throws Exception {
+            Plan plan = read(validator, """
+                    {"intent": "CRIT_AIR", "calls": [{"tool": "crit_air"}]}""", "Et sa Crit'Air ?",
+                    new ConversationMemory.Memory(null, CAR_208));
+            assertThat(plan.calls()).containsExactly(new Plan.CritAirOf(null, FuelType.PETROL, 2020, null));
+            // A fuel written is the user's; the year still the car's.
+            Plan diesel = read(validator, """
+                    {"intent": "CRIT_AIR", "calls": [{"tool": "crit_air", "fuel": "DIESEL"}]}""", "Et en diesel ?",
+                    new ConversationMemory.Memory(null, CAR_208));
+            assertThat(diesel.calls()).containsExactly(new Plan.CritAirOf(null, FuelType.DIESEL, 2020, null));
+            // No car remembered: still the question.
+            assertThat(read(validator, """
+                    {"intent": "CRIT_AIR", "calls": [{"tool": "crit_air"}]}""", "Et sa Crit'Air ?",
+                    ConversationMemory.Memory.NONE).clarify()).isEqualTo(Plan.Question.VEHICLE);
+        }
+
+        @Test
+        @DisplayName("takes a valuation's absent details from the car last described, unless it names another model")
+        void valueOfTheCar() throws Exception {
+            Plan plan = read(validator, """
+                    {"intent": "VALUE", "calls": [{"tool": "estimate_value", "mileageKm": 80000}]}""",
+                    "Et avec 80 000 km ?", new ConversationMemory.Memory(null, CAR_208));
+            assertThat(plan.calls()).containsExactly(new Plan.Value(null, "208", FuelType.PETROL, 100, 2020, null,
+                    80_000, null));
+            assertThat(read(validator, """
+                    {"intent": "VALUE", "calls": [{"tool": "estimate_value", "model": "Clio", "year": 2015}]}""",
+                    "Et une Clio de 2015 ?", new ConversationMemory.Memory(null, CAR_208)).clarify())
+                    .isEqualTo(Plan.Question.VEHICLE);
+        }
+    }
 }

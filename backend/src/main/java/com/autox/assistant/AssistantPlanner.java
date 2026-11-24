@@ -24,9 +24,16 @@ public interface AssistantPlanner {
      * @param references  the listings the user can point at, built from catalogue fields only
      * @param pageListing the reference of the listing the panel was opened from, or null
      * @param currentYear for "récente", as the smart search has it
+     * @param search      the last search's criteria, or null ({@link ConversationMemory})
+     * @param car         the car last described, or null
      */
     record Input(String message, List<String> earlier, List<References.Reference> references, String pageListing,
-                 int currentYear) {
+                 int currentYear, JsonNode search, TurnRequest.Car car) {
+
+        public Input(String message, List<String> earlier, List<References.Reference> references, String pageListing,
+                     int currentYear) {
+            this(message, earlier, references, pageListing, currentYear, null, null);
+        }
     }
 
     /** @param plan the model's JSON object; the token counts are the provider's own */

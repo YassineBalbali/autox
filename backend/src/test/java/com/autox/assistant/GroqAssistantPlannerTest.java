@@ -134,6 +134,24 @@ class GroqAssistantPlannerTest {
         // The model names listings by code: no id is ever sent.
         assertThat(bodies.getFirst()).doesNotContain(LISTING.toString());
         assertThat(user.path("listings").get(0).fieldNames()).toIterable().containsExactly("code", "label");
+        // Nothing remembered yet: no search, no car.
+        assertThat(user.has("search")).isFalse();
+        assertThat(user.has("car")).isFalse();
+    }
+
+    @Test
+    @DisplayName("shows the last search's criteria and the car last described, with only the car's known details")
+    void memory() throws Exception {
+        answer(200, completion("{}"));
+        AssistantPlanner.Input input = new AssistantPlanner.Input("moins de 15 000 €", List.of("Une Golf"), List.of(), null,
+                2026, json.readTree("{\"model\":\"Golf\"}"),
+                new TurnRequest.Car(null, "208", com.autox.catalog.FuelType.PETROL, null, 2020, null, null));
+
+        planner(Duration.ofSeconds(5)).plan(input);
+
+        JsonNode user = json.readTree(json.readTree(bodies.getFirst()).at("/messages/1/content").asText());
+        assertThat(user.path("search")).isEqualTo(json.readTree("{\"model\":\"Golf\"}"));
+        assertThat(user.path("car")).isEqualTo(json.readTree("{\"model\":\"208\",\"fuel\":\"PETROL\",\"year\":2020}"));
     }
 
     @Test
@@ -153,13 +171,13 @@ class GroqAssistantPlannerTest {
     }
 
     @Test
-    @DisplayName("keeps the assistant's own rules under 2 950 characters, about 700 tokens: every token is quota")
+    @DisplayName("keeps the assistant's own rules under 3 050 characters, about 710 tokens: every token is quota")
     void promptSize() {
         String prompt = AssistantPrompt.system(2026);
         String own = prompt.substring(0, prompt.indexOf(InterpretationPrompt.rules(2026)));
         // 2 310 before the five rules of the first evaluation, 2 698 before the four of the
-        // second (docs/assistant-plan.md, 12).
-        assertThat(own.length()).isLessThan(2_950);
+        // second, about 2 840 before the memory of the third (docs/assistant-plan.md, 12).
+        assertThat(own.length()).isLessThan(3_050);
     }
 
     @Test

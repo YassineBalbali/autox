@@ -122,10 +122,13 @@ public class AssistantService {
 
         long started = System.nanoTime();
         ContactMask.Masked message = ContactMask.mask(request.message().strip().replaceAll("\\s+", " "));
+        // What is written to a model rather than to the site is not shown to ours.
+        PlannerText.Split planned = PlannerText.split(message.text());
+        ConversationMemory.Memory memory = ConversationMemory.of(state);
         UUID pageListing = request.context() == null ? null : request.context().listingId();
         References.Table table = references.build(state.shown(), pageListing);
-        AssistantPlanner.Input input = new AssistantPlanner.Input(message.text(), state.earlier(), table.references(),
-                table.pageListing(), Year.now().getValue());
+        AssistantPlanner.Input input = new AssistantPlanner.Input(planned.text(), state.earlier(), table.references(),
+                table.pageListing(), Year.now().getValue(), memory.search(), memory.car());
         int minorUnit = currencies.findById(CURRENCY).map(Currency::getMinorUnit).orElse((short) 2);
 
         long tokensIn = 0;
@@ -149,9 +152,9 @@ public class AssistantService {
                     }
                 }
                 attempts++;
-                AssistantPlanner.Answer planned;
+                AssistantPlanner.Answer answered;
                 try {
-                    planned = planner.plan(input);
+                    answered = planner.plan(input);
                 } catch (PlannerUnavailableException e) {
                     if (e.kind() != PlannerUnavailableException.Kind.TIMEOUT) {
                         throw e;
@@ -167,13 +170,13 @@ public class AssistantService {
                     rejected.add(new EvalTrace.Rejected("timeout", null));
                     continue;
                 }
-                pacing.settle(reservation.call(), planned.tokensIn() + planned.tokensOut());
-                tokensIn += planned.tokensIn();
-                tokensOut += planned.tokensOut();
-                result = validator.validate(planned.plan(), message.text(), table, minorUnit);
+                pacing.settle(reservation.call(), answered.tokensIn() + answered.tokensOut());
+                tokensIn += answered.tokensIn();
+                tokensOut += answered.tokensOut();
+                result = validator.validate(answered.plan(), planned.text(), table, minorUnit, memory);
                 if (result instanceof PlanValidator.Invalid invalid) {
                     log.info("Assistant plan invalid (attempt {}): field={}", attempts, invalid.field());
-                    rejected.add(new EvalTrace.Rejected(invalid.field(), planned.plan()));
+                    rejected.add(new EvalTrace.Rejected(invalid.field(), answered.plan()));
                 }
             }
         } catch (PlannerBusyException e) {
@@ -208,11 +211,11 @@ public class AssistantService {
             if (properties.evalTrace()) {
                 traced.accept(EvalTrace.invalid(rejected, attempts, tokensIn, tokensOut, json));
             }
-            return new TurnResponse(blocks, next(state, message.text(), List.of()));
+            return new TurnResponse(blocks, next(state, message.text(), List.of(), memory));
         }
 
-        Plan plan = valid.plan();
-        AnswerBuilder.Answer answer = answers.build(plan, message.text());
+        Plan plan = withSetAside(valid.plan(), planned.setAside());
+        AnswerBuilder.Answer answer = answers.build(plan, message.text(), state.earlier());
         blocks.addAll(answer.blocks());
         usage.record(AssistantUsage.Outcome.ANSWERED, plan.intent(), answer.reasons(), attempts - 1, tokensIn, tokensOut);
         log.info("Assistant turn: intent={} tools={} reasons={} attempts={} tokens={}/{} {} ms",
@@ -221,11 +224,26 @@ public class AssistantService {
         if (properties.evalTrace()) {
             traced.accept(EvalTrace.of(plan, answer, blocks, table, minorUnit, rejected, attempts, tokensIn, tokensOut, json));
         }
-        return new TurnResponse(blocks, next(state, message.text(), answer.shown()));
+        return new TurnResponse(blocks, next(state, message.text(), answer.shown(), ConversationMemory.after(plan, memory)));
     }
 
-    /** The state to send back: this message added, the listings shown added, at most what the limits allow. */
-    private static TurnRequest.State next(TurnRequest.State state, String message, List<UUID> shown) {
+    /** What was set aside before planning is quoted back as not understood, first. */
+    private static Plan withSetAside(Plan plan, List<String> setAside) {
+        if (setAside.isEmpty()) {
+            return plan;
+        }
+        List<String> quoted = new ArrayList<>(setAside);
+        quoted.addAll(plan.notUnderstood());
+        return new Plan(plan.intent(), plan.calls(), plan.noAnswer(), plan.clarify(),
+                quoted.stream().distinct().limit(PlanValidator.MAX_NOT_UNDERSTOOD).toList());
+    }
+
+    /**
+     * The state to send back: this message added, the listings shown added, at most what the limits
+     * allow, and what the conversation remembers.
+     */
+    private static TurnRequest.State next(TurnRequest.State state, String message, List<UUID> shown,
+                                          ConversationMemory.Memory memory) {
         List<String> earlier = new ArrayList<>(state.earlier());
         earlier.add(message.length() > TurnRequest.MAX_MESSAGE ? message.substring(0, TurnRequest.MAX_MESSAGE) : message);
         while (earlier.size() > TurnRequest.MAX_EARLIER) {
@@ -240,7 +258,8 @@ public class AssistantService {
         while (recent.size() > References.MAX) {
             recent.removeFirst();
         }
-        return new TurnRequest.State(List.copyOf(earlier), List.copyOf(recent), state.turns() + 1);
+        return new TurnRequest.State(List.copyOf(earlier), List.copyOf(recent), state.turns() + 1, memory.search(),
+                memory.car());
     }
 
     private void requireEnabled() {

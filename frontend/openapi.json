@@ -9262,7 +9262,7 @@
       },
       "AssistantTurnState": {
         "type": "object",
-        "description": "The conversation so far, as the server returned it. Nothing is stored on the server: the\n client holds this and sends it back. It is checked like any input: each listing is read\n again, and there is no field a figure or a tool's result could be put in.",
+        "description": "The conversation so far, as the server returned it. Nothing is stored on the server: the\n client holds this and sends it back. It is checked like any input: each listing is read\n again, and there is no field a figure or a tool's result could be put in.\n\n <p>The last search and the car last described are kept so a follow-up builds on them (« moins\n de 15 000 € », « Et sa Crit'Air ? »): the model is shown them, and the server takes from them\n what a plan leaves out. They are the plan's own terms, read again like the rest: a search's\n criteria go through the smart search's validator every turn, and a field that is not one of\n its criteria is dropped.",
         "properties": {
           "earlier": {
             "type": "array",
@@ -9291,6 +9291,13 @@
             "description": "how many turns the conversation has had",
             "maximum": 12,
             "minimum": 0
+          },
+          "search": {
+            "description": "the last search's criteria, as search_listings takes them; absent before any"
+          },
+          "car": {
+            "$ref": "#/components/schemas/AssistantTurnCar",
+            "description": "the car last described, valued or asked its Crit'Air; absent before any"
           }
         },
         "required": [
@@ -9816,6 +9823,49 @@
         "enum": [
           "BUSY"
         ]
+      },
+      "AssistantTurnCar": {
+        "type": "object",
+        "description": "A car the user described, as estimate_value and crit_air take it; any detail may be absent.",
+        "properties": {
+          "make": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 0
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 0
+          },
+          "fuel": {
+            "$ref": "#/components/schemas/FuelType"
+          },
+          "powerHp": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1500,
+            "minimum": 20
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1950
+          },
+          "month": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 12,
+            "minimum": 1
+          },
+          "mileageKm": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1000000,
+            "minimum": 0
+          }
+        }
       }
     },
     "securitySchemes": {
