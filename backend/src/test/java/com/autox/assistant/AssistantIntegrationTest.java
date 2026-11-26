@@ -667,6 +667,23 @@ class AssistantIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        @DisplayName("never shows a phone or an e-mail a seller typed in a title or a city, in a card or the facts")
+        void sellerTextMasked() throws Exception {
+            UUID id = listing(Map.of("title", "208 propre, appelez le 06 12 34 56 78 ou vendeur@exemple.fr",
+                    "city", "Paris 0612345678"));
+            planner.plans(json("{\"intent\": \"EXPLAIN\", \"calls\": [{\"tool\": \"get_listing\", \"ref\": \"L1\"}]}"));
+
+            String body = turn(Map.of("message", "Explique-moi la première",
+                    "state", Map.of("earlier", List.of(), "shown", List.of(id.toString()), "turns", 1)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.blocks[0].type").value("LISTING_FACTS"))
+                    .andExpect(jsonPath("$.blocks[0].listings[0].title")
+                            .value("208 propre, appelez le [coordonnées retirées] ou [coordonnées retirées]"))
+                    .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+            assertThat(body).doesNotContain("06 12 34 56 78", "0612345678", "vendeur@exemple.fr");
+        }
+
+        @Test
         @DisplayName("refuses a tampered car out of its bounds before any planner call, and ignores its unknown fields")
         void tamperedCar() throws Exception {
             for (Map<String, Object> car : List.<Map<String, Object>>of(

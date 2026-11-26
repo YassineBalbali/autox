@@ -79,7 +79,7 @@ public record ListingFacts(
                 detail.damage() == null ? null : detail.damage().running(),
                 detail.priceIndicator() == null ? null : detail.priceIndicator().level(),
                 detail.critAir(),
-                detail.location().city(),
+                com.autox.assistant.ContactMask.strip(detail.location().city()),
                 detail.seller().role());
     }
 

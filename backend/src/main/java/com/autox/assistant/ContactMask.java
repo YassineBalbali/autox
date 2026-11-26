@@ -6,8 +6,12 @@ import java.util.regex.Pattern;
  * Removes e-mail addresses and phone numbers from a message before it is sent to the provider
  * (docs/assistant-plan.md, 3.3). The disclosure asks users not to type any; this is for when they
  * do. The answer then says the message held contact details that were removed.
+ *
+ * <p>Also from what a seller typed that an answer shows, a listing's title and city
+ * ({@link #strip}): moderation removes a number placed there, after a report, and the assistant
+ * does not carry one in the meantime. The seller is reached through the listing's own button.
  */
-final class ContactMask {
+public final class ContactMask {
 
     static final String REPLACEMENT = "[coordonnées retirées]";
 
@@ -20,6 +24,11 @@ final class ContactMask {
             "(?:(?:\\+|00)\\s?33\\s?(?:\\(0\\)\\s?)?|\\b0)[1-9](?:[\\s.-]?\\d{2}){4}\\b|\\+\\d{1,3}(?:[\\s.-]?\\d){7,}");
 
     private ContactMask() {
+    }
+
+    /** A seller's text with each address and number replaced; null stays null. */
+    public static String strip(String text) {
+        return text == null ? null : mask(text).text();
     }
 
     /** @return the message with each address and number replaced, and whether there was one */

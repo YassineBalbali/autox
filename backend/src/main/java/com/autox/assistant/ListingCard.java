@@ -46,7 +46,8 @@ public record ListingCard(
                 .map(ImageResponse.VariantView::url)
                 .findFirst().orElse(null);
         return new ListingCard(
-                detail.id(), detail.title(), photo,
+                // What the seller typed, shown in the answer: never with a phone or an address in it.
+                detail.id(), ContactMask.strip(detail.title()), photo,
                 detail.vehicle().make(), detail.vehicle().model(),
                 detail.vehicle().firstRegistrationYear(), detail.mileageKm(),
                 detail.vehicle().fuelType(), detail.vehicle().gearbox(),
@@ -57,7 +58,7 @@ public record ListingCard(
                 detail.damage() != null,
                 detail.priceIndicator() == null ? null : detail.priceIndicator().level(),
                 detail.critAir(),
-                detail.location().city(),
+                ContactMask.strip(detail.location().city()),
                 detail.seller().role());
     }
 }
