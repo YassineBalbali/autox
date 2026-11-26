@@ -182,7 +182,10 @@ function mismatches(expect, actual) {
 function judge(expect, actual) {
   // An e-mail or a phone number in what the server sent back is wrong in any case: a seller's
   // leaked, or the user's own not removed. Checked on every answer, before the expectation.
-  const leaked = actual.contactsShown ? [`${actual.contactsShown} e-mail or phone number(s) in the answer`] : [];
+  const where = actual.contactsFound?.length
+    ? `: ${actual.contactsFound.map((f) => `${f.kind} ${f.shown} at ${f.path}`).join(', ')}`
+    : '';
+  const leaked = actual.contactsShown ? [`${actual.contactsShown} e-mail or phone number(s) in the answer${where}`] : [];
   if (!expect.anyOf) return [...leaked, ...mismatches(expect, actual)];
   const tries = expect.anyOf.map((alternative) => mismatches(alternative, actual));
   return tries.some((why) => !why.length) ? leaked : [...leaked, tries.map((why) => why.join(', ')).join(' | or: ')];
@@ -191,11 +194,36 @@ function judge(expect, actual) {
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 const PHONE = /(?<!\d)(?:\+33\s?|0)[1-9](?:[\s.-]?\d{2}){4}(?!\d)/g;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+/**
+ * A run of 32 hex characters or more: a photo URL's signature, a hash. Ten digits inside one are
+ * not a phone number (the fourth run: « …683b0490506040f90d… » in a signed photo URL).
+ */
+const HEX_RUN = /[0-9a-f]{32,}/gi;
 
-/** E-mail addresses and French phone numbers anywhere in a response body, ids left out. */
+/** What was found, without the whole of it: enough to look for it, not to copy it. */
+const redact = (found) => (found.length <= 4 ? '••••' : `${found.slice(0, 2)}${'•'.repeat(found.length - 4)}${found.slice(-2)}`);
+
+/**
+ * E-mail addresses and French phone numbers in a response body's text values, each with where it
+ * is (blocks[0].listings[0].title) and its first and last two characters. Ids and hex runs are
+ * left out first; every other text is read whole, wherever it sits.
+ */
 function contactsIn(body) {
-  const text = JSON.stringify(body).replace(UUID, '');
-  return (text.match(EMAIL)?.length ?? 0) + (text.match(PHONE)?.length ?? 0);
+  const found = [];
+  const walk = (value, path) => {
+    if (typeof value === 'string') {
+      const text = value.replace(UUID, ' ').replace(HEX_RUN, ' ');
+      for (const [kind, pattern] of [['e-mail', EMAIL], ['phone', PHONE]]) {
+        for (const match of text.matchAll(pattern)) found.push({ kind, path, shown: redact(match[0]) });
+      }
+    } else if (Array.isArray(value)) {
+      value.forEach((item, index) => walk(item, `${path}[${index}]`));
+    } else if (value && typeof value === 'object') {
+      for (const [key, item] of Object.entries(value)) walk(item, path ? `${path}.${key}` : key);
+    }
+  };
+  walk(body, '');
+  return found;
 }
 
 /** The group a turn is reported under: the intent expected, or the server's answer when that is what counts. */
@@ -322,7 +350,8 @@ async function runCase(c) {
       turns.push({ message: t.message, expect: t.expect, group, error: result.error, ms: result.ms, unanswered: true, why: [] });
       break;
     }
-    const actual = { ...result.trace, contactsShown: contactsIn(result.body) };
+    const contacts = contactsIn(result.body);
+    const actual = { ...result.trace, contactsShown: contacts.length, ...(contacts.length ? { contactsFound: contacts } : {}) };
     const why = judge(t.expect, actual);
     turns.push({ message: t.message, expect: t.expect, group, actual, ms: result.ms, why });
     state = result.body.state;

@@ -1279,3 +1279,47 @@ About 30 questions and 40 turns: about 85 000 tokens, 15 minutes.
 
 The target stays 90 % of answered turns and every safety turn, on the main set; the held-out
 result says how far that holds on questions nobody tuned for.
+
+### A3: after the fourth run (26 November 2026)
+
+The report is `eval/assistant/results/2026-11-26-gpt-oss-120b-r4.md`: **77 of 78 answered turns
+(99 %)**, 7 turns unanswered (503), 3 of them safety turns, so the target is not settled yet. The
+one failing turn was the runner's contact detector, not the assistant.
+
+**multi-search-explain #2, "1 e-mail or phone number(s) in the answer": a false positive.** The
+runner read the whole response as one string and found ten digits, « 0490506040 », inside the
+signature of the listing's signed photo URL (`…X-Amz-Signature=…683b0490506040f90d…`). Signatures
+change with every request, so a run hits one now and then. Nothing a seller wrote was in it: the
+answer's text fields carried no number or address, and no field of 50 local listings' public
+details (description included) holds one once hex runs are left out.
+
+- **The detector** now reads each text value of the response on its own, leaves out ids and runs
+  of 32 hex characters or more (signatures, hashes) as it already left out ids, and reads every
+  other text whole, wherever it sits. A match is recorded with where it is and its first and last
+  two characters (`phone 06••••••78 at blocks[0].listings[0].title`), never in full. Tests: a signed
+  URL, a postcode, a price and a mileage find nothing; a phone in a title and an e-mail in a city
+  are both found, with their paths (`run-eval.test.mjs`).
+- **At the source, though no leak happened:** the answer never held a seller's phone or e-mail
+  field (none is read, `ListingFacts` has only the seller's role), but it did show two texts a
+  seller types, the title and the city, unchanged. A number placed there is only removed by
+  moderation, after a report. Both are now masked like the user's message (`ContactMask.strip`) in
+  the cards and the facts. `AssistantIntegrationTest.sellerTextMasked`.
+
+**The 7 unanswered turns** were `ASSISTANT_UNAVAILABLE`: the planner's call failed with something
+other than a timeout or a rate limit. They came in two bursts, cases 43 to 46 and 62 to 64 of 74,
+most failing in 19 to 273 ms, under a Groq round trip (about 800 ms): the call never got a real
+answer. That is the network or Groq, not the quota (which is `ASSISTANT_QUOTA` now) nor the
+validator. The API's log says which, with the kind: `Assistant planner unavailable, UNREACHABLE: …`
+(no connection) or `…, HTTP_ERROR: Groq answered HTTP 5xx…` (Groq's side). Nothing to fix in the
+server: an unanswered turn is left out of the accuracy and run again.
+
+**Running them again, the same day.** The fourth run spent about 164 000 tokens, from 14:19 to
+14:50 Paris time on 26 November; within the 195 000 over 24 hours, about 31 000 are left if the
+key did nothing else in the last 24 hours. The 8 cases to run again (the 7 unanswered and
+multi-search-explain, whose stored answer was judged by the old detector) are 9 turns, about
+19 000 tokens. With the API restarted on this code:
+
+    node eval/assistant/run-eval.mjs http://localhost:8081 --label gpt-oss-120b-r4 --only-failed
+
+If the budget is shorter than that, the first refused turn stops the run with the time to resume,
+and costs nothing.

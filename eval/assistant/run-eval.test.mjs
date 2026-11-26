@@ -1,7 +1,8 @@
 // node --test eval/assistant/run-eval.test.mjs
 //
 // The runner against a stand-in API, never Groq: what it does with the daily quota spent, and a
-// set other than cases.json (--cases), and the help questions the pages did not cover.
+// set other than cases.json (--cases), the help questions the pages did not cover, and the
+// contact details found in an answer.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -18,7 +19,7 @@ const CASES = ['search-208-brief', 'search-suv-diesel-auto', 'search-clio-cheap-
  * A stand-in API whose every turn gets this status, code and Retry-After; counts the turns. With
  * a trace, every turn is answered 200 with it, as the API's evaluation header.
  */
-async function api(status, code, retryAfter, trace) {
+async function api(status, code, retryAfter, trace, body = { blocks: [] }) {
   const seen = { turns: 0 };
   const server = createServer((request, response) => {
     if (request.url.endsWith('/capabilities')) {
@@ -29,7 +30,7 @@ async function api(status, code, retryAfter, trace) {
     seen.turns += 1;
     if (trace) {
       response.writeHead(200, { 'Content-Type': 'application/json', 'X-Assistant-Eval': JSON.stringify(trace) });
-      response.end(JSON.stringify({ blocks: [], state: { earlier: [], shown: [], turns: 1 } }));
+      response.end(JSON.stringify({ ...body, state: { earlier: [], shown: [], turns: 1 } }));
       return;
     }
     response.writeHead(status, { 'Content-Type': 'application/problem+json', ...(retryAfter ? { 'Retry-After': String(retryAfter) } : {}) });
@@ -141,4 +142,46 @@ test('counts NOT_IN_HELP right where a help case accepts it, and lists it apart 
     stand.close();
     rmSync(results, { recursive: true, force: true });
   }
+});
+
+/** One EXPLAIN turn answered with these blocks; the report and the progress line. */
+async function explained(blocks) {
+  const trace = { intent: 'EXPLAIN', calls: [{ tool: 'get_listing', ref: 'L1' }], reasons: [], blocks: ['LISTING_FACTS'],
+    attempts: 1, tokensIn: 2000, tokensOut: 40 };
+  const stand = await api(200, null, null, trace, { blocks });
+  const results = mkdtempSync(join(tmpdir(), 'eval-'));
+  const set = join(results, 'leak.json');
+  writeFileSync(set, JSON.stringify({ version: 1, cases: [
+    { id: 'explain', category: 'explain', turns: [{ message: 'Explique-moi', expect: { intent: 'EXPLAIN' } }] },
+  ] }));
+  try {
+    await run(stand.url, results, ['--cases', set]);
+    const report = readFileSync(join(results, readdirSync(results).find((name) => name.endsWith('-leak.md'))), 'utf8');
+    const progress = JSON.parse(readFileSync(join(results, 'leak.progress.jsonl'), 'utf8').trim());
+    return { report, actual: progress.turns[0].actual };
+  } finally {
+    stand.close();
+    rmSync(results, { recursive: true, force: true });
+  }
+}
+
+const SIGNED = 'https://bucket.example/l/card.webp?X-Amz-Expires=21600&X-Amz-Signature=c2eff347e13716e0dbc8566d83d7510df0f374d96ff683b0490506040f90d0b1';
+
+test('does not take ten digits inside a signed photo URL, a postcode, a price or a mileage for a phone number', async () => {
+  const { report, actual } = await explained([{ type: 'LISTING_FACTS',
+    listings: [{ id: '01a17901-93d4-7c58-8069-e9f51f4693d0', title: 'Peugeot 208, 40 000 km, 75011 Paris', photoUrl: SIGNED,
+      priceAmount: 1099000, mileageKm: 40000, city: 'Paris' }],
+    facts: { year: 2020, mileageKm: 40000, priceAmount: 1099000 } }]);
+  assert.equal(actual.contactsShown, 0);
+  assert.match(report, /Turns answered and right:\*\* 1\/1/);
+});
+
+test('still finds a phone number and an e-mail in any text of the answer, and says where', async () => {
+  const { report, actual } = await explained([{ type: 'LISTING_FACTS',
+    listings: [{ title: '208, appelez le 06 12 34 56 78', photoUrl: SIGNED, city: 'Paris vendeur@exemple.fr' }] }]);
+  assert.equal(actual.contactsShown, 2);
+  assert.deepEqual(actual.contactsFound.map((f) => [f.kind, f.path]).sort(),
+    [['e-mail', 'blocks[0].listings[0].city'], ['phone', 'blocks[0].listings[0].title']]);
+  assert.ok(!JSON.stringify(actual).includes('06 12 34 56 78'), 'the number itself is not stored');
+  assert.match(report, /2 e-mail or phone number\(s\) in the answer: .*phone 06•+78 at blocks\[0\]\.listings\[0\]\.title/);
 });
